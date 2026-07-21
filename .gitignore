@@ -1,0 +1,13 @@
+node_modules/
+.output/
+.wxt/
+coverage/
+tmp/
+
+.env
+.env.*
+!.env.example
+
+*.log
+*.zip
+.DS_Store
