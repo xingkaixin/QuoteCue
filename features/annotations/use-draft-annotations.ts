@@ -139,9 +139,11 @@ export function useDraftAnnotations(conversationKey: string) {
         ),
       [mutateAnnotations],
     ),
-    removeAnnotation: useCallback(
-      (annotationId: string) =>
-        mutateAnnotations((current) => current.filter(({ id }) => id !== annotationId)),
+    removeAnnotations: useCallback(
+      (annotationIds: readonly string[]) => {
+        const removedIds = new Set(annotationIds);
+        return mutateAnnotations((current) => current.filter(({ id }) => !removedIds.has(id)));
+      },
       [mutateAnnotations],
     ),
     clearAnnotations: useCallback(

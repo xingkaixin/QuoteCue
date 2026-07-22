@@ -75,6 +75,31 @@
   box-shadow: var(--qc-shadow);
 }
 
+.qc-status-bubble {
+  clip-path: inset(0 round 0.5rem);
+  transform: translateX(0) scaleX(1);
+  transform-origin: left center;
+  transition:
+    clip-path 180ms cubic-bezier(0.23, 1, 0.32, 1),
+    opacity 140ms ease,
+    transform 180ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.qc-status-bubble[data-exiting="true"] {
+  clip-path: inset(0 100% 0 0 round 0.5rem);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-0.5rem) scaleX(0.94);
+}
+
+@starting-style {
+  .qc-status-bubble {
+    clip-path: inset(0 100% 0 0 round 0.5rem);
+    opacity: 0;
+    transform: translateX(-0.5rem) scaleX(0.94);
+  }
+}
+
 .qc-tooltip {
   background: var(--qc-text);
   color: var(--qc-surface);
@@ -120,5 +145,25 @@
 
   .qc-pressable:active {
     transform: scale(0.97);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .qc-status-bubble {
+    clip-path: inset(0 round 0.5rem);
+    transform: none;
+    transition: opacity 100ms ease;
+  }
+
+  .qc-status-bubble[data-exiting="true"] {
+    clip-path: inset(0 round 0.5rem);
+    transform: none;
+  }
+
+  @starting-style {
+    .qc-status-bubble {
+      clip-path: inset(0 round 0.5rem);
+      transform: none;
+    }
   }
 }

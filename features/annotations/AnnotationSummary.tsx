@@ -19,12 +19,12 @@ import type { DraftAnnotation } from "./annotation";
 
 type AnnotationSummaryProps = {
   annotations: DraftAnnotation[];
-  hasPendingDeletion: boolean;
   onClear: () => void;
   onEdit: (annotation: DraftAnnotation) => void;
   onRemove: (annotationId: string) => void;
   onSend: () => void;
   onUndo: () => void;
+  pendingDeletionCount: number;
   position: ComposerPosition;
   sendStatus: "idle" | "pending" | "failed";
   sendPosition: ComposerRect;
@@ -33,12 +33,12 @@ type AnnotationSummaryProps = {
 
 export function AnnotationSummary({
   annotations,
-  hasPendingDeletion,
   onClear,
   onEdit,
   onRemove,
   onSend,
   onUndo,
+  pendingDeletionCount,
   position,
   sendStatus,
   sendPosition,
@@ -48,7 +48,7 @@ export function AnnotationSummary({
   const countButtonRef = useRef<HTMLButtonElement>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [isConfirmingClear, setIsConfirmingClear] = useState(false);
-  const [transientStatus, setTransientStatus] = useState("");
+  const hasPendingDeletion = pendingDeletionCount > 0;
 
   useEffect(() => {
     if (!isConfirmingClear) {
@@ -58,21 +58,20 @@ export function AnnotationSummary({
     return () => window.clearTimeout(timer);
   }, [isConfirmingClear]);
 
-  useEffect(() => setIsConfirmingClear(false), [annotations.length, hasPendingDeletion]);
+  useEffect(() => setIsConfirmingClear(false), [annotations.length, pendingDeletionCount]);
 
-  useEffect(() => {
-    if (!transientStatus) {
-      return;
-    }
-    const timer = window.setTimeout(() => setTransientStatus(""), 5_000);
-    return () => window.clearTimeout(timer);
-  }, [transientStatus]);
-
-  const statusMessage = hasPendingDeletion
-    ? messages.annotationRemoved(annotations.length)
-    : isConfirmingClear
-      ? messages.clearAnnotationsConfirmation
-      : transientStatus;
+  const statusKind: SummaryStatusKind = isConfirmingClear
+    ? "clear"
+    : hasPendingDeletion
+      ? "deletion"
+      : null;
+  const statusMessage = isConfirmingClear
+    ? messages.clearAnnotationsConfirmation
+    : hasPendingDeletion
+      ? messages.annotationRemoved(pendingDeletionCount, annotations.length)
+      : "";
+  const renderedStatus = useRetainedStatus(statusKind, statusMessage);
+  const isStatusExiting = renderedStatus !== null && statusKind === null;
 
   return (
     <Fragment>
@@ -114,14 +113,13 @@ export function AnnotationSummary({
               isConfirmingClear ? messages.confirmClearAnnotations : messages.clearAnnotations
             }
             className="qc-muted qc-divider qc-hover qc-focus qc-pressable flex size-8 cursor-pointer items-center justify-center rounded-r-lg border-l opacity-0 transition-opacity group-hover/summary:opacity-100 focus-visible:opacity-100 disabled:cursor-default disabled:opacity-40"
-            disabled={hasPendingDeletion || annotations.length === 0}
+            disabled={annotations.length === 0}
             onClick={() => {
               if (isConfirmingClear) {
                 setIsConfirmingClear(false);
                 onClear();
                 return;
               }
-              setTransientStatus("");
               setIsConfirmingClear(true);
             }}
             type="button"
@@ -182,8 +180,7 @@ export function AnnotationSummary({
                         </button>
                         <button
                           aria-label={messages.deleteNumberedAnnotation(index + 1)}
-                          className="qc-danger qc-divider qc-hover qc-focus flex size-8 cursor-pointer items-center justify-center border-l disabled:opacity-40"
-                          disabled={hasPendingDeletion}
+                          className="qc-danger qc-divider qc-hover qc-focus flex size-8 cursor-pointer items-center justify-center border-l"
                           onClick={() => onRemove(annotation.id)}
                           type="button"
                         >
@@ -197,20 +194,20 @@ export function AnnotationSummary({
             </div>
           </div>
         )}
-        {statusMessage && (
+        {renderedStatus && (
           <div
+            aria-hidden={isStatusExiting}
             aria-live="polite"
-            className="qc-surface qc-elevated flex max-w-72 items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs"
+            className="qc-status-bubble qc-surface qc-divider flex max-w-72 items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs shadow-sm"
+            data-exiting={isStatusExiting}
             role="status"
           >
-            <span>{statusMessage}</span>
-            {hasPendingDeletion && (
+            <span>{renderedStatus.message}</span>
+            {renderedStatus.kind === "deletion" && (
               <button
                 className="qc-accent-text qc-hover qc-focus shrink-0 cursor-pointer rounded px-1.5 py-1 font-semibold"
-                onClick={() => {
-                  setTransientStatus(messages.annotationRestored);
-                  onUndo();
-                }}
+                disabled={isStatusExiting}
+                onClick={onUndo}
                 type="button"
               >
                 {messages.undo}
@@ -256,4 +253,32 @@ export function AnnotationSummary({
       </button>
     </Fragment>
   );
+}
+
+type SummaryStatusKind = "clear" | "deletion" | null;
+
+type SummaryStatus = {
+  kind: Exclude<SummaryStatusKind, null>;
+  message: string;
+};
+
+const STATUS_EXIT_DURATION_MS = 180;
+
+function useRetainedStatus(kind: SummaryStatusKind, message: string) {
+  const [retainedStatus, setRetainedStatus] = useState<SummaryStatus | null>(() =>
+    kind ? { kind, message } : null,
+  );
+
+  useEffect(() => {
+    if (kind) {
+      setRetainedStatus((current) =>
+        current?.kind === kind && current.message === message ? current : { kind, message },
+      );
+      return;
+    }
+    const timer = window.setTimeout(() => setRetainedStatus(null), STATUS_EXIT_DURATION_MS);
+    return () => window.clearTimeout(timer);
+  }, [kind, message]);
+
+  return kind ? { kind, message } : retainedStatus;
 }

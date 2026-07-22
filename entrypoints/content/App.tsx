@@ -35,14 +35,19 @@ export default function App() {
     isHydrated,
     addAnnotation,
     updateAnnotation,
-    removeAnnotation,
+    removeAnnotations,
     clearAnnotations,
     retry,
   } = useDraftAnnotations(conversationKey);
   const [sendState, setSendState] = useState<AnnotatedSendState>({ status: "idle" });
   const [editor, setEditor] = useState<AnnotationEditorState>({ status: "hidden" });
-  const { hasPendingDeletion, requestDeletion, undoDeletion, visibleAnnotations } =
-    useDeferredAnnotationDeletion(annotations, conversationKey, removeAnnotation);
+  const {
+    discardPendingDeletions,
+    pendingDeletionCount,
+    requestDeletion,
+    undoDeletions,
+    visibleAnnotations,
+  } = useDeferredAnnotationDeletion(annotations, conversationKey, removeAnnotations);
   const startAnnotation = useCallback(
     (draft: SelectionDraft) => {
       const annotation: DraftAnnotation = {
@@ -84,7 +89,7 @@ export default function App() {
       onSendAccepted: (revision) => {
         if (clearAnnotations(revision)) {
           setEditor({ status: "hidden" });
-          undoDeletion();
+          discardPendingDeletions();
         }
       },
       onStateChange: setSendState,
@@ -102,7 +107,7 @@ export default function App() {
       sendActionsRef.current = { submit: () => undefined, retry: () => undefined };
       interceptor.dispose();
     };
-  }, [clearAnnotations, locale, undoDeletion]);
+  }, [clearAnnotations, discardPendingDeletions, locale]);
 
   useEffect(() => {
     setEditor({ status: "hidden" });
@@ -187,10 +192,12 @@ export default function App() {
         {isHydrated && annotations.length > 0 && composerLayout && (
           <AnnotationSummary
             annotations={visibleAnnotations}
-            hasPendingDeletion={hasPendingDeletion}
+            pendingDeletionCount={pendingDeletionCount}
             onClear={() => {
-              clearAnnotations();
-              setEditor({ status: "hidden" });
+              if (clearAnnotations()) {
+                discardPendingDeletions();
+                setEditor({ status: "hidden" });
+              }
             }}
             onEdit={openEditor}
             onRemove={deleteAnnotation}
@@ -198,7 +205,7 @@ export default function App() {
               const action = sendState.status === "failed" ? "retry" : "submit";
               sendActionsRef.current[action]();
             }}
-            onUndo={undoDeletion}
+            onUndo={undoDeletions}
             position={composerLayout.summary}
             sendStatus={annotationSendStatus(sendState)}
             sendPosition={composerLayout.send}

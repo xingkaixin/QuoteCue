@@ -18,7 +18,14 @@ const annotation = {
   comment: "",
 };
 
+const secondAnnotation = {
+  ...annotation,
+  id: "annotation-2",
+  anchor: { ...annotation.anchor, messageId: "message-2", quote: "second selection" },
+};
+
 afterEach(() => {
+  vi.useRealTimers();
   document.body.replaceChildren();
 });
 
@@ -127,24 +134,45 @@ describe("AnnotationSummary", () => {
     await act(async () => mounted.root.unmount());
   });
 
-  it("offers one undo transaction and requires confirmation before clearing", async () => {
-    const onClear = vi.fn();
+  it("keeps deletion and clear controls enabled while an undo batch is pending", async () => {
     const onRemove = vi.fn();
-    const onUndo = vi.fn();
-    const mounted = await mountSummary({ onClear, onRemove, onUndo });
+    const mounted = await mountSummary({
+      annotations: [annotation, secondAnnotation],
+      onRemove,
+      pendingDeletionCount: 1,
+    });
 
     await hover(mounted.summary);
-    await act(async () => {
-      mounted.container
-        .querySelector<HTMLButtonElement>('[aria-label="Delete annotation 1"]')
-        ?.click();
-    });
-    expect(onRemove).toHaveBeenCalledWith("annotation-1");
-
-    await mounted.render({ annotations: [], hasPendingDeletion: true });
-    expect(mounted.container.querySelector('[role="status"]')?.textContent).toContain(
-      "Annotation removed",
+    const deleteButtons = Array.from(
+      mounted.container.querySelectorAll<HTMLButtonElement>('[aria-label^="Delete annotation"]'),
     );
+    const clearButton = mounted.container.querySelector<HTMLButtonElement>(
+      '[aria-label="Clear all annotations"]',
+    );
+
+    expect(deleteButtons.every((button) => !button.disabled)).toBe(true);
+    expect(clearButton?.disabled).toBe(false);
+    await act(async () => deleteButtons[1]?.click());
+    expect(onRemove).toHaveBeenCalledWith("annotation-2");
+    await act(async () => clearButton?.click());
+    expect(mounted.container.querySelector('[role="status"]')?.textContent).toContain(
+      "Click again to confirm",
+    );
+
+    await act(async () => mounted.root.unmount());
+  });
+
+  it("animates one batch undo transaction and requires confirmation before clearing", async () => {
+    vi.useFakeTimers();
+    const onClear = vi.fn();
+    const onUndo = vi.fn();
+    const mounted = await mountSummary({ onClear, onUndo });
+
+    await mounted.render({ annotations: [], pendingDeletionCount: 2 });
+    const status = mounted.container.querySelector('[role="status"]');
+    expect(status?.textContent).toContain("2 annotations removed. 0 remaining.");
+    expect(status?.classList).toContain("qc-status-bubble");
+    expect(status?.getAttribute("data-exiting")).toBe("false");
     await act(async () => {
       Array.from(mounted.container.querySelectorAll("button"))
         .find((button) => button.textContent === "Undo")
@@ -152,7 +180,13 @@ describe("AnnotationSummary", () => {
     });
     expect(onUndo).toHaveBeenCalledOnce();
 
-    await mounted.render({ annotations: [annotation], hasPendingDeletion: false });
+    await mounted.render({ annotations: [annotation], pendingDeletionCount: 0 });
+    expect(mounted.container.querySelector('[role="status"]')?.getAttribute("data-exiting")).toBe(
+      "true",
+    );
+    await act(async () => vi.advanceTimersByTimeAsync(180));
+    expect(mounted.container.querySelector('[role="status"]')).toBeNull();
+
     const clearButton = mounted.container.querySelector<HTMLButtonElement>(
       '[aria-label="Clear all annotations"]',
     );
@@ -199,12 +233,12 @@ async function mountSummary(overrides: Partial<SummaryProps> = {}) {
   const root = createRoot(container);
   const baseProps: SummaryProps = {
     annotations: [annotation],
-    hasPendingDeletion: false,
     onClear: vi.fn(),
     onEdit: vi.fn(),
     onRemove: vi.fn(),
     onSend: vi.fn(),
     onUndo: vi.fn(),
+    pendingDeletionCount: 0,
     position: { left: 10, top: 10 },
     sendPosition: { height: 36, left: 200, top: 200, width: 36 },
     sendStatus: "idle",

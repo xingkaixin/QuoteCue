@@ -33,16 +33,16 @@ const annotations: DraftAnnotation[] = [
 ];
 
 let latestDeletion: ReturnType<typeof useDeferredAnnotationDeletion>;
-const commitDeletion = vi.fn();
+const commitDeletions = vi.fn();
 
 afterEach(() => {
-  commitDeletion.mockReset();
+  commitDeletions.mockReset();
   vi.useRealTimers();
   document.body.replaceChildren();
 });
 
 describe("deferred annotation deletion", () => {
-  it("preserves order on undo without committing a deletion", async () => {
+  it("groups consecutive deletions and restores their original order on undo", async () => {
     vi.useFakeTimers();
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     const container = document.createElement("div");
@@ -52,20 +52,25 @@ describe("deferred annotation deletion", () => {
     await act(async () => root.render(<DeletionHarness scopeKey="A" />));
     await act(async () => latestDeletion.requestDeletion("annotation-a"));
     expect(latestDeletion.visibleAnnotations.map(({ id }) => id)).toEqual(["annotation-b"]);
-    expect(latestDeletion.requestDeletion("annotation-b")).toBe(false);
+    await act(async () => vi.advanceTimersByTime(4_000));
+    await act(async () => latestDeletion.requestDeletion("annotation-b"));
+    expect(latestDeletion.pendingDeletionCount).toBe(2);
+    expect(latestDeletion.visibleAnnotations).toEqual([]);
+    await act(async () => vi.advanceTimersByTime(1_000));
+    expect(commitDeletions).not.toHaveBeenCalled();
 
-    await act(async () => latestDeletion.undoDeletion());
+    await act(async () => latestDeletion.undoDeletions());
     expect(latestDeletion.visibleAnnotations.map(({ id }) => id)).toEqual([
       "annotation-a",
       "annotation-b",
     ]);
     await act(async () => vi.advanceTimersByTime(5_000));
-    expect(commitDeletion).not.toHaveBeenCalled();
+    expect(commitDeletions).not.toHaveBeenCalled();
 
     await act(async () => root.unmount());
   });
 
-  it("commits exactly once when the undo window expires", async () => {
+  it("commits a deletion batch once when the latest undo window expires", async () => {
     vi.useFakeTimers();
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     const container = document.createElement("div");
@@ -74,11 +79,34 @@ describe("deferred annotation deletion", () => {
 
     await act(async () => root.render(<DeletionHarness scopeKey="A" />));
     await act(async () => latestDeletion.requestDeletion("annotation-a"));
+    await act(async () => latestDeletion.requestDeletion("annotation-b"));
     await act(async () => vi.advanceTimersByTime(5_000));
 
-    expect(commitDeletion).toHaveBeenCalledOnce();
-    expect(commitDeletion).toHaveBeenCalledWith("annotation-a");
-    expect(latestDeletion.visibleAnnotations.map(({ id }) => id)).toEqual(["annotation-b"]);
+    expect(commitDeletions).toHaveBeenCalledOnce();
+    expect(commitDeletions).toHaveBeenCalledWith(["annotation-a", "annotation-b"]);
+    expect(latestDeletion.visibleAnnotations).toEqual([]);
+
+    await act(async () => root.unmount());
+  });
+
+  it("drops a pending batch when the conversation scope changes", async () => {
+    vi.useFakeTimers();
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    await act(async () => root.render(<DeletionHarness scopeKey="A" />));
+    await act(async () => latestDeletion.requestDeletion("annotation-a"));
+    await act(async () => root.render(<DeletionHarness scopeKey="B" />));
+
+    expect(latestDeletion.pendingDeletionCount).toBe(0);
+    expect(latestDeletion.visibleAnnotations.map(({ id }) => id)).toEqual([
+      "annotation-a",
+      "annotation-b",
+    ]);
+    await act(async () => vi.advanceTimersByTime(5_000));
+    expect(commitDeletions).not.toHaveBeenCalled();
 
     await act(async () => root.unmount());
   });
@@ -86,11 +114,10 @@ describe("deferred annotation deletion", () => {
 
 function DeletionHarness({ scopeKey }: { scopeKey: string }) {
   const [currentAnnotations, setCurrentAnnotations] = useState(annotations);
-  const commit = useCallback((annotationId: string) => {
-    commitDeletion(annotationId);
-    setCurrentAnnotations((current) =>
-      current.filter((annotation) => annotation.id !== annotationId),
-    );
+  const commit = useCallback((annotationIds: readonly string[]) => {
+    commitDeletions(annotationIds);
+    const deletedIds = new Set(annotationIds);
+    setCurrentAnnotations((current) => current.filter(({ id }) => !deletedIds.has(id)));
   }, []);
   latestDeletion = useDeferredAnnotationDeletion(currentAnnotations, scopeKey, commit);
   return null;

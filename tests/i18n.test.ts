@@ -15,7 +15,7 @@ describe("i18n", () => {
   });
 
   it("localizes destructive action status", () => {
-    expect(messagesFor("zh-CN").annotationRemoved(2)).toBe("批注已删除，还剩 2 条批注。");
+    expect(messagesFor("zh-CN").annotationRemoved(2, 1)).toBe("已删除 2 条批注，还剩 1 条。");
   });
 
   it("localizes the owned selection action", () => {

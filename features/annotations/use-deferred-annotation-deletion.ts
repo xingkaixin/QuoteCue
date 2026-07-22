@@ -4,57 +4,63 @@ import type { DraftAnnotation } from "./annotation";
 
 const DELETE_UNDO_WINDOW_MS = 5_000;
 
-type PendingDeletion = {
-  annotationId: string;
+type PendingDeletionBatch = {
+  annotationIds: string[];
   scopeKey: string;
 };
 
 export function useDeferredAnnotationDeletion(
   annotations: DraftAnnotation[],
   scopeKey: string,
-  commitDeletion: (annotationId: string) => void,
+  commitDeletions: (annotationIds: readonly string[]) => void,
 ) {
-  const [pendingDeletion, setPendingDeletion] = useState<PendingDeletion | null>(null);
-  const currentPendingDeletion = pendingDeletion?.scopeKey === scopeKey ? pendingDeletion : null;
-  const visibleAnnotations = useMemo(
-    () =>
-      currentPendingDeletion
-        ? annotations.filter(({ id }) => id !== currentPendingDeletion.annotationId)
-        : annotations,
-    [annotations, currentPendingDeletion],
+  const [pendingDeletionBatch, setPendingDeletionBatch] = useState<PendingDeletionBatch | null>(
+    null,
   );
+  const currentBatch = pendingDeletionBatch?.scopeKey === scopeKey ? pendingDeletionBatch : null;
+  const visibleAnnotations = useMemo(() => {
+    if (!currentBatch) {
+      return annotations;
+    }
+    const pendingIds = new Set(currentBatch.annotationIds);
+    return annotations.filter(({ id }) => !pendingIds.has(id));
+  }, [annotations, currentBatch]);
 
   useEffect(() => {
-    if (!currentPendingDeletion) {
+    if (!currentBatch) {
       return;
     }
     const timer = window.setTimeout(() => {
-      commitDeletion(currentPendingDeletion.annotationId);
-      setPendingDeletion((current) => (current === currentPendingDeletion ? null : current));
+      commitDeletions(currentBatch.annotationIds);
+      setPendingDeletionBatch((current) => (current === currentBatch ? null : current));
     }, DELETE_UNDO_WINDOW_MS);
     return () => window.clearTimeout(timer);
-  }, [commitDeletion, currentPendingDeletion]);
+  }, [commitDeletions, currentBatch]);
 
-  useEffect(() => setPendingDeletion(null), [scopeKey]);
+  useEffect(() => setPendingDeletionBatch(null), [scopeKey]);
 
   const requestDeletion = useCallback(
     (annotationId: string) => {
-      if (
-        currentPendingDeletion ||
-        !annotations.some((annotation) => annotation.id === annotationId)
-      ) {
+      const annotationExists = annotations.some((annotation) => annotation.id === annotationId);
+      if (!annotationExists || currentBatch?.annotationIds.includes(annotationId)) {
         return false;
       }
-      setPendingDeletion({ annotationId, scopeKey });
+      setPendingDeletionBatch({
+        annotationIds: [...(currentBatch?.annotationIds ?? []), annotationId],
+        scopeKey,
+      });
       return true;
     },
-    [annotations, currentPendingDeletion, scopeKey],
+    [annotations, currentBatch, scopeKey],
   );
 
+  const clearPendingDeletions = useCallback(() => setPendingDeletionBatch(null), []);
+
   return {
-    hasPendingDeletion: currentPendingDeletion !== null,
+    discardPendingDeletions: clearPendingDeletions,
+    pendingDeletionCount: currentBatch?.annotationIds.length ?? 0,
     requestDeletion,
-    undoDeletion: useCallback(() => setPendingDeletion(null), []),
+    undoDeletions: clearPendingDeletions,
     visibleAnnotations,
   };
 }
