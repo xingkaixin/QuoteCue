@@ -44,6 +44,7 @@ export default function App() {
   const {
     discardPendingDeletions,
     pendingDeletionCount,
+    pendingDeletionExpiresAt,
     requestDeletion,
     undoDeletions,
     visibleAnnotations,
@@ -193,6 +194,7 @@ export default function App() {
           <AnnotationSummary
             annotations={visibleAnnotations}
             pendingDeletionCount={pendingDeletionCount}
+            pendingDeletionExpiresAt={pendingDeletionExpiresAt}
             onClear={() => {
               if (clearAnnotations()) {
                 discardPendingDeletions();

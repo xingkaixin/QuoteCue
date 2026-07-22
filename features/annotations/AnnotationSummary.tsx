@@ -16,6 +16,7 @@ import type {
 import { useI18n } from "@/features/i18n/I18nProvider";
 
 import type { DraftAnnotation } from "./annotation";
+import { DELETE_UNDO_WINDOW_MS } from "./use-deferred-annotation-deletion";
 
 type AnnotationSummaryProps = {
   annotations: DraftAnnotation[];
@@ -25,6 +26,7 @@ type AnnotationSummaryProps = {
   onSend: () => void;
   onUndo: () => void;
   pendingDeletionCount: number;
+  pendingDeletionExpiresAt: number | null;
   position: ComposerPosition;
   sendStatus: "idle" | "pending" | "failed";
   sendPosition: ComposerRect;
@@ -39,6 +41,7 @@ export function AnnotationSummary({
   onSend,
   onUndo,
   pendingDeletionCount,
+  pendingDeletionExpiresAt,
   position,
   sendStatus,
   sendPosition,
@@ -70,7 +73,11 @@ export function AnnotationSummary({
     : hasPendingDeletion
       ? messages.annotationRemoved(pendingDeletionCount, annotations.length)
       : "";
-  const renderedStatus = useRetainedStatus(statusKind, statusMessage);
+  const renderedStatus = useRetainedStatus(
+    statusKind,
+    statusMessage,
+    statusKind === "deletion" ? pendingDeletionExpiresAt : null,
+  );
   const isStatusExiting = renderedStatus !== null && statusKind === null;
 
   return (
@@ -198,20 +205,28 @@ export function AnnotationSummary({
           <div
             aria-hidden={isStatusExiting}
             aria-live="polite"
-            className="qc-status-bubble qc-surface qc-divider flex max-w-72 items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs shadow-sm"
+            className="qc-status-bubble qc-surface qc-divider relative flex max-w-72 items-center gap-2 overflow-hidden rounded-lg border px-2.5 py-1.5 text-xs shadow-sm"
             data-exiting={isStatusExiting}
             role="status"
           >
             <span>{renderedStatus.message}</span>
             {renderedStatus.kind === "deletion" && (
-              <button
-                className="qc-accent-text qc-hover qc-focus shrink-0 cursor-pointer rounded px-1.5 py-1 font-semibold"
-                disabled={isStatusExiting}
-                onClick={onUndo}
-                type="button"
-              >
-                {messages.undo}
-              </button>
+              <Fragment>
+                <button
+                  className="qc-accent-text qc-hover qc-focus shrink-0 cursor-pointer rounded px-1.5 py-1 font-semibold"
+                  disabled={isStatusExiting}
+                  onClick={onUndo}
+                  type="button"
+                >
+                  {messages.undo}
+                </button>
+                <span
+                  aria-hidden="true"
+                  className="qc-undo-progress absolute inset-x-0 bottom-0 h-0.5"
+                  key={renderedStatus.progressKey}
+                  style={{ animationDuration: `${DELETE_UNDO_WINDOW_MS}ms` }}
+                />
+              </Fragment>
             )}
           </div>
         )}
@@ -260,25 +275,28 @@ type SummaryStatusKind = "clear" | "deletion" | null;
 type SummaryStatus = {
   kind: Exclude<SummaryStatusKind, null>;
   message: string;
+  progressKey: number | null;
 };
 
 const STATUS_EXIT_DURATION_MS = 180;
 
-function useRetainedStatus(kind: SummaryStatusKind, message: string) {
+function useRetainedStatus(kind: SummaryStatusKind, message: string, progressKey: number | null) {
   const [retainedStatus, setRetainedStatus] = useState<SummaryStatus | null>(() =>
-    kind ? { kind, message } : null,
+    kind ? { kind, message, progressKey } : null,
   );
 
   useEffect(() => {
     if (kind) {
       setRetainedStatus((current) =>
-        current?.kind === kind && current.message === message ? current : { kind, message },
+        current?.kind === kind && current.message === message && current.progressKey === progressKey
+          ? current
+          : { kind, message, progressKey },
       );
       return;
     }
     const timer = window.setTimeout(() => setRetainedStatus(null), STATUS_EXIT_DURATION_MS);
     return () => window.clearTimeout(timer);
-  }, [kind, message]);
+  }, [kind, message, progressKey]);
 
-  return kind ? { kind, message } : retainedStatus;
+  return kind ? { kind, message, progressKey } : retainedStatus;
 }

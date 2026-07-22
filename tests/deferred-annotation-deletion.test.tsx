@@ -51,10 +51,12 @@ describe("deferred annotation deletion", () => {
 
     await act(async () => root.render(<DeletionHarness scopeKey="A" />));
     await act(async () => latestDeletion.requestDeletion("annotation-a"));
+    const firstDeadline = latestDeletion.pendingDeletionExpiresAt;
     expect(latestDeletion.visibleAnnotations.map(({ id }) => id)).toEqual(["annotation-b"]);
     await act(async () => vi.advanceTimersByTime(4_000));
     await act(async () => latestDeletion.requestDeletion("annotation-b"));
     expect(latestDeletion.pendingDeletionCount).toBe(2);
+    expect(latestDeletion.pendingDeletionExpiresAt).toBeGreaterThan(firstDeadline ?? 0);
     expect(latestDeletion.visibleAnnotations).toEqual([]);
     await act(async () => vi.advanceTimersByTime(1_000));
     expect(commitDeletions).not.toHaveBeenCalled();

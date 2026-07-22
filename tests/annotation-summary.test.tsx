@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AnnotationSummary } from "@/features/annotations/AnnotationSummary";
+import { DELETE_UNDO_WINDOW_MS } from "@/features/annotations/use-deferred-annotation-deletion";
 
 const annotation = {
   id: "annotation-1",
@@ -168,11 +169,24 @@ describe("AnnotationSummary", () => {
     const onUndo = vi.fn();
     const mounted = await mountSummary({ onClear, onUndo });
 
-    await mounted.render({ annotations: [], pendingDeletionCount: 2 });
+    await mounted.render({
+      annotations: [secondAnnotation],
+      pendingDeletionCount: 1,
+      pendingDeletionExpiresAt: 1_000,
+    });
+    const firstProgress = mounted.container.querySelector<HTMLElement>(".qc-undo-progress");
+    expect(firstProgress?.style.animationDuration).toBe(`${DELETE_UNDO_WINDOW_MS}ms`);
+
+    await mounted.render({
+      annotations: [],
+      pendingDeletionCount: 2,
+      pendingDeletionExpiresAt: 2_000,
+    });
     const status = mounted.container.querySelector('[role="status"]');
     expect(status?.textContent).toContain("2 annotations removed. 0 remaining.");
     expect(status?.classList).toContain("qc-status-bubble");
     expect(status?.getAttribute("data-exiting")).toBe("false");
+    expect(mounted.container.querySelector(".qc-undo-progress")).not.toBe(firstProgress);
     await act(async () => {
       Array.from(mounted.container.querySelectorAll("button"))
         .find((button) => button.textContent === "Undo")
@@ -180,7 +194,11 @@ describe("AnnotationSummary", () => {
     });
     expect(onUndo).toHaveBeenCalledOnce();
 
-    await mounted.render({ annotations: [annotation], pendingDeletionCount: 0 });
+    await mounted.render({
+      annotations: [annotation],
+      pendingDeletionCount: 0,
+      pendingDeletionExpiresAt: null,
+    });
     expect(mounted.container.querySelector('[role="status"]')?.getAttribute("data-exiting")).toBe(
       "true",
     );
@@ -239,6 +257,7 @@ async function mountSummary(overrides: Partial<SummaryProps> = {}) {
     onSend: vi.fn(),
     onUndo: vi.fn(),
     pendingDeletionCount: 0,
+    pendingDeletionExpiresAt: null,
     position: { left: 10, top: 10 },
     sendPosition: { height: 36, left: 200, top: 200, width: 36 },
     sendStatus: "idle",

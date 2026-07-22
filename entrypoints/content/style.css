@@ -92,6 +92,20 @@
   transform: translateX(-0.5rem) scaleX(0.94);
 }
 
+.qc-undo-progress {
+  animation-name: qc-undo-progress;
+  animation-fill-mode: forwards;
+  animation-timing-function: linear;
+  background: color-mix(in srgb, var(--qc-accent) 68%, transparent);
+  transform-origin: left center;
+}
+
+@keyframes qc-undo-progress {
+  to {
+    transform: scaleX(0);
+  }
+}
+
 @starting-style {
   .qc-status-bubble {
     clip-path: inset(0 100% 0 0 round 0.5rem);
@@ -158,6 +172,10 @@
   .qc-status-bubble[data-exiting="true"] {
     clip-path: inset(0 round 0.5rem);
     transform: none;
+  }
+
+  .qc-undo-progress {
+    animation-timing-function: steps(5, end);
   }
 
   @starting-style {
