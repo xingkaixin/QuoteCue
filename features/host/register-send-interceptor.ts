@@ -137,13 +137,6 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
     if (annotations.length === 0) {
       return failedResult("no-annotations");
     }
-    if (source === "native" && !host.composer.isButtonAvailable(initialButton)) {
-      return failedResult("send-unavailable");
-    }
-    if (source === "custom" && initialButton && !host.composer.isButtonAvailable(initialButton)) {
-      host.reportUnavailable("send-control-unavailable");
-      return failBeforeOwnership("send-unavailable", source, setState);
-    }
 
     const snapshotResult = host.composer.snapshot();
     if (snapshotResult.status === "unavailable") {
@@ -151,6 +144,20 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
       return failBeforeOwnership("composer-unavailable", source, setState);
     }
     const snapshot = snapshotResult.value;
+    // 空 composer 时发送控件多半只是因缺少输入而不可用；批注文本补入后即可用,
+    // 所以仍接管发送。非空时保持不接管,把真正被阻塞的发送留给页面自己处理。
+    const isRecoverableBySend = snapshot.text.trim().length === 0;
+    if (
+      source === "native" &&
+      !host.composer.isButtonAvailable(initialButton) &&
+      !isRecoverableBySend
+    ) {
+      return failedResult("send-unavailable");
+    }
+    if (source === "custom" && initialButton && !host.composer.isButtonAvailable(initialButton)) {
+      host.reportUnavailable("send-control-unavailable");
+      return failBeforeOwnership("send-unavailable", source, setState);
+    }
     const originalText =
       retryOriginalText && snapshot.text.trim().length === 0 ? retryOriginalText : snapshot.text;
     const ownedSnapshot = { ...snapshot, text: originalText };

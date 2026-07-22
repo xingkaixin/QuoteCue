@@ -51,6 +51,7 @@ export type SiteAdapter = {
   selectionActionMode: SelectionActionMode;
   sendButtonSelector: string;
   userMessageSelector: string;
+  isSendButtonDisabled?(button: HTMLElement): boolean;
   messageId(message: HTMLElement): string | undefined;
 };
 
@@ -362,7 +363,8 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
       button !== null &&
       button.isConnected &&
       !button.disabled &&
-      button.getAttribute("aria-disabled") !== "true"
+      button.getAttribute("aria-disabled") !== "true" &&
+      !(adapter.isSendButtonDisabled?.(button) ?? false)
     );
   }
 

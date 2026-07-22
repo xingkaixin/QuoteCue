@@ -11,8 +11,9 @@ const DEEPSEEK_ADAPTER: SiteAdapter = {
   composerSelector: 'textarea[name="search"]',
   conversationPathPattern: /^\/a\/chat\/s\/([^/?#]+)/,
   selectionActionMode: "overlay",
-  sendButtonSelector: `.ds-button--circle:not(.ds-button--disabled):has(path[d^="${SEND_ICON_PATH_PREFIX}"])`,
+  sendButtonSelector: `.ds-button--circle:has(path[d^="${SEND_ICON_PATH_PREFIX}"])`,
   userMessageSelector: MESSAGE_ITEM_SELECTOR,
+  isSendButtonDisabled: (button) => button.classList.contains("ds-button--disabled"),
   messageId: (message) =>
     message.closest<HTMLElement>(MESSAGE_ITEM_SELECTOR)?.dataset.virtualListItemKey,
 };

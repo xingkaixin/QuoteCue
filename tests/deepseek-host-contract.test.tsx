@@ -119,18 +119,55 @@ describe("DeepSeek host contract", () => {
     interceptor.dispose();
   });
 
-  it("keeps a disabled circle button out of the send contract", () => {
+  it("treats the ds-button--disabled class as an unavailable send control", () => {
     const fixture = installDeepSeekHostFixture();
-    fixture.sendButton.classList.add("ds-button--disabled");
     const host = createDeepSeekHost({ document, window });
-    const snapshot = host.composer.snapshot();
+    const sendButton = fixture.sendButton as HTMLButtonElement;
 
-    expect(snapshot.status).toBe("available");
-    expect(
-      document.querySelector(
-        '.ds-button--circle:not(.ds-button--disabled):has(path[d^="M8.3125"])',
-      ),
-    ).toBeNull();
+    expect(host.composer.isButtonAvailable(sendButton)).toBe(true);
+    fixture.sendButton.classList.add("ds-button--disabled");
+    expect(host.composer.isButtonAvailable(sendButton)).toBe(false);
+  });
+
+  it("takes over a native send on an empty composer and fills in annotations", async () => {
+    const fixture = installDeepSeekHostFixture();
+    const host = createDeepSeekHost({ document, window });
+    fixture.composer.value = "";
+    fixture.sendButton.classList.add("ds-button--disabled");
+    fixture.composer.addEventListener("input", () => {
+      fixture.sendButton.classList.toggle(
+        "ds-button--disabled",
+        fixture.composer.value.trim().length === 0,
+      );
+    });
+    let sentText = "";
+    fixture.sendButton.addEventListener("click", () => {
+      if (!fixture.sendButton.classList.contains("ds-button--disabled")) {
+        sentText = fixture.composer.value;
+        appendUserMessageItem("user-two", sentText);
+      }
+    });
+    const onSendAccepted = vi.fn();
+    const interceptor = registerSendInterceptor({
+      draft: () => ({
+        annotations: [
+          { id: "annotation-one", anchor: emptyAnchor(), comment: "Explain the tradeoff" },
+        ],
+        revision: 1,
+      }),
+      host,
+      locale: () => "en",
+      onSendAccepted,
+    });
+
+    const click = new MouseEvent("click", { bubbles: true, cancelable: true });
+    fixture.sendButton.dispatchEvent(click);
+
+    expect(click.defaultPrevented).toBe(true);
+    await vi.waitFor(() => expect(onSendAccepted).toHaveBeenCalledWith(1));
+    expect(sentText).toContain("[Annotation 1]");
+    expect(sentText).not.toContain("[Supplemental question]");
+    interceptor.dispose();
   });
 
   it("renders the floating QuoteCue action for overlay hosts", async () => {
@@ -187,6 +224,17 @@ function selectNodeContents(node: ChildNode | null | undefined) {
 
 function missingSelection(): never {
   throw new Error("Expected a captured selection");
+}
+
+function emptyAnchor() {
+  return {
+    end: 13,
+    messageId: "assistant-one",
+    prefix: "",
+    quote: "selected text",
+    start: 0,
+    suffix: "",
+  };
 }
 
 function nextFrame() {
