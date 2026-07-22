@@ -38,10 +38,11 @@ describe("registerSendInterceptor", () => {
     const onNativeSend = vi.fn(() => {
       replayedText = composer.textContent ?? "";
       composer.replaceChildren();
+      installUserMessage("user-message-1", replayedText);
     });
     installSendButton(onNativeSend);
 
-    await expect(result).resolves.toEqual({ status: "accepted" });
+    await expect(result).resolves.toEqual({ status: "accepted", revision: 1 });
 
     expect(replayedText).toContain("[Annotation 1]");
     expect(replayedText).not.toContain("[Supplemental question]");
@@ -183,24 +184,83 @@ describe("registerSendInterceptor", () => {
     interceptor.dispose();
   });
 
-  it("currently accepts a send when only the composer becomes empty", async () => {
+  it("does not accept a send when only the composer becomes empty", async () => {
+    vi.useFakeTimers();
     const composer = installComposer("original question");
     const onSendAccepted = vi.fn();
     const interceptor = createInterceptor(onSendAccepted);
     const sendButton = installSendButton(() => composer.replaceChildren());
 
-    await expect(interceptor.submit(sendButton)).resolves.toEqual({ status: "accepted" });
-    expect(onSendAccepted).toHaveBeenCalledOnce();
+    const result = interceptor.submit(sendButton);
+    await vi.advanceTimersByTimeAsync(15_001);
+
+    await expect(result).resolves.toEqual({
+      status: "failed",
+      reason: "confirmation-timeout",
+    });
+    expect(onSendAccepted).not.toHaveBeenCalled();
+    expect(composer.textContent).toBe("");
+    interceptor.dispose();
+  });
+
+  it("accepts a matching user message after the composer node is replaced", async () => {
+    const composer = installComposer("original question");
+    const onSendAccepted = vi.fn();
+    const interceptor = createInterceptor(onSendAccepted);
+    const sendButton = installSendButton(() => {
+      const compiledText = composer.textContent ?? "";
+      composer.remove();
+      installComposer();
+      installUserMessage("user-message-after-replacement", compiledText);
+    });
+
+    await expect(interceptor.submit(sendButton)).resolves.toEqual({
+      status: "accepted",
+      revision: 1,
+    });
+    expect(onSendAccepted).toHaveBeenCalledWith(1);
+    interceptor.dispose();
+  });
+
+  it("ignores old and mismatched user messages while awaiting confirmation", async () => {
+    vi.useFakeTimers();
+    const composer = installComposer("original question");
+    installUserMessage("old-message", "unrelated");
+    const onSendAccepted = vi.fn();
+    const interceptor = createInterceptor(onSendAccepted);
+    const sendButton = installSendButton(() => {
+      const compiledText = composer.textContent ?? "";
+      composer.replaceChildren();
+      installUserMessage("new-message", `${compiledText} changed`);
+    });
+
+    const result = interceptor.submit(sendButton);
+    await vi.advanceTimersByTimeAsync(15_001);
+
+    await expect(result).resolves.toEqual({
+      status: "failed",
+      reason: "confirmation-timeout",
+    });
+    expect(onSendAccepted).not.toHaveBeenCalled();
     interceptor.dispose();
   });
 });
 
 function createInterceptor(onSendAccepted = vi.fn()) {
   return registerSendInterceptor({
-    annotations: () => [annotation],
+    draft: () => ({ annotations: [annotation], revision: 1 }),
     locale: () => "en",
     onSendAccepted,
   });
+}
+
+function installUserMessage(messageId: string, text: string) {
+  const message = document.createElement("div");
+  message.dataset.messageAuthorRole = "user";
+  message.dataset.messageId = messageId;
+  message.textContent = text;
+  document.body.append(message);
+  return message;
 }
 
 function installComposer(text = "") {

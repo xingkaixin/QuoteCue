@@ -1,5 +1,6 @@
 const COMPOSER_SELECTOR = "#prompt-textarea[contenteditable='true']";
 const SEND_BUTTON_SELECTOR = "button[data-testid='send-button']";
+const USER_MESSAGE_SELECTOR = '[data-message-author-role="user"][data-message-id]';
 const SEND_ACCEPT_TIMEOUT_MS = 15_000;
 const SEND_BUTTON_APPEAR_TIMEOUT_MS = 2_000;
 
@@ -9,6 +10,7 @@ export type ComposerSnapshot = {
 };
 
 type AcceptedSendWatcherOptions = {
+  expectedText: string;
   onAccepted: () => void;
   onTimeout: () => void;
   signal: AbortSignal;
@@ -125,11 +127,7 @@ export function isComposerEnter(event: KeyboardEvent) {
 }
 
 export function watchForAcceptedSend(options: AcceptedSendWatcherOptions) {
-  const composer = composerElement();
-  if (!composer) {
-    options.onTimeout();
-    return () => undefined;
-  }
+  const existingMessageIds = new Set(userMessages().map((message) => message.dataset.messageId));
 
   const cleanup = () => {
     observer.disconnect();
@@ -137,7 +135,12 @@ export function watchForAcceptedSend(options: AcceptedSendWatcherOptions) {
     options.signal.removeEventListener("abort", cleanup);
   };
   const observer = new MutationObserver(() => {
-    if (composerText(composer).trim().length > 0) {
+    const acceptedMessage = userMessages().find(
+      (message) =>
+        !existingMessageIds.has(message.dataset.messageId) &&
+        normalizedText(message) === normalizedText(options.expectedText),
+    );
+    if (!acceptedMessage) {
       return;
     }
     cleanup();
@@ -149,8 +152,17 @@ export function watchForAcceptedSend(options: AcceptedSendWatcherOptions) {
   }, SEND_ACCEPT_TIMEOUT_MS);
 
   options.signal.addEventListener("abort", cleanup, { once: true });
-  observer.observe(composer, { childList: true, characterData: true, subtree: true });
+  observer.observe(document.body, { childList: true, characterData: true, subtree: true });
   return cleanup;
+}
+
+function userMessages() {
+  return Array.from(document.querySelectorAll<HTMLElement>(USER_MESSAGE_SELECTOR));
+}
+
+function normalizedText(value: HTMLElement | string) {
+  const text = typeof value === "string" ? value : composerText(value);
+  return text.replace(/\r\n?/g, "\n").trim();
 }
 
 function composerElement() {

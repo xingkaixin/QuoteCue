@@ -28,6 +28,7 @@ export default function App() {
   const conversationKey = useConversationKey();
   const {
     annotations,
+    revision: draftRevision,
     status: draftStatus,
     errorOperation,
     isHydrated,
@@ -57,18 +58,19 @@ export default function App() {
   const activeAnnotation = annotations.find(({ id }) => id === activeAnnotationId);
   const badgePositions = useAnnotationHighlights(annotations, activeAnnotationId);
   const composerLayout = useAnnotatedComposerLayout(isHydrated && annotations.length > 0);
-  const annotationsRef = useRef(annotations);
+  const draftRef = useRef({ annotations, revision: draftRevision ?? 0 });
   const submitAnnotationsRef = useRef<() => void>(() => undefined);
 
-  annotationsRef.current = annotations;
+  draftRef.current = { annotations, revision: draftRevision ?? 0 };
 
   useEffect(() => {
     const interceptor = registerSendInterceptor({
-      annotations: () => annotationsRef.current,
+      draft: () => draftRef.current,
       locale: () => locale,
-      onSendAccepted: () => {
-        clearAnnotations();
-        setEditor({ status: "hidden" });
+      onSendAccepted: (revision) => {
+        if (clearAnnotations(revision)) {
+          setEditor({ status: "hidden" });
+        }
       },
     });
     submitAnnotationsRef.current = () => {

@@ -173,6 +173,34 @@ describe("draft annotation lifecycle", () => {
     consoleError.mockRestore();
     await act(async () => root.unmount());
   });
+
+  it("clears only the draft revision that was confirmed", async () => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    draftStorage.load.mockResolvedValue([]);
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    await act(async () => root.render(<DraftHarness conversationKey="A" />));
+    await act(async () => latestDrafts.addAnnotation(annotation));
+    const submittedRevision = latestDrafts.revision;
+    await act(async () => latestDrafts.updateAnnotation(annotation.id, "newer edit"));
+
+    let didClear = false;
+    await act(async () => {
+      didClear = latestDrafts.clearAnnotations(submittedRevision ?? undefined);
+    });
+    expect(didClear).toBe(false);
+    expect(latestDrafts.annotations[0]?.comment).toBe("newer edit");
+
+    await act(async () => {
+      didClear = latestDrafts.clearAnnotations(latestDrafts.revision ?? undefined);
+    });
+    expect(didClear).toBe(true);
+    expect(latestDrafts.annotations).toEqual([]);
+
+    await act(async () => root.unmount());
+  });
 });
 
 function DraftHarness({ conversationKey }: { conversationKey: string }) {

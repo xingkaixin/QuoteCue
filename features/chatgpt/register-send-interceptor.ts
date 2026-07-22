@@ -24,7 +24,7 @@ export type AnnotatedSendFailureReason =
   | "send-unavailable";
 
 export type AnnotatedSendResult =
-  | { status: "accepted" }
+  | { status: "accepted"; revision: number }
   | { status: "failed"; reason: AnnotatedSendFailureReason };
 
 export type AnnotatedSendState =
@@ -35,9 +35,9 @@ export type AnnotatedSendState =
   | { status: "failed"; attemptId: string | null; reason: AnnotatedSendFailureReason };
 
 type SendInterceptorOptions = {
-  annotations: () => DraftAnnotation[];
+  draft: () => { annotations: DraftAnnotation[]; revision: number };
   locale: () => SupportedLocale;
-  onSendAccepted: () => void;
+  onSendAccepted: (revision: number) => void;
   onStateChange?: (state: AnnotatedSendState) => void;
 };
 
@@ -45,6 +45,7 @@ type SendAttempt = {
   id: string;
   snapshot: ComposerSnapshot;
   compiledText: string;
+  revision: number;
   controller: AbortController;
   result: Promise<AnnotatedSendResult>;
   resolve: (result: AnnotatedSendResult) => void;
@@ -72,9 +73,9 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
     }
     attempt.controller.abort();
     activeAttempt = null;
-    options.onSendAccepted();
+    options.onSendAccepted(attempt.revision);
     setState({ status: "idle" });
-    attempt.resolve({ status: "accepted" });
+    attempt.resolve({ status: "accepted", revision: attempt.revision });
   };
 
   const finishFailed = (attempt: SendAttempt, reason: AnnotatedSendFailureReason) => {
@@ -100,6 +101,7 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
         }
 
         watchForAcceptedSend({
+          expectedText: attempt.compiledText,
           signal: attempt.controller.signal,
           onAccepted: () => finishAccepted(attempt),
           onTimeout: () => finishFailed(attempt, "confirmation-timeout"),
@@ -131,7 +133,7 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
       return { isOwned: true, result: activeAttempt.result };
     }
 
-    const annotations = options.annotations();
+    const { annotations, revision } = options.draft();
     if (annotations.length === 0) {
       return failedResult("no-annotations");
     }
@@ -147,7 +149,7 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
       return failBeforeOwnership("composer-unavailable", source, setState);
     }
     const compiledText = compileAnnotatedPrompt(annotations, snapshot.text, options.locale());
-    const attempt = createAttempt(snapshot, compiledText);
+    const attempt = createAttempt(snapshot, compiledText, revision);
     activeAttempt = attempt;
     setState({ status: "preparing", attemptId: attempt.id });
 
@@ -218,7 +220,11 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
   };
 }
 
-function createAttempt(snapshot: ComposerSnapshot, compiledText: string): SendAttempt {
+function createAttempt(
+  snapshot: ComposerSnapshot,
+  compiledText: string,
+  revision: number,
+): SendAttempt {
   let resolve: (result: AnnotatedSendResult) => void = () => undefined;
   const result = new Promise<AnnotatedSendResult>((resultResolve) => {
     resolve = resultResolve;
@@ -227,6 +233,7 @@ function createAttempt(snapshot: ComposerSnapshot, compiledText: string): SendAt
     id: crypto.randomUUID(),
     snapshot,
     compiledText,
+    revision,
     controller: new AbortController(),
     result,
     resolve,

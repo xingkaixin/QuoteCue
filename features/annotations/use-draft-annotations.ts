@@ -93,10 +93,13 @@ export function useDraftAnnotations(conversationKey: string) {
   }, [conversationKey, loadScope]);
 
   const mutateAnnotations = useCallback(
-    (mutate: (annotations: DraftAnnotation[]) => DraftAnnotation[]) => {
+    (mutate: (annotations: DraftAnnotation[]) => DraftAnnotation[], expectedRevision?: number) => {
       const current = scopeRef.current;
-      if (!canMutateScope(current, conversationKey)) {
-        return;
+      if (
+        !canMutateScope(current, conversationKey) ||
+        (expectedRevision !== undefined && current.revision !== expectedRevision)
+      ) {
+        return false;
       }
       const next = {
         ...current,
@@ -105,6 +108,7 @@ export function useDraftAnnotations(conversationKey: string) {
       };
       commitScope(next);
       enqueueSave(next);
+      return true;
     },
     [commitScope, conversationKey, enqueueSave],
   );
@@ -118,6 +122,7 @@ export function useDraftAnnotations(conversationKey: string) {
 
   return {
     annotations,
+    revision: visibleScope.status === "loading" ? null : visibleScope.revision,
     status: visibleScope.status,
     errorOperation: visibleScope.status === "error" ? visibleScope.operation : null,
     isHydrated,
@@ -139,7 +144,10 @@ export function useDraftAnnotations(conversationKey: string) {
         mutateAnnotations((current) => current.filter(({ id }) => id !== annotationId)),
       [mutateAnnotations],
     ),
-    clearAnnotations: useCallback(() => mutateAnnotations(() => []), [mutateAnnotations]),
+    clearAnnotations: useCallback(
+      (expectedRevision?: number) => mutateAnnotations(() => [], expectedRevision),
+      [mutateAnnotations],
+    ),
     retry: useCallback(() => {
       if (visibleScope.status !== "error") {
         return;
