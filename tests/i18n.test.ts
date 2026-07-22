@@ -13,4 +13,8 @@ describe("i18n", () => {
     expect(resolveLocale(["fr-FR"])).toBe("en");
     expect(messagesFor("en").annotationCount(2)).toBe("2 annotations");
   });
+
+  it("localizes destructive action status", () => {
+    expect(messagesFor("zh-CN").annotationRemoved(2)).toBe("批注已删除，还剩 2 条批注。");
+  });
 });

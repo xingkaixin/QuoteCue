@@ -4,8 +4,12 @@ export type Messages = {
   annotation: (number: number) => string;
   annotationCount: (count: number) => string;
   annotationContent: string;
+  annotationRemoved: (remaining: number) => string;
+  annotationRestored: string;
   cancel: string;
   clearAnnotations: string;
+  clearAnnotationsConfirmation: string;
+  confirmClearAnnotations: string;
   deleteAnnotation: string;
   deleteNumberedAnnotation: (number: number) => string;
   editNumberedAnnotation: (number: number) => string;
@@ -22,6 +26,7 @@ export type Messages = {
   retrySendingAnnotations: string;
   sendAnnotationsFailed: string;
   sendingAnnotations: string;
+  undo: string;
   userComment: string;
   viewAnnotation: (number: number) => string;
   prompt: {
@@ -37,8 +42,13 @@ const ENGLISH: Messages = {
   annotation: (number) => `Annotation ${number}`,
   annotationCount: (count) => `${count} ${count === 1 ? "annotation" : "annotations"}`,
   annotationContent: "Annotation content",
+  annotationRemoved: (remaining) =>
+    `Annotation removed. ${remaining} ${remaining === 1 ? "annotation" : "annotations"} remaining.`,
+  annotationRestored: "Annotation restored.",
   cancel: "Cancel",
   clearAnnotations: "Clear all annotations",
+  clearAnnotationsConfirmation: "Clear all annotations? Click again to confirm.",
+  confirmClearAnnotations: "Confirm clearing all annotations",
   deleteAnnotation: "Delete annotation",
   deleteNumberedAnnotation: (number) => `Delete annotation ${number}`,
   editNumberedAnnotation: (number) => `Edit annotation ${number}`,
@@ -55,6 +65,7 @@ const ENGLISH: Messages = {
   retrySendingAnnotations: "Retry sending annotations",
   sendAnnotationsFailed: "Sending wasn't confirmed. Your annotation draft was kept.",
   sendingAnnotations: "Sending annotations…",
+  undo: "Undo",
   userComment: "User comment:",
   viewAnnotation: (number) => `View annotation ${number}`,
   prompt: {
@@ -70,8 +81,12 @@ const SIMPLIFIED_CHINESE: Messages = {
   annotation: (number) => `批注 ${number}`,
   annotationCount: (count) => `${count} 条批注`,
   annotationContent: "批注内容",
+  annotationRemoved: (remaining) => `批注已删除，还剩 ${remaining} 条批注。`,
+  annotationRestored: "批注已恢复。",
   cancel: "取消",
   clearAnnotations: "清空全部批注",
+  clearAnnotationsConfirmation: "要清空全部批注吗？请再次点击确认。",
+  confirmClearAnnotations: "确认清空全部批注",
   deleteAnnotation: "删除批注",
   deleteNumberedAnnotation: (number) => `删除批注 ${number}`,
   editNumberedAnnotation: (number) => `编辑批注 ${number}`,
@@ -88,6 +103,7 @@ const SIMPLIFIED_CHINESE: Messages = {
   retrySendingAnnotations: "重试发送批注",
   sendAnnotationsFailed: "未能确认发送，批注草稿仍已保留。",
   sendingAnnotations: "正在发送批注…",
+  undo: "撤销",
   userComment: "用户批注：",
   viewAnnotation: (number) => `查看批注 ${number}`,
   prompt: {
@@ -103,8 +119,12 @@ const TRADITIONAL_CHINESE: Messages = {
   annotation: (number) => `批註 ${number}`,
   annotationCount: (count) => `${count} 條批註`,
   annotationContent: "批註內容",
+  annotationRemoved: (remaining) => `批註已刪除，還剩 ${remaining} 條批註。`,
+  annotationRestored: "批註已復原。",
   cancel: "取消",
   clearAnnotations: "清除全部批註",
+  clearAnnotationsConfirmation: "要清除全部批註嗎？請再次點擊確認。",
+  confirmClearAnnotations: "確認清除全部批註",
   deleteAnnotation: "刪除批註",
   deleteNumberedAnnotation: (number) => `刪除批註 ${number}`,
   editNumberedAnnotation: (number) => `編輯批註 ${number}`,
@@ -121,6 +141,7 @@ const TRADITIONAL_CHINESE: Messages = {
   retrySendingAnnotations: "重試傳送批註",
   sendAnnotationsFailed: "未能確認傳送，批註草稿仍已保留。",
   sendingAnnotations: "正在傳送批註…",
+  undo: "復原",
   userComment: "使用者批註：",
   viewAnnotation: (number) => `查看批註 ${number}`,
   prompt: {

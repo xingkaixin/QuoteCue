@@ -35,10 +35,12 @@ describe("AnnotationSummary", () => {
         <PortalContainerProvider container={portalContainer}>
           <AnnotationSummary
             annotations={[annotation]}
+            hasPendingDeletion={false}
             onClear={vi.fn()}
             onEdit={vi.fn()}
             onRemove={vi.fn()}
             onSend={vi.fn()}
+            onUndo={vi.fn()}
             position={{ left: 10, top: 10 }}
             sendPosition={{ height: 36, left: 200, top: 200, width: 36 }}
             sendStatus="idle"
@@ -70,10 +72,12 @@ describe("AnnotationSummary", () => {
         <PortalContainerProvider container={portalContainer}>
           <AnnotationSummary
             annotations={[annotation]}
+            hasPendingDeletion={false}
             onClear={vi.fn()}
             onEdit={vi.fn()}
             onRemove={onRemove}
             onSend={onSend}
+            onUndo={vi.fn()}
             position={{ left: 10, top: 10 }}
             sendStatus="idle"
             sendPosition={{ height: 36, left: 200, top: 200, width: 36 }}
@@ -134,10 +138,12 @@ describe("AnnotationSummary", () => {
       <PortalContainerProvider container={portalContainer}>
         <AnnotationSummary
           annotations={[annotation]}
+          hasPendingDeletion={false}
           onClear={vi.fn()}
           onEdit={vi.fn()}
           onRemove={vi.fn()}
           onSend={onSend}
+          onUndo={vi.fn()}
           position={{ left: 10, top: 10 }}
           sendPosition={{ height: 36, left: 200, top: 200, width: 36 }}
           sendStatus={sendStatus}
@@ -163,6 +169,71 @@ describe("AnnotationSummary", () => {
     expect(retryButton?.disabled).toBe(false);
     await act(async () => retryButton?.click());
     expect(onSend).toHaveBeenCalledOnce();
+
+    await act(async () => root.unmount());
+  });
+
+  it("offers one undo transaction and requires confirmation before clearing", async () => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    const onClear = vi.fn();
+    const onRemove = vi.fn();
+    const onUndo = vi.fn();
+    const container = document.createElement("div");
+    const portalContainer = document.createElement("div");
+    document.body.append(container, portalContainer);
+    const root = createRoot(container);
+    const renderSummary = (hasPendingDeletion: boolean) => (
+      <PortalContainerProvider container={portalContainer}>
+        <AnnotationSummary
+          annotations={hasPendingDeletion ? [] : [annotation]}
+          hasPendingDeletion={hasPendingDeletion}
+          onClear={onClear}
+          onEdit={vi.fn()}
+          onRemove={onRemove}
+          onSend={vi.fn()}
+          onUndo={onUndo}
+          position={{ left: 10, top: 10 }}
+          sendPosition={{ height: 36, left: 200, top: 200, width: 36 }}
+          sendStatus="idle"
+        />
+      </PortalContainerProvider>
+    );
+
+    await act(async () => root.render(renderSummary(false)));
+    const trigger = Array.from(container.querySelectorAll("button")).find(
+      (element) => element.textContent?.trim() === "1 annotation",
+    );
+    await act(async () => trigger?.click());
+    await act(async () => {
+      portalContainer
+        .querySelector<HTMLButtonElement>('[aria-label="Delete annotation 1"]')
+        ?.click();
+    });
+    expect(onRemove).toHaveBeenCalledWith("annotation-1");
+
+    await act(async () => root.render(renderSummary(true)));
+    expect(container.querySelector('[role="status"]')?.textContent).toContain("Annotation removed");
+    await act(async () => {
+      Array.from(container.querySelectorAll("button"))
+        .find((button) => button.textContent === "Undo")
+        ?.click();
+    });
+    expect(onUndo).toHaveBeenCalledOnce();
+
+    await act(async () => root.render(renderSummary(false)));
+    const clearButton = container.querySelector<HTMLButtonElement>(
+      '[aria-label="Clear all annotations"]',
+    );
+    await act(async () => clearButton?.click());
+    expect(onClear).not.toHaveBeenCalled();
+    expect(container.querySelector('[role="status"]')?.textContent).toContain(
+      "Click again to confirm",
+    );
+    const confirmButton = container.querySelector<HTMLButtonElement>(
+      '[aria-label="Confirm clearing all annotations"]',
+    );
+    await act(async () => confirmButton?.click());
+    expect(onClear).toHaveBeenCalledOnce();
 
     await act(async () => root.unmount());
   });

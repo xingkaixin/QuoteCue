@@ -17,6 +17,7 @@ import {
 } from "@/features/annotations/selection-anchor";
 import { useAnnotationHighlights } from "@/features/annotations/use-annotation-highlights";
 import { useConversationKey } from "@/features/annotations/use-conversation-key";
+import { useDeferredAnnotationDeletion } from "@/features/annotations/use-deferred-annotation-deletion";
 import { useDraftAnnotations } from "@/features/annotations/use-draft-annotations";
 import { useSelectionOverlay } from "@/features/annotations/use-selection-overlay";
 import {
@@ -43,6 +44,8 @@ export default function App() {
   } = useDraftAnnotations(conversationKey);
   const [sendState, setSendState] = useState<AnnotatedSendState>({ status: "idle" });
   const [editor, setEditor] = useState<AnnotationEditorState>({ status: "hidden" });
+  const { hasPendingDeletion, requestDeletion, undoDeletion, visibleAnnotations } =
+    useDeferredAnnotationDeletion(annotations, conversationKey, removeAnnotation);
   const startAnnotation = useCallback(
     (draft: SelectionDraft) => {
       const annotation: DraftAnnotation = {
@@ -59,16 +62,16 @@ export default function App() {
   useSelectionOverlay(isHydrated ? startAnnotation : null);
 
   const activeAnnotationId = editor.status === "hidden" ? null : editor.annotationId;
-  const activeAnnotation = annotations.find(({ id }) => id === activeAnnotationId);
-  const badgePositions = useAnnotationHighlights(annotations, activeAnnotationId);
+  const activeAnnotation = visibleAnnotations.find(({ id }) => id === activeAnnotationId);
+  const badgePositions = useAnnotationHighlights(visibleAnnotations, activeAnnotationId);
   const composerLayout = useAnnotatedComposerLayout(isHydrated && annotations.length > 0);
-  const draftRef = useRef({ annotations, revision: draftRevision ?? 0 });
+  const draftRef = useRef({ annotations: visibleAnnotations, revision: draftRevision ?? 0 });
   const sendActionsRef = useRef<SendActions>({
     submit: () => undefined,
     retry: () => undefined,
   });
 
-  draftRef.current = { annotations, revision: draftRevision ?? 0 };
+  draftRef.current = { annotations: visibleAnnotations, revision: draftRevision ?? 0 };
 
   useEffect(() => {
     const interceptor = registerSendInterceptor({
@@ -77,6 +80,7 @@ export default function App() {
       onSendAccepted: (revision) => {
         if (clearAnnotations(revision)) {
           setEditor({ status: "hidden" });
+          undoDeletion();
         }
       },
       onStateChange: setSendState,
@@ -94,9 +98,11 @@ export default function App() {
       sendActionsRef.current = { submit: () => undefined, retry: () => undefined };
       interceptor.dispose();
     };
-  }, [clearAnnotations, locale]);
+  }, [clearAnnotations, locale, undoDeletion]);
 
-  useEffect(() => setEditor({ status: "hidden" }), [conversationKey]);
+  useEffect(() => {
+    setEditor({ status: "hidden" });
+  }, [conversationKey]);
 
   const saveActiveAnnotation = (comment: string) => {
     if (editor.status === "hidden") {
@@ -131,7 +137,9 @@ export default function App() {
   };
 
   const deleteAnnotation = (annotationId: string) => {
-    removeAnnotation(annotationId);
+    if (!requestDeletion(annotationId)) {
+      return;
+    }
     if (activeAnnotationId === annotationId) {
       setEditor({ status: "hidden" });
     }
@@ -168,14 +176,15 @@ export default function App() {
           <AnnotationBadge
             {...position}
             key={position.annotation.id}
-            number={annotations.findIndex(({ id }) => id === position.annotation.id) + 1}
+            number={visibleAnnotations.findIndex(({ id }) => id === position.annotation.id) + 1}
             onEdit={openEditor}
           />
         ))}
 
         {isHydrated && annotations.length > 0 && composerLayout && (
           <AnnotationSummary
-            annotations={annotations}
+            annotations={visibleAnnotations}
+            hasPendingDeletion={hasPendingDeletion}
             onClear={() => {
               clearAnnotations();
               setEditor({ status: "hidden" });
@@ -186,6 +195,7 @@ export default function App() {
               const action = sendState.status === "failed" ? "retry" : "submit";
               sendActionsRef.current[action]();
             }}
+            onUndo={undoDeletion}
             position={composerLayout.summary}
             sendStatus={annotationSendStatus(sendState)}
             sendPosition={composerLayout.send}

@@ -7,7 +7,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { Fragment, useRef } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type {
@@ -20,10 +20,12 @@ import type { DraftAnnotation } from "./annotation";
 
 type AnnotationSummaryProps = {
   annotations: DraftAnnotation[];
+  hasPendingDeletion: boolean;
   onClear: () => void;
   onEdit: (annotation: DraftAnnotation) => void;
   onRemove: (annotationId: string) => void;
   onSend: () => void;
+  onUndo: () => void;
   position: ComposerPosition;
   sendStatus: "idle" | "pending" | "failed";
   sendPosition: ComposerRect;
@@ -31,30 +33,69 @@ type AnnotationSummaryProps = {
 
 export function AnnotationSummary({
   annotations,
+  hasPendingDeletion,
   onClear,
   onEdit,
   onRemove,
   onSend,
+  onUndo,
   position,
   sendStatus,
   sendPosition,
 }: AnnotationSummaryProps) {
   const { messages } = useI18n();
   const firstEditButtonRef = useRef<HTMLButtonElement>(null);
+  const [isConfirmingClear, setIsConfirmingClear] = useState(false);
+  const [transientStatus, setTransientStatus] = useState("");
+
+  useEffect(() => {
+    if (!isConfirmingClear) {
+      return;
+    }
+    const timer = window.setTimeout(() => setIsConfirmingClear(false), 5_000);
+    return () => window.clearTimeout(timer);
+  }, [isConfirmingClear]);
+
+  useEffect(() => setIsConfirmingClear(false), [annotations.length, hasPendingDeletion]);
+
+  useEffect(() => {
+    if (!transientStatus) {
+      return;
+    }
+    const timer = window.setTimeout(() => setTransientStatus(""), 5_000);
+    return () => window.clearTimeout(timer);
+  }, [transientStatus]);
+
+  const statusMessage = hasPendingDeletion
+    ? messages.annotationRemoved(annotations.length)
+    : isConfirmingClear
+      ? messages.clearAnnotationsConfirmation
+      : transientStatus;
 
   return (
     <Fragment>
-      <div className="quotecue-interactive fixed" style={position}>
+      <div className="quotecue-interactive fixed flex items-center gap-2" style={position}>
         <Popover>
           <div className="flex items-center rounded-xl border border-neutral-200 bg-white shadow-sm">
             <PopoverTrigger className="flex h-9 cursor-pointer items-center gap-2 rounded-l-xl px-3 text-sm font-medium text-neutral-700 outline-none hover:bg-neutral-50 focus-visible:ring-2 focus-visible:ring-blue-500/45">
               <MessageSquareText aria-hidden="true" className="size-4 text-blue-600" />
-              {messages.annotationCount(annotations.length)}
+              <span aria-live="polite">{messages.annotationCount(annotations.length)}</span>
             </PopoverTrigger>
             <button
-              aria-label={messages.clearAnnotations}
-              className="flex size-9 cursor-pointer items-center justify-center rounded-r-xl border-l border-neutral-200 text-neutral-600 outline-none hover:bg-neutral-50 hover:text-neutral-950 focus-visible:ring-2 focus-visible:ring-blue-500/45"
-              onClick={onClear}
+              aria-label={
+                isConfirmingClear ? messages.confirmClearAnnotations : messages.clearAnnotations
+              }
+              className="flex size-9 cursor-pointer items-center justify-center rounded-r-xl border-l border-neutral-200 text-neutral-600 outline-none hover:bg-neutral-50 hover:text-neutral-950 focus-visible:ring-2 focus-visible:ring-blue-500/45 disabled:cursor-default disabled:text-neutral-300"
+              disabled={hasPendingDeletion || annotations.length === 0}
+              onClick={() => {
+                if (isConfirmingClear) {
+                  setIsConfirmingClear(false);
+                  onClear();
+                  return;
+                }
+                setTransientStatus("");
+                setIsConfirmingClear(true);
+              }}
               type="button"
             >
               <X aria-hidden="true" className="size-4" />
@@ -97,6 +138,7 @@ export function AnnotationSummary({
                     <button
                       aria-label={messages.deleteNumberedAnnotation(index + 1)}
                       className="flex size-8 cursor-pointer items-center justify-center border-l border-neutral-200 text-neutral-600 outline-none hover:text-red-700 focus-visible:ring-2 focus-visible:ring-blue-500/45"
+                      disabled={hasPendingDeletion}
                       onClick={() => onRemove(annotation.id)}
                       type="button"
                     >
@@ -108,6 +150,27 @@ export function AnnotationSummary({
             </div>
           </PopoverContent>
         </Popover>
+        {statusMessage && (
+          <div
+            aria-live="polite"
+            className="flex max-w-72 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-700 shadow-md"
+            role="status"
+          >
+            <span>{statusMessage}</span>
+            {hasPendingDeletion && (
+              <button
+                className="shrink-0 cursor-pointer rounded px-1.5 py-1 font-semibold text-blue-700 outline-none hover:bg-blue-50 focus-visible:ring-2 focus-visible:ring-blue-500/45"
+                onClick={() => {
+                  setTransientStatus(messages.annotationRestored);
+                  onUndo();
+                }}
+                type="button"
+              >
+                {messages.undo}
+              </button>
+            )}
+          </div>
+        )}
       </div>
       {sendStatus !== "idle" && (
         <div
