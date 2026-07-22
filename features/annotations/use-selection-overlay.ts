@@ -8,7 +8,7 @@ const NATIVE_ACTION_ATTRIBUTE = "data-quotecue-native-action";
 const PORTAL_ATTRIBUTE = "data-quotecue-portal";
 const NATIVE_ACTION_LABELS = new Set(["询问 ChatGPT", "Ask ChatGPT"]);
 
-export function useSelectionOverlay(onActivate: (draft: SelectionDraft) => void) {
+export function useSelectionOverlay(onActivate: ((draft: SelectionDraft) => void) | null) {
   const [overlay, setOverlay] = useState<SelectionActionState>({ status: "hidden" });
 
   useEffect(() => {
@@ -33,7 +33,7 @@ export function useSelectionOverlay(onActivate: (draft: SelectionDraft) => void)
   }, []);
 
   useEffect(() => {
-    if (overlay.status !== "action") {
+    if (!onActivate || overlay.status !== "action") {
       removeNativeAction();
       return;
     }

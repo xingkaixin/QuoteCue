@@ -25,7 +25,14 @@ import { useI18n } from "@/features/i18n/I18nProvider";
 export default function App() {
   const { locale } = useI18n();
   const conversationKey = useConversationKey();
-  const { annotations, isHydrated, setAnnotations } = useDraftAnnotations(conversationKey);
+  const {
+    annotations,
+    isHydrated,
+    addAnnotation,
+    updateAnnotation,
+    removeAnnotation,
+    clearAnnotations,
+  } = useDraftAnnotations(conversationKey);
   const [editor, setEditor] = useState<AnnotationEditorState>({ status: "hidden" });
   const startAnnotation = useCallback(
     (draft: SelectionDraft) => {
@@ -35,13 +42,13 @@ export default function App() {
         comment: "",
         createdAt: Date.now(),
       };
-      setAnnotations((current) => [...current, annotation]);
+      addAnnotation(annotation);
       setEditor({ status: "quick", annotationId: annotation.id, draft });
       window.getSelection()?.removeAllRanges();
     },
-    [setAnnotations],
+    [addAnnotation],
   );
-  useSelectionOverlay(startAnnotation);
+  useSelectionOverlay(isHydrated ? startAnnotation : null);
 
   const activeAnnotationId = editor.status === "hidden" ? null : editor.annotationId;
   const activeAnnotation = annotations.find(({ id }) => id === activeAnnotationId);
@@ -57,7 +64,7 @@ export default function App() {
       annotations: () => annotationsRef.current,
       locale: () => locale,
       onSendAccepted: () => {
-        setAnnotations([]);
+        clearAnnotations();
         setEditor({ status: "hidden" });
       },
     });
@@ -67,7 +74,7 @@ export default function App() {
       submitAnnotationsRef.current = () => false;
       interceptor.dispose();
     };
-  }, [locale, setAnnotations]);
+  }, [clearAnnotations, locale]);
 
   useEffect(() => setEditor({ status: "hidden" }), [conversationKey]);
 
@@ -77,11 +84,7 @@ export default function App() {
     }
 
     const annotationId = editor.annotationId;
-    setAnnotations((current) =>
-      current.map((annotation) =>
-        annotation.id === annotationId ? { ...annotation, comment } : annotation,
-      ),
-    );
+    updateAnnotation(annotationId, comment);
     setEditor({ status: "hidden" });
   };
 
@@ -108,7 +111,7 @@ export default function App() {
   };
 
   const deleteAnnotation = (annotationId: string) => {
-    setAnnotations((current) => current.filter(({ id }) => id !== annotationId));
+    removeAnnotation(annotationId);
     if (activeAnnotationId === annotationId) {
       setEditor({ status: "hidden" });
     }
@@ -148,7 +151,7 @@ export default function App() {
           <AnnotationSummary
             annotations={annotations}
             onClear={() => {
-              setAnnotations([]);
+              clearAnnotations();
               setEditor({ status: "hidden" });
             }}
             onEdit={openEditor}
