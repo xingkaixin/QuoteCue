@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { messagesFor, resolveLocale } from "@/features/i18n/messages";
+import { messagesFor, resolveHostLocale, resolveLocale } from "@/features/i18n/messages";
 
 describe("i18n", () => {
   it("prefers the first supported language tag", () => {
@@ -12,6 +12,14 @@ describe("i18n", () => {
   it("falls back to English for unsupported languages", () => {
     expect(resolveLocale(["fr-FR"])).toBe("en");
     expect(messagesFor("en").annotationCount(2)).toBe("2 annotations");
+  });
+
+  it("does not replace an unsupported host language with a browser language", () => {
+    expect(resolveHostLocale("ja-JP", ["zh-CN"])).toBe("en");
+  });
+
+  it("uses browser preferences when the host language is missing", () => {
+    expect(resolveHostLocale("", ["ja-JP", "zh-TW"])).toBe("zh-TW");
   });
 
   it("localizes destructive action status", () => {

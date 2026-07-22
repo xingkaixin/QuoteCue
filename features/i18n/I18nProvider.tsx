@@ -1,6 +1,6 @@
 import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
 
-import { messagesFor, resolveLocale, type SupportedLocale } from "./messages";
+import { messagesFor, resolveHostLocale, type SupportedLocale } from "./messages";
 
 type I18nContextValue = {
   locale: SupportedLocale;
@@ -39,5 +39,8 @@ export function useI18n() {
 }
 
 function detectedLocale() {
-  return resolveLocale([document.documentElement.lang, ...navigator.languages, navigator.language]);
+  return resolveHostLocale(document.documentElement.lang, [
+    ...navigator.languages,
+    navigator.language,
+  ]);
 }

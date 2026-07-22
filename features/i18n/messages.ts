@@ -163,6 +163,17 @@ export function messagesFor(locale: SupportedLocale) {
   return MESSAGES[locale];
 }
 
+export function resolveHostLocale(
+  hostLanguageTag: string | null | undefined,
+  browserLanguageTags: Array<string | null | undefined>,
+): SupportedLocale {
+  if (hostLanguageTag?.trim()) {
+    return resolveLocale([hostLanguageTag]);
+  }
+
+  return resolveLocale(browserLanguageTags);
+}
+
 export function resolveLocale(languageTags: Array<string | null | undefined>): SupportedLocale {
   for (const languageTag of languageTags) {
     const normalized = languageTag?.toLowerCase();
