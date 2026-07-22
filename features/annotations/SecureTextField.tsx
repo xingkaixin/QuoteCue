@@ -1,13 +1,5 @@
 /* oxlint-disable react/iframe-missing-sandbox -- Extension-origin modules require their origin; the parent page remains cross-origin. */
-import {
-  forwardRef,
-  type FocusEventHandler,
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useRef,
-  useState,
-} from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { browser } from "wxt/browser";
 
 import { useHostTheme } from "@/features/theme/HostThemeProvider";
@@ -25,7 +17,6 @@ export type SecureTextFieldHandle = {
 
 type SecureTextFieldProps = Omit<SecureFieldConfig, "theme"> & {
   className?: string;
-  onBlur?: FocusEventHandler<HTMLIFrameElement>;
   onCancel: () => void;
   onChange: (value: string) => void;
   onSave: (value: string) => void;
@@ -33,10 +24,11 @@ type SecureTextFieldProps = Omit<SecureFieldConfig, "theme"> & {
 
 export const SecureTextField = forwardRef<SecureTextFieldHandle, SecureTextFieldProps>(
   function SecureTextField(
-    { ariaLabel, className, kind, name, onBlur, onCancel, onChange, onSave, placeholder, value },
+    { ariaLabel, className, kind, name, onCancel, onChange, onSave, placeholder, value },
     ref,
   ) {
     const theme = useHostTheme();
+    const [isFocused, setIsFocused] = useState(false);
     const [token] = useState(() => crypto.randomUUID());
     const frameUrl = browser.runtime.getURL(`/secure-field.html#${encodeURIComponent(token)}`);
     const frameRef = useRef<HTMLIFrameElement>(null);
@@ -59,6 +51,10 @@ export const SecureTextField = forwardRef<SecureTextFieldHandle, SecureTextField
       if (!fieldEvent) {
         return;
       }
+      if (fieldEvent.type === "focus-change") {
+        setIsFocused(fieldEvent.focused);
+        return;
+      }
       dispatchFieldEvent(fieldEvent, handlersRef.current);
     }, []);
 
@@ -68,6 +64,7 @@ export const SecureTextField = forwardRef<SecureTextFieldHandle, SecureTextField
         return;
       }
 
+      setIsFocused(false);
       portRef.current?.close();
       const channel = new MessageChannel();
       channel.port1.onmessage = handleFieldEvent;
@@ -100,7 +97,6 @@ export const SecureTextField = forwardRef<SecureTextFieldHandle, SecureTextField
       ref,
       () => ({
         focus() {
-          frameRef.current?.focus();
           portRef.current?.postMessage({ type: "focus" });
         },
       }),
@@ -111,8 +107,8 @@ export const SecureTextField = forwardRef<SecureTextFieldHandle, SecureTextField
       <iframe
         aria-label={ariaLabel}
         className={className}
+        data-focused={isFocused}
         data-quotecue-secure-field=""
-        onBlur={onBlur}
         onLoad={connect}
         ref={frameRef}
         referrerPolicy="no-referrer"
@@ -125,7 +121,7 @@ export const SecureTextField = forwardRef<SecureTextFieldHandle, SecureTextField
 );
 
 function dispatchFieldEvent(
-  event: SecureFieldEvent,
+  event: Exclude<SecureFieldEvent, { type: "focus-change" }>,
   handlers: Pick<SecureTextFieldProps, "onCancel" | "onChange" | "onSave">,
 ) {
   if (event.type === "cancel") {

@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { AnnotationEditor } from "@/features/annotations/AnnotationEditor";
 
 vi.mock("@/features/annotations/SecureTextField", async () => {
-  const { forwardRef, useImperativeHandle, useRef } = await import("react");
+  const { forwardRef, useEffect, useImperativeHandle, useRef } = await import("react");
   type FakeSecureFieldProps = {
     ariaLabel: string;
     onCancel: () => void;
@@ -17,6 +17,7 @@ vi.mock("@/features/annotations/SecureTextField", async () => {
       function FakeSecureTextField({ ariaLabel, onCancel, onChange, value }, ref) {
         const fieldRef = useRef<HTMLTextAreaElement>(null);
         useImperativeHandle(ref, () => ({ focus: () => fieldRef.current?.focus() }), []);
+        useEffect(() => fieldRef.current?.focus(), []);
         return (
           <textarea
             aria-label={ariaLabel}

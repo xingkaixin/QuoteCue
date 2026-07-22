@@ -42,7 +42,7 @@ export function AnnotationQuickInput({ draft, onClose, onSave }: AnnotationQuick
     >
       <SecureTextField
         ariaLabel={messages.annotationContent}
-        className="h-10 min-w-0 flex-1 rounded-lg border-0 bg-transparent outline-none focus:ring-2 focus:ring-blue-500/45"
+        className="h-10 min-w-0 flex-1 rounded-lg border-0 bg-transparent outline-none data-[focused=true]:ring-2 data-[focused=true]:ring-blue-500/45"
         kind="input"
         name="quotecue-annotation-comment"
         onCancel={onClose}

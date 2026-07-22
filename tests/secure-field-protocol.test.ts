@@ -47,6 +47,11 @@ describe("secure field protocol", () => {
       value: "comment",
     });
     expect(decodeSecureFieldEvent({ type: "ready" })).toEqual({ type: "ready" });
+    expect(decodeSecureFieldEvent({ type: "focus-change", focused: true })).toEqual({
+      type: "focus-change",
+      focused: true,
+    });
+    expect(decodeSecureFieldEvent({ type: "focus-change", focused: "yes" })).toBeNull();
     expect(decodeSecureFieldEvent({ type: "save" })).toBeNull();
   });
 });

@@ -1,5 +1,5 @@
 import { Check, Trash2, X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/features/i18n/I18nProvider";
@@ -40,7 +40,6 @@ export function AnnotationEditor({
   });
   const position = useAnnotationEditorPosition(draft, editorRef, EDITOR_SIZE);
 
-  useEffect(focusEditor, [focusEditor]);
   useOutsideDiscard(editorRef, requestDismissal);
 
   return (
@@ -52,7 +51,7 @@ export function AnnotationEditor({
     >
       <SecureTextField
         ariaLabel={messages.annotationContent}
-        className="h-28 w-full rounded-xl border-0 bg-transparent outline-none focus:ring-2 focus:ring-blue-500/45"
+        className="h-28 w-full rounded-xl border-0 bg-transparent outline-none data-[focused=true]:ring-2 data-[focused=true]:ring-blue-500/45"
         kind="textarea"
         name="quotecue-annotation-comment"
         onCancel={onCancel}

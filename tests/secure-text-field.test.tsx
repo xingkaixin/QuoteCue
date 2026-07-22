@@ -87,6 +87,11 @@ describe("SecureTextField", () => {
     expect(onSave).toHaveBeenCalledWith("updated annotation");
     expect(onWindowMessage).not.toHaveBeenCalled();
 
+    await act(async () => channel?.port2.postMessage({ type: "focus-change", focused: true }));
+    expect(iframe.dataset.focused).toBe("true");
+    await act(async () => channel?.port2.postMessage({ type: "focus-change", focused: false }));
+    expect(iframe.dataset.focused).toBe("false");
+
     window.removeEventListener("message", onWindowMessage);
     await act(async () => root.unmount());
   });

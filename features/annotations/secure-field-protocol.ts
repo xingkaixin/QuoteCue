@@ -23,6 +23,7 @@ export type SecureFieldCommand =
 export type SecureFieldEvent =
   | { type: "cancel" }
   | { type: "change"; value: string }
+  | { type: "focus-change"; focused: boolean }
   | { type: "ready" }
   | { type: "save"; value: string };
 
@@ -58,6 +59,9 @@ export function decodeSecureFieldEvent(value: unknown): SecureFieldEvent | null 
   }
   if (value.type === "cancel" || value.type === "ready") {
     return { type: value.type };
+  }
+  if (value.type === "focus-change" && typeof value.focused === "boolean") {
+    return { type: "focus-change", focused: value.focused };
   }
   if ((value.type === "change" || value.type === "save") && typeof value.value === "string") {
     return { type: value.type, value: value.value };
