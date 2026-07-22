@@ -11,3 +11,8 @@ tmp/
 *.log
 *.zip
 .DS_Store
+
+# agents
+.agents/
+.claude/
+skills-lock.json
