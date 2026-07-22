@@ -24,7 +24,7 @@ describe("selection overlay", () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     const message = appendAssistantMessage("assistant-one", "selected answer");
     const { actionRow, firstAction, toolbar } = appendSelectionToolbar();
-    installToolbarHitTest(firstAction, actionRow, toolbar);
+    installToolbarHitTest(toolbar, firstAction, actionRow);
     const container = document.createElement("div");
     document.body.append(container);
     const root = createRoot(container);
@@ -55,7 +55,7 @@ describe("selection overlay", () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     const message = appendAssistantMessage("assistant-one", "keyboard selection");
     const { actionRow, firstAction, toolbar } = appendSelectionToolbar();
-    installToolbarHitTest(firstAction, actionRow, toolbar);
+    installToolbarHitTest(toolbar, firstAction, actionRow);
     const container = document.createElement("div");
     document.body.append(container);
     const root = createRoot(container);
@@ -90,7 +90,7 @@ describe("selection overlay", () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     const message = appendAssistantMessage("assistant-one", "private selection");
     const { actionRow, firstAction, toolbar } = appendSelectionToolbar();
-    installToolbarHitTest(firstAction, actionRow, toolbar);
+    installToolbarHitTest(toolbar, firstAction, actionRow);
     const container = document.createElement("div");
     document.body.append(container);
     const root = createRoot(container);
@@ -137,9 +137,9 @@ function selectText(node: ChildNode | null) {
       bottom: 260,
       height: 60,
       left: 100,
-      right: 360,
+      right: 800,
       top: 200,
-      width: 260,
+      width: 700,
     }),
   });
   Object.defineProperty(range, "getClientRects", {
@@ -153,10 +153,13 @@ function selectText(node: ChildNode | null) {
   window.getSelection()?.addRange(range);
 }
 
-function installToolbarHitTest(...elements: Element[]) {
+function installToolbarHitTest(toolbar: HTMLElement, ...elements: Element[]) {
   Object.defineProperty(document, "elementsFromPoint", {
     configurable: true,
-    value: () => elements,
+    value: (x: number) => {
+      const rect = toolbar.getBoundingClientRect();
+      return x >= rect.left && x <= rect.right ? [...elements, toolbar] : [];
+    },
   });
 }
 

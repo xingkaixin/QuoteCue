@@ -6,6 +6,7 @@ import type {
 } from "@/features/annotations/annotation";
 import {
   rangeEndpointRect,
+  rangeStartRect,
   restoreTextAnchorFromIndex,
 } from "@/features/annotations/selection-anchor";
 
@@ -111,9 +112,7 @@ export function createChatGptHost(environment: HostEnvironment) {
     const start = textOffset(message, range.startContainer, range.startOffset);
     const end = textOffset(message, range.endContainer, range.endOffset);
     const messageText = message.textContent ?? "";
-    const actionRect = rangeRect(range);
     return available({
-      actionRect,
       anchor: {
         end,
         messageId: message.dataset.messageId ?? "",
@@ -123,6 +122,7 @@ export function createChatGptHost(environment: HostEnvironment) {
         suffix: messageText.slice(end, end + CONTEXT_LENGTH),
       },
       rect: rectangleSnapshot(rangeEndpointRect(range)),
+      toolbarAnchorRect: rectangleSnapshot(rangeStartRect(range)),
     });
   }
 
@@ -609,14 +609,6 @@ function available<T>(value: T): ChatGptHostResult<T> {
 
 function unavailable(reason: ChatGptHostUnavailableReason): ChatGptHostResult<never> {
   return { reason, status: "unavailable" };
-}
-
-function rangeRect(range: Range) {
-  const rect =
-    typeof range.getBoundingClientRect === "function"
-      ? range.getBoundingClientRect()
-      : new DOMRect();
-  return rectangleSnapshot(rect);
 }
 
 function rectangleSnapshot(rect: SelectionDraft["rect"]) {

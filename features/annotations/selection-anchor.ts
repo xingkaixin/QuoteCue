@@ -6,15 +6,21 @@ type RangeBoundary = {
 };
 
 export function rangeEndpointRect(range: Range) {
+  const rects = visibleRangeRects(range);
+
+  return rects.at(-1) ?? rangeBoundingRect(range);
+}
+
+export function rangeStartRect(range: Range) {
+  return visibleRangeRects(range)[0] ?? rangeBoundingRect(range);
+}
+
+function visibleRangeRects(range: Range) {
   const rects = typeof range.getClientRects === "function" ? range.getClientRects() : [];
+  return Array.from(rects).filter((rect) => rect.width > 0 || rect.height > 0);
+}
 
-  for (let index = rects.length - 1; index >= 0; index -= 1) {
-    const rect = rects[index];
-    if (rect && (rect.width > 0 || rect.height > 0)) {
-      return rect;
-    }
-  }
-
+function rangeBoundingRect(range: Range) {
   return typeof range.getBoundingClientRect === "function"
     ? range.getBoundingClientRect()
     : new DOMRect();

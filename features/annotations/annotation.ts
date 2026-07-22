@@ -21,7 +21,7 @@ export type SelectionDraft = {
 };
 
 export type SelectionCapture = SelectionDraft & {
-  actionRect: SelectionRect;
+  toolbarAnchorRect: SelectionRect;
 };
 
 export type AnnotationEditorState =
