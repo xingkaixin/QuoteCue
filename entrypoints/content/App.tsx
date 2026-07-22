@@ -119,18 +119,16 @@ export default function App() {
   };
 
   const openEditor = (annotation: DraftAnnotation) => {
-    const restored = chatGptHost.selection.restore(annotation.anchor);
-    if (restored.status === "unavailable") {
+    const reveal = chatGptHost.selection.reveal(annotation.anchor);
+    if (reveal.status === "unavailable") {
       return;
     }
-    const range = restored.value;
 
-    if (isRangeVisible(range)) {
+    if (reveal.value === "visible") {
       showExpandedEditor(annotation);
       return;
     }
 
-    annotationElement(range)?.scrollIntoView({ behavior: "auto", block: "center" });
     requestAnimationFrame(() => showExpandedEditor(annotation));
   };
 
@@ -222,14 +220,4 @@ function annotationSendStatus(state: AnnotatedSendState): "idle" | "pending" | "
     return "idle";
   }
   return state.status === "failed" ? "failed" : "pending";
-}
-
-function isRangeVisible(range: Range) {
-  const rect = range.getBoundingClientRect();
-  return rect.bottom >= 0 && rect.top <= window.innerHeight;
-}
-
-function annotationElement(range: Range) {
-  const node = range.startContainer;
-  return node instanceof Element ? node : node.parentElement;
 }

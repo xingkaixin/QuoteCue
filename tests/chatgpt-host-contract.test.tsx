@@ -161,6 +161,54 @@ describe("ChatGPT host contract", () => {
     });
   });
 
+  it("centers an offscreen annotation endpoint in its nearest scroll container", () => {
+    const endpointTop = { value: 900 };
+    const rangeRectsDescriptor = Object.getOwnPropertyDescriptor(Range.prototype, "getClientRects");
+    Object.defineProperty(Range.prototype, "getClientRects", {
+      configurable: true,
+      value: () => [new DOMRect(100, endpointTop.value, 160, 20)],
+    });
+    const scrollContainer = document.createElement("div");
+    scrollContainer.style.overflowY = "auto";
+    Object.defineProperties(scrollContainer, {
+      clientHeight: { configurable: true, value: 400 },
+      scrollHeight: { configurable: true, value: 1_200 },
+      getBoundingClientRect: {
+        configurable: true,
+        value: () => new DOMRect(0, 100, 800, 400),
+      },
+    });
+    scrollContainer.scrollTop = 50;
+    const message = document.createElement("article");
+    message.dataset.messageAuthorRole = "assistant";
+    message.dataset.messageId = "assistant-scroll";
+    message.textContent = "target phrase";
+    scrollContainer.append(message);
+    document.body.append(scrollContainer);
+    const anchor = {
+      end: 13,
+      messageId: "assistant-scroll",
+      prefix: "",
+      quote: "target phrase",
+      start: 0,
+      suffix: "",
+    };
+    const host = createChatGptHost({ document, window });
+
+    expect(host.selection.reveal(anchor)).toEqual({ status: "available", value: "scrolled" });
+    expect(scrollContainer.scrollTop).toBe(660);
+
+    endpointTop.value = 200;
+    expect(host.selection.reveal(anchor)).toEqual({ status: "available", value: "visible" });
+    expect(scrollContainer.scrollTop).toBe(660);
+
+    if (rangeRectsDescriptor) {
+      Object.defineProperty(Range.prototype, "getClientRects", rangeRectsDescriptor);
+    } else {
+      Reflect.deleteProperty(Range.prototype, "getClientRects");
+    }
+  });
+
   it("reports typed host failures without annotation content", async () => {
     document.body.innerHTML = "<main></main>";
     const logs: string[] = [];

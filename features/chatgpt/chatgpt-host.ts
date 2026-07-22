@@ -16,6 +16,7 @@ const USER_MESSAGE_SELECTOR = '[data-message-author-role="user"][data-message-id
 const CONVERSATION_PATH_PATTERN = /^\/c\/([^/?#]+)/;
 const CONTEXT_LENGTH = 48;
 const NATIVE_SELECTION_ACTION_ATTRIBUTE = "data-quotecue-native-action";
+const SCROLLABLE_OVERFLOW_PATTERN = /auto|overlay|scroll/;
 const SEND_ACCEPT_TIMEOUT_MS = 15_000;
 const SEND_BUTTON_APPEAR_TIMEOUT_MS = 2_000;
 
@@ -48,6 +49,8 @@ type AcceptedSendWatcherOptions = {
   onTimeout: () => void;
   signal: AbortSignal;
 };
+
+type SelectionRevealStatus = "scrolled" | "visible";
 
 type HostEnvironment = {
   document: Document;
@@ -236,6 +239,57 @@ export function createChatGptHost(environment: HostEnvironment) {
           rect: rectangleSnapshot(rangeEndpointRect(restored.value)),
         })
       : restored;
+  }
+
+  function revealAnchor(anchor: TextAnchor): ChatGptHostResult<SelectionRevealStatus> {
+    const restored = restoreAnchor(anchor);
+    if (restored.status === "unavailable") {
+      return restored;
+    }
+
+    const range = restored.value;
+    const endpointRect = rangeEndpointRect(range);
+    const scrollContainer = nearestScrollContainer(range.endContainer);
+    const viewportRect = scrollContainer
+      ? scrollContainer.getBoundingClientRect()
+      : visualViewportRect();
+
+    if (endpointRect.bottom >= viewportRect.top && endpointRect.top <= viewportRect.bottom) {
+      return available("visible");
+    }
+
+    const offset =
+      endpointRect.top + endpointRect.height / 2 - (viewportRect.top + viewportRect.height / 2);
+    if (scrollContainer) {
+      scrollContainer.scrollTop += offset;
+    } else {
+      hostWindow.scrollBy({ behavior: "auto", top: offset });
+    }
+    return available("scrolled");
+  }
+
+  function nearestScrollContainer(node: Node) {
+    let element = node instanceof HTMLElement ? node : node.parentElement;
+
+    while (element) {
+      const { overflowY } = hostWindow.getComputedStyle(element);
+      if (
+        SCROLLABLE_OVERFLOW_PATTERN.test(overflowY) &&
+        element.scrollHeight > element.clientHeight
+      ) {
+        return element;
+      }
+      element = element.parentElement;
+    }
+
+    return null;
+  }
+
+  function visualViewportRect() {
+    const viewport = hostWindow.visualViewport;
+    const top = viewport?.offsetTop ?? 0;
+    const height = viewport?.height ?? hostWindow.innerHeight;
+    return { bottom: top + height, height, top };
   }
 
   function currentComposer() {
@@ -535,6 +589,7 @@ export function createChatGptHost(environment: HostEnvironment) {
       messageIndex,
       mountAction: mountSelectionAction,
       observeInvalidation: (callback: () => void) => observePage(callback, true),
+      reveal: revealAnchor,
       restore: restoreAnchor,
     },
   };
