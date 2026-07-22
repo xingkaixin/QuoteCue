@@ -335,7 +335,7 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
       typeof hostDocument.execCommand === "function" &&
       hostDocument.execCommand("insertText", false, text)
     ) {
-      return composerText(composer) === text;
+      return normalizedText(composer) === normalizedText(text);
     }
 
     const paragraph = hostDocument.createElement("p");
@@ -344,11 +344,14 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
     composer.dispatchEvent(
       new InputEvent("input", { bubbles: true, data: text, inputType: "insertText" }),
     );
-    return composerText(composer) === text;
+    return normalizedText(composer) === normalizedText(text);
   }
 
   function restoreComposerText(snapshot: ComposerSnapshot, expectedText: string) {
-    if (currentComposer() !== snapshot.element || composerText(snapshot.element) !== expectedText) {
+    if (
+      currentComposer() !== snapshot.element ||
+      normalizedText(snapshot.element) !== normalizedText(expectedText)
+    ) {
       return false;
     }
     return replaceComposerText(snapshot.element, snapshot.text);
@@ -521,9 +524,11 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
     return Array.from(hostDocument.querySelectorAll<HTMLElement>(adapter.userMessageSelector));
   }
 
+  // 折叠空白后比较：宿主会把段落间换行重排（\n\n 与 \n、fallback 下甚至变空格），
+  // 精确相等会漏认已发送的消息；折叠后仍是全文强匹配，不放松确认语义
   function normalizedText(value: HTMLElement | string) {
     const text = typeof value === "string" ? value : composerText(value);
-    return text.replace(/\r\n?/g, "\n").trim();
+    return text.replace(/\s+/g, " ").trim();
   }
 
   function selectComposerContents(composer: HTMLElement) {

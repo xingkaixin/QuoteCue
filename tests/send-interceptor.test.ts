@@ -259,6 +259,21 @@ describe("registerSendInterceptor", () => {
     interceptor.dispose();
   });
 
+  it("accepts a sent message whose line breaks were reflowed by the host", async () => {
+    const composer = installComposer();
+    const onSendAccepted = vi.fn();
+    const interceptor = createInterceptor(onSendAccepted);
+    installSendButton(() => {
+      const reflowedText = (composer.textContent ?? "").replace(/\n{2,}/g, "\n");
+      composer.replaceChildren();
+      installUserMessage("reflowed-user-message", reflowedText);
+    });
+
+    await expect(interceptor.submit()).resolves.toEqual({ status: "accepted", revision: 1 });
+    expect(onSendAccepted).toHaveBeenCalledWith(1);
+    interceptor.dispose();
+  });
+
   it("ignores old and mismatched user messages while awaiting confirmation", async () => {
     vi.useFakeTimers();
     const composer = installComposer("original question");
