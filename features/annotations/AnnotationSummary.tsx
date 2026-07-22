@@ -97,7 +97,7 @@ export function AnnotationSummary({
         onMouseLeave={() => setIsOpen(false)}
         style={position}
       >
-        <div className="qc-surface flex items-center rounded-lg border shadow-sm">
+        <div className="qc-surface qc-divider flex items-center rounded-lg border shadow-sm">
           <button
             aria-expanded={isOpen}
             aria-haspopup="dialog"
@@ -134,13 +134,14 @@ export function AnnotationSummary({
           <div className="absolute bottom-full left-0 z-[2147483647] w-[min(24rem,calc(100dvw-1.5rem))] pb-1">
             <div
               aria-label={messages.annotationCount(annotations.length)}
-              className="qc-surface qc-elevated overflow-hidden rounded-2xl border"
+              className="qc-surface qc-elevated overflow-hidden rounded-2xl"
               data-quotecue-portal=""
               role="dialog"
             >
               <div className="qc-divide max-h-80 divide-y overscroll-contain overflow-y-auto">
                 {annotations.map((annotation, index) => {
                   const isUnresolved = unresolvedAnnotationIds.has(annotation.id);
+                  const comment = annotation.comment.trim();
                   return (
                     <div className="group/row relative flex gap-2.5 px-3 py-3" key={annotation.id}>
                       <span className="qc-accent-bg flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
@@ -158,12 +159,18 @@ export function AnnotationSummary({
                         <p className="line-clamp-2 text-xs leading-5 [overflow-wrap:anywhere]">
                           {annotation.anchor.quote}
                         </p>
-                        <p className="qc-muted mt-2 text-xs leading-4">{messages.userComment}</p>
-                        <p className="line-clamp-3 text-xs leading-5 [overflow-wrap:anywhere]">
-                          {annotation.comment || messages.noComment}
-                        </p>
+                        {comment && (
+                          <Fragment>
+                            <p className="qc-muted mt-2 text-xs leading-4">
+                              {messages.userComment}
+                            </p>
+                            <p className="line-clamp-3 text-xs leading-5 [overflow-wrap:anywhere]">
+                              {comment}
+                            </p>
+                          </Fragment>
+                        )}
                       </div>
-                      <div className="qc-surface absolute right-2.5 top-2.5 flex rounded-lg border opacity-0 shadow-sm transition-opacity group-hover/row:opacity-100 group-focus-within/row:opacity-100">
+                      <div className="qc-surface qc-divider absolute right-2.5 top-2.5 flex rounded-lg border opacity-0 shadow-sm transition-opacity group-hover/row:opacity-100 group-focus-within/row:opacity-100">
                         <button
                           aria-label={messages.editNumberedAnnotation(index + 1)}
                           className="qc-muted qc-hover qc-focus flex size-8 cursor-pointer items-center justify-center disabled:cursor-default disabled:opacity-40"

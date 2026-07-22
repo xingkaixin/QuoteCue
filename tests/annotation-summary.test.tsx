@@ -33,9 +33,13 @@ describe("AnnotationSummary", () => {
 
     await hover(summary);
 
+    const dialog = container.querySelector('[role="dialog"]');
+    expect(dialog?.classList).toContain("qc-elevated");
+    expect(dialog?.classList).not.toContain("border");
     expect(container.textContent).toContain("Selected text:");
     expect(container.textContent).toContain("selected text");
-    expect(container.textContent).toContain("No comment added");
+    expect(container.textContent).not.toContain("User comment:");
+    expect(container.textContent).not.toContain("No comment added");
     const editButton = container.querySelector<HTMLButtonElement>(
       '[aria-label="Edit annotation 1"]',
     );
@@ -45,6 +49,20 @@ describe("AnnotationSummary", () => {
 
     await leave(summary);
     expect(container.querySelector('[role="dialog"]')).toBeNull();
+
+    await act(async () => root.unmount());
+  });
+
+  it("shows the comment section only when the annotation has content", async () => {
+    const commentedAnnotation = { ...annotation, comment: "Make this more specific" };
+    const { container, root, summary } = await mountSummary({
+      annotations: [commentedAnnotation],
+    });
+
+    await hover(summary);
+
+    expect(container.textContent).toContain("User comment:");
+    expect(container.textContent).toContain("Make this more specific");
 
     await act(async () => root.unmount());
   });

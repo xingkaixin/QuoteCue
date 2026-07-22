@@ -10,13 +10,14 @@ type AnnotationBadgeProps = AnnotationBadgePosition & {
 
 export function AnnotationBadge({ annotation, left, number, onEdit, top }: AnnotationBadgeProps) {
   const { messages } = useI18n();
+  const comment = annotation.comment.trim();
 
   return (
     <div
       className="quotecue-interactive fixed z-[2147483646] flex size-6 items-center justify-center"
       style={{ left, top }}
     >
-      <Tooltip>
+      <Tooltip disabled={!comment}>
         <TooltipTrigger
           aria-label={messages.viewAnnotation(number)}
           className="qc-cue qc-focus qc-pressable flex size-5 cursor-pointer items-center justify-center rounded-full text-xs font-semibold"
@@ -24,9 +25,11 @@ export function AnnotationBadge({ annotation, left, number, onEdit, top }: Annot
         >
           {number}
         </TooltipTrigger>
-        <TooltipContent className="max-w-64">
-          <p className="truncate whitespace-nowrap">{annotation.comment || messages.noComment}</p>
-        </TooltipContent>
+        {comment && (
+          <TooltipContent className="max-w-64">
+            <p className="truncate whitespace-nowrap">{comment}</p>
+          </TooltipContent>
+        )}
       </Tooltip>
     </div>
   );
