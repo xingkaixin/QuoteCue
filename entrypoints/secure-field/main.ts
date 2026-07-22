@@ -18,10 +18,13 @@ function connect(event: MessageEvent<unknown>) {
   }
 
   const field = createField(init.config);
+  document.documentElement.dataset.theme = init.config.theme;
   port.onmessage = (message: MessageEvent<unknown>) => {
     const command = decodeSecureFieldCommand(message.data);
     if (command?.type === "focus") {
       field.focus();
+    } else if (command?.type === "set-theme") {
+      document.documentElement.dataset.theme = command.theme;
     } else if (command?.type === "set-value" && field.value !== command.value) {
       field.value = command.value;
     }

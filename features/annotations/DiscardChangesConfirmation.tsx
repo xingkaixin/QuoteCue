@@ -23,10 +23,7 @@ export function DiscardChangesConfirmation({
     <div
       aria-label={messages.unsavedChanges}
       aria-modal="true"
-      className={cn(
-        "z-10 rounded-2xl border border-amber-200 bg-white p-3 text-neutral-950 shadow-xl",
-        className,
-      )}
+      className={cn("qc-surface qc-elevated z-10 rounded-2xl border p-3", className)}
       onKeyDown={(event) => {
         if (event.key !== "Tab") {
           return;
@@ -43,14 +40,9 @@ export function DiscardChangesConfirmation({
       role="alertdialog"
     >
       <p className="text-sm font-semibold">{messages.unsavedChanges}</p>
-      <p className="mt-1 text-xs leading-5 text-neutral-600">{messages.discardChangesPrompt}</p>
+      <p className="qc-muted mt-1 text-xs leading-5">{messages.discardChangesPrompt}</p>
       <div className="mt-3 flex justify-end gap-2">
-        <Button
-          className="text-red-700 hover:bg-red-50"
-          onClick={onDiscard}
-          size="sm"
-          variant="ghost"
-        >
+        <Button className="qc-danger" onClick={onDiscard} size="sm" variant="ghost">
           {messages.discardChanges}
         </Button>
         <Button onClick={onContinue} ref={continueButtonRef} size="sm">

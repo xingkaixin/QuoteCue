@@ -1,5 +1,8 @@
 :root {
-  color: #171717;
+  --qc-surface: #ffffff;
+  --qc-text: #171717;
+  --qc-muted: #737373;
+  color: var(--qc-text);
   color-scheme: light;
   font-family:
     ui-sans-serif,
@@ -7,6 +10,13 @@
     BlinkMacSystemFont,
     "Segoe UI",
     sans-serif;
+}
+
+:root[data-theme="dark"] {
+  --qc-surface: #171717;
+  --qc-text: #fafafa;
+  --qc-muted: #a3a3a3;
+  color-scheme: dark;
 }
 
 html,
@@ -27,7 +37,7 @@ textarea {
   border: 0;
   outline: 0;
   background: transparent;
-  color: #171717;
+  color: var(--qc-text);
   font: inherit;
   font-size: 16px;
 }
@@ -40,5 +50,5 @@ textarea {
 }
 
 ::placeholder {
-  color: #737373;
+  color: var(--qc-muted);
 }

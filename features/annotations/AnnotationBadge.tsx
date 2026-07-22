@@ -19,15 +19,13 @@ export function AnnotationBadge({ annotation, left, number, onEdit, top }: Annot
       <Tooltip>
         <TooltipTrigger
           aria-label={messages.viewAnnotation(number)}
-          className="flex size-5 cursor-pointer items-center justify-center rounded-full bg-blue-600 text-[10px] font-semibold text-white shadow-lg ring-2 ring-white transition-transform duration-150 hover:scale-120 focus-visible:scale-120"
+          className="qc-cue qc-focus qc-pressable flex size-5 cursor-pointer items-center justify-center rounded-full text-xs font-semibold"
           onClick={() => onEdit(annotation)}
         >
           {number}
         </TooltipTrigger>
         <TooltipContent className="max-w-64">
-          <p className="truncate whitespace-nowrap text-white">
-            {annotation.comment || messages.noComment}
-          </p>
+          <p className="truncate whitespace-nowrap">{annotation.comment || messages.noComment}</p>
         </TooltipContent>
       </Tooltip>
     </div>

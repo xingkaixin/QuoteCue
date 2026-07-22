@@ -96,6 +96,7 @@ describe("AnnotationSummary", () => {
 
     await act(async () => {
       trigger?.click();
+      await nextFrame();
     });
 
     expect(portalContainer.textContent).toContain("Selected text:");
@@ -207,7 +208,10 @@ describe("AnnotationSummary", () => {
     const trigger = Array.from(container.querySelectorAll("button")).find(
       (element) => element.textContent?.trim() === "1 annotation",
     );
-    await act(async () => trigger?.click());
+    await act(async () => {
+      trigger?.click();
+      await nextFrame();
+    });
     await act(async () => {
       portalContainer
         .querySelector<HTMLButtonElement>('[aria-label="Delete annotation 1"]')
@@ -271,7 +275,10 @@ describe("AnnotationSummary", () => {
     const trigger = Array.from(container.querySelectorAll("button")).find(
       (element) => element.textContent?.trim() === "1 annotation",
     );
-    await act(async () => trigger?.click());
+    await act(async () => {
+      trigger?.click();
+      await nextFrame();
+    });
 
     expect(portalContainer.textContent).toContain("Source position changed");
     expect(
@@ -285,3 +292,7 @@ describe("AnnotationSummary", () => {
     await act(async () => root.unmount());
   });
 });
+
+function nextFrame() {
+  return new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+}

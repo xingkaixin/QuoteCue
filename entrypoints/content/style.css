@@ -1,13 +1,32 @@
 @import "tailwindcss";
 
 :host {
-  color: #171717;
+  --qc-surface: #ffffff;
+  --qc-text: #171717;
+  --qc-muted: #525252;
+  --qc-border: #8a8a8a;
+  --qc-accent: #2563eb;
+  --qc-danger: #b91c1c;
+  --qc-shadow: 0 18px 48px rgb(0 0 0 / 0.18);
+  color: var(--qc-text);
+  color-scheme: light;
   font-family:
     ui-sans-serif,
     -apple-system,
     BlinkMacSystemFont,
     "Segoe UI",
     sans-serif;
+}
+
+[data-quotecue-theme="dark"] {
+  --qc-surface: #171717;
+  --qc-text: #fafafa;
+  --qc-muted: #a3a3a3;
+  --qc-border: #737373;
+  --qc-accent: #2563eb;
+  --qc-danger: #f87171;
+  --qc-shadow: 0 18px 56px rgb(0 0 0 / 0.5);
+  color-scheme: dark;
 }
 
 #quotecue-root {
@@ -19,4 +38,75 @@
 
 .quotecue-interactive {
   pointer-events: auto;
+}
+
+.qc-surface {
+  border-color: var(--qc-border);
+  background: var(--qc-surface);
+  color: var(--qc-text);
+}
+
+.qc-muted {
+  color: var(--qc-muted);
+}
+
+.qc-accent-text {
+  color: var(--qc-accent);
+}
+
+.qc-accent-bg,
+.qc-primary {
+  background: var(--qc-accent);
+  color: #ffffff;
+}
+
+.qc-danger {
+  color: var(--qc-danger);
+}
+
+.qc-divider,
+.qc-divide > :not(:last-child) {
+  border-color: var(--qc-border);
+}
+
+.qc-elevated {
+  box-shadow: var(--qc-shadow);
+}
+
+.qc-tooltip {
+  background: var(--qc-text);
+  color: var(--qc-surface);
+}
+
+.qc-cue {
+  background: var(--qc-accent);
+  color: #ffffff;
+  box-shadow:
+    0 0 0 2px var(--qc-surface),
+    0 8px 20px rgb(0 0 0 / 0.22);
+}
+
+.qc-pressable {
+  transition:
+    background-color 140ms ease,
+    color 140ms ease,
+    opacity 140ms ease,
+    transform 120ms ease;
+}
+
+.qc-focus:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--qc-accent) 55%, transparent);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .qc-hover:hover {
+    background: color-mix(in srgb, var(--qc-text) 7%, var(--qc-surface));
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .qc-pressable:active {
+    transform: scale(0.97);
+  }
 }

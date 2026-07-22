@@ -21,13 +21,13 @@ export function TooltipContent({ children, className, ...props }: TooltipContent
         <TooltipPrimitive.Popup
           data-quotecue-portal=""
           className={cn(
-            "max-w-72 origin-[var(--transform-origin)] rounded-lg bg-neutral-950 px-3 py-2 text-xs leading-5 text-white shadow-xl",
+            "qc-tooltip qc-elevated max-w-72 origin-[var(--transform-origin)] rounded-lg px-3 py-2 text-xs leading-5",
             className,
           )}
           {...props}
         >
           {children}
-          <TooltipPrimitive.Arrow className="size-2 rotate-45 bg-neutral-950" />
+          <TooltipPrimitive.Arrow className="qc-tooltip size-2 rotate-45" />
         </TooltipPrimitive.Popup>
       </TooltipPrimitive.Positioner>
     </TooltipPrimitive.Portal>

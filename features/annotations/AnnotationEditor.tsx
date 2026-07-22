@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useI18n } from "@/features/i18n/I18nProvider";
 
 import type { DraftAnnotation, SelectionDraft } from "./annotation";
-import { annotationEditorPosition } from "./annotation-editor-position";
+import { useAnnotationEditorPosition } from "./annotation-editor-position";
 import { DiscardChangesConfirmation } from "./DiscardChangesConfirmation";
 import { SecureTextField, type SecureTextFieldHandle } from "./SecureTextField";
 import { useDiscardConfirmation } from "./use-discard-confirmation";
@@ -44,13 +44,14 @@ export function AnnotationEditor({
     isDirty: comment !== annotation.comment,
     onDiscard: onCancel,
   });
+  const position = useAnnotationEditorPosition(draft, editorRef, EDITOR_SIZE);
 
   useEffect(focusEditor, [focusEditor]);
   useOutsideDiscard(editorRef, requestDiscard);
 
   return (
     <div
-      className="quotecue-interactive fixed w-[380px] rounded-3xl border border-neutral-200 bg-white p-4 text-neutral-950 shadow-2xl"
+      className="quotecue-interactive qc-surface qc-elevated fixed w-[380px] max-w-[calc(100dvw-1.5rem)] overflow-y-auto rounded-3xl border p-4"
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget)) {
           requestDiscard();
@@ -63,7 +64,7 @@ export function AnnotationEditor({
         }
       }}
       ref={editorRef}
-      style={annotationEditorPosition(draft, EDITOR_SIZE)}
+      style={position}
     >
       <div inert={isConfirmingDiscard}>
         <SecureTextField

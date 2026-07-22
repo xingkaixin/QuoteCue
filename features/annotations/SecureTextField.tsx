@@ -10,6 +10,8 @@ import {
 } from "react";
 import { browser } from "wxt/browser";
 
+import { useHostTheme } from "@/features/theme/HostThemeProvider";
+
 import {
   decodeSecureFieldEvent,
   SECURE_FIELD_INIT,
@@ -21,7 +23,7 @@ export type SecureTextFieldHandle = {
   focus: () => void;
 };
 
-type SecureTextFieldProps = SecureFieldConfig & {
+type SecureTextFieldProps = Omit<SecureFieldConfig, "theme"> & {
   className?: string;
   onBlur?: FocusEventHandler<HTMLIFrameElement>;
   onCancel: () => void;
@@ -34,14 +36,22 @@ export const SecureTextField = forwardRef<SecureTextFieldHandle, SecureTextField
     { ariaLabel, className, kind, name, onBlur, onCancel, onChange, onSave, placeholder, value },
     ref,
   ) {
+    const theme = useHostTheme();
     const [token] = useState(() => crypto.randomUUID());
     const frameUrl = browser.runtime.getURL(`/secure-field.html#${encodeURIComponent(token)}`);
     const frameRef = useRef<HTMLIFrameElement>(null);
     const portRef = useRef<MessagePort | null>(null);
-    const configRef = useRef<SecureFieldConfig>({ ariaLabel, kind, name, placeholder, value });
+    const configRef = useRef<SecureFieldConfig>({
+      ariaLabel,
+      kind,
+      name,
+      placeholder,
+      theme,
+      value,
+    });
     const handlersRef = useRef({ onCancel, onChange, onSave });
 
-    configRef.current = { ariaLabel, kind, name, placeholder, value };
+    configRef.current = { ariaLabel, kind, name, placeholder, theme, value };
     handlersRef.current = { onCancel, onChange, onSave };
 
     const handleFieldEvent = useCallback((event: MessageEvent<unknown>) => {
@@ -73,6 +83,10 @@ export const SecureTextField = forwardRef<SecureTextFieldHandle, SecureTextField
     useEffect(() => {
       portRef.current?.postMessage({ type: "set-value", value });
     }, [value]);
+
+    useEffect(() => {
+      portRef.current?.postMessage({ type: "set-theme", theme });
+    }, [theme]);
 
     useEffect(
       () => () => {

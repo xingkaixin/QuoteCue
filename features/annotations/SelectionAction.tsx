@@ -20,7 +20,7 @@ export function SelectionAction({ draft, onActivate, onDismiss }: SelectionActio
   return (
     <Button
       aria-label={messages.addAnnotation}
-      className="quotecue-interactive fixed rounded-full shadow-lg"
+      className="quotecue-interactive qc-elevated fixed rounded-full"
       onClick={onActivate}
       onKeyDown={(event) => {
         if (event.key === "Escape") {

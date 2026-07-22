@@ -72,6 +72,7 @@ describe("SecureTextField", () => {
         type: "quotecue:secure-field:init",
         config: expect.objectContaining({
           name: "quotecue-annotation-comment",
+          theme: "light",
           value: "private annotation",
         }),
       }),

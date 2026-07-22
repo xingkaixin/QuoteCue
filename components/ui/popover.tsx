@@ -26,7 +26,7 @@ export function PopoverContent({ children, className, ...props }: PopoverContent
         <PopoverPrimitive.Popup
           data-quotecue-portal=""
           className={cn(
-            "w-80 origin-[var(--transform-origin)] rounded-2xl border border-neutral-200 bg-white p-2 text-neutral-950 shadow-2xl outline-none",
+            "qc-surface qc-elevated w-80 origin-[var(--transform-origin)] rounded-2xl border p-2 outline-none",
             className,
           )}
           {...props}

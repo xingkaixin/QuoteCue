@@ -14,13 +14,13 @@ export function DraftPersistenceStatus(props: DraftPersistenceStatusProps) {
   return (
     <div
       aria-live="polite"
-      className="quotecue-interactive fixed right-4 top-4 flex max-w-80 items-center gap-3 rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-sm text-neutral-700 shadow-lg"
+      className="quotecue-interactive qc-surface qc-elevated fixed right-4 top-4 flex max-w-80 items-center gap-3 rounded-xl border px-3 py-2.5 text-sm"
       role="status"
     >
       {isLoading ? (
         <LoaderCircle
           aria-hidden="true"
-          className="size-4 shrink-0 animate-spin text-neutral-400 motion-reduce:animate-none"
+          className="qc-muted size-4 shrink-0 animate-spin motion-reduce:animate-none"
         />
       ) : (
         <AlertTriangle aria-hidden="true" className="size-4 shrink-0 text-amber-600" />

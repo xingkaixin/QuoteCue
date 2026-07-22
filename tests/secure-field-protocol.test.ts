@@ -12,6 +12,7 @@ const config = {
   kind: "textarea" as const,
   name: "quotecue-annotation-comment",
   placeholder: "Add a comment",
+  theme: "dark" as const,
   value: "private annotation",
 };
 
@@ -35,6 +36,11 @@ describe("secure field protocol", () => {
       type: "set-value",
       value: "next",
     });
+    expect(decodeSecureFieldCommand({ type: "set-theme", theme: "dark" })).toEqual({
+      type: "set-theme",
+      theme: "dark",
+    });
+    expect(decodeSecureFieldCommand({ type: "set-theme", theme: "sepia" })).toBeNull();
     expect(decodeSecureFieldCommand({ type: "set-value", value: 1 })).toBeNull();
     expect(decodeSecureFieldEvent({ type: "save", value: "comment" })).toEqual({
       type: "save",

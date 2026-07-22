@@ -4,7 +4,7 @@ import { useCallback, useRef, useState } from "react";
 import { useI18n } from "@/features/i18n/I18nProvider";
 
 import type { SelectionDraft } from "./annotation";
-import { annotationEditorPosition } from "./annotation-editor-position";
+import { useAnnotationEditorPosition } from "./annotation-editor-position";
 import { DiscardChangesConfirmation } from "./DiscardChangesConfirmation";
 import { SecureTextField, type SecureTextFieldHandle } from "./SecureTextField";
 import { useDiscardConfirmation } from "./use-discard-confirmation";
@@ -31,12 +31,13 @@ export function AnnotationQuickInput({ draft, onClose, onSave }: AnnotationQuick
     isConfirmingDiscard,
     requestDiscard,
   } = useDiscardConfirmation({ focusEditor, isDirty: comment !== "", onDiscard: onClose });
+  const position = useAnnotationEditorPosition(draft, rootRef, QUICK_INPUT_SIZE);
 
   useOutsideDiscard(rootRef, requestDiscard);
 
   return (
     <div
-      className="quotecue-interactive fixed flex h-14 w-[360px] items-center gap-2 rounded-full border border-neutral-200 bg-white p-1.5 pl-5 shadow-xl"
+      className="quotecue-interactive qc-surface qc-elevated fixed flex h-14 w-[360px] max-w-[calc(100dvw-1.5rem)] items-center gap-2 rounded-full border p-1.5 pl-5"
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget)) {
           requestDiscard();
@@ -49,7 +50,7 @@ export function AnnotationQuickInput({ draft, onClose, onSave }: AnnotationQuick
         }
       }}
       ref={rootRef}
-      style={annotationEditorPosition(draft, QUICK_INPUT_SIZE)}
+      style={position}
     >
       <div className="contents" inert={isConfirmingDiscard}>
         <SecureTextField
@@ -66,7 +67,7 @@ export function AnnotationQuickInput({ draft, onClose, onSave }: AnnotationQuick
         />
         <button
           aria-label={messages.saveAnnotation}
-          className="flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full bg-neutral-900 text-white outline-none transition-colors hover:bg-neutral-700 focus-visible:ring-2 focus-visible:ring-blue-500/45"
+          className="qc-primary qc-pressable qc-focus flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full"
           onClick={() => onSave(comment.trim())}
           type="button"
         >

@@ -5,6 +5,7 @@ export type SecureFieldConfig = {
   kind: "input" | "textarea";
   name: string;
   placeholder: string;
+  theme: "dark" | "light";
   value: string;
 };
 
@@ -14,7 +15,10 @@ export type SecureFieldInitMessage = {
   config: SecureFieldConfig;
 };
 
-export type SecureFieldCommand = { type: "focus" } | { type: "set-value"; value: string };
+export type SecureFieldCommand =
+  | { type: "focus" }
+  | { type: "set-theme"; theme: "dark" | "light" }
+  | { type: "set-value"; value: string };
 
 export type SecureFieldEvent =
   | { type: "cancel" }
@@ -39,6 +43,9 @@ export function decodeSecureFieldCommand(value: unknown): SecureFieldCommand | n
   }
   if (value.type === "focus") {
     return { type: "focus" };
+  }
+  if (value.type === "set-theme" && (value.theme === "dark" || value.theme === "light")) {
+    return { type: "set-theme", theme: value.theme };
   }
   return value.type === "set-value" && typeof value.value === "string"
     ? { type: "set-value", value: value.value }
@@ -65,6 +72,7 @@ function decodeConfig(value: unknown): SecureFieldConfig | null {
     typeof value.ariaLabel !== "string" ||
     typeof value.name !== "string" ||
     typeof value.placeholder !== "string" ||
+    (value.theme !== "dark" && value.theme !== "light") ||
     typeof value.value !== "string"
   ) {
     return null;
@@ -74,6 +82,7 @@ function decodeConfig(value: unknown): SecureFieldConfig | null {
     kind: value.kind,
     name: value.name,
     placeholder: value.placeholder,
+    theme: value.theme,
     value: value.value,
   };
 }

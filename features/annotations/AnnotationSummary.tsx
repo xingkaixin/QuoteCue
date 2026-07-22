@@ -15,6 +15,7 @@ import type {
   ComposerRect,
 } from "@/features/chatgpt/use-annotated-composer-layout";
 import { useI18n } from "@/features/i18n/I18nProvider";
+import { useVisualViewportBounds } from "@/features/layout/use-visual-viewport";
 
 import type { DraftAnnotation } from "./annotation";
 
@@ -46,6 +47,7 @@ export function AnnotationSummary({
   unresolvedAnnotationIds,
 }: AnnotationSummaryProps) {
   const { messages } = useI18n();
+  const viewport = useVisualViewportBounds();
   const firstActionButtonRef = useRef<HTMLButtonElement>(null);
   const [isConfirmingClear, setIsConfirmingClear] = useState(false);
   const [transientStatus, setTransientStatus] = useState("");
@@ -78,16 +80,16 @@ export function AnnotationSummary({
     <Fragment>
       <div className="quotecue-interactive fixed flex items-center gap-2" style={position}>
         <Popover>
-          <div className="flex items-center rounded-xl border border-neutral-200 bg-white shadow-sm">
-            <PopoverTrigger className="flex h-9 cursor-pointer items-center gap-2 rounded-l-xl px-3 text-sm font-medium text-neutral-700 outline-none hover:bg-neutral-50 focus-visible:ring-2 focus-visible:ring-blue-500/45">
-              <MessageSquareText aria-hidden="true" className="size-4 text-blue-600" />
+          <div className="qc-surface flex items-center rounded-xl border shadow-sm">
+            <PopoverTrigger className="qc-hover qc-focus qc-pressable flex h-9 cursor-pointer items-center gap-2 rounded-l-xl px-3 text-sm font-medium">
+              <MessageSquareText aria-hidden="true" className="qc-accent-text size-4" />
               <span aria-live="polite">{messages.annotationCount(annotations.length)}</span>
             </PopoverTrigger>
             <button
               aria-label={
                 isConfirmingClear ? messages.confirmClearAnnotations : messages.clearAnnotations
               }
-              className="flex size-9 cursor-pointer items-center justify-center rounded-r-xl border-l border-neutral-200 text-neutral-600 outline-none hover:bg-neutral-50 hover:text-neutral-950 focus-visible:ring-2 focus-visible:ring-blue-500/45 disabled:cursor-default disabled:text-neutral-300"
+              className="qc-muted qc-divider qc-hover qc-focus qc-pressable flex size-9 cursor-pointer items-center justify-center rounded-r-xl border-l disabled:cursor-default disabled:opacity-40"
               disabled={hasPendingDeletion || annotations.length === 0}
               onClick={() => {
                 if (isConfirmingClear) {
@@ -106,42 +108,39 @@ export function AnnotationSummary({
 
           <PopoverContent
             aria-label={messages.annotationCount(annotations.length)}
-            className="w-96 overflow-hidden p-0"
+            className="w-[min(24rem,calc(100dvw-1.5rem))] overflow-hidden p-0"
             initialFocus={firstActionButtonRef}
+            style={{ maxWidth: Math.max(0, viewport.width - 24) }}
           >
-            <div className="max-h-80 divide-y divide-neutral-100 overscroll-contain overflow-y-auto">
+            <div className="qc-divide max-h-80 divide-y overscroll-contain overflow-y-auto">
               {annotations.map((annotation, index) => {
                 const isUnresolved = unresolvedAnnotationIds.has(annotation.id);
                 return (
                   <div className="group/row relative flex gap-2.5 px-3 py-3" key={annotation.id}>
-                    <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-blue-600 text-[11px] font-semibold text-white">
+                    <span className="qc-accent-bg flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
                       {index + 1}
                     </span>
                     <div className="min-w-0 flex-1 pr-20">
                       <div className="flex flex-wrap items-center gap-x-2">
-                        <p className="text-xs leading-4 text-neutral-600">
-                          {messages.selectedText}
-                        </p>
+                        <p className="qc-muted text-xs leading-4">{messages.selectedText}</p>
                         {isUnresolved && (
-                          <span className="text-xs font-medium leading-4 text-amber-800">
+                          <span className="qc-danger text-xs font-medium leading-4">
                             {messages.annotationSourceUnavailable}
                           </span>
                         )}
                       </div>
-                      <p className="line-clamp-2 text-xs leading-5 text-neutral-900 [overflow-wrap:anywhere]">
+                      <p className="line-clamp-2 text-xs leading-5 [overflow-wrap:anywhere]">
                         {annotation.anchor.quote}
                       </p>
-                      <p className="mt-2 text-xs leading-4 text-neutral-600">
-                        {messages.userComment}
-                      </p>
-                      <p className="line-clamp-3 text-xs leading-5 text-neutral-900 [overflow-wrap:anywhere]">
+                      <p className="qc-muted mt-2 text-xs leading-4">{messages.userComment}</p>
+                      <p className="line-clamp-3 text-xs leading-5 [overflow-wrap:anywhere]">
                         {annotation.comment || messages.noComment}
                       </p>
                     </div>
-                    <div className="absolute right-2.5 top-2.5 flex rounded-lg border border-neutral-200 bg-white opacity-0 shadow-sm transition-opacity group-hover/row:opacity-100 group-focus-within/row:opacity-100">
+                    <div className="qc-surface absolute right-2.5 top-2.5 flex rounded-lg border opacity-0 shadow-sm transition-opacity group-hover/row:opacity-100 group-focus-within/row:opacity-100">
                       <button
                         aria-label={messages.editNumberedAnnotation(index + 1)}
-                        className="flex size-8 cursor-pointer items-center justify-center text-neutral-600 outline-none hover:text-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500/45 disabled:cursor-default disabled:text-neutral-300"
+                        className="qc-muted qc-hover qc-focus flex size-8 cursor-pointer items-center justify-center disabled:cursor-default disabled:opacity-40"
                         disabled={isUnresolved}
                         onClick={() => onEdit(annotation)}
                         ref={index === 0 && !isUnresolved ? firstActionButtonRef : undefined}
@@ -151,7 +150,7 @@ export function AnnotationSummary({
                       </button>
                       <button
                         aria-label={messages.deleteNumberedAnnotation(index + 1)}
-                        className="flex size-8 cursor-pointer items-center justify-center border-l border-neutral-200 text-neutral-600 outline-none hover:text-red-700 focus-visible:ring-2 focus-visible:ring-blue-500/45"
+                        className="qc-danger qc-divider qc-hover qc-focus flex size-8 cursor-pointer items-center justify-center border-l disabled:opacity-40"
                         disabled={hasPendingDeletion}
                         onClick={() => onRemove(annotation.id)}
                         ref={index === 0 && isUnresolved ? firstActionButtonRef : undefined}
@@ -169,13 +168,13 @@ export function AnnotationSummary({
         {statusMessage && (
           <div
             aria-live="polite"
-            className="flex max-w-72 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-700 shadow-md"
+            className="qc-surface qc-elevated flex max-w-72 items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs"
             role="status"
           >
             <span>{statusMessage}</span>
             {hasPendingDeletion && (
               <button
-                className="shrink-0 cursor-pointer rounded px-1.5 py-1 font-semibold text-blue-700 outline-none hover:bg-blue-50 focus-visible:ring-2 focus-visible:ring-blue-500/45"
+                className="qc-accent-text qc-hover qc-focus shrink-0 cursor-pointer rounded px-1.5 py-1 font-semibold"
                 onClick={() => {
                   setTransientStatus(messages.annotationRestored);
                   onUndo();
@@ -191,7 +190,7 @@ export function AnnotationSummary({
       {sendStatus !== "idle" && (
         <div
           aria-live="polite"
-          className="fixed max-w-72 rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-700 shadow-md"
+          className="qc-surface qc-elevated fixed max-w-72 rounded-lg border px-2.5 py-1.5 text-xs"
           role="status"
           style={{
             left: sendPosition.left - 8,
@@ -206,7 +205,7 @@ export function AnnotationSummary({
         aria-label={
           sendStatus === "failed" ? messages.retrySendingAnnotations : messages.sendAnnotations
         }
-        className="quotecue-interactive fixed flex cursor-pointer items-center justify-center rounded-full bg-neutral-900 text-white shadow-sm transition-colors hover:bg-neutral-700 disabled:cursor-default disabled:bg-neutral-500"
+        className="quotecue-interactive qc-primary qc-pressable qc-focus fixed flex cursor-pointer items-center justify-center rounded-full shadow-sm disabled:cursor-default disabled:opacity-50"
         disabled={sendStatus === "pending"}
         onClick={onSend}
         style={sendPosition}

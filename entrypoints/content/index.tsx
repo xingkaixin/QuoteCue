@@ -5,6 +5,7 @@ import { createShadowRootUi } from "wxt/utils/content-script-ui/shadow-root";
 
 import { PortalContainerProvider } from "@/components/ui/portal-container";
 import { I18nProvider } from "@/features/i18n/I18nProvider";
+import { HostThemeProvider } from "@/features/theme/HostThemeProvider";
 
 import App from "./App";
 
@@ -52,9 +53,11 @@ export default defineContentScript({
         const root = ReactDOM.createRoot(app);
         root.render(
           <PortalContainerProvider container={container}>
-            <I18nProvider>
-              <App />
-            </I18nProvider>
+            <HostThemeProvider container={container}>
+              <I18nProvider>
+                <App />
+              </I18nProvider>
+            </HostThemeProvider>
           </PortalContainerProvider>,
         );
         return root;
