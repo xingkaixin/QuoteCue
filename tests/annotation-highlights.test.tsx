@@ -25,7 +25,6 @@ const annotation: DraftAnnotation = {
     end: 13,
   },
   comment: "",
-  createdAt: 1,
 };
 
 afterEach(() => {

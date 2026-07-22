@@ -15,7 +15,6 @@ const annotations: DraftAnnotation[] = [
       end: 19,
     },
     comment: "解释这里的基础设施具体包含什么",
-    createdAt: 1,
   },
   {
     id: "two",
@@ -28,7 +27,6 @@ const annotations: DraftAnnotation[] = [
       end: 48,
     },
     comment: "有没有真实的迁移成本数据？",
-    createdAt: 2,
   },
 ];
 

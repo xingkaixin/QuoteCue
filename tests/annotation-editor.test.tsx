@@ -15,7 +15,6 @@ const annotation = {
     end: 13,
   },
   comment: "saved comment",
-  createdAt: 1,
 };
 
 const draft = {

@@ -13,7 +13,7 @@ When a user creates an annotation, QuoteCue handles:
 - the text the user selected from a ChatGPT response;
 - a small amount of surrounding text and position information needed to restore the selection;
 - the annotation written by the user;
-- a randomly generated annotation identifier and creation time; and
+- a randomly generated annotation identifier; and
 - the ChatGPT conversation identifier from the page URL, used only to associate a draft with the
   correct conversation.
 

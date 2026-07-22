@@ -26,7 +26,6 @@ const annotation: DraftAnnotation = {
     end: 13,
   },
   comment: "draft A",
-  createdAt: 1,
 };
 
 let latestDrafts: ReturnType<typeof useDraftAnnotations>;

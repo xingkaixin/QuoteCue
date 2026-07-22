@@ -11,7 +11,6 @@ export type DraftAnnotation = {
   id: string;
   anchor: TextAnchor;
   comment: string;
-  createdAt: number;
 };
 
 export type SelectionDraft = {

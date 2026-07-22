@@ -40,7 +40,6 @@ export default function App() {
         id: crypto.randomUUID(),
         anchor: draft.anchor,
         comment: "",
-        createdAt: Date.now(),
       };
       addAnnotation(annotation);
       setEditor({ status: "quick", annotationId: annotation.id, draft });
