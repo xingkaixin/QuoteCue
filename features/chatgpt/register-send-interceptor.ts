@@ -58,13 +58,16 @@ type StartedSend = {
 
 export function registerSendInterceptor(options: SendInterceptorOptions) {
   let activeAttempt: SendAttempt | null = null;
+  let lastFailedAttempt: SendAttempt | null = null;
   let isDispatchingReplay = false;
   let isDisposed = false;
   let state: AnnotatedSendState = { status: "idle" };
 
   const setState = (nextState: AnnotatedSendState) => {
     state = nextState;
-    options.onStateChange?.(state);
+    if (!isDisposed) {
+      options.onStateChange?.(state);
+    }
   };
 
   const finishAccepted = (attempt: SendAttempt) => {
@@ -73,6 +76,7 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
     }
     attempt.controller.abort();
     activeAttempt = null;
+    lastFailedAttempt = null;
     options.onSendAccepted(attempt.revision);
     setState({ status: "idle" });
     attempt.resolve({ status: "accepted", revision: attempt.revision });
@@ -85,6 +89,7 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
     attempt.controller.abort();
     restoreComposerText(attempt.snapshot, attempt.compiledText);
     activeAttempt = null;
+    lastFailedAttempt = attempt;
     setState({ status: "failed", attemptId: attempt.id, reason });
     attempt.resolve({ status: "failed", reason });
   };
@@ -125,6 +130,7 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
   const beginSend = (
     initialButton: HTMLButtonElement | null,
     source: "custom" | "native",
+    retryOriginalText?: string,
   ): StartedSend => {
     if (isDisposed) {
       return failedResult("disposed");
@@ -148,9 +154,13 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
     if (!snapshot) {
       return failBeforeOwnership("composer-unavailable", source, setState);
     }
-    const compiledText = compileAnnotatedPrompt(annotations, snapshot.text, options.locale());
-    const attempt = createAttempt(snapshot, compiledText, revision);
+    const originalText =
+      retryOriginalText && snapshot.text.trim().length === 0 ? retryOriginalText : snapshot.text;
+    const ownedSnapshot = { ...snapshot, text: originalText };
+    const compiledText = compileAnnotatedPrompt(annotations, originalText, options.locale());
+    const attempt = createAttempt(ownedSnapshot, compiledText, revision);
     activeAttempt = attempt;
+    lastFailedAttempt = null;
     setState({ status: "preparing", attemptId: attempt.id });
 
     let isReplaced = false;
@@ -202,10 +212,12 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
 
   window.addEventListener("click", onClick, true);
   window.addEventListener("keydown", onKeyDown, true);
+  options.onStateChange?.(state);
 
   return {
     getState: () => state,
     submit: (button: HTMLButtonElement | null = null) => beginSend(button, "custom").result,
+    retry: () => beginSend(null, "custom", lastFailedAttempt?.snapshot.text).result,
     dispose() {
       if (isDisposed) {
         return;

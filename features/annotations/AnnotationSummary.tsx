@@ -1,4 +1,12 @@
-import { ArrowUp, MessageSquareText, Pencil, Trash2, X } from "lucide-react";
+import {
+  ArrowUp,
+  LoaderCircle,
+  MessageSquareText,
+  Pencil,
+  RotateCcw,
+  Trash2,
+  X,
+} from "lucide-react";
 import { Fragment } from "react";
 import { useState } from "react";
 
@@ -17,6 +25,7 @@ type AnnotationSummaryProps = {
   onRemove: (annotationId: string) => void;
   onSend: () => void;
   position: ComposerPosition;
+  sendStatus: "idle" | "pending" | "failed";
   sendPosition: ComposerRect;
 };
 
@@ -27,6 +36,7 @@ export function AnnotationSummary({
   onRemove,
   onSend,
   position,
+  sendStatus,
   sendPosition,
 }: AnnotationSummaryProps) {
   const { messages } = useI18n();
@@ -106,14 +116,40 @@ export function AnnotationSummary({
           </div>
         )}
       </div>
+      {sendStatus !== "idle" && (
+        <div
+          aria-live="polite"
+          className="fixed max-w-72 rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-600 shadow-md"
+          role="status"
+          style={{
+            left: sendPosition.left - 8,
+            top: sendPosition.top + sendPosition.height / 2,
+            transform: "translate(-100%, -50%)",
+          }}
+        >
+          {sendStatus === "pending" ? messages.sendingAnnotations : messages.sendAnnotationsFailed}
+        </div>
+      )}
       <button
-        aria-label={messages.sendAnnotations}
-        className="quotecue-interactive fixed flex cursor-pointer items-center justify-center rounded-full bg-neutral-900 text-white shadow-sm transition-colors hover:bg-neutral-700"
+        aria-label={
+          sendStatus === "failed" ? messages.retrySendingAnnotations : messages.sendAnnotations
+        }
+        className="quotecue-interactive fixed flex cursor-pointer items-center justify-center rounded-full bg-neutral-900 text-white shadow-sm transition-colors hover:bg-neutral-700 disabled:cursor-default disabled:bg-neutral-500"
+        disabled={sendStatus === "pending"}
         onClick={onSend}
         style={sendPosition}
         type="button"
       >
-        <ArrowUp className="size-5" />
+        {sendStatus === "pending" ? (
+          <LoaderCircle
+            aria-hidden="true"
+            className="size-5 animate-spin motion-reduce:animate-none"
+          />
+        ) : sendStatus === "failed" ? (
+          <RotateCcw aria-hidden="true" className="size-4.5" />
+        ) : (
+          <ArrowUp aria-hidden="true" className="size-5" />
+        )}
       </button>
     </Fragment>
   );

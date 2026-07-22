@@ -19,7 +19,10 @@ import { useAnnotationHighlights } from "@/features/annotations/use-annotation-h
 import { useConversationKey } from "@/features/annotations/use-conversation-key";
 import { useDraftAnnotations } from "@/features/annotations/use-draft-annotations";
 import { useSelectionOverlay } from "@/features/annotations/use-selection-overlay";
-import { registerSendInterceptor } from "@/features/chatgpt/register-send-interceptor";
+import {
+  registerSendInterceptor,
+  type AnnotatedSendState,
+} from "@/features/chatgpt/register-send-interceptor";
 import { useAnnotatedComposerLayout } from "@/features/chatgpt/use-annotated-composer-layout";
 import { useI18n } from "@/features/i18n/I18nProvider";
 
@@ -38,6 +41,7 @@ export default function App() {
     clearAnnotations,
     retry,
   } = useDraftAnnotations(conversationKey);
+  const [sendState, setSendState] = useState<AnnotatedSendState>({ status: "idle" });
   const [editor, setEditor] = useState<AnnotationEditorState>({ status: "hidden" });
   const startAnnotation = useCallback(
     (draft: SelectionDraft) => {
@@ -59,7 +63,10 @@ export default function App() {
   const badgePositions = useAnnotationHighlights(annotations, activeAnnotationId);
   const composerLayout = useAnnotatedComposerLayout(isHydrated && annotations.length > 0);
   const draftRef = useRef({ annotations, revision: draftRevision ?? 0 });
-  const submitAnnotationsRef = useRef<() => void>(() => undefined);
+  const sendActionsRef = useRef<SendActions>({
+    submit: () => undefined,
+    retry: () => undefined,
+  });
 
   draftRef.current = { annotations, revision: draftRevision ?? 0 };
 
@@ -72,13 +79,19 @@ export default function App() {
           setEditor({ status: "hidden" });
         }
       },
+      onStateChange: setSendState,
     });
-    submitAnnotationsRef.current = () => {
-      void interceptor.submit();
+    sendActionsRef.current = {
+      retry: () => {
+        void interceptor.retry();
+      },
+      submit: () => {
+        void interceptor.submit();
+      },
     };
 
     return () => {
-      submitAnnotationsRef.current = () => undefined;
+      sendActionsRef.current = { submit: () => undefined, retry: () => undefined };
       interceptor.dispose();
     };
   }, [clearAnnotations, locale]);
@@ -169,14 +182,30 @@ export default function App() {
             }}
             onEdit={openEditor}
             onRemove={deleteAnnotation}
-            onSend={() => submitAnnotationsRef.current()}
+            onSend={() => {
+              const action = sendState.status === "failed" ? "retry" : "submit";
+              sendActionsRef.current[action]();
+            }}
             position={composerLayout.summary}
+            sendStatus={annotationSendStatus(sendState)}
             sendPosition={composerLayout.send}
           />
         )}
       </div>
     </TooltipProvider>
   );
+}
+
+type SendActions = {
+  submit: () => void;
+  retry: () => void;
+};
+
+function annotationSendStatus(state: AnnotatedSendState): "idle" | "pending" | "failed" {
+  if (state.status === "idle") {
+    return "idle";
+  }
+  return state.status === "failed" ? "failed" : "pending";
 }
 
 function isRangeVisible(range: Range) {

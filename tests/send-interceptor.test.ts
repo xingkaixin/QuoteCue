@@ -203,6 +203,37 @@ describe("registerSendInterceptor", () => {
     interceptor.dispose();
   });
 
+  it("retries an unconfirmed send with the original supplemental question", async () => {
+    vi.useFakeTimers();
+    const composer = installComposer("original question");
+    const onSendAccepted = vi.fn();
+    const interceptor = createInterceptor(onSendAccepted);
+    let sendCount = 0;
+    let retriedText = "";
+    installSendButton(() => {
+      sendCount += 1;
+      const compiledText = composer.textContent ?? "";
+      composer.replaceChildren();
+      if (sendCount === 2) {
+        retriedText = compiledText;
+        installUserMessage("retried-user-message", compiledText);
+      }
+    });
+
+    const firstResult = interceptor.submit();
+    await vi.advanceTimersByTimeAsync(15_001);
+    await expect(firstResult).resolves.toEqual({
+      status: "failed",
+      reason: "confirmation-timeout",
+    });
+
+    await expect(interceptor.retry()).resolves.toEqual({ status: "accepted", revision: 1 });
+    expect(retriedText).toContain("[Supplemental question]\noriginal question");
+    expect(retriedText.match(/\[Annotation 1\]/g)).toHaveLength(1);
+    expect(onSendAccepted).toHaveBeenCalledWith(1);
+    interceptor.dispose();
+  });
+
   it("accepts a matching user message after the composer node is replaced", async () => {
     const composer = installComposer("original question");
     const onSendAccepted = vi.fn();

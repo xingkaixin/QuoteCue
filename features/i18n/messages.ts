@@ -19,6 +19,9 @@ export type Messages = {
   selectedText: string;
   sendAnnotations: string;
   retry: string;
+  retrySendingAnnotations: string;
+  sendAnnotationsFailed: string;
+  sendingAnnotations: string;
   userComment: string;
   viewAnnotation: (number: number) => string;
   prompt: {
@@ -49,6 +52,9 @@ const ENGLISH: Messages = {
   selectedText: "Selected text:",
   sendAnnotations: "Send annotations",
   retry: "Retry",
+  retrySendingAnnotations: "Retry sending annotations",
+  sendAnnotationsFailed: "Sending wasn't confirmed. Your annotation draft was kept.",
+  sendingAnnotations: "Sending annotations…",
   userComment: "User comment:",
   viewAnnotation: (number) => `View annotation ${number}`,
   prompt: {
@@ -79,6 +85,9 @@ const SIMPLIFIED_CHINESE: Messages = {
   selectedText: "选中文本：",
   sendAnnotations: "发送批注",
   retry: "重试",
+  retrySendingAnnotations: "重试发送批注",
+  sendAnnotationsFailed: "未能确认发送，批注草稿仍已保留。",
+  sendingAnnotations: "正在发送批注…",
   userComment: "用户批注：",
   viewAnnotation: (number) => `查看批注 ${number}`,
   prompt: {
@@ -109,6 +118,9 @@ const TRADITIONAL_CHINESE: Messages = {
   selectedText: "選取文字：",
   sendAnnotations: "傳送批註",
   retry: "重試",
+  retrySendingAnnotations: "重試傳送批註",
+  sendAnnotationsFailed: "未能確認傳送，批註草稿仍已保留。",
+  sendingAnnotations: "正在傳送批註…",
   userComment: "使用者批註：",
   viewAnnotation: (number) => `查看批註 ${number}`,
   prompt: {
