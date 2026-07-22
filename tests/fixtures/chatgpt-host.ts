@@ -84,7 +84,7 @@ export function appendSendButton(onClick: () => void = () => undefined) {
   return sendButton;
 }
 
-export function appendSelectionToolbar() {
+export function appendSelectionToolbar(rect = new DOMRect(100, 150, 200, 36)) {
   const toolbar = document.createElement("div");
   toolbar.style.position = "fixed";
   const actionRow = document.createElement("div");
@@ -98,17 +98,7 @@ export function appendSelectionToolbar() {
   toolbar.append(actionRow);
   Object.defineProperty(toolbar, "getBoundingClientRect", {
     configurable: true,
-    value: () => ({
-      bottom: 186,
-      height: 36,
-      left: 100,
-      right: 300,
-      top: 150,
-      width: 200,
-      x: 100,
-      y: 150,
-      toJSON: () => ({}),
-    }),
+    value: () => rect,
   });
   document.body.append(toolbar);
   return { actionRow, firstAction, lastAction, toolbar };

@@ -74,7 +74,7 @@ export function useSelectionOverlay(
         onActivate({ anchor: selectionDraft.anchor, rect: selectionDraft.rect });
         dismissSelectionAction();
       },
-      rect: selectionDraft.toolbarAnchorRect,
+      rect: selectionDraft.actionRect,
     });
   }, [dismissSelectionAction, messages.addAnnotation, onActivate, selectionDraft]);
 }

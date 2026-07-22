@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it } from "vitest";
 import type { TextAnchor } from "@/features/annotations/annotation";
 import {
   rangeEndpointRect,
-  rangeStartRect,
   restoreTextAnchorFromIndex,
 } from "@/features/annotations/selection-anchor";
 
@@ -125,20 +124,6 @@ describe("selection anchors", () => {
     } as unknown as Range;
 
     expect(rangeEndpointRect(range)).toBe(lastLine);
-  });
-
-  it("uses the first visible fragment as the native toolbar anchor", () => {
-    const firstFragment = new DOMRect(40, 80, 120, 20);
-    const range = {
-      getBoundingClientRect: () => new DOMRect(40, 80, 600, 44),
-      getClientRects: () => [
-        new DOMRect(40, 80, 0, 0),
-        firstFragment,
-        new DOMRect(40, 104, 240, 20),
-      ],
-    } as unknown as Range;
-
-    expect(rangeStartRect(range)).toBe(firstFragment);
   });
 });
 

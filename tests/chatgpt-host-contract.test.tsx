@@ -38,15 +38,6 @@ afterEach(() => {
 
 describe("ChatGPT host contract", () => {
   it("mounts a delayed native-styled first action without localized text", async () => {
-    const elementsFromPointDescriptor = Object.getOwnPropertyDescriptor(
-      document,
-      "elementsFromPoint",
-    );
-    let hitElements: Element[] = [];
-    Object.defineProperty(document, "elementsFromPoint", {
-      configurable: true,
-      value: () => hitElements,
-    });
     const onActivate = vi.fn();
     const stop = createChatGptHost({ document, window }).selection.mountAction({
       label: "Add QuoteCue annotation",
@@ -60,8 +51,7 @@ describe("ChatGPT host contract", () => {
         width: 260,
       },
     });
-    const { actionRow, firstAction, toolbar } = appendSelectionToolbar();
-    hitElements = [firstAction, actionRow, toolbar];
+    const { actionRow, firstAction } = appendSelectionToolbar();
     await Promise.resolve();
 
     const action = actionRow.querySelector<HTMLButtonElement>("[data-quotecue-native-action]");
@@ -75,11 +65,25 @@ describe("ChatGPT host contract", () => {
     expect(onActivate).toHaveBeenCalledOnce();
     expect(action?.isConnected).toBe(false);
     stop();
-    if (elementsFromPointDescriptor) {
-      Object.defineProperty(document, "elementsFromPoint", elementsFromPointDescriptor);
-    } else {
-      Reflect.deleteProperty(document, "elementsFromPoint");
-    }
+  });
+
+  it("finds the native toolbar after block and inline position fallbacks", () => {
+    const { actionRow } = appendSelectionToolbar(new DOMRect(768, 49, 196, 36));
+    const stop = createChatGptHost({ document, window }).selection.mountAction({
+      label: "Add QuoteCue annotation",
+      onActivate: vi.fn(),
+      rect: {
+        bottom: 88,
+        height: 62,
+        left: 436,
+        right: 897,
+        top: 26,
+        width: 461,
+      },
+    });
+
+    expect(actionRow.querySelector("[data-quotecue-native-action]")).not.toBeNull();
+    stop();
   });
 
   it("covers selection, layout, annotated send confirmation, and cleanup", async () => {

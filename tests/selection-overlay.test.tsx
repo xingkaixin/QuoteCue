@@ -7,24 +7,16 @@ import { useSelectionOverlay } from "@/features/annotations/use-selection-overla
 
 import { appendAssistantMessage, appendSelectionToolbar } from "./fixtures/chatgpt-host";
 
-const elementsFromPointDescriptor = Object.getOwnPropertyDescriptor(document, "elementsFromPoint");
-
 afterEach(() => {
   window.getSelection()?.removeAllRanges();
   document.body.replaceChildren();
-  if (elementsFromPointDescriptor) {
-    Object.defineProperty(document, "elementsFromPoint", elementsFromPointDescriptor);
-  } else {
-    Reflect.deleteProperty(document, "elementsFromPoint");
-  }
 });
 
 describe("selection overlay", () => {
   it("inserts the QuoteCue action first with native styling", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     const message = appendAssistantMessage("assistant-one", "selected answer");
-    const { actionRow, firstAction, toolbar } = appendSelectionToolbar();
-    installToolbarHitTest(toolbar, firstAction, actionRow);
+    const { actionRow, firstAction } = appendSelectionToolbar();
     const container = document.createElement("div");
     document.body.append(container);
     const root = createRoot(container);
@@ -54,8 +46,7 @@ describe("selection overlay", () => {
   it("supports keyboard selection and dismisses on Escape or viewport changes", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     const message = appendAssistantMessage("assistant-one", "keyboard selection");
-    const { actionRow, firstAction, toolbar } = appendSelectionToolbar();
-    installToolbarHitTest(toolbar, firstAction, actionRow);
+    const { actionRow } = appendSelectionToolbar();
     const container = document.createElement("div");
     document.body.append(container);
     const root = createRoot(container);
@@ -89,8 +80,7 @@ describe("selection overlay", () => {
   it("ignores events retargeted from the closed QuoteCue shadow", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     const message = appendAssistantMessage("assistant-one", "private selection");
-    const { actionRow, firstAction, toolbar } = appendSelectionToolbar();
-    installToolbarHitTest(toolbar, firstAction, actionRow);
+    const { actionRow } = appendSelectionToolbar();
     const container = document.createElement("div");
     document.body.append(container);
     const root = createRoot(container);
@@ -151,16 +141,6 @@ function selectText(node: ChildNode | null) {
     ],
   });
   window.getSelection()?.addRange(range);
-}
-
-function installToolbarHitTest(toolbar: HTMLElement, ...elements: Element[]) {
-  Object.defineProperty(document, "elementsFromPoint", {
-    configurable: true,
-    value: (x: number) => {
-      const rect = toolbar.getBoundingClientRect();
-      return x >= rect.left && x <= rect.right ? [...elements, toolbar] : [];
-    },
-  });
 }
 
 function nextFrame() {

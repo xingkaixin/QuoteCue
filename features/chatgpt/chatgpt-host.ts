@@ -6,7 +6,6 @@ import type {
 } from "@/features/annotations/annotation";
 import {
   rangeEndpointRect,
-  rangeStartRect,
   restoreTextAnchorFromIndex,
 } from "@/features/annotations/selection-anchor";
 
@@ -112,7 +111,9 @@ export function createChatGptHost(environment: HostEnvironment) {
     const start = textOffset(message, range.startContainer, range.startOffset);
     const end = textOffset(message, range.endContainer, range.endOffset);
     const messageText = message.textContent ?? "";
+    const actionRect = rangeRect(range);
     return available({
+      actionRect,
       anchor: {
         end,
         messageId: message.dataset.messageId ?? "",
@@ -122,62 +123,55 @@ export function createChatGptHost(environment: HostEnvironment) {
         suffix: messageText.slice(end, end + CONTEXT_LENGTH),
       },
       rect: rectangleSnapshot(rangeEndpointRect(range)),
-      toolbarAnchorRect: rectangleSnapshot(rangeStartRect(range)),
     });
   }
 
   function selectionToolbar(selectionRect: SelectionDraft["rect"]) {
-    if (typeof hostDocument.elementsFromPoint !== "function") {
-      return null;
-    }
-
-    const pointX = Math.min(
-      Math.max(selectionRect.left + selectionRect.width / 2, 0),
-      hostWindow.innerWidth - 1,
-    );
-    const pointY = Math.min(Math.max(selectionRect.top - 8, 0), hostWindow.innerHeight - 1);
-    const visited = new Set<Element>();
-
-    for (const element of hostDocument.elementsFromPoint(pointX, pointY)) {
-      let candidate: Element | null = element;
-      while (candidate && candidate !== hostDocument.body) {
-        if (visited.has(candidate)) {
-          break;
-        }
-        visited.add(candidate);
-
-        const rect = candidate.getBoundingClientRect();
-        const verticalGap = selectionRect.top - rect.bottom;
-        const horizontalOverlap =
-          Math.min(selectionRect.right, rect.right) - Math.max(selectionRect.left, rect.left);
-        const isSelectionToolbar =
-          !candidate.closest("[data-quotecue-host]") &&
-          hostWindow.getComputedStyle(candidate).position === "fixed" &&
-          candidate.querySelector("button") !== null &&
-          rect.width >= 80 &&
-          rect.height >= 28 &&
-          rect.height <= 80 &&
-          verticalGap >= -4 &&
-          verticalGap <= 24 &&
-          horizontalOverlap > 0;
-        if (isSelectionToolbar) {
-          const actionRow = Array.from(candidate.querySelectorAll("button"))
-            .map((button) => button.parentElement)
-            .find(
-              (parent): parent is HTMLElement =>
-                parent !== null &&
-                parent.children.length > 0 &&
-                Array.from(parent.children).every((child) => child.tagName === "BUTTON"),
-            );
-          if (actionRow) {
-            return actionRow;
-          }
-        }
-        candidate = candidate.parentElement;
+    let closest: SelectionToolbarCandidate | null = null;
+    for (const element of hostDocument.body.children) {
+      const candidate = selectionToolbarCandidate(element, selectionRect);
+      if (candidate && (!closest || candidate.distance < closest.distance)) {
+        closest = candidate;
       }
     }
 
-    return null;
+    return closest?.actionRow ?? null;
+  }
+
+  function selectionToolbarCandidate(
+    candidate: Element,
+    selectionRect: SelectionDraft["rect"],
+  ): SelectionToolbarCandidate | null {
+    const rect = candidate.getBoundingClientRect();
+    const horizontalOverlap =
+      Math.min(selectionRect.right, rect.right) - Math.max(selectionRect.left, rect.left);
+    const verticalDistance = Math.max(
+      selectionRect.top - rect.bottom,
+      rect.top - selectionRect.bottom,
+      0,
+    );
+    const isNearbyFixedToolbar =
+      !candidate.matches("[data-quotecue-host]") &&
+      hostWindow.getComputedStyle(candidate).position === "fixed" &&
+      rect.width >= 80 &&
+      rect.width <= 480 &&
+      rect.height >= 28 &&
+      rect.height <= 80 &&
+      horizontalOverlap > 0 &&
+      verticalDistance <= 24;
+    if (!isNearbyFixedToolbar) {
+      return null;
+    }
+
+    const actionRow = Array.from(candidate.querySelectorAll("button"))
+      .map((button) => button.parentElement)
+      .find(
+        (parent): parent is HTMLElement =>
+          parent !== null &&
+          parent.children.length > 0 &&
+          Array.from(parent.children).every((child) => child.tagName === "BUTTON"),
+      );
+    return actionRow ? { actionRow, distance: verticalDistance } : null;
   }
 
   function mountSelectionAction(options: {
@@ -609,6 +603,19 @@ function available<T>(value: T): ChatGptHostResult<T> {
 
 function unavailable(reason: ChatGptHostUnavailableReason): ChatGptHostResult<never> {
   return { reason, status: "unavailable" };
+}
+
+type SelectionToolbarCandidate = {
+  actionRow: HTMLElement;
+  distance: number;
+};
+
+function rangeRect(range: Range) {
+  const rect =
+    typeof range.getBoundingClientRect === "function"
+      ? range.getBoundingClientRect()
+      : new DOMRect();
+  return rectangleSnapshot(rect);
 }
 
 function rectangleSnapshot(rect: SelectionDraft["rect"]) {
