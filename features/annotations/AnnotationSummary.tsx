@@ -7,9 +7,9 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { Fragment } from "react";
-import { useState } from "react";
+import { Fragment, useRef } from "react";
 
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type {
   ComposerPosition,
   ComposerRect,
@@ -40,86 +40,79 @@ export function AnnotationSummary({
   sendPosition,
 }: AnnotationSummaryProps) {
   const { messages } = useI18n();
-  const [isOpen, setIsOpen] = useState(false);
+  const firstEditButtonRef = useRef<HTMLButtonElement>(null);
 
   return (
     <Fragment>
-      <div
-        className="quotecue-interactive group fixed"
-        onMouseEnter={() => setIsOpen(true)}
-        onMouseLeave={() => setIsOpen(false)}
-        style={position}
-      >
-        <div className="flex items-center rounded-xl border border-neutral-200 bg-white shadow-sm">
-          <div className="flex h-9 items-center gap-2 rounded-xl px-3 text-sm font-medium text-neutral-700">
-            <MessageSquareText className="size-4 text-blue-600" />
-            {messages.annotationCount(annotations.length)}
+      <div className="quotecue-interactive fixed" style={position}>
+        <Popover>
+          <div className="flex items-center rounded-xl border border-neutral-200 bg-white shadow-sm">
+            <PopoverTrigger className="flex h-9 cursor-pointer items-center gap-2 rounded-l-xl px-3 text-sm font-medium text-neutral-700 outline-none hover:bg-neutral-50 focus-visible:ring-2 focus-visible:ring-blue-500/45">
+              <MessageSquareText aria-hidden="true" className="size-4 text-blue-600" />
+              {messages.annotationCount(annotations.length)}
+            </PopoverTrigger>
+            <button
+              aria-label={messages.clearAnnotations}
+              className="flex size-9 cursor-pointer items-center justify-center rounded-r-xl border-l border-neutral-200 text-neutral-600 outline-none hover:bg-neutral-50 hover:text-neutral-950 focus-visible:ring-2 focus-visible:ring-blue-500/45"
+              onClick={onClear}
+              type="button"
+            >
+              <X aria-hidden="true" className="size-4" />
+            </button>
           </div>
-          <button
-            aria-label={messages.clearAnnotations}
-            className="flex size-9 cursor-pointer items-center justify-center rounded-r-xl border-l border-neutral-100 text-neutral-400 opacity-0 transition-opacity hover:bg-neutral-50 hover:text-neutral-700 focus-visible:opacity-100 group-hover:opacity-100"
-            onClick={onClear}
-            type="button"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
 
-        {isOpen && (
-          <div
+          <PopoverContent
             aria-label={messages.annotationCount(annotations.length)}
-            className="absolute bottom-10 left-0 w-96 overflow-hidden rounded-2xl border border-neutral-200 bg-white text-neutral-950 shadow-2xl"
-            data-quotecue-portal=""
-            role="dialog"
+            className="w-96 overflow-hidden p-0"
+            initialFocus={firstEditButtonRef}
           >
-            <div className="max-h-80 divide-y divide-neutral-100 overflow-auto">
+            <div className="max-h-80 divide-y divide-neutral-100 overscroll-contain overflow-y-auto">
               {annotations.map((annotation, index) => (
-                <div className="group/row relative flex gap-2.5 px-3 py-2.5" key={annotation.id}>
-                  <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-blue-600 text-[10px] font-semibold text-white">
+                <div className="group/row relative flex gap-2.5 px-3 py-3" key={annotation.id}>
+                  <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-blue-600 text-[11px] font-semibold text-white">
                     {index + 1}
                   </span>
-                  <div className="min-w-0 flex-1 pr-12">
-                    <p className="text-[10px] leading-4 text-neutral-400">
-                      {messages.selectedText}
-                    </p>
-                    <p className="line-clamp-2 text-xs leading-4 text-neutral-800">
+                  <div className="min-w-0 flex-1 pr-20">
+                    <p className="text-xs leading-4 text-neutral-600">{messages.selectedText}</p>
+                    <p className="line-clamp-2 text-xs leading-5 text-neutral-900 [overflow-wrap:anywhere]">
                       {annotation.anchor.quote}
                     </p>
-                    <p className="mt-1.5 text-[10px] leading-4 text-neutral-400">
+                    <p className="mt-2 text-xs leading-4 text-neutral-600">
                       {messages.userComment}
                     </p>
-                    <p className="text-xs leading-4 text-neutral-800">
+                    <p className="line-clamp-3 text-xs leading-5 text-neutral-900 [overflow-wrap:anywhere]">
                       {annotation.comment || messages.noComment}
                     </p>
                   </div>
-                  <div className="absolute right-2.5 top-2.5 flex rounded-lg border border-neutral-200 bg-white opacity-0 shadow-sm transition-opacity group-hover/row:opacity-100">
+                  <div className="absolute right-2.5 top-2.5 flex rounded-lg border border-neutral-200 bg-white opacity-0 shadow-sm transition-opacity group-hover/row:opacity-100 group-focus-within/row:opacity-100">
                     <button
                       aria-label={messages.editNumberedAnnotation(index + 1)}
-                      className="flex size-8 cursor-pointer items-center justify-center text-neutral-400 hover:text-blue-600"
+                      className="flex size-8 cursor-pointer items-center justify-center text-neutral-600 outline-none hover:text-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500/45"
                       onClick={() => onEdit(annotation)}
+                      ref={index === 0 ? firstEditButtonRef : undefined}
                       type="button"
                     >
-                      <Pencil className="size-3.5" />
+                      <Pencil aria-hidden="true" className="size-3.5" />
                     </button>
                     <button
                       aria-label={messages.deleteNumberedAnnotation(index + 1)}
-                      className="flex size-8 cursor-pointer items-center justify-center border-l border-neutral-100 text-neutral-400 hover:text-red-500"
+                      className="flex size-8 cursor-pointer items-center justify-center border-l border-neutral-200 text-neutral-600 outline-none hover:text-red-700 focus-visible:ring-2 focus-visible:ring-blue-500/45"
                       onClick={() => onRemove(annotation.id)}
                       type="button"
                     >
-                      <Trash2 className="size-3.5" />
+                      <Trash2 aria-hidden="true" className="size-3.5" />
                     </button>
                   </div>
                 </div>
               ))}
             </div>
-          </div>
-        )}
+          </PopoverContent>
+        </Popover>
       </div>
       {sendStatus !== "idle" && (
         <div
           aria-live="polite"
-          className="fixed max-w-72 rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-600 shadow-md"
+          className="fixed max-w-72 rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5 text-xs text-neutral-700 shadow-md"
           role="status"
           style={{
             left: sendPosition.left - 8,

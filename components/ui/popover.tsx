@@ -17,7 +17,12 @@ export function PopoverContent({ children, className, ...props }: PopoverContent
   const container = usePortalContainer();
   return (
     <PopoverPrimitive.Portal container={container}>
-      <PopoverPrimitive.Positioner className="z-50" align="start" side="top" sideOffset={8}>
+      <PopoverPrimitive.Positioner
+        className="z-[2147483647]"
+        align="start"
+        side="top"
+        sideOffset={8}
+      >
         <PopoverPrimitive.Popup
           data-quotecue-portal=""
           className={cn(
