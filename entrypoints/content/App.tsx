@@ -58,7 +58,7 @@ export default function App() {
   const badgePositions = useAnnotationHighlights(annotations, activeAnnotationId);
   const composerLayout = useAnnotatedComposerLayout(isHydrated && annotations.length > 0);
   const annotationsRef = useRef(annotations);
-  const submitAnnotationsRef = useRef<() => boolean>(() => false);
+  const submitAnnotationsRef = useRef<() => void>(() => undefined);
 
   annotationsRef.current = annotations;
 
@@ -71,10 +71,12 @@ export default function App() {
         setEditor({ status: "hidden" });
       },
     });
-    submitAnnotationsRef.current = interceptor.submit;
+    submitAnnotationsRef.current = () => {
+      void interceptor.submit();
+    };
 
     return () => {
-      submitAnnotationsRef.current = () => false;
+      submitAnnotationsRef.current = () => undefined;
       interceptor.dispose();
     };
   }, [clearAnnotations, locale]);

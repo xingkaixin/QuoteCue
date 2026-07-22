@@ -3,21 +3,39 @@ const SEND_BUTTON_SELECTOR = "button[data-testid='send-button']";
 const SEND_ACCEPT_TIMEOUT_MS = 15_000;
 const SEND_BUTTON_APPEAR_TIMEOUT_MS = 2_000;
 
-export function composerText() {
-  return composerElement()?.innerText ?? "";
+export type ComposerSnapshot = {
+  element: HTMLElement;
+  text: string;
+};
+
+type AcceptedSendWatcherOptions = {
+  onAccepted: () => void;
+  onTimeout: () => void;
+  signal: AbortSignal;
+};
+
+export function currentComposerSnapshot(): ComposerSnapshot | null {
+  const element = composerElement();
+  return element ? { element, text: composerText(element) } : null;
 }
 
-export function replaceComposerText(text: string) {
-  const composer = composerElement();
-  if (!composer) {
+export function composerText(composer: HTMLElement) {
+  return typeof composer.innerText === "string" ? composer.innerText : (composer.textContent ?? "");
+}
+
+export function replaceComposerText(composer: HTMLElement, text: string) {
+  if (!composer.isConnected) {
     return false;
   }
 
   composer.focus();
   selectComposerContents(composer);
 
-  if (document.execCommand("insertText", false, text)) {
-    return true;
+  if (
+    typeof document.execCommand === "function" &&
+    document.execCommand("insertText", false, text)
+  ) {
+    return composerText(composer) === text;
   }
 
   const paragraph = document.createElement("p");
@@ -26,7 +44,14 @@ export function replaceComposerText(text: string) {
   composer.dispatchEvent(
     new InputEvent("input", { bubbles: true, data: text, inputType: "insertText" }),
   );
-  return true;
+  return composerText(composer) === text;
+}
+
+export function restoreComposerText(snapshot: ComposerSnapshot, expectedText: string) {
+  if (composerElement() !== snapshot.element || composerText(snapshot.element) !== expectedText) {
+    return false;
+  }
+  return replaceComposerText(snapshot.element, snapshot.text);
 }
 
 export function sendButtonFromEvent(event: Event) {
@@ -38,31 +63,50 @@ export function currentSendButton() {
   return document.querySelector<HTMLButtonElement>(SEND_BUTTON_SELECTOR);
 }
 
-export function waitForSendButton() {
+export function isSendButtonAvailable(
+  button: HTMLButtonElement | null,
+): button is HTMLButtonElement {
+  return (
+    button !== null &&
+    button.isConnected &&
+    !button.disabled &&
+    button.getAttribute("aria-disabled") !== "true"
+  );
+}
+
+export function waitForSendButton(signal: AbortSignal) {
   const current = currentSendButton();
-  if (current) {
+  if (isSendButtonAvailable(current)) {
     return Promise.resolve(current);
+  }
+  if (signal.aborted) {
+    return Promise.resolve(null);
   }
 
   return new Promise<HTMLButtonElement | null>((resolve) => {
-    const observer = new MutationObserver(() => {
-      const button = currentSendButton();
-      if (!button) {
-        return;
-      }
-      cleanup();
-      resolve(button);
-    });
-    const timeout = window.setTimeout(() => {
-      cleanup();
-      resolve(null);
-    }, SEND_BUTTON_APPEAR_TIMEOUT_MS);
-    const cleanup = () => {
+    const finish = (button: HTMLButtonElement | null) => {
       observer.disconnect();
       window.clearTimeout(timeout);
+      signal.removeEventListener("abort", onAbort);
+      resolve(button);
     };
+    const findButton = () => {
+      const button = currentSendButton();
+      if (isSendButtonAvailable(button)) {
+        finish(button);
+      }
+    };
+    const onAbort = () => finish(null);
+    const observer = new MutationObserver(findButton);
+    const timeout = window.setTimeout(() => finish(null), SEND_BUTTON_APPEAR_TIMEOUT_MS);
 
-    observer.observe(document.body, { childList: true, subtree: true });
+    signal.addEventListener("abort", onAbort, { once: true });
+    observer.observe(document.body, {
+      attributeFilter: ["aria-disabled", "disabled"],
+      attributes: true,
+      childList: true,
+      subtree: true,
+    });
   });
 }
 
@@ -80,28 +124,32 @@ export function isComposerEnter(event: KeyboardEvent) {
   );
 }
 
-export function watchForAcceptedSend(onAccepted: () => void) {
+export function watchForAcceptedSend(options: AcceptedSendWatcherOptions) {
   const composer = composerElement();
   if (!composer) {
-    return () => {};
+    options.onTimeout();
+    return () => undefined;
   }
 
-  let timeout: number;
-  const observer = new MutationObserver(() => {
-    if (composer.innerText.trim().length > 0) {
-      return;
-    }
-
-    cleanup();
-    onAccepted();
-  });
   const cleanup = () => {
     observer.disconnect();
     window.clearTimeout(timeout);
+    options.signal.removeEventListener("abort", cleanup);
   };
+  const observer = new MutationObserver(() => {
+    if (composerText(composer).trim().length > 0) {
+      return;
+    }
+    cleanup();
+    options.onAccepted();
+  });
+  const timeout = window.setTimeout(() => {
+    cleanup();
+    options.onTimeout();
+  }, SEND_ACCEPT_TIMEOUT_MS);
 
+  options.signal.addEventListener("abort", cleanup, { once: true });
   observer.observe(composer, { childList: true, characterData: true, subtree: true });
-  timeout = window.setTimeout(cleanup, SEND_ACCEPT_TIMEOUT_MS);
   return cleanup;
 }
 
