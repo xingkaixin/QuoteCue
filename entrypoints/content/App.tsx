@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AnnotationBadge } from "@/features/annotations/AnnotationBadge";
@@ -70,6 +70,10 @@ export default function App() {
   const { badgePositions, unresolvedAnnotationIds } = useAnnotationHighlights(
     visibleAnnotations,
     activeAnnotationId,
+  );
+  const annotationNumberById = useMemo(
+    () => new Map(visibleAnnotations.map(({ id }, index) => [id, index + 1])),
+    [visibleAnnotations],
   );
   const composerLayout = useAnnotatedComposerLayout(isHydrated && annotations.length > 0);
   const draftRef = useRef({ annotations: visibleAnnotations, revision: draftRevision ?? 0 });
@@ -194,7 +198,7 @@ export default function App() {
           <AnnotationBadge
             {...position}
             key={position.annotation.id}
-            number={visibleAnnotations.findIndex(({ id }) => id === position.annotation.id) + 1}
+            number={annotationNumberById.get(position.annotation.id) ?? 0}
             onEdit={openEditor}
           />
         ))}

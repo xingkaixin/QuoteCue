@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { DraftAnnotation } from "./annotation";
-import { restoreTextAnchor } from "./selection-anchor";
+import { assistantMessageIndex, restoreTextAnchorFromIndex } from "./selection-anchor";
 
 const HIGHLIGHT_NAME = "quotecue-annotations";
 const HIGHLIGHT_STYLE_ID = "quotecue-highlight-style";
+
 export type AnnotationBadgePosition = {
   annotation: DraftAnnotation;
   left: number;
@@ -16,46 +17,91 @@ type AnnotationHighlightLayout = {
   unresolvedAnnotationIds: ReadonlySet<string>;
 };
 
+type AnnotationProjection = AnnotationHighlightLayout & {
+  activeRange: Range | null;
+};
+
+const EMPTY_LAYOUT: AnnotationHighlightLayout = {
+  badgePositions: [],
+  unresolvedAnnotationIds: new Set(),
+};
+
 export function useAnnotationHighlights(
   annotations: DraftAnnotation[],
   activeAnnotationId: string | null,
 ) {
-  const [layout, setLayout] = useState<AnnotationHighlightLayout>({
-    badgePositions: [],
-    unresolvedAnnotationIds: new Set(),
-  });
+  const [layout, setLayout] = useState<AnnotationHighlightLayout>(EMPTY_LAYOUT);
+  const layoutRef = useRef(layout);
 
   useEffect(() => {
-    ensureHighlightStyle();
-    let positionFrame = 0;
+    if (annotations.length === 0) {
+      clearHighlights();
+      commitLayout(EMPTY_LAYOUT);
+      return;
+    }
 
-    const refreshPositions = () => {
-      cancelAnimationFrame(positionFrame);
-      positionFrame = requestAnimationFrame(() => {
-        setLayout(annotationHighlightLayout(annotations));
+    ensureHighlightStyle();
+    let projectionFrame: number | undefined;
+    const scheduleProjection = () => {
+      if (projectionFrame !== undefined) {
+        return;
+      }
+      projectionFrame = requestAnimationFrame(() => {
+        projectionFrame = undefined;
+        const projection = projectAnnotations(annotations, activeAnnotationId);
+        renderActiveHighlight(projection.activeRange);
+        commitLayout(projection);
       });
     };
-    const refreshAnchors = () => {
-      renderActiveHighlight(annotations, activeAnnotationId);
-      refreshPositions();
-    };
-    const observer = new MutationObserver(refreshAnchors);
+    const observer = new MutationObserver(scheduleProjection);
 
     observer.observe(document.body, { childList: true, subtree: true });
-    window.addEventListener("resize", refreshPositions);
-    window.addEventListener("scroll", refreshPositions, true);
-    refreshAnchors();
+    window.addEventListener("resize", scheduleProjection);
+    window.addEventListener("scroll", scheduleProjection, true);
+    scheduleProjection();
 
     return () => {
       observer.disconnect();
-      window.removeEventListener("resize", refreshPositions);
-      window.removeEventListener("scroll", refreshPositions, true);
-      cancelAnimationFrame(positionFrame);
+      window.removeEventListener("resize", scheduleProjection);
+      window.removeEventListener("scroll", scheduleProjection, true);
+      if (projectionFrame !== undefined) {
+        cancelAnimationFrame(projectionFrame);
+      }
       clearHighlights();
     };
+
+    function commitLayout(nextLayout: AnnotationHighlightLayout) {
+      if (sameLayout(layoutRef.current, nextLayout)) {
+        return;
+      }
+      layoutRef.current = nextLayout;
+      setLayout(nextLayout);
+    }
   }, [activeAnnotationId, annotations]);
 
   return layout;
+}
+
+function projectAnnotations(
+  annotations: DraftAnnotation[],
+  activeAnnotationId: string | null,
+): AnnotationProjection {
+  const messageIndex = assistantMessageIndex();
+  const entries = annotations.map((annotation) => ({
+    annotation,
+    range: restoreTextAnchorFromIndex(annotation.anchor, messageIndex),
+  }));
+  const unresolvedAnnotationIds = new Set(
+    entries.filter(({ range }) => range === null).map(({ annotation }) => annotation.id),
+  );
+  const badgePositions = entries
+    .filter((entry): entry is { annotation: DraftAnnotation; range: Range } => entry.range !== null)
+    .map(({ annotation, range }) => badgePosition(annotation, range))
+    .filter((position): position is AnnotationBadgePosition => position !== null);
+  const activeRange =
+    entries.find(({ annotation }) => annotation.id === activeAnnotationId)?.range ?? null;
+
+  return { activeRange, badgePositions, unresolvedAnnotationIds };
 }
 
 function ensureHighlightStyle() {
@@ -71,29 +117,11 @@ function ensureHighlightStyle() {
   document.head.append(style);
 }
 
-function renderActiveHighlight(annotations: DraftAnnotation[], activeAnnotationId: string | null) {
+function renderActiveHighlight(activeRange: Range | null) {
   clearHighlights();
-  const activeAnnotation = annotations.find(({ id }) => id === activeAnnotationId);
-  const activeRange = activeAnnotation ? restoreTextAnchor(activeAnnotation.anchor) : null;
   if (activeRange && "highlights" in CSS && typeof Highlight !== "undefined") {
     CSS.highlights.set(HIGHLIGHT_NAME, new Highlight(activeRange));
   }
-}
-
-function annotationHighlightLayout(annotations: DraftAnnotation[]): AnnotationHighlightLayout {
-  const entries = annotations.map((annotation) => ({
-    annotation,
-    range: restoreTextAnchor(annotation.anchor),
-  }));
-  const unresolvedAnnotationIds = new Set(
-    entries.filter(({ range }) => range === null).map(({ annotation }) => annotation.id),
-  );
-  const badgePositions = entries
-    .filter((entry): entry is { annotation: DraftAnnotation; range: Range } => entry.range !== null)
-    .map(({ annotation, range }) => badgePosition(annotation, range))
-    .filter((position): position is AnnotationBadgePosition => position !== null);
-
-  return { badgePositions, unresolvedAnnotationIds };
 }
 
 function badgePosition(annotation: DraftAnnotation, range: Range) {
@@ -109,6 +137,25 @@ function badgePosition(annotation: DraftAnnotation, range: Range) {
     left: Math.min(rect.right + 5, window.innerWidth - 30),
     top: Math.max(rect.top - 10, 6),
   };
+}
+
+function sameLayout(left: AnnotationHighlightLayout, right: AnnotationHighlightLayout) {
+  return (
+    sameIds(left.unresolvedAnnotationIds, right.unresolvedAnnotationIds) &&
+    left.badgePositions.length === right.badgePositions.length &&
+    left.badgePositions.every((position, index) => {
+      const other = right.badgePositions[index];
+      return (
+        position.annotation === other?.annotation &&
+        position.left === other.left &&
+        position.top === other.top
+      );
+    })
+  );
+}
+
+function sameIds(left: ReadonlySet<string>, right: ReadonlySet<string>) {
+  return left.size === right.size && Array.from(left).every((id) => right.has(id));
 }
 
 function clearHighlights() {

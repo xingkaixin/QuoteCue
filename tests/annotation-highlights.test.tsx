@@ -6,9 +6,11 @@ import type { DraftAnnotation } from "@/features/annotations/annotation";
 import { useAnnotationHighlights } from "@/features/annotations/use-annotation-highlights";
 
 const geometry = vi.hoisted(() => ({ isResolved: true, top: 200 }));
+let renderCount = 0;
 
 vi.mock("@/features/annotations/selection-anchor", () => ({
-  restoreTextAnchor: () =>
+  assistantMessageIndex: () => new Map(),
+  restoreTextAnchorFromIndex: () =>
     geometry.isResolved
       ? {
           getBoundingClientRect: () => annotationRect(),
@@ -29,10 +31,12 @@ const annotation: DraftAnnotation = {
   },
   comment: "",
 };
+const annotationList = [annotation];
 
 afterEach(() => {
   geometry.isResolved = true;
   geometry.top = 200;
+  renderCount = 0;
   vi.useRealTimers();
   vi.restoreAllMocks();
   document.body.replaceChildren();
@@ -43,8 +47,11 @@ describe("annotation badge scrolling", () => {
     vi.useFakeTimers();
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     Object.defineProperty(globalThis, "CSS", { configurable: true, value: {} });
+    const host = document.createElement("div");
+    const shadowRoot = host.attachShadow({ mode: "open" });
     const container = document.createElement("div");
-    document.body.append(container);
+    shadowRoot.append(container);
+    document.body.append(host);
     const root = createRoot(container);
 
     await act(async () => root.render(<HighlightHarness />));
@@ -78,10 +85,32 @@ describe("annotation badge scrolling", () => {
 
     await act(async () => root.unmount());
   });
+
+  it("preserves layout identity when projected geometry is unchanged", async () => {
+    vi.useFakeTimers();
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    Object.defineProperty(globalThis, "CSS", { configurable: true, value: {} });
+    const host = document.createElement("div");
+    const shadowRoot = host.attachShadow({ mode: "open" });
+    const container = document.createElement("div");
+    shadowRoot.append(container);
+    document.body.append(host);
+    const root = createRoot(container);
+
+    await act(async () => root.render(<HighlightHarness />));
+    await act(async () => vi.advanceTimersByTimeAsync(17));
+    const rendersAfterInitialProjection = renderCount;
+    window.dispatchEvent(new Event("scroll"));
+    await act(async () => vi.advanceTimersByTimeAsync(17));
+
+    expect(renderCount).toBe(rendersAfterInitialProjection);
+    await act(async () => root.unmount());
+  });
 });
 
 function HighlightHarness() {
-  const { badgePositions, unresolvedAnnotationIds } = useAnnotationHighlights([annotation], null);
+  renderCount += 1;
+  const { badgePositions, unresolvedAnnotationIds } = useAnnotationHighlights(annotationList, null);
   return (
     <output
       data-top={badgePositions[0]?.top}

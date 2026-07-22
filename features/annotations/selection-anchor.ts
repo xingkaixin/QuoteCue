@@ -52,11 +52,30 @@ export function captureAssistantSelection(
 }
 
 export function restoreTextAnchor(anchor: TextAnchor) {
-  const message = assistantMessageById(anchor.messageId);
-  if (!message) {
-    return null;
-  }
+  const message = assistantMessageIndex().get(anchor.messageId);
+  return message ? restoreTextAnchorInMessage(anchor, message) : null;
+}
 
+export function restoreTextAnchorFromIndex(
+  anchor: TextAnchor,
+  messageIndex: ReadonlyMap<string, HTMLElement>,
+) {
+  const message = messageIndex.get(anchor.messageId);
+  return message ? restoreTextAnchorInMessage(anchor, message) : null;
+}
+
+export function assistantMessageIndex(root: ParentNode = document) {
+  const index = new Map<string, HTMLElement>();
+  for (const message of root.querySelectorAll<HTMLElement>(ASSISTANT_MESSAGE_SELECTOR)) {
+    const messageId = message.dataset.messageId;
+    if (messageId && !index.has(messageId)) {
+      index.set(messageId, message);
+    }
+  }
+  return index;
+}
+
+function restoreTextAnchorInMessage(anchor: TextAnchor, message: HTMLElement) {
   const messageText = message.textContent ?? "";
   const start = resolvedStartOffset(messageText, anchor);
 
@@ -97,11 +116,6 @@ function assistantMessageForRange(range: Range) {
 function closestAssistantMessage(node: Node) {
   const element = node instanceof Element ? node : node.parentElement;
   return element?.closest<HTMLElement>(ASSISTANT_MESSAGE_SELECTOR) ?? null;
-}
-
-function assistantMessageById(messageId: string) {
-  const messages = document.querySelectorAll<HTMLElement>(ASSISTANT_MESSAGE_SELECTOR);
-  return Array.from(messages).find((message) => message.dataset.messageId === messageId) ?? null;
 }
 
 function textOffset(root: HTMLElement, boundary: RangeBoundary) {
