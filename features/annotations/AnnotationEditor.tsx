@@ -52,11 +52,6 @@ export function AnnotationEditor({
   return (
     <div
       className="quotecue-interactive qc-surface qc-elevated fixed w-[380px] max-w-[calc(100dvw-1.5rem)] overflow-y-auto rounded-3xl border p-4"
-      onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) {
-          requestDiscard();
-        }
-      }}
       onKeyDown={(event) => {
         if (event.key === "Escape" && isConfirmingDiscard) {
           event.preventDefault();

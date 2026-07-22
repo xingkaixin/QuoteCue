@@ -167,15 +167,37 @@ describe("AnnotationEditor", () => {
 
     await act(async () => root.render(editor(onCancel)));
     const textarea = container.querySelector<HTMLTextAreaElement>("textarea");
+    const outsideButton = document.createElement("button");
+    document.body.append(outsideButton);
     await act(async () => changeTextarea(textarea, "changed comment"));
     await act(async () => {
-      textarea?.dispatchEvent(
-        new FocusEvent("focusout", { bubbles: true, relatedTarget: document.body }),
-      );
+      outsideButton.focus();
+      await focusSettled();
     });
 
     expect(onCancel).not.toHaveBeenCalled();
     expect(container.querySelector('[role="alertdialog"]')).not.toBeNull();
+
+    await act(async () => root.unmount());
+  });
+
+  it("keeps the editor open while focus settles inside its secure field", async () => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    const onCancel = vi.fn();
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    await act(async () => root.render(editor(onCancel)));
+    const textarea = container.querySelector<HTMLTextAreaElement>("textarea");
+    expect(document.activeElement).toBe(textarea);
+    await act(async () => {
+      textarea?.dispatchEvent(new FocusEvent("focusout", { bubbles: true, relatedTarget: null }));
+      await focusSettled();
+    });
+
+    expect(onCancel).not.toHaveBeenCalled();
+    expect(container.querySelector('[role="alertdialog"]')).toBeNull();
 
     await act(async () => root.unmount());
   });
@@ -255,4 +277,9 @@ function findButton(container: HTMLElement, label: string) {
 
 function nextFrame() {
   return new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+}
+
+async function focusSettled() {
+  await nextFrame();
+  await nextFrame();
 }

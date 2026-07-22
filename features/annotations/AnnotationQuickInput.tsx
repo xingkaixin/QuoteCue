@@ -38,11 +38,6 @@ export function AnnotationQuickInput({ draft, onClose, onSave }: AnnotationQuick
   return (
     <div
       className="quotecue-interactive qc-surface qc-elevated fixed flex h-14 w-[360px] max-w-[calc(100dvw-1.5rem)] items-center gap-2 rounded-full border p-1.5 pl-5"
-      onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) {
-          requestDiscard();
-        }
-      }}
       onKeyDown={(event) => {
         if (event.key === "Escape" && isConfirmingDiscard) {
           event.preventDefault();
