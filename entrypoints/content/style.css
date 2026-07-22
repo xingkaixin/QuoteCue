@@ -115,8 +115,8 @@
 }
 
 .qc-tooltip {
-  background: var(--qc-text);
-  color: var(--qc-surface);
+  background: var(--qc-surface);
+  color: var(--qc-text);
 }
 
 .qc-cue {
