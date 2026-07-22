@@ -8,8 +8,8 @@ import { useAnnotationHighlights } from "@/features/annotations/use-annotation-h
 const geometry = vi.hoisted(() => ({ isResolved: true, top: 200 }));
 let renderCount = 0;
 
-vi.mock("@/features/annotations/selection-anchor", () => ({
-  assistantMessageIndex: () => new Map(),
+vi.mock("@/features/annotations/selection-anchor", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/annotations/selection-anchor")>()),
   restoreTextAnchorFromIndex: () =>
     geometry.isResolved
       ? {

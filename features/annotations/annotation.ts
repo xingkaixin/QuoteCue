@@ -13,9 +13,15 @@ export type DraftAnnotation = {
   comment: string;
 };
 
+export type SelectionRect = Pick<DOMRect, "bottom" | "height" | "left" | "right" | "top" | "width">;
+
 export type SelectionDraft = {
   anchor: TextAnchor;
-  rect: Pick<DOMRect, "bottom" | "height" | "left" | "right" | "top" | "width">;
+  rect: SelectionRect;
+};
+
+export type SelectionCapture = SelectionDraft & {
+  actionRect: SelectionRect;
 };
 
 export type AnnotationEditorState =

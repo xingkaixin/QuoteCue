@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
-import type { SelectionDraft } from "./annotation";
+import type { SelectionCapture, SelectionDraft } from "./annotation";
 import { isQuoteCueEvent } from "./is-quotecue-event";
 import { chatGptHost } from "@/features/chatgpt/chatgpt-host";
 import { useI18n } from "@/features/i18n/I18nProvider";
@@ -11,7 +11,7 @@ export function useSelectionOverlay(
   onActivate: (draft: SelectionDraft) => void,
 ) {
   const { messages } = useI18n();
-  const [selectionDraft, setSelectionDraft] = useState<SelectionDraft | null>(null);
+  const [selectionDraft, setSelectionDraft] = useState<SelectionCapture | null>(null);
   const dismissSelectionAction = useCallback(() => setSelectionDraft(null), []);
 
   useEffect(dismissSelectionAction, [dismissSelectionAction, resetKey]);
@@ -71,10 +71,10 @@ export function useSelectionOverlay(
     return chatGptHost.selection.mountAction({
       label: messages.addAnnotation,
       onActivate: () => {
-        onActivate(selectionDraft);
+        onActivate({ anchor: selectionDraft.anchor, rect: selectionDraft.rect });
         dismissSelectionAction();
       },
-      rect: selectionDraft.rect,
+      rect: selectionDraft.actionRect,
     });
   }, [dismissSelectionAction, messages.addAnnotation, onActivate, selectionDraft]);
 }

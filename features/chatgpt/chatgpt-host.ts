@@ -1,9 +1,13 @@
 import type {
   DraftAnnotation,
+  SelectionCapture,
   SelectionDraft,
   TextAnchor,
 } from "@/features/annotations/annotation";
-import { restoreTextAnchorFromIndex } from "@/features/annotations/selection-anchor";
+import {
+  rangeEndpointRect,
+  restoreTextAnchorFromIndex,
+} from "@/features/annotations/selection-anchor";
 
 const ASSISTANT_MESSAGE_SELECTOR = '[data-message-author-role="assistant"][data-message-id]';
 const COMPOSER_SELECTOR = "#prompt-textarea[contenteditable='true']";
@@ -89,7 +93,7 @@ export function createChatGptHost(environment: HostEnvironment) {
 
   function captureSelection(
     selection = hostWindow.getSelection(),
-  ): ChatGptHostResult<SelectionDraft> {
+  ): ChatGptHostResult<SelectionCapture> {
     if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
       return unavailable("selection-unavailable");
     }
@@ -104,7 +108,9 @@ export function createChatGptHost(environment: HostEnvironment) {
     const start = textOffset(message, range.startContainer, range.startOffset);
     const end = textOffset(message, range.endContainer, range.endOffset);
     const messageText = message.textContent ?? "";
+    const actionRect = rangeRect(range);
     return available({
+      actionRect,
       anchor: {
         end,
         messageId: message.dataset.messageId ?? "",
@@ -113,7 +119,7 @@ export function createChatGptHost(environment: HostEnvironment) {
         start,
         suffix: messageText.slice(end, end + CONTEXT_LENGTH),
       },
-      rect: rangeRect(range),
+      rect: rectangleSnapshot(rangeEndpointRect(range)),
     });
   }
 
@@ -225,7 +231,10 @@ export function createChatGptHost(environment: HostEnvironment) {
   function selectionDraft(annotation: DraftAnnotation): ChatGptHostResult<SelectionDraft> {
     const restored = restoreAnchor(annotation.anchor);
     return restored.status === "available"
-      ? available({ anchor: annotation.anchor, rect: rangeRect(restored.value) })
+      ? available({
+          anchor: annotation.anchor,
+          rect: rectangleSnapshot(rangeEndpointRect(restored.value)),
+        })
       : restored;
   }
 

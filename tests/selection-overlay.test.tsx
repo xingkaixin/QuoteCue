@@ -46,6 +46,7 @@ describe("selection overlay", () => {
     await act(async () => action?.click());
     expect(onActivate).toHaveBeenCalledOnce();
     expect(onActivate.mock.calls[0]?.[0].anchor.quote).toBe("selected answer");
+    expect(onActivate.mock.calls[0]?.[0].rect.top).toBe(240);
 
     await act(async () => root.unmount());
   });
@@ -133,13 +134,21 @@ function selectText(node: ChildNode | null) {
   Object.defineProperty(range, "getBoundingClientRect", {
     configurable: true,
     value: () => ({
-      bottom: 220,
-      height: 20,
+      bottom: 260,
+      height: 60,
       left: 100,
       right: 360,
       top: 200,
       width: 260,
     }),
+  });
+  Object.defineProperty(range, "getClientRects", {
+    configurable: true,
+    value: () => [
+      new DOMRect(100, 200, 260, 20),
+      new DOMRect(100, 220, 260, 20),
+      new DOMRect(100, 240, 120, 20),
+    ],
   });
   window.getSelection()?.addRange(range);
 }

@@ -9,6 +9,7 @@ import {
 import { chatGptHost } from "@/features/chatgpt/chatgpt-host";
 
 import type { SelectionDraft } from "./annotation";
+import { rangeEndpointRect } from "./selection-anchor";
 
 const VIEWPORT_MARGIN = 12;
 const ANCHOR_GAP = 10;
@@ -37,7 +38,7 @@ export function useAnnotationEditorPosition(
       };
       const restored = chatGptHost.selection.restore(draft.anchor);
       const restoredRect =
-        restored.status === "available" ? restored.value.getBoundingClientRect() : null;
+        restored.status === "available" ? rangeEndpointRect(restored.value) : null;
       const nextPosition = annotationEditorPosition(
         { ...draft, rect: restoredRect ?? draft.rect },
         size,
@@ -80,10 +81,30 @@ export function annotationEditorPosition(
     viewport.left + viewport.width - renderedWidth - horizontalMargin,
   );
   const maxTop = Math.max(minTop, viewport.top + viewport.height - renderedHeight - verticalMargin);
-  const left = Math.min(Math.max(draft.rect.right + ANCHOR_GAP, minLeft), maxLeft);
-  const top = Math.min(Math.max(draft.rect.bottom + ANCHOR_GAP, minTop), maxTop);
+  const left = adjacentPosition(
+    draft.rect.right + ANCHOR_GAP,
+    draft.rect.left - renderedWidth - ANCHOR_GAP,
+    minLeft,
+    maxLeft,
+  );
+  const top = adjacentPosition(
+    draft.rect.bottom + ANCHOR_GAP,
+    draft.rect.top - renderedHeight - ANCHOR_GAP,
+    minTop,
+    maxTop,
+  );
 
   return { left, maxHeight, maxWidth, top };
+}
+
+function adjacentPosition(after: number, before: number, minimum: number, maximum: number) {
+  if (after >= minimum && after <= maximum) {
+    return after;
+  }
+  if (before >= minimum && before <= maximum) {
+    return before;
+  }
+  return Math.min(Math.max(after, minimum), maximum);
 }
 
 function samePosition(

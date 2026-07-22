@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { chatGptHost } from "@/features/chatgpt/chatgpt-host";
 
 import type { DraftAnnotation } from "./annotation";
-import { restoreTextAnchorFromIndex } from "./selection-anchor";
+import { rangeEndpointRect, restoreTextAnchorFromIndex } from "./selection-anchor";
 
 const HIGHLIGHT_NAME = "quotecue-annotations";
 const HIGHLIGHT_STYLE_ID = "quotecue-highlight-style";
@@ -121,8 +121,7 @@ function renderActiveHighlight(activeRange: Range | null) {
 }
 
 function badgePosition(annotation: DraftAnnotation, range: Range) {
-  const rects = Array.from(range.getClientRects());
-  const rect = rects.at(-1) ?? range.getBoundingClientRect();
+  const rect = rangeEndpointRect(range);
 
   if (rect.width === 0 || rect.bottom < 0 || rect.top > window.innerHeight) {
     return null;

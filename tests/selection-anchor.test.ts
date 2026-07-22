@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import type { TextAnchor } from "@/features/annotations/annotation";
-import { restoreTextAnchorFromIndex } from "@/features/annotations/selection-anchor";
+import {
+  rangeEndpointRect,
+  restoreTextAnchorFromIndex,
+} from "@/features/annotations/selection-anchor";
 
 describe("selection anchors", () => {
   beforeEach(() => {
@@ -110,6 +113,17 @@ describe("selection anchors", () => {
         end: 112,
       })?.toString(),
     ).toBe("unique phrase");
+  });
+
+  it("uses the last visible line as the annotation endpoint", () => {
+    const firstLine = new DOMRect(40, 80, 240, 20);
+    const lastLine = new DOMRect(40, 104, 90, 20);
+    const range = {
+      getBoundingClientRect: () => new DOMRect(40, 80, 240, 44),
+      getClientRects: () => [firstLine, lastLine, new DOMRect(130, 124, 0, 0)],
+    } as unknown as Range;
+
+    expect(rangeEndpointRect(range)).toBe(lastLine);
   });
 });
 
