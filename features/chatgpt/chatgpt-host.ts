@@ -5,6 +5,7 @@ const CHATGPT_ADAPTER: SiteAdapter = {
   composerKind: "contenteditable",
   composerSelector: "#prompt-textarea[contenteditable='true']",
   conversationPathPattern: /^\/c\/([^/?#]+)/,
+  selectionActionMode: "native-toolbar",
   sendButtonSelector: "button[data-testid='send-button']",
   userMessageSelector: '[data-message-author-role="user"][data-message-id]',
   messageId: (message) => message.dataset.messageId,

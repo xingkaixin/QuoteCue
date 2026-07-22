@@ -40,11 +40,14 @@ export type HostComposerLayout = {
 
 export type ComposerKind = "contenteditable" | "textarea";
 
+export type SelectionActionMode = "native-toolbar" | "overlay";
+
 export type SiteAdapter = {
   assistantMessageSelector: string;
   composerKind: ComposerKind;
   composerSelector: string;
   conversationPathPattern: RegExp;
+  selectionActionMode: SelectionActionMode;
   sendButtonSelector: string;
   userMessageSelector: string;
   messageId(message: HTMLElement): string | undefined;
@@ -607,6 +610,7 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
       logger?.(`[QuoteCue host] unavailable: ${reason}`);
     },
     selection: {
+      actionMode: adapter.selectionActionMode,
       capture: captureSelection,
       draft: selectionDraft,
       messageIndex,

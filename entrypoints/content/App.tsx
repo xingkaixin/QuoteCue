@@ -6,6 +6,7 @@ import { AnnotationEditor } from "@/features/annotations/AnnotationEditor";
 import { AnnotationQuickInput } from "@/features/annotations/AnnotationQuickInput";
 import { AnnotationSummary } from "@/features/annotations/AnnotationSummary";
 import { DraftPersistenceStatus } from "@/features/annotations/DraftPersistenceStatus";
+import { SelectionActionButton } from "@/features/annotations/SelectionActionButton";
 import type {
   AnnotationEditorState,
   DraftAnnotation,
@@ -62,7 +63,7 @@ export default function App() {
     },
     [addAnnotation],
   );
-  useSelectionOverlay(isHydrated, conversationKey, startAnnotation);
+  const selectionOverlayAction = useSelectionOverlay(isHydrated, conversationKey, startAnnotation);
 
   const activeAnnotationId = editor.status === "hidden" ? null : editor.annotationId;
   const activeAnnotation = visibleAnnotations.find(({ id }) => id === activeAnnotationId);
@@ -162,6 +163,8 @@ export default function App() {
         {draftStatus === "error" && errorOperation && (
           <DraftPersistenceStatus operation={errorOperation} onRetry={retry} status="error" />
         )}
+
+        {selectionOverlayAction && <SelectionActionButton {...selectionOverlayAction} />}
 
         {editor.status === "quick" && (
           <AnnotationQuickInput

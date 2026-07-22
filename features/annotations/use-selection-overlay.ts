@@ -13,6 +13,13 @@ export function useSelectionOverlay(
   const { messages } = useI18n();
   const [selectionDraft, setSelectionDraft] = useState<SelectionCapture | null>(null);
   const dismissSelectionAction = useCallback(() => setSelectionDraft(null), []);
+  const activateSelection = useCallback(() => {
+    if (!selectionDraft) {
+      return;
+    }
+    onActivate({ anchor: selectionDraft.anchor, rect: selectionDraft.rect });
+    dismissSelectionAction();
+  }, [dismissSelectionAction, onActivate, selectionDraft]);
 
   useEffect(dismissSelectionAction, [dismissSelectionAction, resetKey]);
 
@@ -64,17 +71,24 @@ export function useSelectionOverlay(
   }, [dismissSelectionAction, isEnabled]);
 
   useEffect(() => {
-    if (!selectionDraft) {
+    if (!selectionDraft || activeHost.selection.actionMode !== "native-toolbar") {
       return;
     }
 
     return activeHost.selection.mountAction({
       label: messages.addAnnotation,
-      onActivate: () => {
-        onActivate({ anchor: selectionDraft.anchor, rect: selectionDraft.rect });
-        dismissSelectionAction();
-      },
+      onActivate: activateSelection,
       rect: selectionDraft.actionRect,
     });
-  }, [dismissSelectionAction, messages.addAnnotation, onActivate, selectionDraft]);
+  }, [activateSelection, messages.addAnnotation, selectionDraft]);
+
+  if (activeHost.selection.actionMode !== "overlay" || !selectionDraft) {
+    return null;
+  }
+  return { onActivate: activateSelection, rect: selectionDraft.rect };
 }
+
+export type SelectionOverlayAction = {
+  onActivate: () => void;
+  rect: SelectionCapture["rect"];
+};
