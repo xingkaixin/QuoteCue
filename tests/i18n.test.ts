@@ -17,4 +17,10 @@ describe("i18n", () => {
   it("localizes destructive action status", () => {
     expect(messagesFor("zh-CN").annotationRemoved(2)).toBe("批注已删除，还剩 2 条批注。");
   });
+
+  it("localizes the owned selection action", () => {
+    expect(messagesFor("en").addAnnotation).toBe("Add QuoteCue annotation");
+    expect(messagesFor("zh-CN").addAnnotation).toBe("添加 QuoteCue 批注");
+    expect(messagesFor("zh-TW").addAnnotation).toBe("新增 QuoteCue 批註");
+  });
 });

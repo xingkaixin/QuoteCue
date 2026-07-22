@@ -1,6 +1,7 @@
 export type SupportedLocale = "en" | "zh-CN" | "zh-TW";
 
 export type Messages = {
+  addAnnotation: string;
   annotation: (number: number) => string;
   annotationCount: (count: number) => string;
   annotationContent: string;
@@ -39,6 +40,7 @@ export type Messages = {
 };
 
 const ENGLISH: Messages = {
+  addAnnotation: "Add QuoteCue annotation",
   annotation: (number) => `Annotation ${number}`,
   annotationCount: (count) => `${count} ${count === 1 ? "annotation" : "annotations"}`,
   annotationContent: "Annotation content",
@@ -78,6 +80,7 @@ const ENGLISH: Messages = {
 };
 
 const SIMPLIFIED_CHINESE: Messages = {
+  addAnnotation: "添加 QuoteCue 批注",
   annotation: (number) => `批注 ${number}`,
   annotationCount: (count) => `${count} 条批注`,
   annotationContent: "批注内容",
@@ -116,6 +119,7 @@ const SIMPLIFIED_CHINESE: Messages = {
 };
 
 const TRADITIONAL_CHINESE: Messages = {
+  addAnnotation: "新增 QuoteCue 批註",
   annotation: (number) => `批註 ${number}`,
   annotationCount: (count) => `${count} 條批註`,
   annotationContent: "批註內容",

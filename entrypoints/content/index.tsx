@@ -41,6 +41,10 @@ export default defineContentScript({
         "pointerup",
       ],
       onMount(container) {
+        const shadowRoot = container.getRootNode();
+        if (shadowRoot instanceof ShadowRoot) {
+          shadowRoot.host.setAttribute("data-quotecue-host", "");
+        }
         const app = document.createElement("div");
         app.id = "quotecue-root";
         container.append(app);
