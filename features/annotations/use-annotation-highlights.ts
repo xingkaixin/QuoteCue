@@ -11,11 +11,19 @@ export type AnnotationBadgePosition = {
   top: number;
 };
 
+type AnnotationHighlightLayout = {
+  badgePositions: AnnotationBadgePosition[];
+  unresolvedAnnotationIds: ReadonlySet<string>;
+};
+
 export function useAnnotationHighlights(
   annotations: DraftAnnotation[],
   activeAnnotationId: string | null,
 ) {
-  const [badgePositions, setBadgePositions] = useState<AnnotationBadgePosition[]>([]);
+  const [layout, setLayout] = useState<AnnotationHighlightLayout>({
+    badgePositions: [],
+    unresolvedAnnotationIds: new Set(),
+  });
 
   useEffect(() => {
     ensureHighlightStyle();
@@ -24,7 +32,7 @@ export function useAnnotationHighlights(
     const refreshPositions = () => {
       cancelAnimationFrame(positionFrame);
       positionFrame = requestAnimationFrame(() => {
-        setBadgePositions(annotationBadgePositions(annotations));
+        setLayout(annotationHighlightLayout(annotations));
       });
     };
     const refreshAnchors = () => {
@@ -47,7 +55,7 @@ export function useAnnotationHighlights(
     };
   }, [activeAnnotationId, annotations]);
 
-  return badgePositions;
+  return layout;
 }
 
 function ensureHighlightStyle() {
@@ -72,12 +80,20 @@ function renderActiveHighlight(annotations: DraftAnnotation[], activeAnnotationI
   }
 }
 
-function annotationBadgePositions(annotations: DraftAnnotation[]) {
-  return annotations
-    .map((annotation) => ({ annotation, range: restoreTextAnchor(annotation.anchor) }))
+function annotationHighlightLayout(annotations: DraftAnnotation[]): AnnotationHighlightLayout {
+  const entries = annotations.map((annotation) => ({
+    annotation,
+    range: restoreTextAnchor(annotation.anchor),
+  }));
+  const unresolvedAnnotationIds = new Set(
+    entries.filter(({ range }) => range === null).map(({ annotation }) => annotation.id),
+  );
+  const badgePositions = entries
     .filter((entry): entry is { annotation: DraftAnnotation; range: Range } => entry.range !== null)
     .map(({ annotation, range }) => badgePosition(annotation, range))
     .filter((position): position is AnnotationBadgePosition => position !== null);
+
+  return { badgePositions, unresolvedAnnotationIds };
 }
 
 function badgePosition(annotation: DraftAnnotation, range: Range) {

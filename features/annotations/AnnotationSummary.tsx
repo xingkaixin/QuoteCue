@@ -29,6 +29,7 @@ type AnnotationSummaryProps = {
   position: ComposerPosition;
   sendStatus: "idle" | "pending" | "failed";
   sendPosition: ComposerRect;
+  unresolvedAnnotationIds: ReadonlySet<string>;
 };
 
 export function AnnotationSummary({
@@ -42,9 +43,10 @@ export function AnnotationSummary({
   position,
   sendStatus,
   sendPosition,
+  unresolvedAnnotationIds,
 }: AnnotationSummaryProps) {
   const { messages } = useI18n();
-  const firstEditButtonRef = useRef<HTMLButtonElement>(null);
+  const firstActionButtonRef = useRef<HTMLButtonElement>(null);
   const [isConfirmingClear, setIsConfirmingClear] = useState(false);
   const [transientStatus, setTransientStatus] = useState("");
 
@@ -105,48 +107,62 @@ export function AnnotationSummary({
           <PopoverContent
             aria-label={messages.annotationCount(annotations.length)}
             className="w-96 overflow-hidden p-0"
-            initialFocus={firstEditButtonRef}
+            initialFocus={firstActionButtonRef}
           >
             <div className="max-h-80 divide-y divide-neutral-100 overscroll-contain overflow-y-auto">
-              {annotations.map((annotation, index) => (
-                <div className="group/row relative flex gap-2.5 px-3 py-3" key={annotation.id}>
-                  <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-blue-600 text-[11px] font-semibold text-white">
-                    {index + 1}
-                  </span>
-                  <div className="min-w-0 flex-1 pr-20">
-                    <p className="text-xs leading-4 text-neutral-600">{messages.selectedText}</p>
-                    <p className="line-clamp-2 text-xs leading-5 text-neutral-900 [overflow-wrap:anywhere]">
-                      {annotation.anchor.quote}
-                    </p>
-                    <p className="mt-2 text-xs leading-4 text-neutral-600">
-                      {messages.userComment}
-                    </p>
-                    <p className="line-clamp-3 text-xs leading-5 text-neutral-900 [overflow-wrap:anywhere]">
-                      {annotation.comment || messages.noComment}
-                    </p>
+              {annotations.map((annotation, index) => {
+                const isUnresolved = unresolvedAnnotationIds.has(annotation.id);
+                return (
+                  <div className="group/row relative flex gap-2.5 px-3 py-3" key={annotation.id}>
+                    <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-blue-600 text-[11px] font-semibold text-white">
+                      {index + 1}
+                    </span>
+                    <div className="min-w-0 flex-1 pr-20">
+                      <div className="flex flex-wrap items-center gap-x-2">
+                        <p className="text-xs leading-4 text-neutral-600">
+                          {messages.selectedText}
+                        </p>
+                        {isUnresolved && (
+                          <span className="text-xs font-medium leading-4 text-amber-800">
+                            {messages.annotationSourceUnavailable}
+                          </span>
+                        )}
+                      </div>
+                      <p className="line-clamp-2 text-xs leading-5 text-neutral-900 [overflow-wrap:anywhere]">
+                        {annotation.anchor.quote}
+                      </p>
+                      <p className="mt-2 text-xs leading-4 text-neutral-600">
+                        {messages.userComment}
+                      </p>
+                      <p className="line-clamp-3 text-xs leading-5 text-neutral-900 [overflow-wrap:anywhere]">
+                        {annotation.comment || messages.noComment}
+                      </p>
+                    </div>
+                    <div className="absolute right-2.5 top-2.5 flex rounded-lg border border-neutral-200 bg-white opacity-0 shadow-sm transition-opacity group-hover/row:opacity-100 group-focus-within/row:opacity-100">
+                      <button
+                        aria-label={messages.editNumberedAnnotation(index + 1)}
+                        className="flex size-8 cursor-pointer items-center justify-center text-neutral-600 outline-none hover:text-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500/45 disabled:cursor-default disabled:text-neutral-300"
+                        disabled={isUnresolved}
+                        onClick={() => onEdit(annotation)}
+                        ref={index === 0 && !isUnresolved ? firstActionButtonRef : undefined}
+                        type="button"
+                      >
+                        <Pencil aria-hidden="true" className="size-3.5" />
+                      </button>
+                      <button
+                        aria-label={messages.deleteNumberedAnnotation(index + 1)}
+                        className="flex size-8 cursor-pointer items-center justify-center border-l border-neutral-200 text-neutral-600 outline-none hover:text-red-700 focus-visible:ring-2 focus-visible:ring-blue-500/45"
+                        disabled={hasPendingDeletion}
+                        onClick={() => onRemove(annotation.id)}
+                        ref={index === 0 && isUnresolved ? firstActionButtonRef : undefined}
+                        type="button"
+                      >
+                        <Trash2 aria-hidden="true" className="size-3.5" />
+                      </button>
+                    </div>
                   </div>
-                  <div className="absolute right-2.5 top-2.5 flex rounded-lg border border-neutral-200 bg-white opacity-0 shadow-sm transition-opacity group-hover/row:opacity-100 group-focus-within/row:opacity-100">
-                    <button
-                      aria-label={messages.editNumberedAnnotation(index + 1)}
-                      className="flex size-8 cursor-pointer items-center justify-center text-neutral-600 outline-none hover:text-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500/45"
-                      onClick={() => onEdit(annotation)}
-                      ref={index === 0 ? firstEditButtonRef : undefined}
-                      type="button"
-                    >
-                      <Pencil aria-hidden="true" className="size-3.5" />
-                    </button>
-                    <button
-                      aria-label={messages.deleteNumberedAnnotation(index + 1)}
-                      className="flex size-8 cursor-pointer items-center justify-center border-l border-neutral-200 text-neutral-600 outline-none hover:text-red-700 focus-visible:ring-2 focus-visible:ring-blue-500/45"
-                      disabled={hasPendingDeletion}
-                      onClick={() => onRemove(annotation.id)}
-                      type="button"
-                    >
-                      <Trash2 aria-hidden="true" className="size-3.5" />
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </PopoverContent>
         </Popover>

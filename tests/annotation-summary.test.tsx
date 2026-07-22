@@ -44,6 +44,7 @@ describe("AnnotationSummary", () => {
             position={{ left: 10, top: 10 }}
             sendPosition={{ height: 36, left: 200, top: 200, width: 36 }}
             sendStatus="idle"
+            unresolvedAnnotationIds={new Set()}
           />
         </PortalContainerProvider>,
       );
@@ -81,6 +82,7 @@ describe("AnnotationSummary", () => {
             position={{ left: 10, top: 10 }}
             sendStatus="idle"
             sendPosition={{ height: 36, left: 200, top: 200, width: 36 }}
+            unresolvedAnnotationIds={new Set()}
           />
         </PortalContainerProvider>,
       );
@@ -147,6 +149,7 @@ describe("AnnotationSummary", () => {
           position={{ left: 10, top: 10 }}
           sendPosition={{ height: 36, left: 200, top: 200, width: 36 }}
           sendStatus={sendStatus}
+          unresolvedAnnotationIds={new Set()}
         />
       </PortalContainerProvider>
     );
@@ -195,6 +198,7 @@ describe("AnnotationSummary", () => {
           position={{ left: 10, top: 10 }}
           sendPosition={{ height: 36, left: 200, top: 200, width: 36 }}
           sendStatus="idle"
+          unresolvedAnnotationIds={new Set()}
         />
       </PortalContainerProvider>
     );
@@ -234,6 +238,49 @@ describe("AnnotationSummary", () => {
     );
     await act(async () => confirmButton?.click());
     expect(onClear).toHaveBeenCalledOnce();
+
+    await act(async () => root.unmount());
+  });
+
+  it("keeps unresolved annotations visible without offering misleading navigation", async () => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    const container = document.createElement("div");
+    const portalContainer = document.createElement("div");
+    document.body.append(container, portalContainer);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        <PortalContainerProvider container={portalContainer}>
+          <AnnotationSummary
+            annotations={[annotation]}
+            hasPendingDeletion={false}
+            onClear={vi.fn()}
+            onEdit={vi.fn()}
+            onRemove={vi.fn()}
+            onSend={vi.fn()}
+            onUndo={vi.fn()}
+            position={{ left: 10, top: 10 }}
+            sendPosition={{ height: 36, left: 200, top: 200, width: 36 }}
+            sendStatus="idle"
+            unresolvedAnnotationIds={new Set([annotation.id])}
+          />
+        </PortalContainerProvider>,
+      );
+    });
+    const trigger = Array.from(container.querySelectorAll("button")).find(
+      (element) => element.textContent?.trim() === "1 annotation",
+    );
+    await act(async () => trigger?.click());
+
+    expect(portalContainer.textContent).toContain("Source position changed");
+    expect(
+      portalContainer.querySelector<HTMLButtonElement>('[aria-label="Edit annotation 1"]')
+        ?.disabled,
+    ).toBe(true);
+    expect(document.activeElement).toBe(
+      portalContainer.querySelector('[aria-label="Delete annotation 1"]'),
+    );
 
     await act(async () => root.unmount());
   });

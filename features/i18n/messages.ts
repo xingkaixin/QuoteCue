@@ -7,6 +7,7 @@ export type Messages = {
   annotationContent: string;
   annotationRemoved: (remaining: number) => string;
   annotationRestored: string;
+  annotationSourceUnavailable: string;
   cancel: string;
   clearAnnotations: string;
   clearAnnotationsConfirmation: string;
@@ -47,6 +48,7 @@ const ENGLISH: Messages = {
   annotationRemoved: (remaining) =>
     `Annotation removed. ${remaining} ${remaining === 1 ? "annotation" : "annotations"} remaining.`,
   annotationRestored: "Annotation restored.",
+  annotationSourceUnavailable: "Source position changed",
   cancel: "Cancel",
   clearAnnotations: "Clear all annotations",
   clearAnnotationsConfirmation: "Clear all annotations? Click again to confirm.",
@@ -86,6 +88,7 @@ const SIMPLIFIED_CHINESE: Messages = {
   annotationContent: "批注内容",
   annotationRemoved: (remaining) => `批注已删除，还剩 ${remaining} 条批注。`,
   annotationRestored: "批注已恢复。",
+  annotationSourceUnavailable: "原文位置已变化",
   cancel: "取消",
   clearAnnotations: "清空全部批注",
   clearAnnotationsConfirmation: "要清空全部批注吗？请再次点击确认。",
@@ -125,6 +128,7 @@ const TRADITIONAL_CHINESE: Messages = {
   annotationContent: "批註內容",
   annotationRemoved: (remaining) => `批註已刪除，還剩 ${remaining} 條批註。`,
   annotationRestored: "批註已復原。",
+  annotationSourceUnavailable: "原文位置已變更",
   cancel: "取消",
   clearAnnotations: "清除全部批註",
   clearAnnotationsConfirmation: "要清除全部批註嗎？請再次點擊確認。",

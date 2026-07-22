@@ -67,7 +67,10 @@ export default function App() {
 
   const activeAnnotationId = editor.status === "hidden" ? null : editor.annotationId;
   const activeAnnotation = visibleAnnotations.find(({ id }) => id === activeAnnotationId);
-  const badgePositions = useAnnotationHighlights(visibleAnnotations, activeAnnotationId);
+  const { badgePositions, unresolvedAnnotationIds } = useAnnotationHighlights(
+    visibleAnnotations,
+    activeAnnotationId,
+  );
   const composerLayout = useAnnotatedComposerLayout(isHydrated && annotations.length > 0);
   const draftRef = useRef({ annotations: visibleAnnotations, revision: draftRevision ?? 0 });
   const sendActionsRef = useRef<SendActions>({
@@ -214,6 +217,7 @@ export default function App() {
             position={composerLayout.summary}
             sendStatus={annotationSendStatus(sendState)}
             sendPosition={composerLayout.send}
+            unresolvedAnnotationIds={unresolvedAnnotationIds}
           />
         )}
       </div>
