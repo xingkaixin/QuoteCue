@@ -1,8 +1,8 @@
+import type { ComponentProps } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { PortalContainerProvider } from "@/components/ui/portal-container";
 import { AnnotationSummary } from "@/features/annotations/AnnotationSummary";
 
 const annotation = {
@@ -23,276 +23,207 @@ afterEach(() => {
 });
 
 describe("AnnotationSummary", () => {
-  it("exposes the annotation count as a keyboard-focusable button", async () => {
-    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-    const container = document.createElement("div");
-    const portalContainer = document.createElement("div");
-    document.body.append(container, portalContainer);
-    const root = createRoot(container);
+  it("opens details on hover without selecting the first annotation", async () => {
+    const { container, root, summary } = await mountSummary();
+    const countButton = findCountButton(container);
 
-    await act(async () => {
-      root.render(
-        <PortalContainerProvider container={portalContainer}>
-          <AnnotationSummary
-            annotations={[annotation]}
-            hasPendingDeletion={false}
-            onClear={vi.fn()}
-            onEdit={vi.fn()}
-            onRemove={vi.fn()}
-            onSend={vi.fn()}
-            onUndo={vi.fn()}
-            position={{ left: 10, top: 10 }}
-            sendPosition={{ height: 36, left: 200, top: 200, width: 36 }}
-            sendStatus="idle"
-            unresolvedAnnotationIds={new Set()}
-          />
-        </PortalContainerProvider>,
-      );
-    });
-    const count = Array.from(container.querySelectorAll("button")).find(
-      (element) => element.textContent?.trim() === "1 annotation",
+    expect(countButton?.tagName).toBe("BUTTON");
+    expect(countButton?.tabIndex).toBe(0);
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
+
+    await hover(summary);
+
+    expect(container.textContent).toContain("Selected text:");
+    expect(container.textContent).toContain("selected text");
+    expect(container.textContent).toContain("No comment added");
+    const editButton = container.querySelector<HTMLButtonElement>(
+      '[aria-label="Edit annotation 1"]',
     );
+    expect(editButton?.parentElement?.classList).toContain("opacity-0");
+    expect(editButton?.parentElement?.classList).toContain("group-hover/row:opacity-100");
+    expect(document.activeElement).not.toBe(editButton);
 
-    expect(count?.tagName).toBe("BUTTON");
-    expect(count?.tabIndex).toBe(0);
+    await leave(summary);
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
 
     await act(async () => root.unmount());
   });
 
-  it("opens details with managed focus and returns focus on Escape", async () => {
-    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-    const onRemove = vi.fn();
-    const onSend = vi.fn();
-    const container = document.createElement("div");
-    const portalContainer = document.createElement("div");
-    document.body.append(container, portalContainer);
-    const root = createRoot(container);
-
-    await act(async () => {
-      root.render(
-        <PortalContainerProvider container={portalContainer}>
-          <AnnotationSummary
-            annotations={[annotation]}
-            hasPendingDeletion={false}
-            onClear={vi.fn()}
-            onEdit={vi.fn()}
-            onRemove={onRemove}
-            onSend={onSend}
-            onUndo={vi.fn()}
-            position={{ left: 10, top: 10 }}
-            sendStatus="idle"
-            sendPosition={{ height: 36, left: 200, top: 200, width: 36 }}
-            unresolvedAnnotationIds={new Set()}
-          />
-        </PortalContainerProvider>,
-      );
-    });
-
-    expect(container.textContent).toContain("1 annotation");
-    expect(portalContainer.textContent).not.toContain("Selected text:");
-    const trigger = Array.from(container.querySelectorAll("button")).find(
-      (element) => element.textContent?.trim() === "1 annotation",
+  it("keeps hover-only controls compact and keyboard accessible", async () => {
+    const onEdit = vi.fn();
+    const { container, root, summary } = await mountSummary({ onEdit });
+    const countButton = findCountButton(container);
+    const clearButton = container.querySelector<HTMLButtonElement>(
+      '[aria-label="Clear all annotations"]',
     );
 
-    await act(async () => {
-      trigger?.click();
-      await nextFrame();
-    });
+    expect(countButton?.classList).toContain("h-8");
+    expect(clearButton?.classList).toContain("size-8");
+    expect(clearButton?.classList).toContain("opacity-0");
+    expect(clearButton?.classList).toContain("group-hover/summary:opacity-100");
 
-    expect(portalContainer.textContent).toContain("Selected text:");
-    expect(portalContainer.textContent).toContain("selected text");
-    expect(portalContainer.textContent).toContain("No comment added");
-    const editButton = portalContainer.querySelector<HTMLButtonElement>(
+    await act(async () => countButton?.focus());
+    expect(container.querySelector('[role="dialog"]')).not.toBeNull();
+    expect(countButton?.getAttribute("aria-expanded")).toBe("true");
+
+    const editButton = container.querySelector<HTMLButtonElement>(
       '[aria-label="Edit annotation 1"]',
     );
-    expect(document.activeElement).toBe(editButton);
+    await act(async () => editButton?.click());
+    expect(onEdit).toHaveBeenCalledWith(annotation);
 
     await act(async () => {
-      portalContainer
-        .querySelector<HTMLButtonElement>('[aria-label="Delete annotation 1"]')
-        ?.click();
+      editButton?.focus();
+      editButton?.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Escape" }));
     });
-    expect(onRemove).toHaveBeenCalledWith("annotation-1");
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
+    expect(document.activeElement).toBe(countButton);
 
-    await act(async () => {
-      document.activeElement?.dispatchEvent(
-        new KeyboardEvent("keydown", { bubbles: true, key: "Escape" }),
-      );
-    });
-    expect(portalContainer.textContent).not.toContain("Selected text:");
-    expect(document.activeElement).toBe(trigger);
-
-    await act(async () => {
-      container.querySelector<HTMLButtonElement>('[aria-label="Send annotations"]')?.click();
-    });
-    expect(onSend).toHaveBeenCalledOnce();
-
+    await leave(summary);
     await act(async () => root.unmount());
   });
 
   it("disables sending while pending and exposes retry after failure", async () => {
-    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     const onSend = vi.fn();
-    const container = document.createElement("div");
-    const portalContainer = document.createElement("div");
-    document.body.append(container, portalContainer);
-    const root = createRoot(container);
-    const renderSummary = (sendStatus: "pending" | "failed") => (
-      <PortalContainerProvider container={portalContainer}>
-        <AnnotationSummary
-          annotations={[annotation]}
-          hasPendingDeletion={false}
-          onClear={vi.fn()}
-          onEdit={vi.fn()}
-          onRemove={vi.fn()}
-          onSend={onSend}
-          onUndo={vi.fn()}
-          position={{ left: 10, top: 10 }}
-          sendPosition={{ height: 36, left: 200, top: 200, width: 36 }}
-          sendStatus={sendStatus}
-          unresolvedAnnotationIds={new Set()}
-        />
-      </PortalContainerProvider>
-    );
+    const mounted = await mountSummary({ onSend, sendStatus: "pending" });
 
-    await act(async () => root.render(renderSummary("pending")));
-    expect(container.querySelector('[role="status"]')?.textContent).toContain(
+    expect(mounted.container.querySelector('[role="status"]')?.textContent).toContain(
       "Sending annotations",
     );
     expect(
-      container.querySelector<HTMLButtonElement>('[aria-label="Send annotations"]')?.disabled,
+      mounted.container.querySelector<HTMLButtonElement>('[aria-label="Send annotations"]')
+        ?.disabled,
     ).toBe(true);
 
-    await act(async () => root.render(renderSummary("failed")));
-    expect(container.querySelector('[role="status"]')?.textContent).toContain(
+    await mounted.render({ sendStatus: "failed" });
+    expect(mounted.container.querySelector('[role="status"]')?.textContent).toContain(
       "annotation draft was kept",
     );
-    const retryButton = container.querySelector<HTMLButtonElement>(
+    const retryButton = mounted.container.querySelector<HTMLButtonElement>(
       '[aria-label="Retry sending annotations"]',
     );
     expect(retryButton?.disabled).toBe(false);
     await act(async () => retryButton?.click());
     expect(onSend).toHaveBeenCalledOnce();
 
-    await act(async () => root.unmount());
+    await act(async () => mounted.root.unmount());
   });
 
   it("offers one undo transaction and requires confirmation before clearing", async () => {
-    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     const onClear = vi.fn();
     const onRemove = vi.fn();
     const onUndo = vi.fn();
-    const container = document.createElement("div");
-    const portalContainer = document.createElement("div");
-    document.body.append(container, portalContainer);
-    const root = createRoot(container);
-    const renderSummary = (hasPendingDeletion: boolean) => (
-      <PortalContainerProvider container={portalContainer}>
-        <AnnotationSummary
-          annotations={hasPendingDeletion ? [] : [annotation]}
-          hasPendingDeletion={hasPendingDeletion}
-          onClear={onClear}
-          onEdit={vi.fn()}
-          onRemove={onRemove}
-          onSend={vi.fn()}
-          onUndo={onUndo}
-          position={{ left: 10, top: 10 }}
-          sendPosition={{ height: 36, left: 200, top: 200, width: 36 }}
-          sendStatus="idle"
-          unresolvedAnnotationIds={new Set()}
-        />
-      </PortalContainerProvider>
-    );
+    const mounted = await mountSummary({ onClear, onRemove, onUndo });
 
-    await act(async () => root.render(renderSummary(false)));
-    const trigger = Array.from(container.querySelectorAll("button")).find(
-      (element) => element.textContent?.trim() === "1 annotation",
-    );
+    await hover(mounted.summary);
     await act(async () => {
-      trigger?.click();
-      await nextFrame();
-    });
-    await act(async () => {
-      portalContainer
+      mounted.container
         .querySelector<HTMLButtonElement>('[aria-label="Delete annotation 1"]')
         ?.click();
     });
     expect(onRemove).toHaveBeenCalledWith("annotation-1");
 
-    await act(async () => root.render(renderSummary(true)));
-    expect(container.querySelector('[role="status"]')?.textContent).toContain("Annotation removed");
+    await mounted.render({ annotations: [], hasPendingDeletion: true });
+    expect(mounted.container.querySelector('[role="status"]')?.textContent).toContain(
+      "Annotation removed",
+    );
     await act(async () => {
-      Array.from(container.querySelectorAll("button"))
+      Array.from(mounted.container.querySelectorAll("button"))
         .find((button) => button.textContent === "Undo")
         ?.click();
     });
     expect(onUndo).toHaveBeenCalledOnce();
 
-    await act(async () => root.render(renderSummary(false)));
-    const clearButton = container.querySelector<HTMLButtonElement>(
+    await mounted.render({ annotations: [annotation], hasPendingDeletion: false });
+    const clearButton = mounted.container.querySelector<HTMLButtonElement>(
       '[aria-label="Clear all annotations"]',
     );
     await act(async () => clearButton?.click());
     expect(onClear).not.toHaveBeenCalled();
-    expect(container.querySelector('[role="status"]')?.textContent).toContain(
+    expect(mounted.container.querySelector('[role="status"]')?.textContent).toContain(
       "Click again to confirm",
     );
-    const confirmButton = container.querySelector<HTMLButtonElement>(
+    const confirmButton = mounted.container.querySelector<HTMLButtonElement>(
       '[aria-label="Confirm clearing all annotations"]',
     );
     await act(async () => confirmButton?.click());
     expect(onClear).toHaveBeenCalledOnce();
 
-    await act(async () => root.unmount());
+    await act(async () => mounted.root.unmount());
   });
 
   it("keeps unresolved annotations visible without offering misleading navigation", async () => {
-    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-    const container = document.createElement("div");
-    const portalContainer = document.createElement("div");
-    document.body.append(container, portalContainer);
-    const root = createRoot(container);
-
-    await act(async () => {
-      root.render(
-        <PortalContainerProvider container={portalContainer}>
-          <AnnotationSummary
-            annotations={[annotation]}
-            hasPendingDeletion={false}
-            onClear={vi.fn()}
-            onEdit={vi.fn()}
-            onRemove={vi.fn()}
-            onSend={vi.fn()}
-            onUndo={vi.fn()}
-            position={{ left: 10, top: 10 }}
-            sendPosition={{ height: 36, left: 200, top: 200, width: 36 }}
-            sendStatus="idle"
-            unresolvedAnnotationIds={new Set([annotation.id])}
-          />
-        </PortalContainerProvider>,
-      );
+    const { container, root, summary } = await mountSummary({
+      unresolvedAnnotationIds: new Set([annotation.id]),
     });
-    const trigger = Array.from(container.querySelectorAll("button")).find(
-      (element) => element.textContent?.trim() === "1 annotation",
+
+    await hover(summary);
+
+    expect(container.textContent).toContain("Source position changed");
+    const editButton = container.querySelector<HTMLButtonElement>(
+      '[aria-label="Edit annotation 1"]',
     );
-    await act(async () => {
-      trigger?.click();
-      await nextFrame();
-    });
-
-    expect(portalContainer.textContent).toContain("Source position changed");
-    expect(
-      portalContainer.querySelector<HTMLButtonElement>('[aria-label="Edit annotation 1"]')
-        ?.disabled,
-    ).toBe(true);
-    expect(document.activeElement).toBe(
-      portalContainer.querySelector('[aria-label="Delete annotation 1"]'),
+    expect(editButton?.disabled).toBe(true);
+    expect(document.activeElement).not.toBe(
+      container.querySelector('[aria-label="Delete annotation 1"]'),
     );
 
     await act(async () => root.unmount());
   });
 });
 
-function nextFrame() {
-  return new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+type SummaryProps = ComponentProps<typeof AnnotationSummary>;
+
+async function mountSummary(overrides: Partial<SummaryProps> = {}) {
+  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  const baseProps: SummaryProps = {
+    annotations: [annotation],
+    hasPendingDeletion: false,
+    onClear: vi.fn(),
+    onEdit: vi.fn(),
+    onRemove: vi.fn(),
+    onSend: vi.fn(),
+    onUndo: vi.fn(),
+    position: { left: 10, top: 10 },
+    sendPosition: { height: 36, left: 200, top: 200, width: 36 },
+    sendStatus: "idle",
+    unresolvedAnnotationIds: new Set(),
+    ...overrides,
+  };
+  let currentProps = baseProps;
+
+  await act(async () => root.render(<AnnotationSummary {...currentProps} />));
+
+  return {
+    container,
+    render: async (nextOverrides: Partial<SummaryProps>) => {
+      currentProps = { ...currentProps, ...nextOverrides };
+      await act(async () => root.render(<AnnotationSummary {...currentProps} />));
+    },
+    root,
+    summary: container.firstElementChild as HTMLElement,
+  };
+}
+
+function findCountButton(container: HTMLElement) {
+  return Array.from(container.querySelectorAll("button")).find(
+    (element) => element.textContent?.trim() === "1 annotation",
+  );
+}
+
+async function hover(element: HTMLElement) {
+  await act(async () => {
+    element.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+  });
+}
+
+async function leave(element: HTMLElement) {
+  await act(async () => {
+    element.dispatchEvent(
+      new MouseEvent("mouseout", { bubbles: true, relatedTarget: document.body }),
+    );
+  });
 }

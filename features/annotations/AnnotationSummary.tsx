@@ -9,13 +9,11 @@ import {
 } from "lucide-react";
 import { Fragment, useEffect, useRef, useState } from "react";
 
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type {
   ComposerPosition,
   ComposerRect,
 } from "@/features/chatgpt/use-annotated-composer-layout";
 import { useI18n } from "@/features/i18n/I18nProvider";
-import { useVisualViewportBounds } from "@/features/layout/use-visual-viewport";
 
 import type { DraftAnnotation } from "./annotation";
 
@@ -47,8 +45,8 @@ export function AnnotationSummary({
   unresolvedAnnotationIds,
 }: AnnotationSummaryProps) {
   const { messages } = useI18n();
-  const viewport = useVisualViewportBounds();
-  const firstActionButtonRef = useRef<HTMLButtonElement>(null);
+  const countButtonRef = useRef<HTMLButtonElement>(null);
+  const [isOpen, setIsOpen] = useState(false);
   const [isConfirmingClear, setIsConfirmingClear] = useState(false);
   const [transientStatus, setTransientStatus] = useState("");
 
@@ -78,93 +76,120 @@ export function AnnotationSummary({
 
   return (
     <Fragment>
-      <div className="quotecue-interactive fixed flex items-center gap-2" style={position}>
-        <Popover>
-          <div className="qc-surface flex items-center rounded-xl border shadow-sm">
-            <PopoverTrigger className="qc-hover qc-focus qc-pressable flex h-9 cursor-pointer items-center gap-2 rounded-l-xl px-3 text-sm font-medium">
-              <MessageSquareText aria-hidden="true" className="qc-accent-text size-4" />
-              <span aria-live="polite">{messages.annotationCount(annotations.length)}</span>
-            </PopoverTrigger>
-            <button
-              aria-label={
-                isConfirmingClear ? messages.confirmClearAnnotations : messages.clearAnnotations
-              }
-              className="qc-muted qc-divider qc-hover qc-focus qc-pressable flex size-9 cursor-pointer items-center justify-center rounded-r-xl border-l disabled:cursor-default disabled:opacity-40"
-              disabled={hasPendingDeletion || annotations.length === 0}
-              onClick={() => {
-                if (isConfirmingClear) {
-                  setIsConfirmingClear(false);
-                  onClear();
-                  return;
-                }
-                setTransientStatus("");
-                setIsConfirmingClear(true);
-              }}
-              type="button"
-            >
-              <X aria-hidden="true" className="size-4" />
-            </button>
-          </div>
-
-          <PopoverContent
-            aria-label={messages.annotationCount(annotations.length)}
-            className="w-[min(24rem,calc(100dvw-1.5rem))] overflow-hidden p-0"
-            initialFocus={firstActionButtonRef}
-            style={{ maxWidth: Math.max(0, viewport.width - 24) }}
+      <div
+        className="quotecue-interactive group/summary fixed flex items-center gap-2"
+        onBlur={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget)) {
+            setIsOpen(false);
+          }
+        }}
+        onFocus={() => setIsOpen(true)}
+        onKeyDown={(event) => {
+          if (event.key !== "Escape" || !isOpen) {
+            return;
+          }
+          event.preventDefault();
+          event.stopPropagation();
+          countButtonRef.current?.focus();
+          setIsOpen(false);
+        }}
+        onMouseEnter={() => setIsOpen(true)}
+        onMouseLeave={() => setIsOpen(false)}
+        style={position}
+      >
+        <div className="qc-surface flex items-center rounded-lg border shadow-sm">
+          <button
+            aria-expanded={isOpen}
+            aria-haspopup="dialog"
+            className="qc-hover qc-focus qc-pressable flex h-8 cursor-pointer items-center gap-1.5 rounded-l-lg px-2.5 text-xs font-medium"
+            onClick={() => setIsOpen(true)}
+            ref={countButtonRef}
+            type="button"
           >
-            <div className="qc-divide max-h-80 divide-y overscroll-contain overflow-y-auto">
-              {annotations.map((annotation, index) => {
-                const isUnresolved = unresolvedAnnotationIds.has(annotation.id);
-                return (
-                  <div className="group/row relative flex gap-2.5 px-3 py-3" key={annotation.id}>
-                    <span className="qc-accent-bg flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
-                      {index + 1}
-                    </span>
-                    <div className="min-w-0 flex-1 pr-20">
-                      <div className="flex flex-wrap items-center gap-x-2">
-                        <p className="qc-muted text-xs leading-4">{messages.selectedText}</p>
-                        {isUnresolved && (
-                          <span className="qc-danger text-xs font-medium leading-4">
-                            {messages.annotationSourceUnavailable}
-                          </span>
-                        )}
+            <MessageSquareText aria-hidden="true" className="qc-accent-text size-4" />
+            <span aria-live="polite">{messages.annotationCount(annotations.length)}</span>
+          </button>
+          <button
+            aria-label={
+              isConfirmingClear ? messages.confirmClearAnnotations : messages.clearAnnotations
+            }
+            className="qc-muted qc-divider qc-hover qc-focus qc-pressable flex size-8 cursor-pointer items-center justify-center rounded-r-lg border-l opacity-0 transition-opacity group-hover/summary:opacity-100 focus-visible:opacity-100 disabled:cursor-default disabled:opacity-40"
+            disabled={hasPendingDeletion || annotations.length === 0}
+            onClick={() => {
+              if (isConfirmingClear) {
+                setIsConfirmingClear(false);
+                onClear();
+                return;
+              }
+              setTransientStatus("");
+              setIsConfirmingClear(true);
+            }}
+            type="button"
+          >
+            <X aria-hidden="true" className="size-3.5" />
+          </button>
+        </div>
+
+        {isOpen && (
+          <div className="absolute bottom-full left-0 z-[2147483647] w-[min(24rem,calc(100dvw-1.5rem))] pb-1">
+            <div
+              aria-label={messages.annotationCount(annotations.length)}
+              className="qc-surface qc-elevated overflow-hidden rounded-2xl border"
+              data-quotecue-portal=""
+              role="dialog"
+            >
+              <div className="qc-divide max-h-80 divide-y overscroll-contain overflow-y-auto">
+                {annotations.map((annotation, index) => {
+                  const isUnresolved = unresolvedAnnotationIds.has(annotation.id);
+                  return (
+                    <div className="group/row relative flex gap-2.5 px-3 py-3" key={annotation.id}>
+                      <span className="qc-accent-bg flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
+                        {index + 1}
+                      </span>
+                      <div className="min-w-0 flex-1 pr-20">
+                        <div className="flex flex-wrap items-center gap-x-2">
+                          <p className="qc-muted text-xs leading-4">{messages.selectedText}</p>
+                          {isUnresolved && (
+                            <span className="qc-danger text-xs font-medium leading-4">
+                              {messages.annotationSourceUnavailable}
+                            </span>
+                          )}
+                        </div>
+                        <p className="line-clamp-2 text-xs leading-5 [overflow-wrap:anywhere]">
+                          {annotation.anchor.quote}
+                        </p>
+                        <p className="qc-muted mt-2 text-xs leading-4">{messages.userComment}</p>
+                        <p className="line-clamp-3 text-xs leading-5 [overflow-wrap:anywhere]">
+                          {annotation.comment || messages.noComment}
+                        </p>
                       </div>
-                      <p className="line-clamp-2 text-xs leading-5 [overflow-wrap:anywhere]">
-                        {annotation.anchor.quote}
-                      </p>
-                      <p className="qc-muted mt-2 text-xs leading-4">{messages.userComment}</p>
-                      <p className="line-clamp-3 text-xs leading-5 [overflow-wrap:anywhere]">
-                        {annotation.comment || messages.noComment}
-                      </p>
+                      <div className="qc-surface absolute right-2.5 top-2.5 flex rounded-lg border opacity-0 shadow-sm transition-opacity group-hover/row:opacity-100 group-focus-within/row:opacity-100">
+                        <button
+                          aria-label={messages.editNumberedAnnotation(index + 1)}
+                          className="qc-muted qc-hover qc-focus flex size-8 cursor-pointer items-center justify-center disabled:cursor-default disabled:opacity-40"
+                          disabled={isUnresolved}
+                          onClick={() => onEdit(annotation)}
+                          type="button"
+                        >
+                          <Pencil aria-hidden="true" className="size-3.5" />
+                        </button>
+                        <button
+                          aria-label={messages.deleteNumberedAnnotation(index + 1)}
+                          className="qc-danger qc-divider qc-hover qc-focus flex size-8 cursor-pointer items-center justify-center border-l disabled:opacity-40"
+                          disabled={hasPendingDeletion}
+                          onClick={() => onRemove(annotation.id)}
+                          type="button"
+                        >
+                          <Trash2 aria-hidden="true" className="size-3.5" />
+                        </button>
+                      </div>
                     </div>
-                    <div className="qc-surface absolute right-2.5 top-2.5 flex rounded-lg border opacity-0 shadow-sm transition-opacity group-hover/row:opacity-100 group-focus-within/row:opacity-100">
-                      <button
-                        aria-label={messages.editNumberedAnnotation(index + 1)}
-                        className="qc-muted qc-hover qc-focus flex size-8 cursor-pointer items-center justify-center disabled:cursor-default disabled:opacity-40"
-                        disabled={isUnresolved}
-                        onClick={() => onEdit(annotation)}
-                        ref={index === 0 && !isUnresolved ? firstActionButtonRef : undefined}
-                        type="button"
-                      >
-                        <Pencil aria-hidden="true" className="size-3.5" />
-                      </button>
-                      <button
-                        aria-label={messages.deleteNumberedAnnotation(index + 1)}
-                        className="qc-danger qc-divider qc-hover qc-focus flex size-8 cursor-pointer items-center justify-center border-l disabled:opacity-40"
-                        disabled={hasPendingDeletion}
-                        onClick={() => onRemove(annotation.id)}
-                        ref={index === 0 && isUnresolved ? firstActionButtonRef : undefined}
-                        type="button"
-                      >
-                        <Trash2 aria-hidden="true" className="size-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </PopoverContent>
-        </Popover>
+          </div>
+        )}
         {statusMessage && (
           <div
             aria-live="polite"
