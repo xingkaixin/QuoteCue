@@ -39,12 +39,12 @@ textarea {
   background: transparent;
   color: var(--qc-text);
   font: inherit;
-  font-size: 16px;
+  font-size: 14px;
 }
 
 textarea {
-  min-height: 112px;
-  padding: 4px;
+  min-height: 0;
+  padding: 2px;
   resize: none;
   line-height: 1.5;
 }

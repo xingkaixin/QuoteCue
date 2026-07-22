@@ -8,19 +8,21 @@ vi.mock("@/features/annotations/SecureTextField", async () => {
   const { forwardRef, useEffect, useImperativeHandle, useRef } = await import("react");
   type FakeSecureFieldProps = {
     ariaLabel: string;
+    className?: string;
     onCancel: () => void;
     onChange: (value: string) => void;
     value: string;
   };
   return {
     SecureTextField: forwardRef<{ focus: () => void }, FakeSecureFieldProps>(
-      function FakeSecureTextField({ ariaLabel, onCancel, onChange, value }, ref) {
+      function FakeSecureTextField({ ariaLabel, className, onCancel, onChange, value }, ref) {
         const fieldRef = useRef<HTMLInputElement>(null);
         useImperativeHandle(ref, () => ({ focus: () => fieldRef.current?.focus() }), []);
         useEffect(() => fieldRef.current?.focus(), []);
         return (
           <input
             aria-label={ariaLabel}
+            className={className}
             onChange={(event) => onChange(event.currentTarget.value)}
             onKeyDown={(event) => {
               if (event.key === "Escape") {
@@ -61,6 +63,22 @@ afterEach(() => {
 });
 
 describe("AnnotationQuickInput", () => {
+  it("uses compact controls without a persistent field focus ring", async () => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    const { container, root } = await renderQuickInput(vi.fn(), vi.fn());
+    const shell = container.firstElementChild;
+    const input = container.querySelector("input");
+    const saveButton = container.querySelector<HTMLButtonElement>('[aria-label="Save annotation"]');
+
+    expect(shell?.classList).toContain("h-12");
+    expect(shell?.classList).toContain("w-[320px]");
+    expect(input?.classList).toContain("h-9");
+    expect(input?.className).not.toContain("data-[focused=true]:ring");
+    expect(saveButton?.classList).toContain("size-10");
+
+    await act(async () => root.unmount());
+  });
+
   it("allows saving a selection without a comment", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     const onSave = vi.fn();

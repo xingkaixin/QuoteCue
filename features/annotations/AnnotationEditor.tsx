@@ -1,4 +1,4 @@
-import { Check, Trash2, X } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,7 @@ type AnnotationEditorProps = {
   onSave: (comment: string) => void;
 };
 
-const EDITOR_SIZE = { height: 230, width: 380 };
+const EDITOR_SIZE = { height: 164, width: 340 };
 
 export function AnnotationEditor({
   annotation,
@@ -44,14 +44,14 @@ export function AnnotationEditor({
 
   return (
     <div
-      className="quotecue-interactive qc-surface qc-elevated fixed w-[380px] max-w-[calc(100dvw-1.5rem)] overflow-y-auto rounded-3xl border p-4"
+      className="quotecue-interactive qc-surface qc-elevated fixed w-[340px] max-w-[calc(100dvw-1.5rem)] overflow-y-auto rounded-2xl border p-3"
       onPointerDown={resetWarning}
       ref={editorRef}
       style={position}
     >
       <SecureTextField
         ariaLabel={messages.annotationContent}
-        className="h-28 w-full rounded-xl border-0 bg-transparent outline-none data-[focused=true]:ring-2 data-[focused=true]:ring-blue-500/45"
+        className="h-24 w-full rounded-lg border-0 bg-transparent outline-none"
         kind="textarea"
         name="quotecue-annotation-comment"
         onCancel={onCancel}
@@ -64,22 +64,20 @@ export function AnnotationEditor({
         ref={textareaRef}
         value={comment}
       />
-      <div className="mt-3 flex items-center justify-between">
+      <div className="mt-2.5 flex items-center justify-between">
         <Button
           aria-label={messages.deleteAnnotation}
           onClick={onDelete}
           size="icon"
           variant="ghost"
         >
-          <Trash2 aria-hidden="true" className="size-5" />
+          <Trash2 aria-hidden="true" className="size-4" />
         </Button>
-        <div className="flex items-center gap-2">
-          <Button onClick={onCancel} variant="outline">
-            <X aria-hidden="true" className="size-4" />
+        <div className="flex items-center gap-1.5">
+          <Button onClick={onCancel} size="sm" variant="outline">
             {messages.cancel}
           </Button>
-          <Button onClick={() => onSave(comment.trim())}>
-            <Check aria-hidden="true" className="size-4" />
+          <Button onClick={() => onSave(comment.trim())} size="sm">
             {messages.save}
           </Button>
         </div>

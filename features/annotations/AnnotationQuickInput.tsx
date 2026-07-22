@@ -15,7 +15,7 @@ type AnnotationQuickInputProps = {
   onSave: (comment: string) => void;
 };
 
-const QUICK_INPUT_SIZE = { height: 72, width: 360 };
+const QUICK_INPUT_SIZE = { height: 48, width: 320 };
 
 export function AnnotationQuickInput({ draft, onClose, onSave }: AnnotationQuickInputProps) {
   const { messages } = useI18n();
@@ -35,14 +35,14 @@ export function AnnotationQuickInput({ draft, onClose, onSave }: AnnotationQuick
 
   return (
     <div
-      className="quotecue-interactive qc-surface qc-elevated fixed flex h-14 w-[360px] max-w-[calc(100dvw-1.5rem)] items-center gap-2 rounded-full border p-1.5 pl-5"
+      className="quotecue-interactive qc-surface qc-elevated fixed flex h-12 w-[320px] max-w-[calc(100dvw-1.5rem)] items-center gap-1.5 rounded-full border p-1 pl-4"
       onPointerDown={resetWarning}
       ref={rootRef}
       style={position}
     >
       <SecureTextField
         ariaLabel={messages.annotationContent}
-        className="h-10 min-w-0 flex-1 rounded-lg border-0 bg-transparent outline-none data-[focused=true]:ring-2 data-[focused=true]:ring-blue-500/45"
+        className="h-9 min-w-0 flex-1 rounded-lg border-0 bg-transparent outline-none"
         kind="input"
         name="quotecue-annotation-comment"
         onCancel={onClose}
@@ -57,11 +57,11 @@ export function AnnotationQuickInput({ draft, onClose, onSave }: AnnotationQuick
       />
       <button
         aria-label={messages.saveAnnotation}
-        className="qc-primary qc-pressable qc-focus flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full"
+        className="qc-primary qc-pressable qc-focus flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-full"
         onClick={() => onSave(comment.trim())}
         type="button"
       >
-        <Plus aria-hidden="true" className="size-6" />
+        <Plus aria-hidden="true" className="size-5" />
       </button>
     </div>
   );

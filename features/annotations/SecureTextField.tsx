@@ -28,7 +28,6 @@ export const SecureTextField = forwardRef<SecureTextFieldHandle, SecureTextField
     ref,
   ) {
     const theme = useHostTheme();
-    const [isFocused, setIsFocused] = useState(false);
     const [token] = useState(() => crypto.randomUUID());
     const frameUrl = browser.runtime.getURL(`/secure-field.html#${encodeURIComponent(token)}`);
     const frameRef = useRef<HTMLIFrameElement>(null);
@@ -51,10 +50,6 @@ export const SecureTextField = forwardRef<SecureTextFieldHandle, SecureTextField
       if (!fieldEvent) {
         return;
       }
-      if (fieldEvent.type === "focus-change") {
-        setIsFocused(fieldEvent.focused);
-        return;
-      }
       dispatchFieldEvent(fieldEvent, handlersRef.current);
     }, []);
 
@@ -64,7 +59,6 @@ export const SecureTextField = forwardRef<SecureTextFieldHandle, SecureTextField
         return;
       }
 
-      setIsFocused(false);
       portRef.current?.close();
       const channel = new MessageChannel();
       channel.port1.onmessage = handleFieldEvent;
@@ -107,7 +101,6 @@ export const SecureTextField = forwardRef<SecureTextFieldHandle, SecureTextField
       <iframe
         aria-label={ariaLabel}
         className={className}
-        data-focused={isFocused}
         data-quotecue-secure-field=""
         onLoad={connect}
         ref={frameRef}
@@ -121,7 +114,7 @@ export const SecureTextField = forwardRef<SecureTextFieldHandle, SecureTextField
 );
 
 function dispatchFieldEvent(
-  event: Exclude<SecureFieldEvent, { type: "focus-change" }>,
+  event: SecureFieldEvent,
   handlers: Pick<SecureTextFieldProps, "onCancel" | "onChange" | "onSave">,
 ) {
   if (event.type === "cancel") {

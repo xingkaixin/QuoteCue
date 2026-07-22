@@ -8,19 +8,21 @@ vi.mock("@/features/annotations/SecureTextField", async () => {
   const { forwardRef, useEffect, useImperativeHandle, useRef } = await import("react");
   type FakeSecureFieldProps = {
     ariaLabel: string;
+    className?: string;
     onCancel: () => void;
     onChange: (value: string) => void;
     value: string;
   };
   return {
     SecureTextField: forwardRef<{ focus: () => void }, FakeSecureFieldProps>(
-      function FakeSecureTextField({ ariaLabel, onCancel, onChange, value }, ref) {
+      function FakeSecureTextField({ ariaLabel, className, onCancel, onChange, value }, ref) {
         const fieldRef = useRef<HTMLTextAreaElement>(null);
         useImperativeHandle(ref, () => ({ focus: () => fieldRef.current?.focus() }), []);
         useEffect(() => fieldRef.current?.focus(), []);
         return (
           <textarea
             aria-label={ariaLabel}
+            className={className}
             onChange={(event) => onChange(event.currentTarget.value)}
             onKeyDown={(event) => {
               if (event.key === "Escape") {
@@ -60,6 +62,30 @@ afterEach(() => {
 });
 
 describe("AnnotationEditor", () => {
+  it("uses compact fields and text actions without a persistent focus ring", async () => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    const { container, root } = await renderEditor(vi.fn());
+    const shell = container.firstElementChild;
+    const textarea = container.querySelector("textarea");
+    const cancelButton = findButton(container, "Cancel");
+    const saveButton = findButton(container, "Save");
+    const deleteButton = container.querySelector<HTMLButtonElement>(
+      '[aria-label="Delete annotation"]',
+    );
+
+    expect(shell?.classList).toContain("w-[340px]");
+    expect(shell?.classList).toContain("p-3");
+    expect(textarea?.classList).toContain("h-24");
+    expect(textarea?.className).not.toContain("data-[focused=true]:ring");
+    expect(cancelButton?.classList).toContain("h-8");
+    expect(saveButton?.classList).toContain("h-8");
+    expect(cancelButton?.querySelector("svg")).toBeNull();
+    expect(saveButton?.querySelector("svg")).toBeNull();
+    expect(deleteButton?.querySelector("svg")?.classList).toContain("size-4");
+
+    await act(async () => root.unmount());
+  });
+
   it("closes on the first outside interaction or Escape when unchanged", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     const onCancel = vi.fn();

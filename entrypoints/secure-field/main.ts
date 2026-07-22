@@ -33,12 +33,6 @@ function connect(event: MessageEvent<unknown>) {
   field.addEventListener("input", () => {
     port.postMessage({ type: "change", value: field.value });
   });
-  field.addEventListener("focus", () => {
-    port.postMessage({ type: "focus-change", focused: true });
-  });
-  field.addEventListener("blur", () => {
-    port.postMessage({ type: "focus-change", focused: false });
-  });
   field.addEventListener("keydown", (fieldEvent) => {
     const keyboardEvent = fieldEvent as KeyboardEvent;
     if (keyboardEvent.key === "Escape") {
