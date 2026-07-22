@@ -3,6 +3,7 @@ import {
   decodeSecureFieldInit,
   type SecureFieldConfig,
 } from "@/features/annotations/secure-field-protocol";
+import { isSecureFieldSaveShortcut } from "@/features/annotations/secure-field-keyboard";
 
 const token = decodeURIComponent(window.location.hash.slice(1));
 
@@ -36,11 +37,7 @@ function connect(event: MessageEvent<unknown>) {
       port.postMessage({ type: "cancel" });
       return;
     }
-    const isSave =
-      keyboardEvent.key === "Enter" &&
-      !keyboardEvent.isComposing &&
-      (init.config.kind === "input" || keyboardEvent.metaKey || keyboardEvent.ctrlKey);
-    if (isSave) {
+    if (isSecureFieldSaveShortcut(keyboardEvent, init.config.kind)) {
       keyboardEvent.preventDefault();
       port.postMessage({ type: "save", value: field.value });
     }
@@ -54,6 +51,7 @@ function createField(config: SecureFieldConfig) {
   const field = document.createElement(config.kind);
   field.setAttribute("aria-label", config.ariaLabel);
   field.setAttribute("autocomplete", "off");
+  field.name = config.name;
   field.placeholder = config.placeholder;
   field.value = config.value;
   return field;

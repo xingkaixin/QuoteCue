@@ -10,6 +10,7 @@ import {
 const config = {
   ariaLabel: "Annotation content",
   kind: "textarea" as const,
+  name: "quotecue-annotation-comment",
   placeholder: "Add a comment",
   value: "private annotation",
 };

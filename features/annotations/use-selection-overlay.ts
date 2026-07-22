@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 
 import type { SelectionActionState } from "./annotation";
+import { isQuoteCueEvent } from "./is-quotecue-event";
 import { captureAssistantSelection } from "./selection-anchor";
-
-const ROOT_ATTRIBUTE = "data-quotecue-root";
-const HOST_ATTRIBUTE = "data-quotecue-host";
 
 export function useSelectionOverlay(isEnabled: boolean, resetKey: string) {
   const [selectionAction, setSelectionAction] = useState<SelectionActionState>({
@@ -22,7 +20,7 @@ export function useSelectionOverlay(isEnabled: boolean, resetKey: string) {
 
     let captureFrame: number | undefined;
     const captureSelection = (event: Event) => {
-      if (event.composedPath().some(isQuoteCueElement)) {
+      if (isQuoteCueEvent(event)) {
         return;
       }
       if (event instanceof KeyboardEvent && event.key === "Escape") {
@@ -62,10 +60,4 @@ export function useSelectionOverlay(isEnabled: boolean, resetKey: string) {
   }, [dismissSelectionAction, isEnabled]);
 
   return { dismissSelectionAction, selectionAction };
-}
-
-function isQuoteCueElement(target: EventTarget) {
-  return (
-    target instanceof Element && target.closest(`[${HOST_ATTRIBUTE}], [${ROOT_ATTRIBUTE}]`) !== null
-  );
 }

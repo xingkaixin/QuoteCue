@@ -6,7 +6,10 @@ import { useI18n } from "@/features/i18n/I18nProvider";
 
 import type { DraftAnnotation, SelectionDraft } from "./annotation";
 import { annotationEditorPosition } from "./annotation-editor-position";
+import { DiscardChangesConfirmation } from "./DiscardChangesConfirmation";
 import { SecureTextField, type SecureTextFieldHandle } from "./SecureTextField";
+import { useDiscardConfirmation } from "./use-discard-confirmation";
+import { useOutsideDiscard } from "./use-outside-discard";
 
 type AnnotationEditorProps = {
   annotation: DraftAnnotation;
@@ -17,15 +20,6 @@ type AnnotationEditorProps = {
 };
 
 const EDITOR_SIZE = { height: 230, width: 380 };
-const SHAKE_KEYFRAMES = [
-  { transform: "translateX(0)" },
-  { transform: "translateX(-8px)" },
-  { transform: "translateX(8px)" },
-  { transform: "translateX(-6px)" },
-  { transform: "translateX(6px)" },
-  { transform: "translateX(0)" },
-];
-const SHAKE_OPTIONS = { duration: 320, easing: "ease-in-out" };
 
 export function AnnotationEditor({
   annotation,
@@ -37,113 +31,82 @@ export function AnnotationEditor({
   const { messages } = useI18n();
   const [comment, setComment] = useState(annotation.comment);
   const editorRef = useRef<HTMLDivElement>(null);
-  const hasWarnedAboutChangesRef = useRef(false);
-  const ignoreNextBlurRef = useRef(false);
-  const isDismissingRef = useRef(false);
   const textareaRef = useRef<SecureTextFieldHandle>(null);
+  const focusEditor = useCallback(() => textareaRef.current?.focus(), []);
+  const {
+    confirmDiscard,
+    continueButtonRef,
+    continueEditing,
+    isConfirmingDiscard,
+    requestDiscard,
+  } = useDiscardConfirmation({
+    focusEditor,
+    isDirty: comment !== annotation.comment,
+    onDiscard: onCancel,
+  });
 
-  useEffect(() => {
-    textareaRef.current?.focus();
-  }, []);
-
-  const requestDismissal = useCallback(
-    (event?: PointerEvent) => {
-      if (isDismissingRef.current) {
-        return true;
-      }
-
-      if (comment === annotation.comment || hasWarnedAboutChangesRef.current) {
-        isDismissingRef.current = true;
-        onCancel();
-        return true;
-      }
-
-      event?.preventDefault();
-      event?.stopImmediatePropagation();
-      if (event) {
-        ignoreNextBlurRef.current = true;
-        requestAnimationFrame(() => {
-          ignoreNextBlurRef.current = false;
-        });
-      }
-      hasWarnedAboutChangesRef.current = true;
-      editorRef.current?.animate(SHAKE_KEYFRAMES, SHAKE_OPTIONS);
-      return false;
-    },
-    [annotation.comment, comment, onCancel],
-  );
-
-  useEffect(() => {
-    const handleOutsidePointerDown = (event: PointerEvent) => {
-      if (editorRef.current && event.composedPath().includes(editorRef.current)) {
-        hasWarnedAboutChangesRef.current = false;
-        return;
-      }
-      requestDismissal(event);
-    };
-
-    document.addEventListener("pointerdown", handleOutsidePointerDown, true);
-    return () => {
-      document.removeEventListener("pointerdown", handleOutsidePointerDown, true);
-    };
-  }, [requestDismissal]);
+  useEffect(focusEditor, [focusEditor]);
+  useOutsideDiscard(editorRef, requestDiscard);
 
   return (
     <div
       className="quotecue-interactive fixed w-[380px] rounded-3xl border border-neutral-200 bg-white p-4 text-neutral-950 shadow-2xl"
       onBlur={(event) => {
-        if (event.currentTarget.contains(event.relatedTarget)) {
-          return;
-        }
-        if (ignoreNextBlurRef.current) {
-          ignoreNextBlurRef.current = false;
-          requestAnimationFrame(() => textareaRef.current?.focus());
-          return;
-        }
-        if (!requestDismissal()) {
-          requestAnimationFrame(() => textareaRef.current?.focus());
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+          requestDiscard();
         }
       }}
-      onPointerDown={() => {
-        hasWarnedAboutChangesRef.current = false;
+      onKeyDown={(event) => {
+        if (event.key === "Escape" && isConfirmingDiscard) {
+          event.preventDefault();
+          continueEditing();
+        }
       }}
       ref={editorRef}
       style={annotationEditorPosition(draft, EDITOR_SIZE)}
     >
-      <SecureTextField
-        ariaLabel={messages.annotationContent}
-        className="h-28 w-full border-0 bg-transparent"
-        kind="textarea"
-        onCancel={onCancel}
-        onChange={(value) => {
-          hasWarnedAboutChangesRef.current = false;
-          setComment(value);
-        }}
-        onSave={(value) => onSave(value.trim())}
-        placeholder={messages.optionalComment}
-        ref={textareaRef}
-        value={comment}
-      />
-      <div className="mt-3 flex items-center justify-between">
-        <Button
-          aria-label={messages.deleteAnnotation}
-          onClick={onDelete}
-          size="icon"
-          variant="ghost"
-        >
-          <Trash2 className="size-5" />
-        </Button>
-        <div className="flex items-center gap-2">
-          <Button onClick={onCancel} variant="outline">
-            <X className="size-4" />
-            {messages.cancel}
+      <div inert={isConfirmingDiscard}>
+        <SecureTextField
+          ariaLabel={messages.annotationContent}
+          className="h-28 w-full rounded-xl border-0 bg-transparent outline-none focus:ring-2 focus:ring-blue-500/45"
+          kind="textarea"
+          name="quotecue-annotation-comment"
+          onCancel={requestDiscard}
+          onChange={setComment}
+          onSave={(value) => onSave(value.trim())}
+          placeholder={messages.optionalComment}
+          ref={textareaRef}
+          value={comment}
+        />
+        <div className="mt-3 flex items-center justify-between">
+          <Button
+            aria-label={messages.deleteAnnotation}
+            onClick={onDelete}
+            size="icon"
+            variant="ghost"
+          >
+            <Trash2 aria-hidden="true" className="size-5" />
           </Button>
-          <Button onClick={() => onSave(comment.trim())}>
-            <Check className="size-4" />
-            {messages.save}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button onClick={requestDiscard} variant="outline">
+              <X aria-hidden="true" className="size-4" />
+              {messages.cancel}
+            </Button>
+            <Button onClick={() => onSave(comment.trim())}>
+              <Check aria-hidden="true" className="size-4" />
+              {messages.save}
+            </Button>
+          </div>
         </div>
       </div>
+      {isConfirmingDiscard && (
+        <DiscardChangesConfirmation
+          className="absolute inset-x-4 top-14"
+          continueButtonRef={continueButtonRef}
+          onContinue={continueEditing}
+          onDiscard={confirmDiscard}
+        />
+      )}
     </div>
   );
 }

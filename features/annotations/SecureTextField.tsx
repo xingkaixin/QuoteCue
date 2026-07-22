@@ -31,17 +31,17 @@ type SecureTextFieldProps = SecureFieldConfig & {
 
 export const SecureTextField = forwardRef<SecureTextFieldHandle, SecureTextFieldProps>(
   function SecureTextField(
-    { ariaLabel, className, kind, onBlur, onCancel, onChange, onSave, placeholder, value },
+    { ariaLabel, className, kind, name, onBlur, onCancel, onChange, onSave, placeholder, value },
     ref,
   ) {
     const [token] = useState(() => crypto.randomUUID());
     const frameUrl = browser.runtime.getURL(`/secure-field.html#${encodeURIComponent(token)}`);
     const frameRef = useRef<HTMLIFrameElement>(null);
     const portRef = useRef<MessagePort | null>(null);
-    const configRef = useRef<SecureFieldConfig>({ ariaLabel, kind, placeholder, value });
+    const configRef = useRef<SecureFieldConfig>({ ariaLabel, kind, name, placeholder, value });
     const handlersRef = useRef({ onCancel, onChange, onSave });
 
-    configRef.current = { ariaLabel, kind, placeholder, value };
+    configRef.current = { ariaLabel, kind, name, placeholder, value };
     handlersRef.current = { onCancel, onChange, onSave };
 
     const handleFieldEvent = useCallback((event: MessageEvent<unknown>) => {

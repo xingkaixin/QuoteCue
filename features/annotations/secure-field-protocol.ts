@@ -3,6 +3,7 @@ export const SECURE_FIELD_INIT = "quotecue:secure-field:init";
 export type SecureFieldConfig = {
   ariaLabel: string;
   kind: "input" | "textarea";
+  name: string;
   placeholder: string;
   value: string;
 };
@@ -62,6 +63,7 @@ function decodeConfig(value: unknown): SecureFieldConfig | null {
     !isRecord(value) ||
     (value.kind !== "input" && value.kind !== "textarea") ||
     typeof value.ariaLabel !== "string" ||
+    typeof value.name !== "string" ||
     typeof value.placeholder !== "string" ||
     typeof value.value !== "string"
   ) {
@@ -70,6 +72,7 @@ function decodeConfig(value: unknown): SecureFieldConfig | null {
   return {
     ariaLabel: value.ariaLabel,
     kind: value.kind,
+    name: value.name,
     placeholder: value.placeholder,
     value: value.value,
   };

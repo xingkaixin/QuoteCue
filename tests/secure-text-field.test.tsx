@@ -47,6 +47,7 @@ describe("SecureTextField", () => {
         <SecureTextField
           ariaLabel="Annotation content"
           kind="textarea"
+          name="quotecue-annotation-comment"
           onCancel={vi.fn()}
           onChange={onChange}
           onSave={onSave}
@@ -69,7 +70,10 @@ describe("SecureTextField", () => {
     expect(postMessage).toHaveBeenCalledWith(
       expect.objectContaining({
         type: "quotecue:secure-field:init",
-        config: expect.objectContaining({ value: "private annotation" }),
+        config: expect.objectContaining({
+          name: "quotecue-annotation-comment",
+          value: "private annotation",
+        }),
       }),
       "https://extension.test",
       [channel?.port2],

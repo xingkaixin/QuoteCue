@@ -12,8 +12,11 @@ export type Messages = {
   clearAnnotations: string;
   clearAnnotationsConfirmation: string;
   confirmClearAnnotations: string;
+  continueEditing: string;
   deleteAnnotation: string;
   deleteNumberedAnnotation: (number: number) => string;
+  discardChanges: string;
+  discardChangesPrompt: string;
   editNumberedAnnotation: (number: number) => string;
   loadDraftFailed: string;
   loadingDraft: string;
@@ -29,6 +32,7 @@ export type Messages = {
   sendAnnotationsFailed: string;
   sendingAnnotations: string;
   undo: string;
+  unsavedChanges: string;
   userComment: string;
   viewAnnotation: (number: number) => string;
   prompt: {
@@ -53,8 +57,11 @@ const ENGLISH: Messages = {
   clearAnnotations: "Clear all annotations",
   clearAnnotationsConfirmation: "Clear all annotations? Click again to confirm.",
   confirmClearAnnotations: "Confirm clearing all annotations",
+  continueEditing: "Continue editing",
   deleteAnnotation: "Delete annotation",
   deleteNumberedAnnotation: (number) => `Delete annotation ${number}`,
+  discardChanges: "Discard changes",
+  discardChangesPrompt: "Your unsaved comment will be lost.",
   editNumberedAnnotation: (number) => `Edit annotation ${number}`,
   loadDraftFailed: "QuoteCue couldn't restore this draft.",
   loadingDraft: "Restoring QuoteCue draft…",
@@ -70,6 +77,7 @@ const ENGLISH: Messages = {
   sendAnnotationsFailed: "Sending wasn't confirmed. Your annotation draft was kept.",
   sendingAnnotations: "Sending annotations…",
   undo: "Undo",
+  unsavedChanges: "Unsaved changes",
   userComment: "User comment:",
   viewAnnotation: (number) => `View annotation ${number}`,
   prompt: {
@@ -93,8 +101,11 @@ const SIMPLIFIED_CHINESE: Messages = {
   clearAnnotations: "清空全部批注",
   clearAnnotationsConfirmation: "要清空全部批注吗？请再次点击确认。",
   confirmClearAnnotations: "确认清空全部批注",
+  continueEditing: "继续编辑",
   deleteAnnotation: "删除批注",
   deleteNumberedAnnotation: (number) => `删除批注 ${number}`,
+  discardChanges: "放弃修改",
+  discardChangesPrompt: "尚未保存的批注内容将会丢失。",
   editNumberedAnnotation: (number) => `编辑批注 ${number}`,
   loadDraftFailed: "QuoteCue 无法恢复这份草稿。",
   loadingDraft: "正在恢复 QuoteCue 草稿…",
@@ -110,6 +121,7 @@ const SIMPLIFIED_CHINESE: Messages = {
   sendAnnotationsFailed: "未能确认发送，批注草稿仍已保留。",
   sendingAnnotations: "正在发送批注…",
   undo: "撤销",
+  unsavedChanges: "修改尚未保存",
   userComment: "用户批注：",
   viewAnnotation: (number) => `查看批注 ${number}`,
   prompt: {
@@ -133,8 +145,11 @@ const TRADITIONAL_CHINESE: Messages = {
   clearAnnotations: "清除全部批註",
   clearAnnotationsConfirmation: "要清除全部批註嗎？請再次點擊確認。",
   confirmClearAnnotations: "確認清除全部批註",
+  continueEditing: "繼續編輯",
   deleteAnnotation: "刪除批註",
   deleteNumberedAnnotation: (number) => `刪除批註 ${number}`,
+  discardChanges: "放棄修改",
+  discardChangesPrompt: "尚未儲存的批註內容將會遺失。",
   editNumberedAnnotation: (number) => `編輯批註 ${number}`,
   loadDraftFailed: "QuoteCue 無法復原這份草稿。",
   loadingDraft: "正在復原 QuoteCue 草稿…",
@@ -150,6 +165,7 @@ const TRADITIONAL_CHINESE: Messages = {
   sendAnnotationsFailed: "未能確認傳送，批註草稿仍已保留。",
   sendingAnnotations: "正在傳送批註…",
   undo: "復原",
+  unsavedChanges: "變更尚未儲存",
   userComment: "使用者批註：",
   viewAnnotation: (number) => `查看批註 ${number}`,
   prompt: {
