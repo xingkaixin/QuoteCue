@@ -2,7 +2,8 @@ import type { DraftAnnotation } from "@/features/annotations/annotation";
 import { compileAnnotatedPrompt } from "@/features/annotations/prompt-compiler";
 import type { SupportedLocale } from "@/features/i18n/messages";
 
-import { chatGptHost, type ChatGptHost, type ComposerSnapshot } from "./chatgpt-host";
+import { activeHost } from "./active-host";
+import type { ComposerSnapshot, Host } from "./dom-host";
 
 export type AnnotatedSendFailureReason =
   | "composer-unavailable"
@@ -25,7 +26,7 @@ export type AnnotatedSendState =
 
 type SendInterceptorOptions = {
   draft: () => { annotations: DraftAnnotation[]; revision: number };
-  host?: ChatGptHost;
+  host?: Host;
   locale: () => SupportedLocale;
   onSendAccepted: (revision: number) => void;
   onStateChange?: (state: AnnotatedSendState) => void;
@@ -47,7 +48,7 @@ type StartedSend = {
 };
 
 export function registerSendInterceptor(options: SendInterceptorOptions) {
-  const host = options.host ?? chatGptHost;
+  const host = options.host ?? activeHost;
   let activeAttempt: SendAttempt | null = null;
   let lastFailedAttempt: SendAttempt | null = null;
   let isDispatchingReplay = false;

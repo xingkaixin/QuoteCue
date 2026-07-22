@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import type { SelectionCapture, SelectionDraft } from "./annotation";
 import { isQuoteCueEvent } from "./is-quotecue-event";
-import { chatGptHost } from "@/features/chatgpt/chatgpt-host";
+import { activeHost } from "@/features/host/active-host";
 import { useI18n } from "@/features/i18n/I18nProvider";
 
 export function useSelectionOverlay(
@@ -35,7 +35,7 @@ export function useSelectionOverlay(
         cancelAnimationFrame(captureFrame);
       }
       captureFrame = requestAnimationFrame(() => {
-        const result = chatGptHost.selection.capture();
+        const result = activeHost.selection.capture();
         setSelectionDraft(result.status === "available" ? result.value : null);
       });
     };
@@ -68,7 +68,7 @@ export function useSelectionOverlay(
       return;
     }
 
-    return chatGptHost.selection.mountAction({
+    return activeHost.selection.mountAction({
       label: messages.addAnnotation,
       onActivate: () => {
         onActivate({ anchor: selectionDraft.anchor, rect: selectionDraft.rect });

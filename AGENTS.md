@@ -12,9 +12,11 @@
 
 ## 关键边界
 
-- `entrypoints/content` 负责扩展挂载和应用编排，不放 ChatGPT selector 或页面观察逻辑。
-- `features/chatgpt/chatgpt-host.ts` 是 ChatGPT DOM contract 的唯一生产入口。宿主 selector、
-  composer 操作、导航监听或确认信号变化必须在这里收敛，并更新去敏 fixture 测试。
+- `entrypoints/content` 负责扩展挂载和应用编排，不放宿主 selector 或页面观察逻辑。
+- `features/host/dom-host.ts` 是通用宿主引擎；每个站点在 `features/<site>/` 提供
+  `SiteAdapter`（selector、composer 类型、会话路径等），`features/host/active-host.ts`
+  按 hostname 选择宿主。composer 操作、导航监听或确认信号变化必须在引擎/适配器里收敛，
+  并更新去敏 fixture 测试。
 - `features/annotations` 负责批注领域、锚点算法、草稿持久化和 UI 状态；纯算法不要反向依赖
   ChatGPT DOM。
 - 通用 UI primitive 放在 `components/ui`，优先复用现有组件和语义化 CSS token。

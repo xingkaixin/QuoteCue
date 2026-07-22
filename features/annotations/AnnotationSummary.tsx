@@ -9,10 +9,7 @@ import {
 } from "lucide-react";
 import { Fragment, useEffect, useRef, useState } from "react";
 
-import type {
-  ComposerPosition,
-  ComposerRect,
-} from "@/features/chatgpt/use-annotated-composer-layout";
+import type { ComposerPosition, ComposerRect } from "@/features/host/use-annotated-composer-layout";
 import { useI18n } from "@/features/i18n/I18nProvider";
 
 import type { DraftAnnotation } from "./annotation";

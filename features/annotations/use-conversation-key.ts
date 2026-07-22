@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { chatGptHost } from "@/features/chatgpt/chatgpt-host";
+import { activeHost } from "@/features/host/active-host";
 
 export function useConversationKey() {
   const [temporaryConversationKey] = useState(() => `new-chat:${crypto.randomUUID()}`);
   const resolveConversationKey = useCallback(
-    () => chatGptHost.conversation.key(temporaryConversationKey),
+    () => activeHost.conversation.key(temporaryConversationKey),
     [temporaryConversationKey],
   );
   const [conversationKey, setConversationKey] = useState(resolveConversationKey);
@@ -15,7 +15,7 @@ export function useConversationKey() {
       const nextKey = resolveConversationKey();
       setConversationKey((currentKey) => (currentKey === nextKey ? currentKey : nextKey));
     };
-    return chatGptHost.conversation.subscribe(refresh);
+    return activeHost.conversation.subscribe(refresh);
   }, [resolveConversationKey]);
 
   return conversationKey;

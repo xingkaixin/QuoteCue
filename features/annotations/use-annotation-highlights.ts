@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import { chatGptHost } from "@/features/chatgpt/chatgpt-host";
+import { activeHost } from "@/features/host/active-host";
 
 import type { DraftAnnotation } from "./annotation";
 import { rangeEndpointRect, restoreTextAnchorFromIndex } from "./selection-anchor";
@@ -55,7 +55,7 @@ export function useAnnotationHighlights(
         commitLayout(projection);
       });
     };
-    const stopObserving = chatGptHost.selection.observeInvalidation(scheduleProjection);
+    const stopObserving = activeHost.selection.observeInvalidation(scheduleProjection);
     scheduleProjection();
 
     return () => {
@@ -82,7 +82,7 @@ function projectAnnotations(
   annotations: DraftAnnotation[],
   activeAnnotationId: string | null,
 ): AnnotationProjection {
-  const messageIndex = chatGptHost.selection.messageIndex();
+  const messageIndex = activeHost.selection.messageIndex();
   const entries = annotations.map((annotation) => ({
     annotation,
     range: restoreTextAnchorFromIndex(annotation.anchor, messageIndex),

@@ -19,9 +19,9 @@ import { useSelectionOverlay } from "@/features/annotations/use-selection-overla
 import {
   registerSendInterceptor,
   type AnnotatedSendState,
-} from "@/features/chatgpt/register-send-interceptor";
-import { chatGptHost } from "@/features/chatgpt/chatgpt-host";
-import { useAnnotatedComposerLayout } from "@/features/chatgpt/use-annotated-composer-layout";
+} from "@/features/host/register-send-interceptor";
+import { activeHost } from "@/features/host/active-host";
+import { useAnnotatedComposerLayout } from "@/features/host/use-annotated-composer-layout";
 import { useI18n } from "@/features/i18n/I18nProvider";
 
 export default function App() {
@@ -125,7 +125,7 @@ export default function App() {
   };
 
   const openEditor = (annotation: DraftAnnotation) => {
-    const reveal = chatGptHost.selection.reveal(annotation.anchor);
+    const reveal = activeHost.selection.reveal(annotation.anchor);
     if (reveal.status === "unavailable") {
       return;
     }
@@ -139,7 +139,7 @@ export default function App() {
   };
 
   const showExpandedEditor = (annotation: DraftAnnotation) => {
-    const draft = chatGptHost.selection.draft(annotation);
+    const draft = activeHost.selection.draft(annotation);
     if (draft.status === "available") {
       setEditor({ status: "expanded", annotationId: annotation.id, draft: draft.value });
     }

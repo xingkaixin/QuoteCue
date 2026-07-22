@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { registerSendInterceptor } from "@/features/chatgpt/register-send-interceptor";
+import { registerSendInterceptor } from "@/features/host/register-send-interceptor";
 
 import {
   appendComposer as installComposer,

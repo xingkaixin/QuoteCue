@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { chatGptHost } from "./chatgpt-host";
+import { activeHost } from "./active-host";
 
 const ANNOTATION_ROW_HEIGHT = 40;
 const POSITION_REFRESH_MS = 80;
@@ -87,7 +87,7 @@ export function useAnnotatedComposerLayout(isActive: boolean) {
     }
 
     function refresh() {
-      const result = chatGptHost.layout.current();
+      const result = activeHost.layout.current();
       if (result.status === "unavailable") {
         restoreSurface();
         restoreAction();
@@ -111,7 +111,7 @@ export function useAnnotatedComposerLayout(isActive: boolean) {
       refreshTimer = window.setTimeout(refresh, POSITION_REFRESH_MS);
     }
 
-    const stopObserving = chatGptHost.layout.subscribe(scheduleRefresh);
+    const stopObserving = activeHost.layout.subscribe(scheduleRefresh);
     refresh();
 
     return () => {

@@ -4,8 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { DraftAnnotation } from "@/features/annotations/annotation";
 import { createChatGptHost } from "@/features/chatgpt/chatgpt-host";
-import { registerSendInterceptor } from "@/features/chatgpt/register-send-interceptor";
-import { useAnnotatedComposerLayout } from "@/features/chatgpt/use-annotated-composer-layout";
+import { registerSendInterceptor } from "@/features/host/register-send-interceptor";
+import { useAnnotatedComposerLayout } from "@/features/host/use-annotated-composer-layout";
 
 import {
   appendAssistantMessage,

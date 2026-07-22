@@ -6,7 +6,7 @@ import {
   useVisualViewportBounds,
   type VisualViewportBounds,
 } from "@/features/layout/use-visual-viewport";
-import { chatGptHost } from "@/features/chatgpt/chatgpt-host";
+import { activeHost } from "@/features/host/active-host";
 
 import type { SelectionDraft } from "./annotation";
 import { rangeEndpointRect } from "./selection-anchor";
@@ -36,7 +36,7 @@ export function useAnnotationEditorPosition(
         height: elementRect?.height || fallbackSize.height,
         width: elementRect?.width || fallbackSize.width,
       };
-      const restored = chatGptHost.selection.restore(draft.anchor);
+      const restored = activeHost.selection.restore(draft.anchor);
       const restoredRect =
         restored.status === "available" ? rangeEndpointRect(restored.value) : null;
       const nextPosition = annotationEditorPosition(
