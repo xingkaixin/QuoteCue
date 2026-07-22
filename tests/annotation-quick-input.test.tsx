@@ -56,76 +56,71 @@ const draft = {
 
 afterEach(() => {
   document.body.replaceChildren();
+  vi.restoreAllMocks();
 });
 
 describe("AnnotationQuickInput", () => {
   it("allows saving a selection without a comment", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     const onSave = vi.fn();
-    const container = document.createElement("div");
-    document.body.append(container);
-    const root = createRoot(container);
+    const { container, root } = await renderQuickInput(vi.fn(), onSave);
 
-    await act(async () => {
-      root.render(<AnnotationQuickInput draft={draft} onClose={vi.fn()} onSave={onSave} />);
-    });
     await act(async () => {
       container.querySelector<HTMLButtonElement>('[aria-label="Save annotation"]')?.click();
     });
-
     expect(onSave).toHaveBeenCalledWith("");
 
     await act(async () => root.unmount());
   });
 
-  it("confirms before closing a dirty quick input", async () => {
+  it("shakes once before closing a dirty quick input", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    const animate = vi.fn();
+    Object.defineProperty(Element.prototype, "animate", { configurable: true, value: animate });
     const onClose = vi.fn();
-    const container = document.createElement("div");
-    document.body.append(container);
-    const root = createRoot(container);
-
-    await act(async () => {
-      root.render(<AnnotationQuickInput draft={draft} onClose={onClose} onSave={vi.fn()} />);
-    });
+    const { container, root } = await renderQuickInput(onClose, vi.fn());
     const input = container.querySelector<HTMLInputElement>("input");
     await act(async () => changeInput(input, "draft comment"));
-    let outsideInteraction: MouseEvent | undefined;
-    await act(async () => {
-      outsideInteraction = outsidePointerDown();
-    });
 
-    expect(outsideInteraction?.defaultPrevented).toBe(true);
+    let firstInteraction: MouseEvent | undefined;
+    await act(async () => {
+      firstInteraction = outsidePointerDown();
+    });
+    expect(firstInteraction?.defaultPrevented).toBe(true);
+    expect(animate).toHaveBeenCalledOnce();
     expect(onClose).not.toHaveBeenCalled();
-    expect(container.querySelector('[role="alertdialog"]')).not.toBeNull();
-    await act(async () => findButton(container, "Discard changes")?.click());
+
+    await act(async () => outsidePointerDown());
     expect(onClose).toHaveBeenCalledOnce();
 
     await act(async () => root.unmount());
   });
 
-  it("routes dirty Escape through discard confirmation", async () => {
+  it("treats Escape as explicit dismissal", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     const onClose = vi.fn();
-    const container = document.createElement("div");
-    document.body.append(container);
-    const root = createRoot(container);
+    const { container, root } = await renderQuickInput(onClose, vi.fn());
+    const input = container.querySelector<HTMLInputElement>("input");
+    await act(async () => changeInput(input, "draft comment"));
 
     await act(async () => {
-      root.render(<AnnotationQuickInput draft={draft} onClose={onClose} onSave={vi.fn()} />);
-    });
-    const input = container.querySelector<HTMLInputElement>("input");
-    await act(async () => {
-      changeInput(input, "draft comment");
       input?.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Escape" }));
     });
-
-    expect(onClose).not.toHaveBeenCalled();
-    expect(document.activeElement?.textContent).toBe("Continue editing");
+    expect(onClose).toHaveBeenCalledOnce();
 
     await act(async () => root.unmount());
   });
 });
+
+async function renderQuickInput(onClose: () => void, onSave: (comment: string) => void) {
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  await act(async () => {
+    root.render(<AnnotationQuickInput draft={draft} onClose={onClose} onSave={onSave} />);
+  });
+  return { container, root };
+}
 
 function changeInput(input: HTMLInputElement | null, value: string) {
   if (!input) {
@@ -144,10 +139,4 @@ function outsidePointerDown() {
   });
   document.body.dispatchEvent(event);
   return event;
-}
-
-function findButton(container: HTMLElement, label: string) {
-  return Array.from(container.querySelectorAll("button")).find(
-    (button) => button.textContent?.trim() === label,
-  );
 }

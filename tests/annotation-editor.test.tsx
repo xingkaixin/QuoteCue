@@ -62,11 +62,8 @@ describe("AnnotationEditor", () => {
   it("closes on the first outside interaction or Escape when unchanged", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     const onCancel = vi.fn();
-    const container = document.createElement("div");
-    document.body.append(container);
-    const root = createRoot(container);
+    const { container, root } = await renderEditor(onCancel);
 
-    await act(async () => root.render(editor(onCancel)));
     await act(async () => outsidePointerDown());
     expect(onCancel).toHaveBeenCalledOnce();
 
@@ -81,102 +78,92 @@ describe("AnnotationEditor", () => {
     await act(async () => root.unmount());
   });
 
-  it("requires an explicit choice before discarding dirty changes", async () => {
+  it("shakes once before dismissing dirty changes", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     const animate = vi.fn();
     Object.defineProperty(Element.prototype, "animate", { configurable: true, value: animate });
     const onCancel = vi.fn();
-    const container = document.createElement("div");
-    document.body.append(container);
-    const root = createRoot(container);
-
-    await act(async () => root.render(editor(onCancel)));
+    const { container, root } = await renderEditor(onCancel);
     const textarea = container.querySelector<HTMLTextAreaElement>("textarea");
     await act(async () => changeTextarea(textarea, "changed comment"));
 
-    let outsideInteraction: MouseEvent | undefined;
+    let firstInteraction: MouseEvent | undefined;
     await act(async () => {
-      outsideInteraction = outsidePointerDown();
+      firstInteraction = outsidePointerDown();
     });
-    expect(outsideInteraction?.defaultPrevented).toBe(true);
-    expect(container.querySelector('[role="alertdialog"]')?.textContent).toContain(
-      "Unsaved changes",
-    );
-    expect(document.activeElement?.textContent).toBe("Continue editing");
-    expect(textarea?.closest("[inert]")).not.toBeNull();
-    expect(animate).not.toHaveBeenCalled();
+    expect(firstInteraction?.defaultPrevented).toBe(true);
+    expect(animate).toHaveBeenCalledOnce();
     expect(onCancel).not.toHaveBeenCalled();
-
-    await act(async () => {
-      document.activeElement?.dispatchEvent(
-        new KeyboardEvent("keydown", { bubbles: true, key: "Tab" }),
-      );
-    });
-    expect(document.activeElement?.textContent).toBe("Discard changes");
-    await act(async () => {
-      document.activeElement?.dispatchEvent(
-        new KeyboardEvent("keydown", { bubbles: true, key: "Tab", shiftKey: true }),
-      );
-    });
-    expect(document.activeElement?.textContent).toBe("Continue editing");
+    expect(container.querySelector('[role="alertdialog"]')).toBeNull();
 
     await act(async () => outsidePointerDown());
-    expect(onCancel).not.toHaveBeenCalled();
-    await act(async () => {
-      findButton(container, "Continue editing")?.click();
-      await nextFrame();
-    });
-    expect(container.querySelector('[role="alertdialog"]')).toBeNull();
-    expect(document.activeElement).toBe(textarea);
-
-    await act(async () => findButton(container, "Cancel")?.click());
-    expect(onCancel).not.toHaveBeenCalled();
-    await act(async () => findButton(container, "Discard changes")?.click());
     expect(onCancel).toHaveBeenCalledOnce();
 
     await act(async () => root.unmount());
   });
 
-  it("routes dirty Escape through the same confirmation", async () => {
+  it("warns again after the comment changes", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    const animate = vi.fn();
+    Object.defineProperty(Element.prototype, "animate", { configurable: true, value: animate });
     const onCancel = vi.fn();
-    const container = document.createElement("div");
-    document.body.append(container);
-    const root = createRoot(container);
-
-    await act(async () => root.render(editor(onCancel)));
+    const { container, root } = await renderEditor(onCancel);
     const textarea = container.querySelector<HTMLTextAreaElement>("textarea");
-    await act(async () => {
-      changeTextarea(textarea, "changed comment");
-      textarea?.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Escape" }));
-    });
 
+    await act(async () => changeTextarea(textarea, "first change"));
+    await act(async () => outsidePointerDown());
+    await act(async () => changeTextarea(textarea, "second change"));
+    await act(async () => outsidePointerDown());
+
+    expect(animate).toHaveBeenCalledTimes(2);
     expect(onCancel).not.toHaveBeenCalled();
-    expect(container.querySelector('[role="alertdialog"]')).not.toBeNull();
-    expect(document.activeElement?.textContent).toBe("Continue editing");
 
     await act(async () => root.unmount());
   });
 
-  it("routes dirty focus loss through the same confirmation", async () => {
+  it("treats Escape and Cancel as explicit dismissal", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     const onCancel = vi.fn();
-    const container = document.createElement("div");
-    document.body.append(container);
-    const root = createRoot(container);
+    const { container, root } = await renderEditor(onCancel);
+    const textarea = container.querySelector<HTMLTextAreaElement>("textarea");
+    await act(async () => changeTextarea(textarea, "changed comment"));
 
-    await act(async () => root.render(editor(onCancel)));
+    await act(async () => {
+      textarea?.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Escape" }));
+    });
+    expect(onCancel).toHaveBeenCalledOnce();
+
+    onCancel.mockClear();
+    await act(async () => findButton(container, "Cancel")?.click());
+    expect(onCancel).toHaveBeenCalledOnce();
+
+    await act(async () => root.unmount());
+  });
+
+  it("warns and restores focus after dirty focus loss", async () => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    const animate = vi.fn();
+    Object.defineProperty(Element.prototype, "animate", { configurable: true, value: animate });
+    const onCancel = vi.fn();
+    const { container, root } = await renderEditor(onCancel);
     const textarea = container.querySelector<HTMLTextAreaElement>("textarea");
     const outsideButton = document.createElement("button");
     document.body.append(outsideButton);
     await act(async () => changeTextarea(textarea, "changed comment"));
+
     await act(async () => {
       outsideButton.focus();
       await focusSettled();
     });
-
+    expect(animate).toHaveBeenCalledOnce();
     expect(onCancel).not.toHaveBeenCalled();
-    expect(container.querySelector('[role="alertdialog"]')).not.toBeNull();
+    expect(document.activeElement).toBe(textarea);
+
+    await act(async () => {
+      outsideButton.focus();
+      await focusSettled();
+    });
+    expect(onCancel).toHaveBeenCalledOnce();
 
     await act(async () => root.unmount());
   });
@@ -184,26 +171,23 @@ describe("AnnotationEditor", () => {
   it("keeps the editor open while focus settles inside its secure field", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     const onCancel = vi.fn();
-    const container = document.createElement("div");
-    document.body.append(container);
-    const root = createRoot(container);
-
-    await act(async () => root.render(editor(onCancel)));
+    const { container, root } = await renderEditor(onCancel);
     const textarea = container.querySelector<HTMLTextAreaElement>("textarea");
     expect(document.activeElement).toBe(textarea);
+
     await act(async () => {
       textarea?.dispatchEvent(new FocusEvent("focusout", { bubbles: true, relatedTarget: null }));
       await focusSettled();
     });
-
     expect(onCancel).not.toHaveBeenCalled();
-    expect(container.querySelector('[role="alertdialog"]')).toBeNull();
 
     await act(async () => root.unmount());
   });
 
   it("distinguishes editor controls from other QuoteCue controls in a closed shadow", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    const animate = vi.fn();
+    Object.defineProperty(Element.prototype, "animate", { configurable: true, value: animate });
     const onCancel = vi.fn();
     const host = document.createElement("quotecue-ui");
     host.setAttribute("data-quotecue-host", "");
@@ -222,7 +206,7 @@ describe("AnnotationEditor", () => {
         new MouseEvent("pointerdown", { bubbles: true, cancelable: true, composed: true }),
       );
     });
-    expect(container.querySelector('[role="alertdialog"]')).toBeNull();
+    expect(animate).not.toHaveBeenCalled();
 
     const otherInteraction = new MouseEvent("pointerdown", {
       bubbles: true,
@@ -231,12 +215,20 @@ describe("AnnotationEditor", () => {
     });
     await act(async () => otherControl.dispatchEvent(otherInteraction));
     expect(otherInteraction.defaultPrevented).toBe(true);
+    expect(animate).toHaveBeenCalledOnce();
     expect(onCancel).not.toHaveBeenCalled();
-    expect(container.querySelector('[role="alertdialog"]')).not.toBeNull();
 
     await act(async () => root.unmount());
   });
 });
+
+async function renderEditor(onCancel: () => void) {
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  await act(async () => root.render(editor(onCancel)));
+  return { container, root };
+}
 
 function editor(onCancel: () => void) {
   return (
@@ -280,6 +272,7 @@ function nextFrame() {
 }
 
 async function focusSettled() {
+  await nextFrame();
   await nextFrame();
   await nextFrame();
 }
