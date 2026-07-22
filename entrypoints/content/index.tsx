@@ -3,6 +3,7 @@ import "./style.css";
 import ReactDOM from "react-dom/client";
 import { createShadowRootUi } from "wxt/utils/content-script-ui/shadow-root";
 
+import { PortalContainerProvider } from "@/components/ui/portal-container";
 import { I18nProvider } from "@/features/i18n/I18nProvider";
 
 import App from "./App";
@@ -16,7 +17,29 @@ export default defineContentScript({
       name: "quotecue-ui",
       position: "overlay",
       anchor: "body",
-      isolateEvents: true,
+      mode: "closed",
+      isolateEvents: [
+        "beforeinput",
+        "change",
+        "click",
+        "compositionend",
+        "compositionstart",
+        "compositionupdate",
+        "copy",
+        "cut",
+        "dblclick",
+        "focusin",
+        "focusout",
+        "input",
+        "keydown",
+        "keypress",
+        "keyup",
+        "mousedown",
+        "mouseup",
+        "paste",
+        "pointerdown",
+        "pointerup",
+      ],
       onMount(container) {
         const app = document.createElement("div");
         app.id = "quotecue-root";
@@ -24,9 +47,11 @@ export default defineContentScript({
 
         const root = ReactDOM.createRoot(app);
         root.render(
-          <I18nProvider>
-            <App />
-          </I18nProvider>,
+          <PortalContainerProvider container={container}>
+            <I18nProvider>
+              <App />
+            </I18nProvider>
+          </PortalContainerProvider>,
         );
         return root;
       },

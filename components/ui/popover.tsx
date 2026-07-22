@@ -3,6 +3,8 @@ import type { ComponentProps, ReactNode } from "react";
 
 import { cn } from "@/lib/cn";
 
+import { usePortalContainer } from "./portal-container";
+
 export const Popover = PopoverPrimitive.Root;
 export const PopoverTrigger = PopoverPrimitive.Trigger;
 export const PopoverClose = PopoverPrimitive.Close;
@@ -12,8 +14,9 @@ type PopoverContentProps = ComponentProps<typeof PopoverPrimitive.Popup> & {
 };
 
 export function PopoverContent({ children, className, ...props }: PopoverContentProps) {
+  const container = usePortalContainer();
   return (
-    <PopoverPrimitive.Portal>
+    <PopoverPrimitive.Portal container={container}>
       <PopoverPrimitive.Positioner className="z-50" align="start" side="top" sideOffset={8}>
         <PopoverPrimitive.Popup
           data-quotecue-portal=""

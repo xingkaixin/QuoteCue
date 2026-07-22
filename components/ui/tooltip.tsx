@@ -3,6 +3,8 @@ import type { ComponentProps, ReactNode } from "react";
 
 import { cn } from "@/lib/cn";
 
+import { usePortalContainer } from "./portal-container";
+
 export const TooltipProvider = TooltipPrimitive.Provider;
 export const Tooltip = TooltipPrimitive.Root;
 export const TooltipTrigger = TooltipPrimitive.Trigger;
@@ -12,8 +14,9 @@ type TooltipContentProps = ComponentProps<typeof TooltipPrimitive.Popup> & {
 };
 
 export function TooltipContent({ children, className, ...props }: TooltipContentProps) {
+  const container = usePortalContainer();
   return (
-    <TooltipPrimitive.Portal container={quoteCueShadowRoot()}>
+    <TooltipPrimitive.Portal container={container}>
       <TooltipPrimitive.Positioner className="z-[2147483647]" sideOffset={7}>
         <TooltipPrimitive.Popup
           data-quotecue-portal=""
@@ -29,8 +32,4 @@ export function TooltipContent({ children, className, ...props }: TooltipContent
       </TooltipPrimitive.Positioner>
     </TooltipPrimitive.Portal>
   );
-}
-
-function quoteCueShadowRoot() {
-  return document.querySelector("quotecue-ui")?.shadowRoot;
 }
