@@ -68,7 +68,13 @@ Policy, including the Limited Use requirements.
 ## Security
 
 QuoteCue keeps draft data inside Chrome's extension storage and does not transmit it to a
-developer-controlled service. Users should protect access to their Chrome profile and device.
+developer-controlled service. QuoteCue renders its controls in a closed Shadow DOM and hosts
+annotation text entry in an extension-origin frame. Field values move to the extension through a
+private browser message channel rather than page DOM input events.
+
+These browser isolation mechanisms reduce exposure to scripts running on the ChatGPT page, but
+they are not encryption or a process-level security boundary. Users should protect access to their
+Chrome profile and device.
 
 ## Changes to this policy
 

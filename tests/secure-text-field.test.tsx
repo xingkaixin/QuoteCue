@@ -64,6 +64,7 @@ describe("SecureTextField", () => {
     await act(async () => iframe.dispatchEvent(new Event("load")));
 
     const channel = FakeMessageChannel.instances[0];
+    expect(iframe.src).not.toContain("private annotation");
     expect(channel).toBeDefined();
     expect(postMessage).toHaveBeenCalledWith(
       expect.objectContaining({
