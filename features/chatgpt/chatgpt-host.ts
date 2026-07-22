@@ -11,6 +11,7 @@ const SEND_BUTTON_SELECTOR = "button[data-testid='send-button']";
 const USER_MESSAGE_SELECTOR = '[data-message-author-role="user"][data-message-id]';
 const CONVERSATION_PATH_PATTERN = /^\/c\/([^/?#]+)/;
 const CONTEXT_LENGTH = 48;
+const NATIVE_SELECTION_ACTION_ATTRIBUTE = "data-quotecue-native-action";
 const SEND_ACCEPT_TIMEOUT_MS = 15_000;
 const SEND_BUTTON_APPEAR_TIMEOUT_MS = 2_000;
 
@@ -114,6 +115,111 @@ export function createChatGptHost(environment: HostEnvironment) {
       },
       rect: rangeRect(range),
     });
+  }
+
+  function selectionToolbar(selectionRect: SelectionDraft["rect"]) {
+    if (typeof hostDocument.elementsFromPoint !== "function") {
+      return null;
+    }
+
+    const pointX = Math.min(
+      Math.max(selectionRect.left + selectionRect.width / 2, 0),
+      hostWindow.innerWidth - 1,
+    );
+    const pointY = Math.min(Math.max(selectionRect.top - 8, 0), hostWindow.innerHeight - 1);
+    const visited = new Set<Element>();
+
+    for (const element of hostDocument.elementsFromPoint(pointX, pointY)) {
+      let candidate: Element | null = element;
+      while (candidate && candidate !== hostDocument.body) {
+        if (visited.has(candidate)) {
+          break;
+        }
+        visited.add(candidate);
+
+        const rect = candidate.getBoundingClientRect();
+        const verticalGap = selectionRect.top - rect.bottom;
+        const horizontalOverlap =
+          Math.min(selectionRect.right, rect.right) - Math.max(selectionRect.left, rect.left);
+        const isSelectionToolbar =
+          !candidate.closest("[data-quotecue-host]") &&
+          hostWindow.getComputedStyle(candidate).position === "fixed" &&
+          candidate.querySelector("button") !== null &&
+          rect.width >= 80 &&
+          rect.height >= 28 &&
+          rect.height <= 80 &&
+          verticalGap >= -4 &&
+          verticalGap <= 24 &&
+          horizontalOverlap > 0;
+        if (isSelectionToolbar) {
+          const actionRow = Array.from(candidate.querySelectorAll("button"))
+            .map((button) => button.parentElement)
+            .find(
+              (parent): parent is HTMLElement =>
+                parent !== null &&
+                parent.children.length > 0 &&
+                Array.from(parent.children).every((child) => child.tagName === "BUTTON"),
+            );
+          if (actionRow) {
+            return actionRow;
+          }
+        }
+        candidate = candidate.parentElement;
+      }
+    }
+
+    return null;
+  }
+
+  function mountSelectionAction(options: {
+    label: string;
+    onActivate: () => void;
+    rect: SelectionDraft["rect"];
+  }) {
+    let action: HTMLButtonElement | null = null;
+
+    const preserveSelection = (event: Event) => {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    };
+    const removeAction = () => {
+      action?.remove();
+      action = null;
+    };
+    const insertAction = () => {
+      if (action?.isConnected) {
+        return;
+      }
+
+      const toolbar = selectionToolbar(options.rect);
+      const sourceAction = toolbar?.querySelector<HTMLButtonElement>("button");
+      if (!toolbar || !sourceAction) {
+        return;
+      }
+
+      action = sourceAction.cloneNode(true) as HTMLButtonElement;
+      action.setAttribute(NATIVE_SELECTION_ACTION_ATTRIBUTE, "");
+      action.setAttribute("aria-label", options.label);
+      action.removeAttribute("aria-describedby");
+      action.removeAttribute("id");
+      action.textContent = "QuoteCue";
+      action.addEventListener("mousedown", preserveSelection, true);
+      action.addEventListener("click", (event) => {
+        preserveSelection(event);
+        options.onActivate();
+        removeAction();
+      });
+      toolbar.prepend(action);
+    };
+    const observer = new MutationObserver(insertAction);
+
+    observer.observe(hostDocument.body, { childList: true, subtree: true });
+    insertAction();
+
+    return () => {
+      observer.disconnect();
+      removeAction();
+    };
   }
 
   function selectionDraft(annotation: DraftAnnotation): ChatGptHostResult<SelectionDraft> {
@@ -418,6 +524,7 @@ export function createChatGptHost(environment: HostEnvironment) {
       capture: captureSelection,
       draft: selectionDraft,
       messageIndex,
+      mountAction: mountSelectionAction,
       observeInvalidation: (callback: () => void) => observePage(callback, true),
       restore: restoreAnchor,
     },
@@ -445,6 +552,10 @@ function rangeRect(range: Range) {
     typeof range.getBoundingClientRect === "function"
       ? range.getBoundingClientRect()
       : new DOMRect();
+  return rectangleSnapshot(rect);
+}
+
+function rectangleSnapshot(rect: SelectionDraft["rect"]) {
   return {
     bottom: rect.bottom,
     height: rect.height,

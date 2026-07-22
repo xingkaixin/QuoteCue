@@ -18,10 +18,6 @@ export type SelectionDraft = {
   rect: Pick<DOMRect, "bottom" | "height" | "left" | "right" | "top" | "width">;
 };
 
-export type SelectionActionState =
-  | { status: "hidden" }
-  | { status: "action"; draft: SelectionDraft };
-
 export type AnnotationEditorState =
   | { status: "hidden" }
   | { status: "quick"; annotationId: string; draft: SelectionDraft }

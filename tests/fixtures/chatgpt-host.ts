@@ -84,6 +84,36 @@ export function appendSendButton(onClick: () => void = () => undefined) {
   return sendButton;
 }
 
+export function appendSelectionToolbar() {
+  const toolbar = document.createElement("div");
+  toolbar.style.position = "fixed";
+  const actionRow = document.createElement("div");
+  const firstAction = document.createElement("button");
+  const lastAction = document.createElement("button");
+  firstAction.className = "native-action";
+  firstAction.setAttribute("aria-describedby", "native-tooltip");
+  firstAction.textContent = "Localized action one";
+  lastAction.textContent = "Localized action two";
+  actionRow.append(firstAction, lastAction);
+  toolbar.append(actionRow);
+  Object.defineProperty(toolbar, "getBoundingClientRect", {
+    configurable: true,
+    value: () => ({
+      bottom: 186,
+      height: 36,
+      left: 100,
+      right: 300,
+      top: 150,
+      width: 200,
+      x: 100,
+      y: 150,
+      toJSON: () => ({}),
+    }),
+  });
+  document.body.append(toolbar);
+  return { actionRow, firstAction, lastAction, toolbar };
+}
+
 function requiredElement<T extends Element>(selector: string) {
   const element = document.querySelector<T>(selector);
   if (!element) {

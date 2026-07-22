@@ -1,14 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
 
-import type { SelectionActionState } from "./annotation";
+import type { SelectionDraft } from "./annotation";
 import { isQuoteCueEvent } from "./is-quotecue-event";
 import { chatGptHost } from "@/features/chatgpt/chatgpt-host";
+import { useI18n } from "@/features/i18n/I18nProvider";
 
-export function useSelectionOverlay(isEnabled: boolean, resetKey: string) {
-  const [selectionAction, setSelectionAction] = useState<SelectionActionState>({
-    status: "hidden",
-  });
-  const dismissSelectionAction = useCallback(() => setSelectionAction({ status: "hidden" }), []);
+export function useSelectionOverlay(
+  isEnabled: boolean,
+  resetKey: string,
+  onActivate: (draft: SelectionDraft) => void,
+) {
+  const { messages } = useI18n();
+  const [selectionDraft, setSelectionDraft] = useState<SelectionDraft | null>(null);
+  const dismissSelectionAction = useCallback(() => setSelectionDraft(null), []);
 
   useEffect(dismissSelectionAction, [dismissSelectionAction, resetKey]);
 
@@ -32,11 +36,7 @@ export function useSelectionOverlay(isEnabled: boolean, resetKey: string) {
       }
       captureFrame = requestAnimationFrame(() => {
         const result = chatGptHost.selection.capture();
-        setSelectionAction(
-          result.status === "available"
-            ? { status: "action", draft: result.value }
-            : { status: "hidden" },
-        );
+        setSelectionDraft(result.status === "available" ? result.value : null);
       });
     };
     const dismissOnEscape = (event: KeyboardEvent) => {
@@ -63,5 +63,18 @@ export function useSelectionOverlay(isEnabled: boolean, resetKey: string) {
     };
   }, [dismissSelectionAction, isEnabled]);
 
-  return { dismissSelectionAction, selectionAction };
+  useEffect(() => {
+    if (!selectionDraft) {
+      return;
+    }
+
+    return chatGptHost.selection.mountAction({
+      label: messages.addAnnotation,
+      onActivate: () => {
+        onActivate(selectionDraft);
+        dismissSelectionAction();
+      },
+      rect: selectionDraft.rect,
+    });
+  }, [dismissSelectionAction, messages.addAnnotation, onActivate, selectionDraft]);
 }

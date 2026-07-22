@@ -9,6 +9,7 @@ import { useAnnotatedComposerLayout } from "@/features/chatgpt/use-annotated-com
 
 import {
   appendAssistantMessage,
+  appendSelectionToolbar,
   appendUserMessage,
   installChatGptHostFixture,
 } from "./fixtures/chatgpt-host";
@@ -36,6 +37,51 @@ afterEach(() => {
 });
 
 describe("ChatGPT host contract", () => {
+  it("mounts a delayed native-styled first action without localized text", async () => {
+    const elementsFromPointDescriptor = Object.getOwnPropertyDescriptor(
+      document,
+      "elementsFromPoint",
+    );
+    let hitElements: Element[] = [];
+    Object.defineProperty(document, "elementsFromPoint", {
+      configurable: true,
+      value: () => hitElements,
+    });
+    const onActivate = vi.fn();
+    const stop = createChatGptHost({ document, window }).selection.mountAction({
+      label: "Add QuoteCue annotation",
+      onActivate,
+      rect: {
+        bottom: 220,
+        height: 20,
+        left: 100,
+        right: 360,
+        top: 200,
+        width: 260,
+      },
+    });
+    const { actionRow, firstAction, toolbar } = appendSelectionToolbar();
+    hitElements = [firstAction, actionRow, toolbar];
+    await Promise.resolve();
+
+    const action = actionRow.querySelector<HTMLButtonElement>("[data-quotecue-native-action]");
+    expect(actionRow.firstElementChild).toBe(action);
+    expect(action?.className).toBe(firstAction.className);
+    expect(action?.textContent).toBe("QuoteCue");
+    expect(action?.getAttribute("aria-label")).toBe("Add QuoteCue annotation");
+    expect(action?.hasAttribute("aria-describedby")).toBe(false);
+
+    action?.click();
+    expect(onActivate).toHaveBeenCalledOnce();
+    expect(action?.isConnected).toBe(false);
+    stop();
+    if (elementsFromPointDescriptor) {
+      Object.defineProperty(document, "elementsFromPoint", elementsFromPointDescriptor);
+    } else {
+      Reflect.deleteProperty(document, "elementsFromPoint");
+    }
+  });
+
   it("covers selection, layout, annotated send confirmation, and cleanup", async () => {
     const fixture = installChatGptHostFixture();
     const host = createChatGptHost({ document, window });
