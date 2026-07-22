@@ -35,7 +35,7 @@ export function AnnotationQuickInput({ draft, onClose, onSave }: AnnotationQuick
 
   return (
     <div
-      className="quotecue-interactive qc-surface qc-elevated fixed flex h-12 w-[320px] max-w-[calc(100dvw-1.5rem)] items-center gap-1.5 rounded-full border p-1 pl-4"
+      className="quotecue-interactive qc-surface qc-divider fixed flex h-12 w-[320px] max-w-[calc(100dvw-1.5rem)] items-center gap-1.5 rounded-full border p-1 pl-4 shadow-sm"
       onPointerDown={resetWarning}
       ref={rootRef}
       style={position}

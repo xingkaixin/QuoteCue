@@ -72,6 +72,9 @@ describe("AnnotationQuickInput", () => {
 
     expect(shell?.classList).toContain("h-12");
     expect(shell?.classList).toContain("w-[320px]");
+    expect(shell?.classList).toContain("qc-divider");
+    expect(shell?.classList).toContain("shadow-sm");
+    expect(shell?.classList).not.toContain("qc-elevated");
     expect(input?.classList).toContain("h-9");
     expect(input?.className).not.toContain("data-[focused=true]:ring");
     expect(saveButton?.classList).toContain("size-10");

@@ -75,6 +75,9 @@ describe("AnnotationEditor", () => {
 
     expect(shell?.classList).toContain("w-[340px]");
     expect(shell?.classList).toContain("p-3");
+    expect(shell?.classList).toContain("qc-divider");
+    expect(shell?.classList).toContain("shadow-sm");
+    expect(shell?.classList).not.toContain("qc-elevated");
     expect(textarea?.classList).toContain("h-24");
     expect(textarea?.className).not.toContain("data-[focused=true]:ring");
     expect(cancelButton?.classList).toContain("h-8");

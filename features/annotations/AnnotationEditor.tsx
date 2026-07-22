@@ -44,7 +44,7 @@ export function AnnotationEditor({
 
   return (
     <div
-      className="quotecue-interactive qc-surface qc-elevated fixed w-[340px] max-w-[calc(100dvw-1.5rem)] overflow-y-auto rounded-2xl border p-3"
+      className="quotecue-interactive qc-surface qc-divider fixed w-[340px] max-w-[calc(100dvw-1.5rem)] overflow-y-auto rounded-2xl border p-3 shadow-sm"
       onPointerDown={resetWarning}
       ref={editorRef}
       style={position}
