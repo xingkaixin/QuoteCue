@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import type { SelectionActionState } from "./annotation";
 import { isQuoteCueEvent } from "./is-quotecue-event";
-import { captureAssistantSelection } from "./selection-anchor";
+import { chatGptHost } from "@/features/chatgpt/chatgpt-host";
 
 export function useSelectionOverlay(isEnabled: boolean, resetKey: string) {
   const [selectionAction, setSelectionAction] = useState<SelectionActionState>({
@@ -31,8 +31,12 @@ export function useSelectionOverlay(isEnabled: boolean, resetKey: string) {
         cancelAnimationFrame(captureFrame);
       }
       captureFrame = requestAnimationFrame(() => {
-        const draft = captureAssistantSelection();
-        setSelectionAction(draft ? { status: "action", draft } : { status: "hidden" });
+        const result = chatGptHost.selection.capture();
+        setSelectionAction(
+          result.status === "available"
+            ? { status: "action", draft: result.value }
+            : { status: "hidden" },
+        );
       });
     };
     const dismissOnEscape = (event: KeyboardEvent) => {

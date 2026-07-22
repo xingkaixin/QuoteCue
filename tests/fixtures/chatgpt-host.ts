@@ -50,8 +50,38 @@ export function appendUserMessage(messageId: string, text: string) {
   message.dataset.messageAuthorRole = "user";
   message.dataset.messageId = messageId;
   message.textContent = text;
-  document.querySelector("main")?.append(message);
+  (document.querySelector("main") ?? document.body).append(message);
   return message;
+}
+
+export function appendAssistantMessage(messageId: string, text: string) {
+  const message = document.createElement("article");
+  message.dataset.messageAuthorRole = "assistant";
+  message.dataset.messageId = messageId;
+  message.textContent = text;
+  document.body.append(message);
+  return message;
+}
+
+export function appendComposer(text = "") {
+  const composer = document.createElement("div");
+  composer.id = "prompt-textarea";
+  composer.setAttribute("contenteditable", "true");
+  composer.textContent = text;
+  Object.defineProperty(composer, "innerText", {
+    configurable: true,
+    get: () => composer.textContent ?? "",
+  });
+  document.body.append(composer);
+  return composer;
+}
+
+export function appendSendButton(onClick: () => void = () => undefined) {
+  const sendButton = document.createElement("button");
+  sendButton.dataset.testid = "send-button";
+  sendButton.addEventListener("click", onClick);
+  document.body.append(sendButton);
+  return sendButton;
 }
 
 function requiredElement<T extends Element>(selector: string) {

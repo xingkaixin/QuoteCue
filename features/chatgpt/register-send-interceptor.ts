@@ -2,18 +2,7 @@ import type { DraftAnnotation } from "@/features/annotations/annotation";
 import { compileAnnotatedPrompt } from "@/features/annotations/prompt-compiler";
 import type { SupportedLocale } from "@/features/i18n/messages";
 
-import {
-  currentComposerSnapshot,
-  currentSendButton,
-  isComposerEnter,
-  isSendButtonAvailable,
-  replaceComposerText,
-  restoreComposerText,
-  sendButtonFromEvent,
-  waitForSendButton,
-  watchForAcceptedSend,
-  type ComposerSnapshot,
-} from "./composer";
+import { chatGptHost, type ChatGptHost, type ComposerSnapshot } from "./chatgpt-host";
 
 export type AnnotatedSendFailureReason =
   | "composer-unavailable"
@@ -36,6 +25,7 @@ export type AnnotatedSendState =
 
 type SendInterceptorOptions = {
   draft: () => { annotations: DraftAnnotation[]; revision: number };
+  host?: ChatGptHost;
   locale: () => SupportedLocale;
   onSendAccepted: (revision: number) => void;
   onStateChange?: (state: AnnotatedSendState) => void;
@@ -57,6 +47,7 @@ type StartedSend = {
 };
 
 export function registerSendInterceptor(options: SendInterceptorOptions) {
+  const host = options.host ?? chatGptHost;
   let activeAttempt: SendAttempt | null = null;
   let lastFailedAttempt: SendAttempt | null = null;
   let isDispatchingReplay = false;
@@ -87,7 +78,7 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
       return;
     }
     attempt.controller.abort();
-    restoreComposerText(attempt.snapshot, attempt.compiledText);
+    host.composer.restoreText(attempt.snapshot, attempt.compiledText);
     activeAttempt = null;
     lastFailedAttempt = attempt;
     setState({ status: "failed", attemptId: attempt.id, reason });
@@ -97,15 +88,17 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
   const replaySend = (attempt: SendAttempt, initialButton: HTMLButtonElement | null) => {
     queueMicrotask(() => {
       void (async () => {
-        const sendButton = isSendButtonAvailable(initialButton)
-          ? initialButton
-          : await waitForSendButton(attempt.controller.signal);
-        if (!isSendButtonAvailable(sendButton)) {
+        const sendButtonResult = host.composer.isButtonAvailable(initialButton)
+          ? { status: "available" as const, value: initialButton }
+          : await host.composer.waitForButton(attempt.controller.signal);
+        if (sendButtonResult.status === "unavailable") {
+          host.reportUnavailable(sendButtonResult.reason);
           finishFailed(attempt, "send-unavailable");
           return;
         }
+        const sendButton = sendButtonResult.value;
 
-        watchForAcceptedSend({
+        host.composer.watchAcceptedSend({
           expectedText: attempt.compiledText,
           signal: attempt.controller.signal,
           onAccepted: () => finishAccepted(attempt),
@@ -143,17 +136,20 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
     if (annotations.length === 0) {
       return failedResult("no-annotations");
     }
-    if (source === "native" && !isSendButtonAvailable(initialButton)) {
+    if (source === "native" && !host.composer.isButtonAvailable(initialButton)) {
       return failedResult("send-unavailable");
     }
-    if (source === "custom" && initialButton && !isSendButtonAvailable(initialButton)) {
+    if (source === "custom" && initialButton && !host.composer.isButtonAvailable(initialButton)) {
+      host.reportUnavailable("send-control-unavailable");
       return failBeforeOwnership("send-unavailable", source, setState);
     }
 
-    const snapshot = currentComposerSnapshot();
-    if (!snapshot) {
+    const snapshotResult = host.composer.snapshot();
+    if (snapshotResult.status === "unavailable") {
+      host.reportUnavailable(snapshotResult.reason);
       return failBeforeOwnership("composer-unavailable", source, setState);
     }
+    const snapshot = snapshotResult.value;
     const originalText =
       retryOriginalText && snapshot.text.trim().length === 0 ? retryOriginalText : snapshot.text;
     const ownedSnapshot = { ...snapshot, text: originalText };
@@ -165,7 +161,7 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
 
     let isReplaced = false;
     try {
-      isReplaced = replaceComposerText(snapshot.element, compiledText);
+      isReplaced = host.composer.replaceText(snapshot.element, compiledText);
     } catch {
       isReplaced = false;
     }
@@ -194,24 +190,12 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
     event.stopImmediatePropagation();
   };
 
-  const onClick = (event: MouseEvent) => {
+  const stopListening = host.composer.subscribeToSubmit((event, button) => {
     if (isDispatchingReplay) {
       return;
     }
-    const sendButton = sendButtonFromEvent(event);
-    if (sendButton) {
-      prepareNativeSend(event, sendButton);
-    }
-  };
-
-  const onKeyDown = (event: KeyboardEvent) => {
-    if (isComposerEnter(event)) {
-      prepareNativeSend(event, currentSendButton());
-    }
-  };
-
-  window.addEventListener("click", onClick, true);
-  window.addEventListener("keydown", onKeyDown, true);
+    prepareNativeSend(event, button);
+  });
   options.onStateChange?.(state);
 
   return {
@@ -223,8 +207,7 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
         return;
       }
       isDisposed = true;
-      window.removeEventListener("click", onClick, true);
-      window.removeEventListener("keydown", onKeyDown, true);
+      stopListening();
       if (activeAttempt) {
         finishFailed(activeAttempt, "disposed");
       }

@@ -2,6 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { registerSendInterceptor } from "@/features/chatgpt/register-send-interceptor";
 
+import {
+  appendComposer as installComposer,
+  appendSendButton as installSendButton,
+  appendUserMessage as installUserMessage,
+} from "./fixtures/chatgpt-host";
+
 const annotation = {
   id: "annotation-1",
   anchor: {
@@ -283,34 +289,4 @@ function createInterceptor(onSendAccepted = vi.fn()) {
     locale: () => "en",
     onSendAccepted,
   });
-}
-
-function installUserMessage(messageId: string, text: string) {
-  const message = document.createElement("div");
-  message.dataset.messageAuthorRole = "user";
-  message.dataset.messageId = messageId;
-  message.textContent = text;
-  document.body.append(message);
-  return message;
-}
-
-function installComposer(text = "") {
-  const composer = document.createElement("div");
-  composer.id = "prompt-textarea";
-  composer.setAttribute("contenteditable", "true");
-  composer.textContent = text;
-  Object.defineProperty(composer, "innerText", {
-    configurable: true,
-    get: () => composer.textContent ?? "",
-  });
-  document.body.append(composer);
-  return composer;
-}
-
-function installSendButton(onClick: () => void = () => undefined) {
-  const sendButton = document.createElement("button");
-  sendButton.dataset.testid = "send-button";
-  sendButton.addEventListener("click", onClick);
-  document.body.append(sendButton);
-  return sendButton;
 }

@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 
+import { chatGptHost } from "@/features/chatgpt/chatgpt-host";
+
 import type { DraftAnnotation } from "./annotation";
-import { assistantMessageIndex, restoreTextAnchorFromIndex } from "./selection-anchor";
+import { restoreTextAnchorFromIndex } from "./selection-anchor";
 
 const HIGHLIGHT_NAME = "quotecue-annotations";
 const HIGHLIGHT_STYLE_ID = "quotecue-highlight-style";
@@ -53,17 +55,11 @@ export function useAnnotationHighlights(
         commitLayout(projection);
       });
     };
-    const observer = new MutationObserver(scheduleProjection);
-
-    observer.observe(document.body, { childList: true, subtree: true });
-    window.addEventListener("resize", scheduleProjection);
-    window.addEventListener("scroll", scheduleProjection, true);
+    const stopObserving = chatGptHost.selection.observeInvalidation(scheduleProjection);
     scheduleProjection();
 
     return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", scheduleProjection);
-      window.removeEventListener("scroll", scheduleProjection, true);
+      stopObserving();
       if (projectionFrame !== undefined) {
         cancelAnimationFrame(projectionFrame);
       }
@@ -86,7 +82,7 @@ function projectAnnotations(
   annotations: DraftAnnotation[],
   activeAnnotationId: string | null,
 ): AnnotationProjection {
-  const messageIndex = assistantMessageIndex();
+  const messageIndex = chatGptHost.selection.messageIndex();
   const entries = annotations.map((annotation) => ({
     annotation,
     range: restoreTextAnchorFromIndex(annotation.anchor, messageIndex),

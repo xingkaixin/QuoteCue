@@ -3,11 +3,15 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { DraftAnnotation } from "@/features/annotations/annotation";
-import { captureAssistantSelection } from "@/features/annotations/selection-anchor";
+import { createChatGptHost } from "@/features/chatgpt/chatgpt-host";
 import { registerSendInterceptor } from "@/features/chatgpt/register-send-interceptor";
 import { useAnnotatedComposerLayout } from "@/features/chatgpt/use-annotated-composer-layout";
 
-import { appendUserMessage, installChatGptHostFixture } from "./fixtures/chatgpt-host";
+import {
+  appendAssistantMessage,
+  appendUserMessage,
+  installChatGptHostFixture,
+} from "./fixtures/chatgpt-host";
 
 beforeEach(() => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
@@ -34,6 +38,7 @@ afterEach(() => {
 describe("ChatGPT host contract", () => {
   it("covers selection, layout, annotated send confirmation, and cleanup", async () => {
     const fixture = installChatGptHostFixture();
+    const host = createChatGptHost({ document, window });
     const selectedText = fixture.assistantMessage.querySelector("strong")?.firstChild;
     if (!selectedText) {
       throw new Error("Expected fixture selection text");
@@ -42,15 +47,17 @@ describe("ChatGPT host contract", () => {
     range.selectNodeContents(selectedText);
     window.getSelection()?.addRange(range);
 
-    const selection = captureAssistantSelection();
-    expect(selection?.anchor).toMatchObject({
+    const selection = host.selection.capture();
+    expect(selection.status).toBe("available");
+    const draft = selection.status === "available" ? selection.value : missingSelection();
+    expect(draft.anchor).toMatchObject({
       messageId: "assistant-one",
       quote: "focused answer",
     });
 
     const annotation: DraftAnnotation = {
       id: "annotation-one",
-      anchor: selection?.anchor ?? missingAnchor(),
+      anchor: draft.anchor,
       comment: "Explain the tradeoff",
     };
     const container = document.createElement("div");
@@ -69,6 +76,7 @@ describe("ChatGPT host contract", () => {
     });
     const interceptor = registerSendInterceptor({
       draft: () => ({ annotations, revision: 1 }),
+      host,
       locale: () => "en",
       onSendAccepted,
     });
@@ -85,6 +93,59 @@ describe("ChatGPT host contract", () => {
     expect(fixture.surface.style.paddingTop).toBe("5px");
     expect(fixture.action.style.visibility).toBe("");
   });
+
+  it("rejects selections spanning assistant messages", () => {
+    const fixture = installChatGptHostFixture();
+    const secondMessage = appendAssistantMessage("assistant-two", "A second answer");
+    const firstText = fixture.assistantMessage.querySelector("strong")?.firstChild;
+    const secondText = secondMessage.firstChild;
+    if (!firstText || !secondText) {
+      throw new Error("Expected fixture message text");
+    }
+    const range = document.createRange();
+    range.setStart(firstText, 0);
+    range.setEnd(secondText, 8);
+    window.getSelection()?.addRange(range);
+
+    const result = createChatGptHost({ document, window }).selection.capture();
+
+    expect(result).toEqual({
+      reason: "assistant-message-unavailable",
+      status: "unavailable",
+    });
+  });
+
+  it("reports typed host failures without annotation content", async () => {
+    document.body.innerHTML = "<main></main>";
+    const logs: string[] = [];
+    const host = createChatGptHost({ document, logger: (message) => logs.push(message), window });
+    const privateAnnotation: DraftAnnotation = {
+      id: "private-annotation",
+      anchor: {
+        end: 20,
+        messageId: "private-message",
+        prefix: "private prefix",
+        quote: "private selected text",
+        start: 0,
+        suffix: "private suffix",
+      },
+      comment: "private comment",
+    };
+    const interceptor = registerSendInterceptor({
+      draft: () => ({ annotations: [privateAnnotation], revision: 1 }),
+      host,
+      locale: () => "en",
+      onSendAccepted: vi.fn(),
+    });
+
+    await expect(interceptor.submit()).resolves.toEqual({
+      reason: "composer-unavailable",
+      status: "failed",
+    });
+    expect(logs).toEqual(["[QuoteCue host] unavailable: composer-unavailable"]);
+    expect(logs.join(" ")).not.toContain("private");
+    interceptor.dispose();
+  });
 });
 
 function LayoutProbe() {
@@ -98,6 +159,6 @@ function LayoutProbe() {
   );
 }
 
-function missingAnchor(): DraftAnnotation["anchor"] {
-  throw new Error("Expected a captured anchor");
+function missingSelection(): never {
+  throw new Error("Expected a captured selection");
 }

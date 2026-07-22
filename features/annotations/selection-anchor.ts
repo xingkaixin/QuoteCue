@@ -1,60 +1,9 @@
-import type { DraftAnnotation, SelectionDraft, TextAnchor } from "./annotation";
-
-const ASSISTANT_MESSAGE_SELECTOR = '[data-message-author-role="assistant"][data-message-id]';
-const CONTEXT_LENGTH = 48;
+import type { TextAnchor } from "./annotation";
 
 type RangeBoundary = {
   node: Node;
   offset: number;
 };
-
-export function captureAssistantSelection(
-  selection = window.getSelection(),
-): SelectionDraft | null {
-  if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
-    return null;
-  }
-
-  const range = selection.getRangeAt(0);
-  const message = assistantMessageForRange(range);
-  const quote = selection.toString().trim();
-
-  if (!message || quote.length === 0) {
-    return null;
-  }
-
-  const start = textOffset(message, { node: range.startContainer, offset: range.startOffset });
-  const end = textOffset(message, { node: range.endContainer, offset: range.endOffset });
-  const messageText = message.textContent ?? "";
-  const rect =
-    typeof range.getBoundingClientRect === "function"
-      ? range.getBoundingClientRect()
-      : new DOMRect();
-
-  return {
-    anchor: {
-      messageId: message.dataset.messageId ?? "",
-      quote,
-      prefix: messageText.slice(Math.max(0, start - CONTEXT_LENGTH), start),
-      suffix: messageText.slice(end, end + CONTEXT_LENGTH),
-      start,
-      end,
-    },
-    rect: {
-      bottom: rect.bottom,
-      height: rect.height,
-      left: rect.left,
-      right: rect.right,
-      top: rect.top,
-      width: rect.width,
-    },
-  };
-}
-
-export function restoreTextAnchor(anchor: TextAnchor) {
-  const message = assistantMessageIndex().get(anchor.messageId);
-  return message ? restoreTextAnchorInMessage(anchor, message) : null;
-}
 
 export function restoreTextAnchorFromIndex(
   anchor: TextAnchor,
@@ -62,17 +11,6 @@ export function restoreTextAnchorFromIndex(
 ) {
   const message = messageIndex.get(anchor.messageId);
   return message ? restoreTextAnchorInMessage(anchor, message) : null;
-}
-
-export function assistantMessageIndex(root: ParentNode = document) {
-  const index = new Map<string, HTMLElement>();
-  for (const message of root.querySelectorAll<HTMLElement>(ASSISTANT_MESSAGE_SELECTOR)) {
-    const messageId = message.dataset.messageId;
-    if (messageId && !index.has(messageId)) {
-      index.set(messageId, message);
-    }
-  }
-  return index;
 }
 
 function restoreTextAnchorInMessage(anchor: TextAnchor, message: HTMLElement) {
@@ -85,44 +23,6 @@ function restoreTextAnchorInMessage(anchor: TextAnchor, message: HTMLElement) {
 
   const range = rangeFromOffsets(message, start, start + anchor.quote.length);
   return range?.toString() === anchor.quote ? range : null;
-}
-
-export function selectionDraftFromAnnotation(annotation: DraftAnnotation) {
-  const range = restoreTextAnchor(annotation.anchor);
-  if (!range) {
-    return null;
-  }
-
-  const rect = range.getBoundingClientRect();
-  return {
-    anchor: annotation.anchor,
-    rect: {
-      bottom: rect.bottom,
-      height: rect.height,
-      left: rect.left,
-      right: rect.right,
-      top: rect.top,
-      width: rect.width,
-    },
-  } satisfies SelectionDraft;
-}
-
-function assistantMessageForRange(range: Range) {
-  const startMessage = closestAssistantMessage(range.startContainer);
-  const endMessage = closestAssistantMessage(range.endContainer);
-  return startMessage === endMessage ? startMessage : null;
-}
-
-function closestAssistantMessage(node: Node) {
-  const element = node instanceof Element ? node : node.parentElement;
-  return element?.closest<HTMLElement>(ASSISTANT_MESSAGE_SELECTOR) ?? null;
-}
-
-function textOffset(root: HTMLElement, boundary: RangeBoundary) {
-  const range = document.createRange();
-  range.setStart(root, 0);
-  range.setEnd(boundary.node, boundary.offset);
-  return range.toString().length;
 }
 
 function resolvedStartOffset(messageText: string, anchor: TextAnchor) {

@@ -4,8 +4,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { DraftAnnotation } from "@/features/annotations/annotation";
 import { useAnnotationHighlights } from "@/features/annotations/use-annotation-highlights";
+import { chatGptHost } from "@/features/chatgpt/chatgpt-host";
 
-const ASSISTANT_SELECTOR = '[data-message-author-role="assistant"][data-message-id]';
+import { appendAssistantMessage } from "./fixtures/chatgpt-host";
 
 afterEach(() => {
   vi.useRealTimers();
@@ -22,13 +23,9 @@ describe("annotation projection complexity", () => {
       getBoundingClientRect: { configurable: true, value: () => new DOMRect() },
       getClientRects: { configurable: true, value: () => [] },
     });
-    const message = document.createElement("div");
-    message.dataset.messageAuthorRole = "assistant";
-    message.dataset.messageId = "message-1";
-    message.textContent = "selected text";
-    document.body.append(message);
+    appendAssistantMessage("message-1", "selected text");
     const annotations = Array.from({ length: 20 }, (_, index) => annotation(index));
-    const querySelectorAll = vi.spyOn(document, "querySelectorAll");
+    const messageIndex = vi.spyOn(chatGptHost.selection, "messageIndex");
     const host = document.createElement("div");
     const shadowRoot = host.attachShadow({ mode: "open" });
     const container = document.createElement("div");
@@ -38,11 +35,7 @@ describe("annotation projection complexity", () => {
 
     await act(async () => root.render(<ProjectionHarness annotations={annotations} />));
     await act(async () => vi.advanceTimersByTimeAsync(17));
-    const collectionCalls = querySelectorAll.mock.calls.filter(
-      ([selector]) => selector === ASSISTANT_SELECTOR,
-    ).length;
-
-    expect(collectionCalls).toBe(1);
+    expect(messageIndex).toHaveBeenCalledOnce();
 
     await act(async () => root.unmount());
   });
@@ -69,12 +62,8 @@ describe("annotation projection complexity", () => {
       getBoundingClientRect: { configurable: true, value: () => new DOMRect() },
       getClientRects: { configurable: true, value: () => [] },
     });
-    const message = document.createElement("div");
-    message.dataset.messageAuthorRole = "assistant";
-    message.dataset.messageId = "message-1";
-    message.textContent = "selected text";
-    document.body.append(message);
-    const querySelectorAll = vi.spyOn(document, "querySelectorAll");
+    const message = appendAssistantMessage("message-1", "selected text");
+    const messageIndex = vi.spyOn(chatGptHost.selection, "messageIndex");
     const host = document.createElement("div");
     const shadowRoot = host.attachShadow({ mode: "open" });
     const container = document.createElement("div");
@@ -84,7 +73,7 @@ describe("annotation projection complexity", () => {
 
     await act(async () => root.render(<ProjectionHarness annotations={[annotation(0)]} />));
     await act(async () => vi.advanceTimersByTimeAsync(17));
-    querySelectorAll.mockClear();
+    messageIndex.mockClear();
     await act(async () => {
       for (let index = 0; index < 100; index += 1) {
         message.append(document.createElement("span"));
@@ -93,9 +82,7 @@ describe("annotation projection complexity", () => {
       await vi.advanceTimersByTimeAsync(17);
     });
 
-    expect(
-      querySelectorAll.mock.calls.filter(([selector]) => selector === ASSISTANT_SELECTOR),
-    ).toHaveLength(1);
+    expect(messageIndex).toHaveBeenCalledOnce();
     await act(async () => root.unmount());
   });
 });

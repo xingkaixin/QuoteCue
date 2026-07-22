@@ -4,6 +4,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { useAnnotatedComposerLayout } from "@/features/chatgpt/use-annotated-composer-layout";
 
+import { installChatGptHostFixture } from "./fixtures/chatgpt-host";
+
 afterEach(() => {
   document.body.replaceChildren();
   vi.unstubAllGlobals();
@@ -31,26 +33,7 @@ describe("useAnnotatedComposerLayout", () => {
       },
     );
 
-    const form = document.createElement("form");
-    const surface = document.createElement("div");
-    surface.style.backgroundColor = "rgb(255, 255, 255)";
-    surface.style.borderRadius = "28px";
-    surface.style.borderTopLeftRadius = "28px";
-    surface.style.paddingTop = "5px";
-    Object.defineProperty(surface, "getBoundingClientRect", {
-      value: () => ({ bottom: 792, left: 100, right: 500, top: 700 }),
-    });
-    const composerParent = document.createElement("div");
-    const composer = document.createElement("div");
-    composer.id = "prompt-textarea";
-    const action = document.createElement("button");
-    Object.defineProperty(action, "getBoundingClientRect", {
-      value: () => ({ bottom: 784, height: 36, left: 456, right: 492, top: 748, width: 36 }),
-    });
-    composerParent.append(composer);
-    surface.append(composerParent, action);
-    form.append(surface);
-    document.body.append(form);
+    const { action, surface } = installChatGptHostFixture();
 
     const container = document.createElement("div");
     document.body.append(container);

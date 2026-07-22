@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
-const COMPOSER_SELECTOR = "#prompt-textarea";
+import { chatGptHost } from "./chatgpt-host";
+
 const ANNOTATION_ROW_HEIGHT = 40;
 const POSITION_REFRESH_MS = 80;
 
@@ -86,35 +87,22 @@ export function useAnnotatedComposerLayout(isActive: boolean) {
     }
 
     function refresh() {
-      const composer = document.querySelector<HTMLElement>(COMPOSER_SELECTOR);
-      const form = composer?.closest<HTMLFormElement>("form");
-      const surface = composer && form ? findComposerSurface(composer, form) : null;
-      if (!surface || !form) {
+      const result = chatGptHost.layout.current();
+      if (result.status === "unavailable") {
         restoreSurface();
+        restoreAction();
         setLayout(null);
         return;
       }
 
+      const { action, send, summary, surface } = result.value;
       styleSurface(surface);
-      const rect = surface.getBoundingClientRect();
-      const action = findComposerAction(form, rect);
-      const actionRect = action?.getBoundingClientRect();
       if (action) {
         hideAction(action);
       } else {
         restoreAction();
       }
-      const nextLayout = {
-        summary: { left: rect.left + 12, top: rect.top + 8 },
-        send: actionRect
-          ? {
-              height: actionRect.height,
-              left: actionRect.left,
-              top: actionRect.top,
-              width: actionRect.width,
-            }
-          : { height: 36, left: rect.right - 44, top: rect.bottom - 44, width: 36 },
-      };
+      const nextLayout = { send, summary };
       setLayout((current) => (sameLayout(current, nextLayout) ? current : nextLayout));
     }
 
@@ -123,16 +111,11 @@ export function useAnnotatedComposerLayout(isActive: boolean) {
       refreshTimer = window.setTimeout(refresh, POSITION_REFRESH_MS);
     }
 
-    const mutationObserver = new MutationObserver(scheduleRefresh);
-    mutationObserver.observe(document.body, { childList: true, subtree: true });
-    window.addEventListener("resize", scheduleRefresh);
-    window.addEventListener("scroll", scheduleRefresh, true);
+    const stopObserving = chatGptHost.layout.subscribe(scheduleRefresh);
     refresh();
 
     return () => {
-      mutationObserver.disconnect();
-      window.removeEventListener("resize", scheduleRefresh);
-      window.removeEventListener("scroll", scheduleRefresh, true);
+      stopObserving();
       window.clearTimeout(refreshTimer);
       restoreSurface();
       restoreAction();
@@ -140,41 +123,6 @@ export function useAnnotatedComposerLayout(isActive: boolean) {
   }, [isActive]);
 
   return layout;
-}
-
-function findComposerSurface(composer: HTMLElement, form: HTMLFormElement) {
-  let candidate = composer.parentElement;
-  while (candidate && candidate !== form) {
-    const style = getComputedStyle(candidate);
-    const hasRoundedBackground =
-      Number.parseFloat(style.borderTopLeftRadius) > 0 &&
-      style.backgroundColor !== "rgba(0, 0, 0, 0)" &&
-      style.backgroundColor !== "transparent";
-    if (hasRoundedBackground) {
-      return candidate;
-    }
-    candidate = candidate.parentElement;
-  }
-
-  return null;
-}
-
-function findComposerAction(form: HTMLFormElement, surfaceRect: DOMRect) {
-  return Array.from(form.querySelectorAll<HTMLButtonElement>("button"))
-    .map((button) => ({ button, rect: button.getBoundingClientRect() }))
-    .filter(({ rect }) => {
-      const centerX = rect.left + rect.width / 2;
-      const centerY = rect.top + rect.height / 2;
-      return (
-        rect.width > 0 &&
-        rect.height > 0 &&
-        centerX >= surfaceRect.left &&
-        centerX <= surfaceRect.right &&
-        centerY >= surfaceRect.top &&
-        centerY <= surfaceRect.bottom
-      );
-    })
-    .sort((left, right) => right.rect.right - left.rect.right)[0]?.button;
 }
 
 function sameLayout(current: AnnotatedComposerLayout | null, next: AnnotatedComposerLayout) {

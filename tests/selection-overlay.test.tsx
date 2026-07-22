@@ -6,6 +6,8 @@ import { SelectionAction } from "@/features/annotations/SelectionAction";
 import type { SelectionDraft } from "@/features/annotations/annotation";
 import { useSelectionOverlay } from "@/features/annotations/use-selection-overlay";
 
+import { appendAssistantMessage } from "./fixtures/chatgpt-host";
+
 afterEach(() => {
   window.getSelection()?.removeAllRanges();
   document.body.replaceChildren();
@@ -14,12 +16,9 @@ afterEach(() => {
 describe("selection overlay", () => {
   it("renders its own action without a localized native action", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-    const message = document.createElement("div");
-    message.dataset.messageAuthorRole = "assistant";
-    message.dataset.messageId = "assistant-one";
-    message.textContent = "selected answer";
+    const message = appendAssistantMessage("assistant-one", "selected answer");
     const container = document.createElement("div");
-    document.body.append(message, container);
+    document.body.append(container);
     const root = createRoot(container);
 
     const onActivate = vi.fn();
@@ -45,12 +44,9 @@ describe("selection overlay", () => {
 
   it("supports keyboard selection and dismisses on Escape or viewport changes", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-    const message = document.createElement("div");
-    message.dataset.messageAuthorRole = "assistant";
-    message.dataset.messageId = "assistant-one";
-    message.textContent = "keyboard selection";
+    const message = appendAssistantMessage("assistant-one", "keyboard selection");
     const container = document.createElement("div");
-    document.body.append(message, container);
+    document.body.append(container);
     const root = createRoot(container);
 
     await act(async () => root.render(<SelectionHarness onActivate={vi.fn()} />));
@@ -81,12 +77,9 @@ describe("selection overlay", () => {
 
   it("ignores events retargeted from the closed QuoteCue shadow", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-    const message = document.createElement("div");
-    message.dataset.messageAuthorRole = "assistant";
-    message.dataset.messageId = "assistant-one";
-    message.textContent = "private selection";
+    const message = appendAssistantMessage("assistant-one", "private selection");
     const container = document.createElement("div");
-    document.body.append(message, container);
+    document.body.append(container);
     const root = createRoot(container);
 
     await act(async () => root.render(<SelectionHarness onActivate={vi.fn()} />));

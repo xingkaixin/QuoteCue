@@ -12,10 +12,6 @@ import type {
   DraftAnnotation,
   SelectionDraft,
 } from "@/features/annotations/annotation";
-import {
-  restoreTextAnchor,
-  selectionDraftFromAnnotation,
-} from "@/features/annotations/selection-anchor";
 import { useAnnotationHighlights } from "@/features/annotations/use-annotation-highlights";
 import { useConversationKey } from "@/features/annotations/use-conversation-key";
 import { useDeferredAnnotationDeletion } from "@/features/annotations/use-deferred-annotation-deletion";
@@ -25,6 +21,7 @@ import {
   registerSendInterceptor,
   type AnnotatedSendState,
 } from "@/features/chatgpt/register-send-interceptor";
+import { chatGptHost } from "@/features/chatgpt/chatgpt-host";
 import { useAnnotatedComposerLayout } from "@/features/chatgpt/use-annotated-composer-layout";
 import { useI18n } from "@/features/i18n/I18nProvider";
 
@@ -126,10 +123,11 @@ export default function App() {
   };
 
   const openEditor = (annotation: DraftAnnotation) => {
-    const range = restoreTextAnchor(annotation.anchor);
-    if (!range) {
+    const restored = chatGptHost.selection.restore(annotation.anchor);
+    if (restored.status === "unavailable") {
       return;
     }
+    const range = restored.value;
 
     if (isRangeVisible(range)) {
       showExpandedEditor(annotation);
@@ -141,9 +139,9 @@ export default function App() {
   };
 
   const showExpandedEditor = (annotation: DraftAnnotation) => {
-    const draft = selectionDraftFromAnnotation(annotation);
-    if (draft) {
-      setEditor({ status: "expanded", annotationId: annotation.id, draft });
+    const draft = chatGptHost.selection.draft(annotation);
+    if (draft.status === "available") {
+      setEditor({ status: "expanded", annotationId: annotation.id, draft: draft.value });
     }
   };
 
