@@ -67,4 +67,90 @@ describe("selection anchors", () => {
 
     expect(captureAssistantSelection()).toBeNull();
   });
+
+  it("fails closed for ambiguous repeated quotes without context evidence", () => {
+    document.body.innerHTML = `
+      <div data-message-author-role="assistant" data-message-id="assistant-one">
+        alpha target beta gamma target delta
+      </div>
+    `;
+    const range = restoreTextAnchor({
+      messageId: "assistant-one",
+      quote: "target",
+      prefix: "missing prefix",
+      suffix: "missing suffix",
+      start: 99,
+      end: 105,
+    });
+
+    expect(range).toBeNull();
+  });
+
+  it("restores a repeated quote only when context identifies one candidate", () => {
+    document.body.innerHTML = `
+      <div data-message-author-role="assistant" data-message-id="assistant-one">alpha target beta gamma target delta</div>
+    `;
+    const range = restoreTextAnchor({
+      messageId: "assistant-one",
+      quote: "target",
+      prefix: "gamma ",
+      suffix: " delta",
+      start: 99,
+      end: 105,
+    });
+
+    expect(range?.startOffset).toBe(24);
+    expect(range?.toString()).toBe("target");
+  });
+
+  it("fails closed when repeated candidates tie", () => {
+    document.body.innerHTML = `
+      <div data-message-author-role="assistant" data-message-id="assistant-one">same target same target same</div>
+    `;
+
+    expect(
+      restoreTextAnchor({
+        messageId: "assistant-one",
+        quote: "target",
+        prefix: "same ",
+        suffix: " same",
+        start: 99,
+        end: 105,
+      }),
+    ).toBeNull();
+  });
+
+  it("allows a unique quote even when its stored context changed", () => {
+    document.body.innerHTML = `
+      <div data-message-author-role="assistant" data-message-id="assistant-one">changed unique phrase changed</div>
+    `;
+
+    expect(
+      restoreTextAnchor({
+        messageId: "assistant-one",
+        quote: "unique phrase",
+        prefix: "old prefix",
+        suffix: "old suffix",
+        start: 99,
+        end: 112,
+      })?.toString(),
+    ).toBe("unique phrase");
+  });
+
+  it("restores a quote that spans multiple text nodes", () => {
+    document.body.innerHTML = `
+      <div data-message-author-role="assistant" data-message-id="assistant-one">before unique <strong>phrase</strong> after</div>
+    `;
+
+    expect(
+      restoreTextAnchor({
+        messageId: "assistant-one",
+        quote: "unique phrase",
+        prefix: "before ",
+        suffix: " after",
+        start: 99,
+        end: 112,
+      })?.toString(),
+    ).toBe("unique phrase");
+  });
 });
