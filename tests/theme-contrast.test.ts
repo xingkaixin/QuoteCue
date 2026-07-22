@@ -8,12 +8,24 @@ describe("theme token contrast", () => {
       expect(contrast(tokens.text, tokens.surface)).toBeGreaterThanOrEqual(4.5);
       expect(contrast(tokens.muted, tokens.surface)).toBeGreaterThanOrEqual(4.5);
       expect(contrast(tokens.border, tokens.surface)).toBeGreaterThanOrEqual(3);
-      expect(contrast(tokens.accent, tokens.surface)).toBeGreaterThanOrEqual(3);
+      expect(contrast(fallbackColor(tokens.accent), tokens.surface)).toBeGreaterThanOrEqual(3);
       expect(contrast(tokens.danger, tokens.surface)).toBeGreaterThanOrEqual(4.5);
-      expect(contrast("#ffffff", tokens.accent)).toBeGreaterThanOrEqual(4.5);
+      expect(
+        contrast(fallbackColor(tokens["accent-foreground"]), fallbackColor(tokens.accent)),
+      ).toBeGreaterThanOrEqual(4.5);
+      expect(
+        contrast(
+          fallbackColor(tokens["accent-subtle-foreground"]),
+          fallbackColor(tokens["accent-subtle"]),
+        ),
+      ).toBeGreaterThanOrEqual(4.5);
     });
   }
 });
+
+function fallbackColor(value: string) {
+  return value.match(/#[\da-f]{6}(?=\))/i)?.[0] ?? value;
+}
 
 function contrast(left: string, right: string) {
   const lighter = Math.max(luminance(left), luminance(right));

@@ -58,6 +58,12 @@ describe("host theme", () => {
     expect(themeContainer.style.getPropertyValue("--qc-surface")).toBe(
       HOST_THEME_TOKENS.dark.surface,
     );
+    expect(themeContainer.style.getPropertyValue("--qc-accent")).toBe(
+      "var(--theme-submit-btn-bg, #2563eb)",
+    );
+    expect(themeContainer.style.getPropertyValue("--qc-accent-subtle")).toBe(
+      "var(--theme-secondary-btn-bg, #2563eb)",
+    );
 
     await act(async () => root.unmount());
   });

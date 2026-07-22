@@ -11,10 +11,17 @@ export type HostTheme = "dark" | "light";
 
 const HostThemeContext = createContext<HostTheme>("light");
 const DARK_MEDIA_QUERY = "(prefers-color-scheme: dark)";
+const HOST_ACCENT_TOKENS = {
+  accent: "var(--theme-submit-btn-bg, #2563eb)",
+  "accent-foreground": "var(--theme-submit-btn-text, #ffffff)",
+  "accent-subtle": "var(--theme-secondary-btn-bg, #2563eb)",
+  "accent-subtle-foreground": "var(--theme-secondary-btn-text, #ffffff)",
+  "accent-text": "var(--theme-accent-text, #2563eb)",
+} as const;
 
 export const HOST_THEME_TOKENS = {
   light: {
-    accent: "#2563eb",
+    ...HOST_ACCENT_TOKENS,
     border: "#8a8a8a",
     danger: "#b91c1c",
     muted: "#525252",
@@ -22,7 +29,7 @@ export const HOST_THEME_TOKENS = {
     text: "#171717",
   },
   dark: {
-    accent: "#2563eb",
+    ...HOST_ACCENT_TOKENS,
     border: "#737373",
     danger: "#f87171",
     muted: "#a3a3a3",
