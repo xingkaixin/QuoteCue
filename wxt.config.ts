@@ -17,6 +17,12 @@ export default defineConfig({
     },
     permissions: ["storage"],
     host_permissions: ["https://chatgpt.com/*"],
+    web_accessible_resources: [
+      {
+        resources: ["secure-field.html"],
+        matches: ["https://chatgpt.com/*"],
+      },
+    ],
   },
   vite: () => ({
     plugins: [tailwindcss()],

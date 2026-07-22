@@ -4,6 +4,29 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AnnotationEditor } from "@/features/annotations/AnnotationEditor";
 
+vi.mock("@/features/annotations/SecureTextField", async () => {
+  const { forwardRef, useImperativeHandle } = await import("react");
+  type FakeSecureFieldProps = {
+    ariaLabel: string;
+    onChange: (value: string) => void;
+    value: string;
+  };
+  return {
+    SecureTextField: forwardRef<{ focus: () => void }, FakeSecureFieldProps>(
+      function FakeSecureTextField({ ariaLabel, onChange, value }, ref) {
+        useImperativeHandle(ref, () => ({ focus: () => undefined }), []);
+        return (
+          <textarea
+            aria-label={ariaLabel}
+            onChange={(event) => onChange(event.currentTarget.value)}
+            value={value}
+          />
+        );
+      },
+    ),
+  };
+});
+
 const annotation = {
   id: "annotation-1",
   anchor: {

@@ -1,0 +1,44 @@
+:root {
+  color: #171717;
+  color-scheme: light;
+  font-family:
+    ui-sans-serif,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: transparent;
+}
+
+input,
+textarea {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #171717;
+  font: inherit;
+  font-size: 16px;
+}
+
+textarea {
+  min-height: 112px;
+  padding: 4px;
+  resize: none;
+  line-height: 1.5;
+}
+
+::placeholder {
+  color: #d4d4d4;
+}

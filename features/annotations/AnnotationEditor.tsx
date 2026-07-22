@@ -2,11 +2,11 @@ import { Check, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { useI18n } from "@/features/i18n/I18nProvider";
 
 import type { DraftAnnotation, SelectionDraft } from "./annotation";
 import { annotationEditorPosition } from "./annotation-editor-position";
+import { SecureTextField, type SecureTextFieldHandle } from "./SecureTextField";
 
 type AnnotationEditorProps = {
   annotation: DraftAnnotation;
@@ -40,7 +40,7 @@ export function AnnotationEditor({
   const hasWarnedAboutChangesRef = useRef(false);
   const ignoreNextBlurRef = useRef(false);
   const isDismissingRef = useRef(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const textareaRef = useRef<SecureTextFieldHandle>(null);
 
   useEffect(() => {
     textareaRef.current?.focus();
@@ -110,22 +110,16 @@ export function AnnotationEditor({
       ref={editorRef}
       style={annotationEditorPosition(draft, EDITOR_SIZE)}
     >
-      <Textarea
-        aria-label={messages.annotationContent}
-        className="min-h-28 border-0 px-1 py-1 text-base shadow-none focus:border-0 focus:ring-0"
-        onChange={(event) => {
+      <SecureTextField
+        ariaLabel={messages.annotationContent}
+        className="h-28 w-full border-0 bg-transparent"
+        kind="textarea"
+        onCancel={onCancel}
+        onChange={(value) => {
           hasWarnedAboutChangesRef.current = false;
-          setComment(event.target.value);
+          setComment(value);
         }}
-        onKeyDown={(event) => {
-          if (event.key === "Escape") {
-            onCancel();
-          }
-          if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
-            event.preventDefault();
-            onSave(comment.trim());
-          }
-        }}
+        onSave={(value) => onSave(value.trim())}
         placeholder={messages.optionalComment}
         ref={textareaRef}
         value={comment}

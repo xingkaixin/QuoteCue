@@ -1,10 +1,11 @@
 import { Plus } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
 import { useI18n } from "@/features/i18n/I18nProvider";
 
 import type { SelectionDraft } from "./annotation";
 import { annotationEditorPosition } from "./annotation-editor-position";
+import { SecureTextField } from "./SecureTextField";
 
 type AnnotationQuickInputProps = {
   draft: SelectionDraft;
@@ -17,11 +18,6 @@ const QUICK_INPUT_SIZE = { height: 72, width: 360 };
 export function AnnotationQuickInput({ draft, onClose, onSave }: AnnotationQuickInputProps) {
   const { messages } = useI18n();
   const [comment, setComment] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
 
   return (
     <div
@@ -33,20 +29,14 @@ export function AnnotationQuickInput({ draft, onClose, onSave }: AnnotationQuick
       }}
       style={annotationEditorPosition(draft, QUICK_INPUT_SIZE)}
     >
-      <input
-        aria-label={messages.annotationContent}
-        className="min-w-0 flex-1 bg-transparent text-base text-neutral-950 outline-none placeholder:text-neutral-300"
-        onChange={(event) => setComment(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === "Escape") {
-            onClose();
-          }
-          if (event.key === "Enter" && !event.nativeEvent.isComposing) {
-            onSave(comment.trim());
-          }
-        }}
+      <SecureTextField
+        ariaLabel={messages.annotationContent}
+        className="h-10 min-w-0 flex-1 border-0 bg-transparent"
+        kind="input"
+        onCancel={onClose}
+        onChange={setComment}
+        onSave={(value) => onSave(value.trim())}
         placeholder={messages.optionalComment}
-        ref={inputRef}
         value={comment}
       />
       <button
