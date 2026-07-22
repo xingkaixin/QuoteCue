@@ -2,6 +2,7 @@ import { createDomHost, type HostEnvironment, type SiteAdapter } from "@/feature
 
 const CHATGPT_ADAPTER: SiteAdapter = {
   assistantMessageSelector: '[data-message-author-role="assistant"][data-message-id]',
+  composerButtonSelector: "button",
   composerKind: "contenteditable",
   composerSelector: "#prompt-textarea[contenteditable='true']",
   conversationPathPattern: /^\/c\/([^/?#]+)/,

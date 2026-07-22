@@ -11,12 +11,13 @@ export type HostTheme = "dark" | "light";
 
 const HostThemeContext = createContext<HostTheme>("light");
 const DARK_MEDIA_QUERY = "(prefers-color-scheme: dark)";
+// --theme-* 来自 ChatGPT，--dsw-* 来自 DeepSeek；都缺失时退回静态色
 const HOST_ACCENT_TOKENS = {
-  accent: "var(--theme-submit-btn-bg, #2563eb)",
+  accent: "var(--theme-submit-btn-bg, var(--dsw-alias-brand-primary, #2563eb))",
   "accent-foreground": "var(--theme-submit-btn-text, #ffffff)",
   "accent-subtle": "var(--theme-secondary-btn-bg, #2563eb)",
   "accent-subtle-foreground": "var(--theme-secondary-btn-text, #ffffff)",
-  "accent-text": "var(--theme-accent-text, #2563eb)",
+  "accent-text": "var(--theme-accent-text, var(--dsw-alias-brand-primary, #2563eb))",
 } as const;
 
 export const HOST_THEME_TOKENS = {

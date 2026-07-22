@@ -10,7 +10,7 @@ import { HostThemeProvider } from "@/features/theme/HostThemeProvider";
 import App from "./App";
 
 export default defineContentScript({
-  matches: ["https://chatgpt.com/*"],
+  matches: ["https://chatgpt.com/*", "https://chat.deepseek.com/*"],
   cssInjectionMode: "ui",
 
   async main(context) {

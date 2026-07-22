@@ -44,6 +44,7 @@ export type SelectionActionMode = "native-toolbar" | "overlay";
 
 export type SiteAdapter = {
   assistantMessageSelector: string;
+  composerButtonSelector: string;
   composerKind: ComposerKind;
   composerSelector: string;
   conversationPathPattern: RegExp;
@@ -396,7 +397,7 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
 
       signal.addEventListener("abort", onAbort, { once: true });
       observer.observe(hostDocument.body, {
-        attributeFilter: ["aria-disabled", "disabled"],
+        attributeFilter: ["aria-disabled", "class", "disabled"],
         attributes: true,
         childList: true,
         subtree: true,
@@ -497,7 +498,7 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
   }
 
   function findComposerAction(root: HTMLElement, surfaceRect: DOMRect) {
-    return Array.from(root.querySelectorAll<HTMLButtonElement>("button"))
+    return Array.from(root.querySelectorAll<HTMLButtonElement>(adapter.composerButtonSelector))
       .map((button) => ({ button, rect: button.getBoundingClientRect() }))
       .filter(({ rect }) => {
         const centerX = rect.left + rect.width / 2;
