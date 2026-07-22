@@ -9,12 +9,16 @@ export type Messages = {
   deleteAnnotation: string;
   deleteNumberedAnnotation: (number: number) => string;
   editNumberedAnnotation: (number: number) => string;
+  loadDraftFailed: string;
+  loadingDraft: string;
   noComment: string;
   optionalComment: string;
   save: string;
   saveAnnotation: string;
+  saveDraftFailed: string;
   selectedText: string;
   sendAnnotations: string;
+  retry: string;
   userComment: string;
   viewAnnotation: (number: number) => string;
   prompt: {
@@ -35,12 +39,16 @@ const ENGLISH: Messages = {
   deleteAnnotation: "Delete annotation",
   deleteNumberedAnnotation: (number) => `Delete annotation ${number}`,
   editNumberedAnnotation: (number) => `Edit annotation ${number}`,
+  loadDraftFailed: "QuoteCue couldn't restore this draft.",
+  loadingDraft: "Restoring QuoteCue draft…",
   noComment: "No comment added",
   optionalComment: "Add an optional comment…",
   save: "Save",
   saveAnnotation: "Save annotation",
+  saveDraftFailed: "QuoteCue couldn't save these annotations.",
   selectedText: "Selected text:",
   sendAnnotations: "Send annotations",
+  retry: "Retry",
   userComment: "User comment:",
   viewAnnotation: (number) => `View annotation ${number}`,
   prompt: {
@@ -61,12 +69,16 @@ const SIMPLIFIED_CHINESE: Messages = {
   deleteAnnotation: "删除批注",
   deleteNumberedAnnotation: (number) => `删除批注 ${number}`,
   editNumberedAnnotation: (number) => `编辑批注 ${number}`,
+  loadDraftFailed: "QuoteCue 无法恢复这份草稿。",
+  loadingDraft: "正在恢复 QuoteCue 草稿…",
   noComment: "未添加批注",
   optionalComment: "添加可选批注…",
   save: "保存",
   saveAnnotation: "保存批注",
+  saveDraftFailed: "QuoteCue 无法保存这些批注。",
   selectedText: "选中文本：",
   sendAnnotations: "发送批注",
+  retry: "重试",
   userComment: "用户批注：",
   viewAnnotation: (number) => `查看批注 ${number}`,
   prompt: {
@@ -87,12 +99,16 @@ const TRADITIONAL_CHINESE: Messages = {
   deleteAnnotation: "刪除批註",
   deleteNumberedAnnotation: (number) => `刪除批註 ${number}`,
   editNumberedAnnotation: (number) => `編輯批註 ${number}`,
+  loadDraftFailed: "QuoteCue 無法復原這份草稿。",
+  loadingDraft: "正在復原 QuoteCue 草稿…",
   noComment: "未新增批註",
   optionalComment: "新增選填批註…",
   save: "儲存",
   saveAnnotation: "儲存批註",
+  saveDraftFailed: "QuoteCue 無法儲存這些批註。",
   selectedText: "選取文字：",
   sendAnnotations: "傳送批註",
+  retry: "重試",
   userComment: "使用者批註：",
   viewAnnotation: (number) => `查看批註 ${number}`,
   prompt: {

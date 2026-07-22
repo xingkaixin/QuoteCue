@@ -148,8 +148,14 @@ export function useDraftAnnotations(conversationKey: string) {
         loadScope(conversationKey);
         return;
       }
+      commitScope({
+        status: "ready",
+        conversationKey: visibleScope.conversationKey,
+        annotations: visibleScope.annotations,
+        revision: visibleScope.revision,
+      });
       enqueueSave(visibleScope);
-    }, [conversationKey, enqueueSave, loadScope, visibleScope]),
+    }, [commitScope, conversationKey, enqueueSave, loadScope, visibleScope]),
   };
 }
 

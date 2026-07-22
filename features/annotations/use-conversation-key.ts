@@ -1,13 +1,18 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-import { currentConversationKey } from "./conversation-key";
+import { conversationKeyFromPathname, createTemporaryConversationKey } from "./conversation-key";
 
 export function useConversationKey() {
-  const [conversationKey, setConversationKey] = useState(currentConversationKey);
+  const [temporaryConversationKey] = useState(createTemporaryConversationKey);
+  const resolveConversationKey = useCallback(
+    () => conversationKeyFromPathname(window.location.pathname, temporaryConversationKey),
+    [temporaryConversationKey],
+  );
+  const [conversationKey, setConversationKey] = useState(resolveConversationKey);
 
   useEffect(() => {
     const refresh = () => {
-      const nextKey = currentConversationKey();
+      const nextKey = resolveConversationKey();
       setConversationKey((currentKey) => (currentKey === nextKey ? currentKey : nextKey));
     };
     const observer = new MutationObserver(refresh);
@@ -19,7 +24,7 @@ export function useConversationKey() {
       observer.disconnect();
       window.removeEventListener("popstate", refresh);
     };
-  }, []);
+  }, [resolveConversationKey]);
 
   return conversationKey;
 }

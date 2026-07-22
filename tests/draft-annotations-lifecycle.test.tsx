@@ -74,6 +74,11 @@ describe("draft annotation lifecycle", () => {
     expect(latestDrafts.errorOperation).toBe("load");
     expect(draftStorage.save).not.toHaveBeenCalled();
 
+    draftStorage.load.mockResolvedValue([annotation]);
+    await act(async () => latestDrafts.retry());
+    expect(latestDrafts.status).toBe("ready");
+    expect(latestDrafts.annotations).toEqual([annotation]);
+
     consoleError.mockRestore();
     await act(async () => root.unmount());
   });

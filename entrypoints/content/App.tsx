@@ -5,6 +5,7 @@ import { AnnotationBadge } from "@/features/annotations/AnnotationBadge";
 import { AnnotationEditor } from "@/features/annotations/AnnotationEditor";
 import { AnnotationQuickInput } from "@/features/annotations/AnnotationQuickInput";
 import { AnnotationSummary } from "@/features/annotations/AnnotationSummary";
+import { DraftPersistenceStatus } from "@/features/annotations/DraftPersistenceStatus";
 import type {
   AnnotationEditorState,
   DraftAnnotation,
@@ -27,11 +28,14 @@ export default function App() {
   const conversationKey = useConversationKey();
   const {
     annotations,
+    status: draftStatus,
+    errorOperation,
     isHydrated,
     addAnnotation,
     updateAnnotation,
     removeAnnotation,
     clearAnnotations,
+    retry,
   } = useDraftAnnotations(conversationKey);
   const [editor, setEditor] = useState<AnnotationEditorState>({ status: "hidden" });
   const startAnnotation = useCallback(
@@ -119,6 +123,12 @@ export default function App() {
   return (
     <TooltipProvider delay={180}>
       <div data-quotecue-root>
+        {draftStatus === "loading" && <DraftPersistenceStatus status="loading" />}
+
+        {draftStatus === "error" && errorOperation && (
+          <DraftPersistenceStatus operation={errorOperation} onRetry={retry} status="error" />
+        )}
+
         {editor.status === "quick" && (
           <AnnotationQuickInput
             draft={editor.draft}
