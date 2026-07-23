@@ -115,6 +115,55 @@ describe("selection anchors", () => {
     ).toBe("unique phrase");
   });
 
+  it("restores a legacy rendered quote at an unchanged DOM position", () => {
+    document.body.innerHTML = `
+      <div><table><tbody><tr><td>alpha</td><td>beta</td></tr></tbody></table></div>
+    `;
+
+    expect(
+      restore({
+        messageId: "assistant-one",
+        quote: "alpha beta",
+        prefix: "",
+        suffix: "",
+        start: 0,
+        end: 9,
+      })?.toString(),
+    ).toBe("alphabeta");
+  });
+
+  it("does not recover a legacy quote when non-whitespace text changed", () => {
+    document.body.innerHTML = `
+      <div><table><tbody><tr><td>alpha</td><td>changed</td></tr></tbody></table></div>
+    `;
+
+    expect(
+      restore({
+        messageId: "assistant-one",
+        quote: "alpha beta",
+        prefix: "",
+        suffix: "",
+        start: 0,
+        end: 9,
+      }),
+    ).toBeNull();
+  });
+
+  it("does not treat a changed exact quote as legacy rendered text", () => {
+    document.body.innerHTML = "<div>alpha\tbeta</div>";
+
+    expect(
+      restore({
+        messageId: "assistant-one",
+        quote: "alpha beta",
+        prefix: "",
+        suffix: "",
+        start: 0,
+        end: 10,
+      }),
+    ).toBeNull();
+  });
+
   it("uses the last visible line as the annotation endpoint", () => {
     const firstLine = new DOMRect(40, 80, 240, 20);
     const lastLine = new DOMRect(40, 104, 90, 20);

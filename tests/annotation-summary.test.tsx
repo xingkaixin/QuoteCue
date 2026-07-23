@@ -75,6 +75,23 @@ describe("AnnotationSummary", () => {
     await act(async () => root.unmount());
   });
 
+  it("shows rendered selection text when DOM text omits layout separators", async () => {
+    const tableAnnotation = {
+      ...annotation,
+      anchor: { ...annotation.anchor, displayQuote: "alpha beta", quote: "alphabeta" },
+    };
+    const { container, root, summary } = await mountSummary({
+      annotations: [tableAnnotation],
+    });
+
+    await hover(summary);
+
+    expect(container.textContent).toContain("alpha beta");
+    expect(container.textContent).not.toContain("alphabeta");
+
+    await act(async () => root.unmount());
+  });
+
   it("keeps hover-only controls compact and keyboard accessible", async () => {
     const onEdit = vi.fn();
     const { container, root, summary } = await mountSummary({ onEdit });

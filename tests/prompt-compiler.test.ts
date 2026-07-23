@@ -67,4 +67,20 @@ describe("compileAnnotatedPrompt", () => {
       "Please respond based on the following annotations:\n\n[Annotation 1]\nSelected text: 全球招聘的基础设施层",
     );
   });
+
+  it("uses rendered selection text instead of the compact DOM quote", () => {
+    const tableSelection = [
+      {
+        ...annotations[0],
+        anchor: {
+          ...annotations[0].anchor,
+          displayQuote: "alpha beta",
+          quote: "alphabeta",
+        },
+        comment: "",
+      },
+    ];
+
+    expect(compileAnnotatedPrompt(tableSelection, "", "en")).toContain("Selected text: alpha beta");
+  });
 });

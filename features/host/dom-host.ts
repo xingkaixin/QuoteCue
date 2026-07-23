@@ -113,9 +113,15 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
 
     const range = selection.getRangeAt(0);
     const message = assistantMessageForRange(range);
-    const quote = selection.toString().trim();
-    if (!message || quote.length === 0) {
+    const displayQuote = selection.toString().trim();
+    const quote = range.toString();
+    if (!message || displayQuote.length === 0 || quote.length === 0) {
       return unavailable("assistant-message-unavailable");
+    }
+    if (displayQuote !== quote) {
+      logger?.(
+        `[QuoteCue host] selection text mismatch: rendered=${displayQuote.length}, dom=${quote.length}`,
+      );
     }
 
     const start = textOffset(message, range.startContainer, range.startOffset);
@@ -129,6 +135,7 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
         messageId: adapter.messageId(message) ?? "",
         prefix: messageText.slice(Math.max(0, start - CONTEXT_LENGTH), start),
         quote,
+        ...(displayQuote === quote ? {} : { displayQuote }),
         start,
         suffix: messageText.slice(end, end + CONTEXT_LENGTH),
       },

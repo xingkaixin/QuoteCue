@@ -30,27 +30,55 @@ export function restoreTextAnchorFromIndex(
 
 function restoreTextAnchorInMessage(anchor: TextAnchor, message: HTMLElement) {
   const messageText = message.textContent ?? "";
-  const start = resolvedStartOffset(messageText, anchor);
+  const resolved = resolveTextAnchor(messageText, anchor);
 
-  if (start < 0) {
+  if (!resolved) {
     return null;
   }
 
-  const range = rangeFromOffsets(message, start, start + anchor.quote.length);
-  return range?.toString() === anchor.quote ? range : null;
+  const range = rangeFromOffsets(message, resolved.start, resolved.start + resolved.quote.length);
+  return range?.toString() === resolved.quote ? range : null;
 }
 
-function resolvedStartOffset(messageText: string, anchor: TextAnchor) {
+function resolveTextAnchor(messageText: string, anchor: TextAnchor) {
   if (messageText.slice(anchor.start, anchor.end) === anchor.quote) {
-    return anchor.start;
+    return { quote: anchor.quote, start: anchor.start };
+  }
+
+  const positionalQuote = legacyPositionalQuote(messageText, anchor);
+  if (positionalQuote !== null) {
+    return { quote: positionalQuote, start: anchor.start };
   }
 
   const candidates = quoteOffsets(messageText, anchor.quote);
   if (candidates.length === 1) {
-    return candidates[0];
+    return { quote: anchor.quote, start: candidates[0] };
   }
 
-  return uniqueContextMatch(messageText, anchor, candidates);
+  const start = uniqueContextMatch(messageText, anchor, candidates);
+  return start < 0 ? null : { quote: anchor.quote, start };
+}
+
+function legacyPositionalQuote(messageText: string, anchor: TextAnchor) {
+  const storedSpanLength = anchor.end - anchor.start;
+  if (
+    storedSpanLength === anchor.quote.length ||
+    anchor.start > messageText.length ||
+    anchor.end > messageText.length
+  ) {
+    return null;
+  }
+
+  const quote = messageText.slice(anchor.start, anchor.end);
+  const prefixStart = Math.max(0, anchor.start - anchor.prefix.length);
+  const prefix = messageText.slice(prefixStart, anchor.start);
+  const suffix = messageText.slice(anchor.end, anchor.end + anchor.suffix.length);
+  const hasExactContext = prefix === anchor.prefix && suffix === anchor.suffix;
+  return hasExactContext && sameNonWhitespaceText(quote, anchor.quote) ? quote : null;
+}
+
+function sameNonWhitespaceText(left: string, right: string) {
+  return left.replace(/\s/g, "") === right.replace(/\s/g, "");
 }
 
 function quoteOffsets(text: string, quote: string) {

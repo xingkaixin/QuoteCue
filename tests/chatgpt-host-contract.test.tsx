@@ -165,6 +165,107 @@ describe("ChatGPT host contract", () => {
     });
   });
 
+  it("restores table selections while preserving their rendered text", () => {
+    const fixture = installChatGptHostFixture();
+    fixture.assistantMessage.innerHTML =
+      "<table><tbody><tr><td>alpha</td><td>beta</td></tr><tr><td>gamma</td><td>delta</td></tr></tbody></table>";
+    const cells = fixture.assistantMessage.querySelectorAll("td");
+    const start = cells.item(0).firstChild;
+    const end = cells.item(3).firstChild;
+    if (!start || !end) {
+      throw new Error("Expected table cell text");
+    }
+    const range = document.createRange();
+    range.setStart(start, 0);
+    range.setEnd(end, end.textContent?.length ?? 0);
+    const selectionTextSpy = selectRangeWithRenderedText(range, "alpha beta\ngamma delta");
+    const logs: string[] = [];
+    const host = createChatGptHost({
+      document,
+      logger: (message) => logs.push(message),
+      window,
+    });
+
+    const captured = host.selection.capture();
+    selectionTextSpy.mockRestore();
+    expect(captured.status).toBe("available");
+    if (captured.status === "unavailable") {
+      return;
+    }
+
+    expect(captured.value.anchor).toMatchObject({
+      displayQuote: "alpha beta\ngamma delta",
+      quote: "alphabetagammadelta",
+    });
+    expect(host.selection.restore(captured.value.anchor).status).toBe("available");
+    expect(logs).toEqual(["[QuoteCue host] selection text mismatch: rendered=22, dom=19"]);
+  });
+
+  it.each([
+    ["paragraphs", "<p>alpha</p><p>beta</p>", "alpha\n\nbeta"],
+    ["code blocks", "<p>alpha</p><pre><code>beta</code></pre>", "alpha\n\nbeta"],
+  ])("restores selections spanning %s", (_name, html, renderedText) => {
+    const fixture = installChatGptHostFixture();
+    fixture.assistantMessage.innerHTML = html;
+    const walker = document.createTreeWalker(fixture.assistantMessage, NodeFilter.SHOW_TEXT);
+    const start = walker.nextNode();
+    let end = start;
+    let node = walker.nextNode();
+    while (node) {
+      end = node;
+      node = walker.nextNode();
+    }
+    if (!start || !end) {
+      throw new Error("Expected structured selection text");
+    }
+    const range = document.createRange();
+    range.setStart(start, 0);
+    range.setEnd(end, end.textContent?.length ?? 0);
+    const selectionTextSpy = selectRangeWithRenderedText(range, renderedText);
+    const host = createChatGptHost({ document, window });
+
+    const captured = host.selection.capture();
+    selectionTextSpy.mockRestore();
+    expect(captured.status).toBe("available");
+    if (captured.status === "unavailable") {
+      return;
+    }
+
+    expect(captured.value.anchor).toMatchObject({
+      displayQuote: renderedText,
+      quote: "alphabeta",
+    });
+    expect(host.selection.restore(captured.value.anchor).status).toBe("available");
+  });
+
+  it("keeps exact offsets when rendered selection text is trimmed", () => {
+    const fixture = installChatGptHostFixture();
+    fixture.assistantMessage.innerHTML = "<p>  alpha  </p>";
+    const text = fixture.assistantMessage.querySelector("p")?.firstChild;
+    if (!text) {
+      throw new Error("Expected selection text with surrounding whitespace");
+    }
+    const range = document.createRange();
+    range.selectNodeContents(text);
+    const selectionTextSpy = selectRangeWithRenderedText(range, "  alpha  ");
+    const host = createChatGptHost({ document, window });
+
+    const captured = host.selection.capture();
+    selectionTextSpy.mockRestore();
+    expect(captured.status).toBe("available");
+    if (captured.status === "unavailable") {
+      return;
+    }
+
+    expect(captured.value.anchor).toMatchObject({
+      displayQuote: "alpha",
+      end: 9,
+      quote: "  alpha  ",
+      start: 0,
+    });
+    expect(host.selection.restore(captured.value.anchor).status).toBe("available");
+  });
+
   it("centers an offscreen annotation endpoint in its nearest scroll container", () => {
     const endpointTop = { value: 900 };
     const rangeRectsDescriptor = Object.getOwnPropertyDescriptor(Range.prototype, "getClientRects");
@@ -259,4 +360,14 @@ function LayoutProbe() {
 
 function missingSelection(): never {
   throw new Error("Expected a captured selection");
+}
+
+function selectRangeWithRenderedText(range: Range, renderedText: string) {
+  const selection = window.getSelection();
+  if (!selection) {
+    throw new Error("Expected a document selection");
+  }
+  selection.removeAllRanges();
+  selection.addRange(range);
+  return vi.spyOn(selection, "toString").mockReturnValue(renderedText);
 }

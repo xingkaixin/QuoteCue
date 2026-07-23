@@ -65,6 +65,37 @@ describe("DeepSeek host contract", () => {
     }
   });
 
+  it("restores table selections with rendered cell separators", () => {
+    const fixture = installDeepSeekHostFixture();
+    fixture.assistantContent.innerHTML =
+      "<table><tbody><tr><td>alpha</td><td>beta</td></tr></tbody></table>";
+    const cells = fixture.assistantContent.querySelectorAll("td");
+    const start = cells.item(0).firstChild;
+    const end = cells.item(1).firstChild;
+    if (!start || !end) {
+      throw new Error("Expected table cell text");
+    }
+    const range = document.createRange();
+    range.setStart(start, 0);
+    range.setEnd(end, end.textContent?.length ?? 0);
+    const selectionTextSpy = selectRangeWithRenderedText(range, "alpha beta");
+    const host = createDeepSeekHost({ document, window });
+
+    const captured = host.selection.capture();
+    selectionTextSpy.mockRestore();
+    expect(captured.status).toBe("available");
+    if (captured.status === "unavailable") {
+      return;
+    }
+
+    expect(captured.value.anchor).toMatchObject({
+      displayQuote: "alpha beta",
+      messageId: "assistant-one",
+      quote: "alphabeta",
+    });
+    expect(host.selection.restore(captured.value.anchor).status).toBe("available");
+  });
+
   it("rejects selections inside collapsible think content", () => {
     const fixture = installDeepSeekHostFixture();
     const host = createDeepSeekHost({ document, window });
@@ -220,6 +251,16 @@ function selectNodeContents(node: ChildNode | null | undefined) {
   });
   window.getSelection()?.removeAllRanges();
   window.getSelection()?.addRange(range);
+}
+
+function selectRangeWithRenderedText(range: Range, renderedText: string) {
+  const selection = window.getSelection();
+  if (!selection) {
+    throw new Error("Expected a document selection");
+  }
+  selection.removeAllRanges();
+  selection.addRange(range);
+  return vi.spyOn(selection, "toString").mockReturnValue(renderedText);
 }
 
 function missingSelection(): never {

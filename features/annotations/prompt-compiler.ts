@@ -1,4 +1,4 @@
-import type { DraftAnnotation } from "./annotation";
+import { selectedTextFor, type DraftAnnotation } from "./annotation";
 import { messagesFor, type SupportedLocale } from "@/features/i18n/messages";
 
 export function compileAnnotatedPrompt(
@@ -9,7 +9,7 @@ export function compileAnnotatedPrompt(
   const messages = messagesFor(locale).prompt;
   const annotationSections = annotations.map(({ anchor, comment }, index) => {
     const commentLine = comment ? `\n${messages.comment}${comment}` : "";
-    return `${messages.annotation(index + 1)}\n${messages.selectedText}${anchor.quote}${commentLine}`;
+    return `${messages.annotation(index + 1)}\n${messages.selectedText}${selectedTextFor(anchor)}${commentLine}`;
   });
   const trimmedPrompt = userPrompt.trim();
   const promptSection =

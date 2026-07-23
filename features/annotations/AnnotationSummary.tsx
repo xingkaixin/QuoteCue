@@ -13,6 +13,7 @@ import type { ComposerPosition, ComposerRect } from "@/features/host/use-annotat
 import { useI18n } from "@/features/i18n/I18nProvider";
 
 import type { DraftAnnotation } from "./annotation";
+import { selectedTextFor } from "./annotation";
 import { DELETE_UNDO_WINDOW_MS } from "./use-deferred-annotation-deletion";
 
 type AnnotationSummaryProps = {
@@ -159,7 +160,7 @@ export function AnnotationSummary({
                           )}
                         </div>
                         <p className="line-clamp-2 text-xs leading-5 [overflow-wrap:anywhere]">
-                          {annotation.anchor.quote}
+                          {selectedTextFor(annotation.anchor)}
                         </p>
                         {comment && (
                           <Fragment>

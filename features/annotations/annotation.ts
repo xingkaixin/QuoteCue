@@ -1,11 +1,16 @@
 export type TextAnchor = {
   messageId: string;
   quote: string;
+  displayQuote?: string;
   prefix: string;
   suffix: string;
   start: number;
   end: number;
 };
+
+export function selectedTextFor(anchor: TextAnchor) {
+  return anchor.displayQuote ?? anchor.quote;
+}
 
 export type DraftAnnotation = {
   id: string;
