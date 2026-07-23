@@ -11,6 +11,7 @@ import {
 
 afterEach(() => {
   document.documentElement.removeAttribute("class");
+  document.documentElement.removeAttribute("data-mode");
   document.documentElement.removeAttribute("data-theme");
   document.body.replaceChildren();
   vi.unstubAllGlobals();
@@ -24,6 +25,12 @@ describe("host theme", () => {
     expect(detectHostTheme(html, null, true)).toBe("light");
     html.removeAttribute("data-theme");
     html.classList.add("dark");
+    expect(detectHostTheme(html, null, false)).toBe("dark");
+    html.classList.remove("dark");
+    html.dataset.theme = "claude";
+    html.dataset.mode = "light";
+    expect(detectHostTheme(html, null, true)).toBe("light");
+    html.dataset.mode = "dark";
     expect(detectHostTheme(html, null, false)).toBe("dark");
   });
 
@@ -50,7 +57,7 @@ describe("host theme", () => {
     expect(themeContainer.dataset.quotecueTheme).toBe("light");
 
     await act(async () => {
-      document.documentElement.dataset.theme = "dark";
+      document.documentElement.dataset.mode = "dark";
       await Promise.resolve();
     });
     expect(container.textContent).toBe("dark");
