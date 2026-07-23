@@ -13,6 +13,7 @@ const KIMI_ADAPTER: SiteAdapter = {
   userMessageSelector: ".chat-content-item-user .user-content",
   isSendButtonDisabled: (button) => button.classList.contains("disabled"),
   messageId: (message) => message.closest<HTMLElement>(MESSAGE_ITEM_SELECTOR)?.dataset.archerId,
+  normalizeSubmittedText: (text) => text.replace(/\s/g, ""),
 };
 
 export function createKimiHost(environment: HostEnvironment) {

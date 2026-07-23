@@ -54,6 +54,7 @@ export type SiteAdapter = {
   isAssistantMessage?(message: HTMLElement): boolean;
   isSendButtonDisabled?(button: HTMLElement): boolean;
   messageId(message: HTMLElement): string | undefined;
+  normalizeSubmittedText?(text: string): string;
 };
 
 type AcceptedSendWatcherOptions = {
@@ -562,7 +563,7 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
   // 精确相等会漏认已发送的消息；折叠后仍是全文强匹配，不放松确认语义
   function normalizedText(value: HTMLElement | string) {
     const text = typeof value === "string" ? value : composerText(value);
-    return text.replace(/\s+/g, " ").trim();
+    return adapter.normalizeSubmittedText?.(text) ?? text.replace(/\s+/g, " ").trim();
   }
 
   function selectComposerContents(composer: HTMLElement) {

@@ -92,6 +92,30 @@ describe("Kimi host contract", () => {
     interceptor.dispose();
   });
 
+  it("accepts Lexical whitespace reflow without weakening non-whitespace matching", async () => {
+    const fixture = installKimiHostFixture("");
+    fixture.sendControl.classList.remove("disabled");
+    vi.mocked(document.execCommand).mockImplementation((command, _showUi, value) => {
+      if (command === "insertText") {
+        fixture.composer.textContent = String(value).replaceAll("\n", "");
+      }
+      return true;
+    });
+    fixture.sendControl.addEventListener("click", () => {
+      appendKimiUserMessage("user-two", fixture.composer.innerText);
+    });
+    const interceptor = registerSendInterceptor({
+      draft: () => ({ annotations: [annotation()], revision: 1 }),
+      host: createKimiHost({ document, window }),
+      locale: () => "zh-CN",
+      onSendAccepted: vi.fn(),
+    });
+
+    await expect(interceptor.submit()).resolves.toEqual({ status: "accepted", revision: 1 });
+    expect(fixture.composer.innerText).toContain("回答：[批注 1]选中文本：");
+    interceptor.dispose();
+  });
+
   it("accepts an unidentified optimistic user message after an unidentified predecessor", async () => {
     const fixture = installKimiHostFixture("");
     appendKimiUserMessage(undefined, "Previous optimistic message");
