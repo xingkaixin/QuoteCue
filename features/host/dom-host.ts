@@ -32,7 +32,7 @@ export type ComposerSnapshot = {
 };
 
 export type HostComposerLayout = {
-  action: HTMLButtonElement | null;
+  action: HTMLElement | null;
   send: { height: number; left: number; top: number; width: number };
   summary: { left: number; top: number };
   surface: HTMLElement;
@@ -369,14 +369,14 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
   }
 
   function currentSendButton() {
-    return hostDocument.querySelector<HTMLButtonElement>(adapter.sendButtonSelector);
+    return hostDocument.querySelector<HTMLElement>(adapter.sendButtonSelector);
   }
 
-  function isSendButtonAvailable(button: HTMLButtonElement | null): button is HTMLButtonElement {
+  function isSendButtonAvailable(button: HTMLElement | null): button is HTMLElement {
     return (
       button !== null &&
       button.isConnected &&
-      !button.disabled &&
+      !button.matches(":disabled") &&
       button.getAttribute("aria-disabled") !== "true" &&
       !(adapter.isSendButtonDisabled?.(button) ?? false)
     );
@@ -391,8 +391,8 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
       return Promise.resolve(unavailable("send-control-unavailable"));
     }
 
-    return new Promise<HostResult<HTMLButtonElement>>((resolve) => {
-      const finish = (result: HostResult<HTMLButtonElement>) => {
+    return new Promise<HostResult<HTMLElement>>((resolve) => {
+      const finish = (result: HostResult<HTMLElement>) => {
         observer.disconnect();
         hostWindow.clearTimeout(timeout);
         signal.removeEventListener("abort", onAbort);
@@ -517,7 +517,7 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
   }
 
   function findComposerAction(root: HTMLElement, surfaceRect: DOMRect) {
-    return Array.from(root.querySelectorAll<HTMLButtonElement>(adapter.composerButtonSelector))
+    return Array.from(root.querySelectorAll<HTMLElement>(adapter.composerButtonSelector))
       .map((button) => ({ button, rect: button.getBoundingClientRect() }))
       .filter(({ rect }) => {
         const centerX = rect.left + rect.width / 2;
@@ -553,13 +553,11 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
     selection?.addRange(range);
   }
 
-  function subscribeToSubmit(callback: (event: Event, button: HTMLButtonElement | null) => void) {
+  function subscribeToSubmit(callback: (event: Event, button: HTMLElement | null) => void) {
     const onClick = (event: MouseEvent) => {
       const target = event.target;
       const button =
-        target instanceof Element
-          ? target.closest<HTMLButtonElement>(adapter.sendButtonSelector)
-          : null;
+        target instanceof Element ? target.closest<HTMLElement>(adapter.sendButtonSelector) : null;
       if (button) {
         callback(event, button);
       }

@@ -31,7 +31,7 @@ export function useAnnotatedComposerLayout(isActive: boolean) {
 
     let refreshTimer: number | undefined;
     let styledSurface: HTMLElement | null = null;
-    let hiddenAction: HTMLButtonElement | null = null;
+    let hiddenAction: HTMLElement | null = null;
     let originalPaddingTop = "";
     let originalPaddingTopPriority = "";
     let originalActionVisibility = "";
@@ -76,7 +76,7 @@ export function useAnnotatedComposerLayout(isActive: boolean) {
       hiddenAction = null;
     }
 
-    function hideAction(action: HTMLButtonElement) {
+    function hideAction(action: HTMLElement) {
       if (action === hiddenAction) {
         return;
       }

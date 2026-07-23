@@ -86,7 +86,7 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
     attempt.resolve({ status: "failed", reason });
   };
 
-  const replaySend = (attempt: SendAttempt, initialButton: HTMLButtonElement | null) => {
+  const replaySend = (attempt: SendAttempt, initialButton: HTMLElement | null) => {
     queueMicrotask(() => {
       void (async () => {
         const sendButtonResult = host.composer.isButtonAvailable(initialButton)
@@ -122,7 +122,7 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
   };
 
   const beginSend = (
-    initialButton: HTMLButtonElement | null,
+    initialButton: HTMLElement | null,
     source: "custom" | "native",
     retryOriginalText?: string,
   ): StartedSend => {
@@ -183,7 +183,7 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
     return { isOwned: true, result: attempt.result };
   };
 
-  const prepareNativeSend = (event: Event, button: HTMLButtonElement | null) => {
+  const prepareNativeSend = (event: Event, button: HTMLElement | null) => {
     if (activeAttempt) {
       event.preventDefault();
       event.stopImmediatePropagation();
@@ -208,7 +208,7 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
 
   return {
     getState: () => state,
-    submit: (button: HTMLButtonElement | null = null) => beginSend(button, "custom").result,
+    submit: (button: HTMLElement | null = null) => beginSend(button, "custom").result,
     retry: () => beginSend(null, "custom", lastFailedAttempt?.snapshot.text).result,
     dispose() {
       if (isDisposed) {

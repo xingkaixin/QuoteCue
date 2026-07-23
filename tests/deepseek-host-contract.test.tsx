@@ -140,7 +140,7 @@ describe("DeepSeek host contract", () => {
       onSendAccepted,
     });
 
-    await expect(interceptor.submit(fixture.sendButton as HTMLButtonElement)).resolves.toEqual({
+    await expect(interceptor.submit(fixture.sendButton)).resolves.toEqual({
       status: "accepted",
       revision: 1,
     });
@@ -153,7 +153,7 @@ describe("DeepSeek host contract", () => {
   it("treats the ds-button--disabled class as an unavailable send control", () => {
     const fixture = installDeepSeekHostFixture();
     const host = createDeepSeekHost({ document, window });
-    const sendButton = fixture.sendButton as HTMLButtonElement;
+    const sendButton = fixture.sendButton;
 
     expect(host.composer.isButtonAvailable(sendButton)).toBe(true);
     fixture.sendButton.classList.add("ds-button--disabled");
