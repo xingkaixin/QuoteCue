@@ -1,21 +1,22 @@
 # QuoteCue Privacy Policy
 
-Effective date: July 21, 2026
+Effective date: July 23, 2026
 
-QuoteCue is a Chrome extension that lets users annotate selected text in ChatGPT responses and
-include those annotations in a follow-up message. QuoteCue is designed to process and store data
-locally unless the user chooses to send an annotated message through ChatGPT.
+QuoteCue is a Chrome extension that lets users annotate selected text in ChatGPT, Claude, and
+DeepSeek responses and include those annotations in a follow-up message. QuoteCue is designed to
+process and store data locally unless the user chooses to send an annotated message through the
+active AI service.
 
 ## Data QuoteCue handles
 
 When a user creates an annotation, QuoteCue handles:
 
-- the text the user selected from a ChatGPT response;
+- the text the user selected from a supported AI response;
 - a small amount of surrounding text and position information needed to restore the selection;
 - the annotation written by the user;
 - a randomly generated annotation identifier; and
-- the ChatGPT conversation identifier from the page URL, used only to associate a draft with the
-  correct conversation.
+- the conversation identifier from the page URL, used only to associate a draft with the correct
+  conversation.
 
 QuoteCue does not collect account credentials, authentication cookies, general browsing history,
 payment information, analytics, advertising identifiers, or diagnostic telemetry.
@@ -27,8 +28,8 @@ follow-up message requested by the user. QuoteCue does not use data for advertis
 credit decisions, or any purpose unrelated to its annotation feature.
 
 When the user sends an annotated message, QuoteCue inserts the selected text and annotations into
-the ChatGPT message composer. The message is then sent to ChatGPT through the user's existing
-ChatGPT session. OpenAI's handling of that message is governed by OpenAI's own terms and privacy
+the active AI service's message composer. The message is then sent through the user's existing
+session. The service provider's handling of that message is governed by its own terms and privacy
 policy.
 
 ## Storage and retention
@@ -52,9 +53,10 @@ QuoteCue requests only the following permissions:
 
 - `storage`: saves unfinished annotations locally so they remain available when the page is
   revisited.
-- Access to `https://chatgpt.com/*`: displays the annotation interface on ChatGPT, reads only the
-  response text selected by the user, restores annotation highlights, and updates the ChatGPT
-  message composer when the user sends annotations.
+- Access to `https://chatgpt.com/*`, `https://claude.ai/*`, and `https://chat.deepseek.com/*`:
+  displays the annotation interface on supported AI services, reads only the response text
+  selected by the user, restores annotation highlights, and updates the active message composer
+  when the user sends annotations.
 
 QuoteCue does not run on other websites.
 
@@ -70,10 +72,10 @@ Policy, including the Limited Use requirements.
 QuoteCue keeps draft data inside Chrome's extension storage and does not transmit it to a
 developer-controlled service. QuoteCue renders its controls in a closed Shadow DOM and hosts
 annotation text entry in an extension-origin frame. Field values move to the extension through a
-private browser message channel rather than page DOM input events.
+private browser message channel rather than host-page DOM input events.
 
-These browser isolation mechanisms reduce exposure to scripts running on the ChatGPT page, but
-they are not encryption or a process-level security boundary. Users should protect access to their
+These browser isolation mechanisms reduce exposure to scripts running on the host page, but they
+are not encryption or a process-level security boundary. Users should protect access to their
 Chrome profile and device.
 
 ## Changes to this policy

@@ -1,7 +1,7 @@
 # QuoteCue
 
-QuoteCue is a Chrome extension for annotating selected text in ChatGPT responses before sending
-one focused follow-up message.
+QuoteCue is a Chrome extension for annotating selected text in ChatGPT, Claude, and DeepSeek
+responses before sending one focused follow-up message.
 
 ## Requirements
 
@@ -41,17 +41,19 @@ written to `.output/quotecue-<version>-chrome.zip`.
 1. Start from a clean checkout and run `pnpm install --frozen-lockfile`, `pnpm check`, and
    `pnpm zip`.
 2. Inspect `.output/chrome-mv3/manifest.json`. It should request only `storage` and access to
-   `https://chatgpt.com/*`; its web-accessible resources should be limited to the secure field and
-   generated content styles required by the extension.
+   `https://chatgpt.com/*`, `https://claude.ai/*`, and `https://chat.deepseek.com/*`; its
+   web-accessible resources should be limited to the secure field and generated content styles
+   required by the extension.
 3. Confirm the manifest behavior still matches [PRIVACY.md](./PRIVACY.md), especially local draft
-   storage, ChatGPT-only access, closed Shadow DOM, and extension-origin annotation fields.
+   storage, supported-host access, closed Shadow DOM, and extension-origin annotation fields.
 4. Load `.output/chrome-mv3` as an unpacked extension in a clean Chrome profile and complete the
    browser smoke test below.
 5. Upload the generated zip without rebuilding or modifying its contents.
 
 ### Browser smoke test
 
-Run these checks against the currently supported ChatGPT UI with no sensitive conversation data:
+Run these checks against the supported ChatGPT, Claude, and DeepSeek UIs with no sensitive
+conversation data:
 
 - Select assistant text, use the QuoteCue action, create and edit an annotation, then reload and
   confirm that the draft and highlight return.
