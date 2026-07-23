@@ -46,7 +46,7 @@ const annotation: DraftAnnotation = {
   },
   comment: "draft A",
 };
-const envelope = { version: 1, annotations: [annotation] };
+const envelope = { version: 2, annotations: [annotation] };
 
 beforeEach(() => extensionStorage.reset());
 
@@ -56,6 +56,31 @@ describe("draft storage", () => {
 
     await expect(loadDraftAnnotations("A")).resolves.toEqual([annotation]);
     expect(extensionStorage.snapshot()).toEqual({ [currentKey]: envelope });
+  });
+
+  it("migrates version 1 envelopes without losing annotations", async () => {
+    extensionStorage.reset({
+      [currentKey]: { version: 1, annotations: [annotation] },
+    });
+
+    await expect(loadDraftAnnotations("A")).resolves.toEqual([annotation]);
+    expect(extensionStorage.snapshot()).toEqual({ [currentKey]: envelope });
+  });
+
+  it("preserves the rendered quote in version 2 drafts", async () => {
+    const tableAnnotation = {
+      ...annotation,
+      anchor: {
+        ...annotation.anchor,
+        displayQuote: "alpha beta",
+        quote: "alphabeta",
+      },
+    };
+    const tableEnvelope = { version: 2, annotations: [tableAnnotation] };
+    extensionStorage.reset({ [currentKey]: tableEnvelope });
+
+    await expect(loadDraftAnnotations("A")).resolves.toEqual([tableAnnotation]);
+    expect(extensionStorage.snapshot()).toEqual({ [currentKey]: tableEnvelope });
   });
 
   it("migrates raw arrays while preserving valid items and removing obsolete fields", async () => {
@@ -105,7 +130,7 @@ describe("draft storage", () => {
   });
 
   it("preserves unknown versions and wholly invalid drafts", async () => {
-    const unknownVersion = { version: 2, annotations: [annotation] };
+    const unknownVersion = { version: 3, annotations: [annotation] };
     extensionStorage.reset({ [currentKey]: unknownVersion });
 
     await expect(loadDraftAnnotations("A")).rejects.toThrow("Unsupported draft storage version");
@@ -115,6 +140,14 @@ describe("draft storage", () => {
     extensionStorage.reset({ [currentKey]: malformedDraft });
     await expect(loadDraftAnnotations("A")).rejects.toThrow("Draft contains no valid annotations");
     expect(extensionStorage.snapshot()).toEqual({ [currentKey]: malformedDraft });
+
+    const malformedDisplayQuote = {
+      version: 2,
+      annotations: [{ ...annotation, anchor: { ...annotation.anchor, displayQuote: 42 } }],
+    };
+    extensionStorage.reset({ [currentKey]: malformedDisplayQuote });
+    await expect(loadDraftAnnotations("A")).rejects.toThrow("Draft contains no valid annotations");
+    expect(extensionStorage.snapshot()).toEqual({ [currentKey]: malformedDisplayQuote });
   });
 
   it("saves versioned drafts and clears current and legacy keys together", async () => {

@@ -4,7 +4,8 @@ import type { DraftAnnotation, TextAnchor } from "./annotation";
 
 const DRAFT_KEY_PREFIX = "quotecue:draft:";
 const LEGACY_DRAFT_KEY_PREFIX = "askgpt:draft:";
-const DRAFT_STORAGE_VERSION = 1;
+const LEGACY_DRAFT_STORAGE_VERSION = 1;
+const DRAFT_STORAGE_VERSION = 2;
 
 type StoredDraftEnvelope = {
   version: typeof DRAFT_STORAGE_VERSION;
@@ -79,7 +80,10 @@ function decodeStoredDraft(value: unknown): DecodedDraft {
   if (Array.isArray(value)) {
     return { annotations: decodeAnnotations(value), needsMigration: true };
   }
-  if (!isRecord(value) || value.version !== DRAFT_STORAGE_VERSION) {
+  if (
+    !isRecord(value) ||
+    (value.version !== LEGACY_DRAFT_STORAGE_VERSION && value.version !== DRAFT_STORAGE_VERSION)
+  ) {
     throw new DraftStorageFormatError("Unsupported draft storage version");
   }
   if (!Array.isArray(value.annotations)) {
@@ -89,7 +93,9 @@ function decodeStoredDraft(value: unknown): DecodedDraft {
   const annotations = decodeAnnotations(value.annotations);
   return {
     annotations,
-    needsMigration: annotations.length !== value.annotations.length,
+    needsMigration:
+      value.version === LEGACY_DRAFT_STORAGE_VERSION ||
+      annotations.length !== value.annotations.length,
   };
 }
 
@@ -125,6 +131,7 @@ function decodeTextAnchor(value: unknown): TextAnchor | null {
     !isRecord(value) ||
     typeof value.messageId !== "string" ||
     typeof value.quote !== "string" ||
+    (value.displayQuote !== undefined && typeof value.displayQuote !== "string") ||
     typeof value.prefix !== "string" ||
     typeof value.suffix !== "string" ||
     !isTextOffset(value.start) ||
@@ -136,6 +143,7 @@ function decodeTextAnchor(value: unknown): TextAnchor | null {
   return {
     messageId: value.messageId,
     quote: value.quote,
+    ...(value.displayQuote === undefined ? {} : { displayQuote: value.displayQuote }),
     prefix: value.prefix,
     suffix: value.suffix,
     start: value.start,
