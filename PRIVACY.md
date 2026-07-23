@@ -2,8 +2,8 @@
 
 Effective date: July 23, 2026
 
-QuoteCue is a Chrome extension that lets users annotate selected text in ChatGPT, Claude, and
-DeepSeek responses and include those annotations in a follow-up message. QuoteCue is designed to
+QuoteCue is a Chrome extension that lets users annotate selected text in ChatGPT, Claude, DeepSeek,
+and Kimi responses and include those annotations in a follow-up message. QuoteCue is designed to
 process and store data locally unless the user chooses to send an annotated message through the
 active AI service.
 
@@ -53,10 +53,10 @@ QuoteCue requests only the following permissions:
 
 - `storage`: saves unfinished annotations locally so they remain available when the page is
   revisited.
-- Access to `https://chatgpt.com/*`, `https://claude.ai/*`, and `https://chat.deepseek.com/*`:
-  displays the annotation interface on supported AI services, reads only the response text
-  selected by the user, restores annotation highlights, and updates the active message composer
-  when the user sends annotations.
+- Access to `https://chatgpt.com/*`, `https://claude.ai/*`, `https://chat.deepseek.com/*`, and
+  `https://www.kimi.com/*`: displays the annotation interface on supported AI services, reads only
+  the response text selected by the user, restores annotation highlights, and updates the active
+  message composer when the user sends annotations.
 
 QuoteCue does not run on other websites.
 
