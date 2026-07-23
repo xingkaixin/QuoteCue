@@ -5,7 +5,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { DraftAnnotation } from "@/features/annotations/annotation";
 import { useAnnotationHighlights } from "@/features/annotations/use-annotation-highlights";
 
-const geometry = vi.hoisted(() => ({ isResolved: true, top: 200 }));
+const geometry = vi.hoisted(() => ({
+  anchorNode: null as Node | null,
+  isResolved: true,
+  top: 200,
+}));
 let renderCount = 0;
 
 vi.mock("@/features/annotations/selection-anchor", async (importOriginal) => ({
@@ -13,6 +17,7 @@ vi.mock("@/features/annotations/selection-anchor", async (importOriginal) => ({
   restoreTextAnchorFromIndex: () =>
     geometry.isResolved
       ? {
+          endContainer: geometry.anchorNode,
           getBoundingClientRect: () => annotationRect(),
           getClientRects: () => [annotationRect()],
         }
@@ -34,9 +39,11 @@ const annotation: DraftAnnotation = {
 const annotationList = [annotation];
 
 afterEach(() => {
+  geometry.anchorNode = null;
   geometry.isResolved = true;
   geometry.top = 200;
   renderCount = 0;
+  Reflect.deleteProperty(document, "elementsFromPoint");
   vi.useRealTimers();
   vi.restoreAllMocks();
   document.body.replaceChildren();
@@ -82,6 +89,37 @@ describe("annotation badge scrolling", () => {
     const output = container.querySelector("output");
     expect(output?.dataset.top).toBeUndefined();
     expect(output?.dataset.unresolved).toBe("true");
+
+    await act(async () => root.unmount());
+  });
+
+  it("hides the badge while a host overlay covers the anchor", async () => {
+    vi.useFakeTimers();
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    Object.defineProperty(globalThis, "CSS", { configurable: true, value: {} });
+    const anchorParagraph = document.createElement("p");
+    const overlay = document.createElement("div");
+    document.body.append(anchorParagraph, overlay);
+    geometry.anchorNode = anchorParagraph;
+    let covering = true;
+    Object.defineProperty(document, "elementsFromPoint", {
+      configurable: true,
+      value: () => [covering ? overlay : anchorParagraph],
+    });
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    await act(async () => root.render(<HighlightHarness />));
+    await act(async () => vi.advanceTimersByTimeAsync(17));
+    const output = container.querySelector("output");
+    expect(output?.dataset.top).toBeUndefined();
+    expect(output?.dataset.unresolved).toBe("false");
+
+    covering = false;
+    window.dispatchEvent(new Event("scroll"));
+    await act(async () => vi.advanceTimersByTimeAsync(17));
+    expect(output?.dataset.top).toBe("190");
 
     await act(async () => root.unmount());
   });
