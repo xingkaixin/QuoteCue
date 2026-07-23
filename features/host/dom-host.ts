@@ -347,12 +347,15 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
       typeof hostDocument.execCommand === "function" &&
       hostDocument.execCommand("insertText", false, text)
     ) {
-      const isReplaced = normalizedText(composer) === normalizedText(text);
-      logger?.(`[QuoteCue host] composer command replacement: matched=${isReplaced}`);
-      if (!isReplaced) {
+      // Lexical 类编辑器接受 beforeinput 后异步渲染 DOM，同步读回为空不代表插入失败；
+      // 此处不因读回不匹配而中止（fallback 的 replaceChildren 反而会打乱编辑器内部状态），
+      // 内容正确性由发送确认的全文强匹配兜底
+      const isSynced = normalizedText(composer) === normalizedText(text);
+      logger?.(`[QuoteCue host] composer command replacement: synced=${isSynced}`);
+      if (!isSynced) {
         logComposerMismatch("command", composer, text);
       }
-      return isReplaced;
+      return true;
     }
 
     const paragraph = hostDocument.createElement("p");

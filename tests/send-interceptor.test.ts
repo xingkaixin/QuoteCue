@@ -176,17 +176,18 @@ describe("registerSendInterceptor", () => {
     interceptor.dispose();
   });
 
-  it("treats a no-op composer replacement as a failed preparation", async () => {
+  it("trusts a truthy insertText command while the editor renders asynchronously", async () => {
+    vi.useFakeTimers();
     const composer = installComposer("original question");
     vi.mocked(document.execCommand).mockReturnValue(true);
     const interceptor = createInterceptor();
 
-    await expect(interceptor.submit()).resolves.toEqual({
-      status: "failed",
-      reason: "replace-failed",
-    });
+    const result = interceptor.submit();
+    expect(interceptor.getState()).toMatchObject({ status: "replaying" });
+    await vi.advanceTimersByTimeAsync(2_001);
+
+    await expect(result).resolves.toEqual({ status: "failed", reason: "send-unavailable" });
     expect(composer.textContent).toBe("original question");
-    expect(interceptor.getState()).toMatchObject({ status: "failed", reason: "replace-failed" });
     interceptor.dispose();
   });
 
