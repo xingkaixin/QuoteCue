@@ -1,0 +1,64 @@
+# QuoteCue
+
+QuoteCue 是一个 Chrome 扩展，用于在 ChatGPT、Claude、DeepSeek 和 Kimi 的回复中对选中文本
+添加批注，并将这些批注编译为一条聚焦的追问消息发送出去。
+
+## 环境要求
+
+- Node.js 24.18.0，版本锁定在 `.node-version`（支持的最低版本为 22.12.0）
+- pnpm 11.15.1，版本锁定在 `package.json`
+
+如果已安装 Corepack，可通过以下命令安装锁定版本的包管理器和依赖：
+
+```bash
+corepack enable
+pnpm install --frozen-lockfile
+```
+
+## 开发
+
+```bash
+pnpm dev
+```
+
+若使用持久化的 Chrome 配置文件，将 `.output/chrome-mv3-dev` 作为未打包扩展加载。
+
+## 验证与打包
+
+`pnpm check` 是本地和 CI 共用的唯一质量门禁，包含格式检查、lint、类型检查、测试以及一次
+生产构建。
+
+```bash
+pnpm check
+pnpm zip
+```
+
+生产版扩展会输出到 `.output/chrome-mv3`，可分发的压缩包会输出到
+`.output/quotecue-<version>-chrome.zip`。
+
+## 发布检查清单
+
+1. 从干净的检出开始，依次运行 `pnpm install --frozen-lockfile`、`pnpm check` 和 `pnpm zip`。
+2. 检查 `.output/chrome-mv3/manifest.json`。它应当只请求 `storage` 权限，以及
+   `https://chatgpt.com/*`、`https://claude.ai/*`、`https://chat.deepseek.com/*` 和
+   `https://www.kimi.com/*` 的访问权限；其 web-accessible resources 应仅限于扩展所需的
+   安全输入字段和生成的内容样式。
+3. 确认 manifest 的行为仍然符合 [PRIVACY.md](./PRIVACY.md) 的描述，尤其是本地草稿存储、
+   受支持的宿主访问范围、closed Shadow DOM 以及扩展来源的批注输入字段。
+4. 在一个干净的 Chrome 配置文件中将 `.output/chrome-mv3` 作为未打包扩展加载，并完成下方的
+   浏览器冒烟测试。
+5. 上传生成的压缩包，不要在上传前重新构建或修改其内容。
+
+### 浏览器冒烟测试
+
+在受支持的 ChatGPT、Claude、DeepSeek 和 Kimi 界面上运行以下检查，且不要使用包含敏感信息
+的对话数据：
+
+- 选中助手回复文本，使用 QuoteCue 操作，创建并编辑一条批注，然后刷新页面确认草稿和高亮
+  能够正确恢复。
+- 切换到另一个对话再切回来，确认草稿仍然按对话隔离。
+- 发送一条带批注的消息，确认待处理状态只在匹配的用户消息出现后才会清除。模拟或观察一次
+  发送失败，确认草稿仍可恢复。
+- 删除一条批注并撤销，然后通过确认对话框清空全部批注。
+- 测试纯键盘操作、Escape 与焦点恢复、亮色与暗色主题、浏览器缩放，以及 320px 宽的窄视口。
+- 在页面控制台中确认 `document.querySelector("quotecue-ui")?.shadowRoot` 返回 `null`。
