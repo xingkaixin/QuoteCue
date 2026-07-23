@@ -49,10 +49,12 @@ export function installKimiHostFixture(composerText = "Original question"): Kimi
   return { assistantMessage, composer, sendControl, surface };
 }
 
-export function appendKimiUserMessage(messageId: string, text: string) {
+export function appendKimiUserMessage(messageId: string | undefined, text: string) {
   const message = document.createElement("div");
   message.className = "chat-content-item chat-content-item-user";
-  message.dataset.archerId = messageId;
+  if (messageId) {
+    message.dataset.archerId = messageId;
+  }
   const content = document.createElement("div");
   content.className = "user-content";
   content.textContent = text;

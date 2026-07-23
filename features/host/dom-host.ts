@@ -422,12 +422,32 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
   }
 
   function watchForAcceptedSend(options: AcceptedSendWatcherOptions) {
-    const existingMessageIds = new Set(userMessages().map((message) => adapter.messageId(message)));
+    const initialMessages = userMessages();
+    const lastInitialMessage = initialMessages.at(-1);
+    const existingMessageIds = new Set(
+      initialMessages
+        .map((message) => adapter.messageId(message))
+        .filter((messageId): messageId is string => messageId !== undefined),
+    );
+    const isNewMessage = (message: HTMLElement) => {
+      const messageId = adapter.messageId(message);
+      if (messageId) {
+        return !existingMessageIds.has(messageId);
+      }
+      if (!lastInitialMessage) {
+        return true;
+      }
+      return (
+        lastInitialMessage.isConnected &&
+        Boolean(
+          lastInitialMessage.compareDocumentPosition(message) & Node.DOCUMENT_POSITION_FOLLOWING,
+        )
+      );
+    };
+    const expectedText = normalizedText(options.expectedText);
     const observer = new MutationObserver(() => {
       const acceptedMessage = userMessages().find(
-        (message) =>
-          !existingMessageIds.has(adapter.messageId(message)) &&
-          normalizedText(message) === normalizedText(options.expectedText),
+        (message) => isNewMessage(message) && normalizedText(message) === expectedText,
       );
       if (acceptedMessage) {
         cleanup();

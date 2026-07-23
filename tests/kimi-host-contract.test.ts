@@ -91,6 +91,27 @@ describe("Kimi host contract", () => {
     expect(fixture.composer.innerText).toContain("[批注 1]");
     interceptor.dispose();
   });
+
+  it("accepts an unidentified optimistic user message after an unidentified predecessor", async () => {
+    const fixture = installKimiHostFixture("");
+    appendKimiUserMessage(undefined, "Previous optimistic message");
+    const host = createKimiHost({ document, window });
+    fixture.composer.addEventListener("input", () => {
+      fixture.sendControl.classList.remove("disabled");
+    });
+    fixture.sendControl.addEventListener("click", () => {
+      appendKimiUserMessage(undefined, fixture.composer.innerText);
+    });
+    const interceptor = registerSendInterceptor({
+      draft: () => ({ annotations: [annotation()], revision: 1 }),
+      host,
+      locale: () => "zh-CN",
+      onSendAccepted: vi.fn(),
+    });
+
+    await expect(interceptor.submit()).resolves.toEqual({ status: "accepted", revision: 1 });
+    interceptor.dispose();
+  });
 });
 
 function selectNodeContents(node: ChildNode | null | undefined) {
