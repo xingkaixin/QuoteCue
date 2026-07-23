@@ -18,6 +18,11 @@ afterEach(() => {
 });
 
 describe("host theme", () => {
+  it("inherits Kimi's host accent when earlier host tokens are absent", () => {
+    expect(HOST_THEME_TOKENS.light.accent).toContain("--Colors-KMBlue");
+    expect(HOST_THEME_TOKENS.dark["accent-subtle"]).toContain("--Colors-KMBlue");
+  });
+
   it("prefers explicit host state and falls back to system preference", () => {
     const html = document.createElement("html");
     expect(detectHostTheme(html, null, true)).toBe("dark");

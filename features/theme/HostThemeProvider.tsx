@@ -11,15 +11,16 @@ export type HostTheme = "dark" | "light";
 
 const HostThemeContext = createContext<HostTheme>("light");
 const DARK_MEDIA_QUERY = "(prefers-color-scheme: dark)";
-// --theme-* 来自 ChatGPT，--dsw-* 来自 DeepSeek，--cds-* 来自 Claude
+// --theme-* 来自 ChatGPT，--dsw-* 来自 DeepSeek，--cds-* 来自 Claude，--Colors-* 来自 Kimi
 const HOST_ACCENT_TOKENS = {
   accent:
-    "var(--theme-submit-btn-bg, var(--dsw-alias-brand-primary, var(--cds-fill-brand, #2563eb)))",
+    "var(--theme-submit-btn-bg, var(--dsw-alias-brand-primary, var(--cds-fill-brand, var(--Colors-KMBlue, #2563eb))))",
   "accent-foreground": "var(--theme-submit-btn-text, var(--cds-on-brand, #ffffff))",
-  "accent-subtle": "var(--theme-secondary-btn-bg, var(--cds-fill-brand, #2563eb))",
+  "accent-subtle":
+    "var(--theme-secondary-btn-bg, var(--cds-fill-brand, var(--Colors-KMBlue, #2563eb)))",
   "accent-subtle-foreground": "var(--theme-secondary-btn-text, var(--cds-on-brand, #ffffff))",
   "accent-text":
-    "var(--theme-accent-text, var(--dsw-alias-brand-primary, var(--cds-fill-brand, #2563eb)))",
+    "var(--theme-accent-text, var(--dsw-alias-brand-primary, var(--cds-fill-brand, var(--Colors-KMBlue, #2563eb))))",
 } as const;
 
 export const HOST_THEME_TOKENS = {
