@@ -1,7 +1,7 @@
 # QuoteCue Agent Guide
 
-本文件适用于整个仓库。QuoteCue 是运行在 ChatGPT 页面上的 Chrome MV3 扩展，用于给助手
-回复添加批注，并将批注编译为一次聚焦的追问。
+本文件适用于整个仓库。QuoteCue 是运行在 ChatGPT、Claude、DeepSeek、Kimi 页面上的 Chrome
+MV3 扩展，用于给助手回复添加批注，并将批注编译为一次聚焦的追问。
 
 ## 技术与命令
 
@@ -13,10 +13,12 @@
 ## 关键边界
 
 - `entrypoints/content` 负责扩展挂载和应用编排，不放宿主 selector 或页面观察逻辑。
-- `features/host/dom-host.ts` 是通用宿主引擎；每个站点在 `features/<site>/` 提供
-  `SiteAdapter`（selector、composer 类型、会话路径等），`features/host/active-host.ts`
-  按 hostname 选择宿主。composer 操作、导航监听或确认信号变化必须在引擎/适配器里收敛，
-  并更新去敏 fixture 测试。
+- `features/host/dom-host.ts` 是通用宿主引擎；每个站点（现有 `features/chatgpt`、
+  `features/claude`、`features/deepseek`、`features/kimi`）提供 `SiteAdapter`（selector、
+  composer 类型、会话路径等），`features/host/active-host.ts` 按 hostname 选择宿主。
+  composer 操作、导航监听或确认信号变化必须在引擎/适配器里收敛，并更新对应站点的去敏
+  fixture 测试（`tests/fixtures/<site>-host.ts`）。新增宿主时同步更新 `wxt.config.ts` 的
+  `host_permissions` / `web_accessible_resources`。
 - `features/annotations` 负责批注领域、锚点算法、草稿持久化和 UI 状态；纯算法不要反向依赖
   ChatGPT DOM。
 - 通用 UI primitive 放在 `components/ui`，优先复用现有组件和语义化 CSS token。
@@ -33,7 +35,7 @@
 ## 修改原则
 
 - 先找根因，避免增加重复状态、兜底 selector、localized string 探测或全页面额外 observer。
-- 保持改动最小、函数职责单一、控制流平坦；新增宿主 contract 场景使用
-  `tests/fixtures/chatgpt-host.ts`。
+- 保持改动最小、函数职责单一、控制流平坦；新增宿主 contract 场景使用对应站点的
+  `tests/fixtures/<site>-host.ts`。
 - UI 改动必须覆盖键盘、焦点、窄视口、缩放、light/dark 和 reduced motion。
 - 权限、数据处理或发布行为变化时，同步检查 `PRIVACY.md`、manifest 与 `README.md`。
