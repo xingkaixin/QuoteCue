@@ -343,6 +343,13 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
     }
 
     selectComposerContents(composer);
+    // 优先合成粘贴：富文本编辑器（Lexical/ProseMirror）对 paste 有完整处理，会接管事件
+    // 并保留多行结构；execCommand("insertText") 在 Kimi 的 Lexical 上会触发原生与编辑器
+    // 内部的双路插入（内容重复且丢失换行），只作为未接管粘贴时的降级
+    if (dispatchSyntheticPaste(composer, text)) {
+      logger?.("[QuoteCue host] composer paste replacement accepted");
+      return true;
+    }
     if (
       typeof hostDocument.execCommand === "function" &&
       hostDocument.execCommand("insertText", false, text)
@@ -697,6 +704,18 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
 }
 
 export type Host = ReturnType<typeof createDomHost>;
+
+// 编辑器 preventDefault 即表示接管了粘贴；返回 false 交由调用方降级
+function dispatchSyntheticPaste(composer: HTMLElement, text: string) {
+  if (typeof ClipboardEvent !== "function" || typeof DataTransfer !== "function") {
+    return false;
+  }
+  const clipboardData = new DataTransfer();
+  clipboardData.setData("text/plain", text);
+  return !composer.dispatchEvent(
+    new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData }),
+  );
+}
 
 function available<T>(value: T): HostResult<T> {
   return { status: "available", value };

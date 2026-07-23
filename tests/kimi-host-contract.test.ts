@@ -19,6 +19,7 @@ afterEach(() => {
   window.history.replaceState({}, "", "/");
   document.body.replaceChildren();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe("Kimi host contract", () => {
@@ -92,6 +93,33 @@ describe("Kimi host contract", () => {
     interceptor.dispose();
   });
 
+  it("takes over the editor through a synthetic paste before touching execCommand", async () => {
+    const fixture = installKimiHostFixture("");
+    installSyntheticPasteSupport();
+    fixture.composer.addEventListener("paste", (event) => {
+      event.preventDefault();
+      const text = (event as ClipboardEvent).clipboardData?.getData("text/plain") ?? "";
+      queueMicrotask(() => {
+        fixture.composer.textContent = text;
+        fixture.sendControl.classList.remove("disabled");
+      });
+    });
+    fixture.sendControl.addEventListener("click", () => {
+      appendKimiUserMessage("user-two", fixture.composer.innerText);
+    });
+    const interceptor = registerSendInterceptor({
+      draft: () => ({ annotations: [annotation()], revision: 1 }),
+      host: createKimiHost({ document, window }),
+      locale: () => "zh-CN",
+      onSendAccepted: vi.fn(),
+    });
+
+    await expect(interceptor.submit()).resolves.toEqual({ status: "accepted", revision: 1 });
+    expect(document.execCommand).not.toHaveBeenCalled();
+    expect(fixture.composer.innerText).toContain("[批注 1]");
+    interceptor.dispose();
+  });
+
   it("accepts Lexical whitespace reflow without weakening non-whitespace matching", async () => {
     const fixture = installKimiHostFixture("");
     fixture.sendControl.classList.remove("disabled");
@@ -137,6 +165,27 @@ describe("Kimi host contract", () => {
     interceptor.dispose();
   });
 });
+
+function installSyntheticPasteSupport() {
+  class FakeDataTransfer {
+    private store = new Map<string, string>();
+    setData(type: string, value: string) {
+      this.store.set(type, value);
+    }
+    getData(type: string) {
+      return this.store.get(type) ?? "";
+    }
+  }
+  class FakeClipboardEvent extends Event {
+    clipboardData: FakeDataTransfer | null;
+    constructor(type: string, init?: EventInit & { clipboardData?: FakeDataTransfer }) {
+      super(type, init);
+      this.clipboardData = init?.clipboardData ?? null;
+    }
+  }
+  vi.stubGlobal("DataTransfer", FakeDataTransfer);
+  vi.stubGlobal("ClipboardEvent", FakeClipboardEvent);
+}
 
 function selectNodeContents(node: ChildNode | null | undefined) {
   if (!node) {
