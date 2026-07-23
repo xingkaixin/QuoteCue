@@ -51,6 +51,7 @@ export type SiteAdapter = {
   selectionActionMode: SelectionActionMode;
   sendButtonSelector: string;
   userMessageSelector: string;
+  isAssistantMessage?(message: HTMLElement): boolean;
   isSendButtonDisabled?(button: HTMLElement): boolean;
   messageId(message: HTMLElement): string | undefined;
 };
@@ -93,6 +94,9 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
   function messageIndex(root: ParentNode = hostDocument) {
     const index = new Map<string, HTMLElement>();
     for (const message of root.querySelectorAll<HTMLElement>(adapter.assistantMessageSelector)) {
+      if (adapter.isAssistantMessage && !adapter.isAssistantMessage(message)) {
+        continue;
+      }
       const messageId = adapter.messageId(message);
       if (messageId && !index.has(messageId)) {
         index.set(messageId, message);
@@ -490,7 +494,10 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
 
   function closestAssistantMessage(node: Node) {
     const element = node instanceof Element ? node : node.parentElement;
-    return element?.closest<HTMLElement>(adapter.assistantMessageSelector) ?? null;
+    const message = element?.closest<HTMLElement>(adapter.assistantMessageSelector) ?? null;
+    return message && (!adapter.isAssistantMessage || adapter.isAssistantMessage(message))
+      ? message
+      : null;
   }
 
   function findComposerSurface(composer: HTMLElement, boundary: HTMLElement) {

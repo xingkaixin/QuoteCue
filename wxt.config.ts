@@ -16,11 +16,15 @@ export default defineConfig({
       128: "icon/128.png",
     },
     permissions: ["storage"],
-    host_permissions: ["https://chatgpt.com/*", "https://chat.deepseek.com/*"],
+    host_permissions: [
+      "https://chatgpt.com/*",
+      "https://chat.deepseek.com/*",
+      "https://claude.ai/*",
+    ],
     web_accessible_resources: [
       {
         resources: ["secure-field.html"],
-        matches: ["https://chatgpt.com/*", "https://chat.deepseek.com/*"],
+        matches: ["https://chatgpt.com/*", "https://chat.deepseek.com/*", "https://claude.ai/*"],
       },
     ],
   },
