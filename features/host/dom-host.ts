@@ -347,7 +347,12 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
       typeof hostDocument.execCommand === "function" &&
       hostDocument.execCommand("insertText", false, text)
     ) {
-      return normalizedText(composer) === normalizedText(text);
+      const isReplaced = normalizedText(composer) === normalizedText(text);
+      logger?.(`[QuoteCue host] composer command replacement: matched=${isReplaced}`);
+      if (!isReplaced) {
+        logComposerMismatch("command", composer, text);
+      }
+      return isReplaced;
     }
 
     const paragraph = hostDocument.createElement("p");
@@ -356,7 +361,24 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
     composer.dispatchEvent(
       new InputEvent("input", { bubbles: true, data: text, inputType: "insertText" }),
     );
-    return normalizedText(composer) === normalizedText(text);
+    const isReplaced = normalizedText(composer) === normalizedText(text);
+    logger?.(`[QuoteCue host] composer fallback replacement: matched=${isReplaced}`);
+    if (!isReplaced) {
+      logComposerMismatch("fallback", composer, text);
+    }
+    return isReplaced;
+  }
+
+  function logComposerMismatch(stage: string, composer: HTMLElement, expectedText: string) {
+    if (!logger) {
+      return;
+    }
+    const actual = normalizedText(composer);
+    const expected = normalizedText(expectedText);
+    const compact = (value: string) => value.replace(/\s/g, "");
+    logger(
+      `[QuoteCue host] composer ${stage} mismatch: actual=${actual.length}, expected=${expected.length}, compact=${compact(actual) === compact(expected)}, contains=${actual.includes(expected)}, contained=${expected.includes(actual)}, nfkc=${actual.normalize("NFKC") === expected.normalize("NFKC")}`,
+    );
   }
 
   function restoreComposerText(snapshot: ComposerSnapshot, expectedText: string) {
@@ -386,6 +408,7 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
   function waitForSendButton(signal: AbortSignal) {
     const current = currentSendButton();
     if (isSendButtonAvailable(current)) {
+      logger?.("[QuoteCue host] send control ready: immediate");
       return Promise.resolve(available(current));
     }
     if (signal.aborted) {
@@ -402,15 +425,16 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
       const findButton = () => {
         const button = currentSendButton();
         if (isSendButtonAvailable(button)) {
+          logger?.("[QuoteCue host] send control ready: observed");
           finish(available(button));
         }
       };
       const onAbort = () => finish(unavailable("send-control-unavailable"));
       const observer = new MutationObserver(findButton);
-      const timeout = hostWindow.setTimeout(
-        () => finish(unavailable("send-control-unavailable")),
-        SEND_BUTTON_APPEAR_TIMEOUT_MS,
-      );
+      const timeout = hostWindow.setTimeout(() => {
+        logger?.("[QuoteCue host] send control wait timed out");
+        finish(unavailable("send-control-unavailable"));
+      }, SEND_BUTTON_APPEAR_TIMEOUT_MS);
 
       signal.addEventListener("abort", onAbort, { once: true });
       observer.observe(hostDocument.body, {
@@ -446,9 +470,14 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
       );
     };
     const expectedText = normalizedText(options.expectedText);
+    logger?.(`[QuoteCue host] send confirmation started: existing=${initialMessages.length}`);
     const observer = new MutationObserver(() => {
-      const acceptedMessage = userMessages().find(
+      const messages = userMessages();
+      const acceptedMessage = messages.find(
         (message) => isNewMessage(message) && normalizedText(message) === expectedText,
+      );
+      logger?.(
+        `[QuoteCue host] send confirmation observed: total=${messages.length}, matched=${Boolean(acceptedMessage)}`,
       );
       if (acceptedMessage) {
         cleanup();
@@ -456,6 +485,7 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
       }
     });
     const timeout = hostWindow.setTimeout(() => {
+      logger?.("[QuoteCue host] send confirmation timed out");
       cleanup();
       options.onTimeout();
     }, SEND_ACCEPT_TIMEOUT_MS);
