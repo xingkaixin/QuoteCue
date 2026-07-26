@@ -4,13 +4,18 @@ import { useI18n } from "@/features/i18n/I18nProvider";
 import { positionAdjacentToRect } from "@/features/layout/floating-position";
 import { useVisualViewportBounds } from "@/features/layout/use-visual-viewport";
 
-import type { SelectionOverlayAction } from "./use-selection-overlay";
+import type { SelectionCapture } from "./annotation";
 
 const BUTTON_HEIGHT = 32;
 const BUTTON_WIDTH = 96;
 const VIEWPORT_MARGIN = 8;
 
-export function SelectionActionButton({ onActivate, rect }: SelectionOverlayAction) {
+type SelectionActionButtonProps = {
+  onActivate: () => void;
+  rect: SelectionCapture["rect"];
+};
+
+export function SelectionActionButton({ onActivate, rect }: SelectionActionButtonProps) {
   const { messages } = useI18n();
   const buttonRef = useRef<HTMLButtonElement>(null);
   const viewport = useVisualViewportBounds();

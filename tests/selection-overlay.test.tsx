@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { SelectionDraft } from "@/features/annotations/annotation";
-import { useSelectionOverlay } from "@/features/annotations/use-selection-overlay";
+import { SelectionPresentation } from "@/features/annotations/SelectionPresentation";
 
 import { appendAssistantMessage, appendSelectionToolbar } from "./fixtures/chatgpt-host";
 
@@ -111,8 +111,7 @@ describe("selection overlay", () => {
 });
 
 function SelectionHarness({ onActivate }: { onActivate: (draft: SelectionDraft) => void }) {
-  useSelectionOverlay(true, "conversation-a", onActivate);
-  return null;
+  return <SelectionPresentation isEnabled onActivate={onActivate} resetKey="conversation-a" />;
 }
 
 function selectText(node: ChildNode | null) {
