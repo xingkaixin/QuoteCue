@@ -93,7 +93,10 @@ export function useDraftAnnotations(conversationKey: string) {
   }, [conversationKey, loadScope]);
 
   const mutateAnnotations = useCallback(
-    (mutate: (annotations: DraftAnnotation[]) => DraftAnnotation[], expectedRevision?: number) => {
+    (
+      mutate: (annotations: DraftAnnotation[]) => DraftAnnotation[] | null,
+      expectedRevision?: number,
+    ) => {
       const current = scopeRef.current;
       if (
         !canMutateScope(current, conversationKey) ||
@@ -101,9 +104,16 @@ export function useDraftAnnotations(conversationKey: string) {
       ) {
         return false;
       }
+      const annotations = mutate(current.annotations);
+      if (annotations === null) {
+        return false;
+      }
+      if (annotations === current.annotations) {
+        return true;
+      }
       const next = {
         ...current,
-        annotations: mutate(current.annotations),
+        annotations,
         revision: current.revision + 1,
       };
       commitScope(next);
@@ -132,11 +142,18 @@ export function useDraftAnnotations(conversationKey: string) {
     ),
     updateAnnotation: useCallback(
       (annotationId: string, comment: string) =>
-        mutateAnnotations((current) =>
-          current.map((annotation) =>
-            annotation.id === annotationId ? { ...annotation, comment } : annotation,
-          ),
-        ),
+        mutateAnnotations((current) => {
+          const index = current.findIndex((annotation) => annotation.id === annotationId);
+          if (index < 0) {
+            return null;
+          }
+          if (current[index]?.comment === comment) {
+            return current;
+          }
+          return current.map((annotation, currentIndex) =>
+            currentIndex === index ? { ...annotation, comment } : annotation,
+          );
+        }),
       [mutateAnnotations],
     ),
     removeAnnotations: useCallback(
