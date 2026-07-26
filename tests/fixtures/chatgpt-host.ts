@@ -1,9 +1,12 @@
+import { requiredElement, setElementRect } from "./fixture-utils";
+
 export type ChatGptHostFixture = {
   action: HTMLButtonElement;
   assistantMessage: HTMLElement;
   composer: HTMLElement;
   form: HTMLFormElement;
   surface: HTMLElement;
+  userMessage: HTMLElement;
 };
 
 export function installChatGptHostFixture(): ChatGptHostFixture {
@@ -28,21 +31,16 @@ export function installChatGptHostFixture(): ChatGptHostFixture {
   const form = requiredElement<HTMLFormElement>("form");
   const surface = requiredElement<HTMLElement>('[data-fixture="composer-surface"]');
   const action = requiredElement<HTMLButtonElement>('button[data-testid="send-button"]');
+  const userMessage = appendUserMessage("user-initial", "Original question");
 
   Object.defineProperty(composer, "innerText", {
     configurable: true,
     get: () => composer.textContent ?? "",
   });
-  Object.defineProperty(surface, "getBoundingClientRect", {
-    configurable: true,
-    value: () => ({ bottom: 792, height: 92, left: 100, right: 500, top: 700, width: 400 }),
-  });
-  Object.defineProperty(action, "getBoundingClientRect", {
-    configurable: true,
-    value: () => ({ bottom: 784, height: 36, left: 456, right: 492, top: 748, width: 36 }),
-  });
+  setElementRect(surface, new DOMRect(100, 700, 400, 92));
+  setElementRect(action, new DOMRect(456, 748, 36, 36));
 
-  return { action, assistantMessage, composer, form, surface };
+  return { action, assistantMessage, composer, form, surface, userMessage };
 }
 
 export function appendUserMessage(messageId: string, text: string) {
@@ -96,18 +94,7 @@ export function appendSelectionToolbar(rect = new DOMRect(100, 150, 200, 36)) {
   lastAction.textContent = "Localized action two";
   actionRow.append(firstAction, lastAction);
   toolbar.append(actionRow);
-  Object.defineProperty(toolbar, "getBoundingClientRect", {
-    configurable: true,
-    value: () => rect,
-  });
+  setElementRect(toolbar, rect);
   document.body.append(toolbar);
   return { actionRow, firstAction, lastAction, toolbar };
-}
-
-function requiredElement<T extends Element>(selector: string) {
-  const element = document.querySelector<T>(selector);
-  if (!element) {
-    throw new Error(`Fixture is missing ${selector}`);
-  }
-  return element;
 }

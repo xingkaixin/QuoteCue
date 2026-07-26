@@ -1,8 +1,11 @@
+import { requiredElement, setElementRect } from "./fixture-utils";
+
 export type KimiHostFixture = {
   assistantMessage: HTMLElement;
   composer: HTMLElement;
   sendControl: HTMLElement;
   surface: HTMLElement;
+  userMessage: HTMLElement;
 };
 
 export function installKimiHostFixture(composerText = "Original question"): KimiHostFixture {
@@ -32,21 +35,16 @@ export function installKimiHostFixture(composerText = "Original question"): Kimi
   const composer = requiredElement<HTMLElement>('[data-lexical-editor="true"]');
   const sendControl = requiredElement<HTMLElement>(".send-button-container");
   const surface = requiredElement<HTMLElement>(".chat-editor-content");
+  const userMessage = requiredElement<HTMLElement>(".chat-content-item-user .user-content");
 
   Object.defineProperty(composer, "innerText", {
     configurable: true,
     get: () => composer.textContent ?? "",
   });
-  Object.defineProperty(surface, "getBoundingClientRect", {
-    configurable: true,
-    value: () => ({ bottom: 792, height: 130, left: 100, right: 868, top: 662, width: 768 }),
-  });
-  Object.defineProperty(sendControl, "getBoundingClientRect", {
-    configurable: true,
-    value: () => ({ bottom: 780, height: 36, left: 822, right: 858, top: 744, width: 36 }),
-  });
+  setElementRect(surface, new DOMRect(100, 662, 768, 130));
+  setElementRect(sendControl, new DOMRect(822, 744, 36, 36));
 
-  return { assistantMessage, composer, sendControl, surface };
+  return { assistantMessage, composer, sendControl, surface, userMessage };
 }
 
 export function appendKimiUserMessage(messageId: string | undefined, text: string) {
@@ -66,10 +64,14 @@ export function appendKimiUserMessage(messageId: string | undefined, text: strin
   return message;
 }
 
-function requiredElement<T extends Element>(selector: string) {
-  const element = document.querySelector<T>(selector);
-  if (!element) {
-    throw new Error(`Fixture is missing ${selector}`);
-  }
-  return element;
+export function appendKimiAssistantMessage(messageId: string, text: string) {
+  const message = document.createElement("div");
+  message.className = "chat-content-item chat-content-item-assistant";
+  message.dataset.archerId = messageId;
+  const content = document.createElement("div");
+  content.className = "markdown-container";
+  content.textContent = text;
+  message.append(content);
+  (document.querySelector("main") ?? document.body).append(message);
+  return message;
 }
