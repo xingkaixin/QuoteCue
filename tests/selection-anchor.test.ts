@@ -189,6 +189,52 @@ describe("selection anchors", () => {
     ).toBeNull();
   });
 
+  it("fails closed for an empty quote", () => {
+    document.body.innerHTML = "<div>abc</div>";
+
+    expect(
+      restore({
+        messageId: "assistant-one",
+        quote: "",
+        prefix: "",
+        suffix: "",
+        start: 0,
+        end: 1,
+      }),
+    ).toBeNull();
+  });
+
+  it("preserves overlapping quote candidates during context recovery", () => {
+    document.body.innerHTML = "<div>xaaaaaZ</div>";
+
+    const range = restore({
+      messageId: "assistant-one",
+      quote: "aaa",
+      prefix: "xa",
+      suffix: "aZ",
+      start: 99,
+      end: 102,
+    });
+
+    expect(range?.startOffset).toBe(2);
+    expect(range?.toString()).toBe("aaa");
+  });
+
+  it("fails closed for large ambiguous candidate sets without overflowing the stack", () => {
+    document.body.innerHTML = `<div>${"a".repeat(150_000)}</div>`;
+
+    expect(
+      restore({
+        messageId: "assistant-one",
+        quote: "a",
+        prefix: "missing",
+        suffix: "context",
+        start: 200_000,
+        end: 200_001,
+      }),
+    ).toBeNull();
+  });
+
   it("uses the last visible line as the annotation endpoint", () => {
     const firstLine = new DOMRect(40, 80, 240, 20);
     const lastLine = new DOMRect(40, 104, 90, 20);

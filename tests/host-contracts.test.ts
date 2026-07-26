@@ -55,6 +55,9 @@ const contracts: HostContractDefinition[] = [
       fixture.assistantMessage.remove();
       appendAssistantMessage("assistant-one", "Changed assistant answer");
     },
+    removeMessageIdentity(fixture) {
+      fixture.assistantMessage.removeAttribute("data-message-id");
+    },
     selectionPresentation: "native-toolbar",
     setSendDisabled(control, isDisabled) {
       (control as HTMLButtonElement).disabled = isDisabled;
@@ -92,6 +95,11 @@ const contracts: HostContractDefinition[] = [
       wrapper.dataset.rsIndex = "2";
       appendClaudeAssistantMessage(1, "Changed assistant answer");
     },
+    removeMessageIdentity(fixture) {
+      fixture.assistantMessage
+        .closest<HTMLElement>("[data-rs-index]")
+        ?.removeAttribute("data-rs-index");
+    },
     selectionPresentation: "native-toolbar",
     setSendDisabled(control, isDisabled) {
       (control as HTMLButtonElement).disabled = isDisabled;
@@ -127,6 +135,11 @@ const contracts: HostContractDefinition[] = [
       fixture.assistantMessage.remove();
       appendAssistantMessageItem("assistant-one", "Changed assistant answer");
     },
+    removeMessageIdentity(fixture) {
+      fixture.assistantMessage
+        .closest<HTMLElement>("[data-virtual-list-item-key]")
+        ?.removeAttribute("data-virtual-list-item-key");
+    },
     selectionPresentation: "overlay",
     setSendDisabled(control, isDisabled) {
       control.classList.toggle("ds-button--disabled", isDisabled);
@@ -158,6 +171,9 @@ const contracts: HostContractDefinition[] = [
     invalidateCapturedIdentity(fixture) {
       fixture.assistantMessage.remove();
       appendKimiAssistantMessage("assistant-one", "Changed assistant answer");
+    },
+    removeMessageIdentity(fixture) {
+      fixture.assistantMessage.removeAttribute("data-archer-id");
     },
     selectionPresentation: "overlay",
     setSendDisabled(control, isDisabled) {

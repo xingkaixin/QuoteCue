@@ -23,6 +23,7 @@ export type HostContractDefinition = {
   expectedMessageId: string;
   installFixture: () => CoreHostFixture;
   invalidateCapturedIdentity: (fixture: CoreHostFixture) => void;
+  removeMessageIdentity: (fixture: CoreHostFixture) => void;
   name: string;
   selectionPresentation: "native-toolbar" | "overlay";
   setSendDisabled: (control: HTMLElement, isDisabled: boolean) => void;
@@ -87,6 +88,17 @@ export function runHostContractSuite(definition: HostContractDefinition) {
     it("rejects selections inside user messages", () => {
       const fixture = definition.installFixture();
       selectNodeContents(fixture.userMessage);
+
+      expect(host().selection.capture()).toEqual({
+        reason: "assistant-message-unavailable",
+        status: "unavailable",
+      });
+    });
+
+    it("rejects assistant selections without a message identity", () => {
+      const fixture = definition.installFixture();
+      definition.removeMessageIdentity(fixture);
+      selectNodeContents(requiredText(fixture.assistantMessage.querySelector("strong")));
 
       expect(host().selection.capture()).toEqual({
         reason: "assistant-message-unavailable",

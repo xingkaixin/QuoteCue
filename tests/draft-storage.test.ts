@@ -150,6 +150,25 @@ describe("draft storage", () => {
     expect(extensionStorage.snapshot()).toEqual({ [currentKey]: malformedDisplayQuote });
   });
 
+  it("filters anchors with empty required fields during migration", async () => {
+    const emptyMessageId = {
+      ...annotation,
+      id: "empty-message-id",
+      anchor: { ...annotation.anchor, messageId: "" },
+    };
+    const emptyQuote = {
+      ...annotation,
+      id: "empty-quote",
+      anchor: { ...annotation.anchor, quote: "" },
+    };
+    extensionStorage.reset({
+      [currentKey]: { version: 2, annotations: [emptyMessageId, annotation, emptyQuote] },
+    });
+
+    await expect(loadDraftAnnotations("A")).resolves.toEqual([annotation]);
+    expect(extensionStorage.snapshot()).toEqual({ [currentKey]: envelope });
+  });
+
   it("saves versioned drafts and clears current and legacy keys together", async () => {
     extensionStorage.reset({ [legacyKey]: [annotation] });
 

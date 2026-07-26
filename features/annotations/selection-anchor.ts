@@ -53,6 +53,9 @@ function restoreTextAnchorInMessage(anchor: TextAnchor, message: HTMLElement, me
 }
 
 function resolveTextAnchor(messageText: string, anchor: TextAnchor) {
+  if (anchor.quote.length === 0) {
+    return null;
+  }
   if (messageText.slice(anchor.start, anchor.end) === anchor.quote) {
     return { quote: anchor.quote, start: anchor.start };
   }
@@ -94,6 +97,10 @@ function sameNonWhitespaceText(left: string, right: string) {
 }
 
 function quoteOffsets(text: string, quote: string) {
+  if (quote.length === 0) {
+    return [];
+  }
+
   const offsets: number[] = [];
   let offset = text.indexOf(quote);
 
@@ -106,22 +113,29 @@ function quoteOffsets(text: string, quote: string) {
 }
 
 function uniqueContextMatch(messageText: string, anchor: TextAnchor, candidates: number[]) {
-  const scoredCandidates = candidates.map((candidate) => {
+  let bestOffset = -1;
+  let bestScore = 0;
+  let bestCount = 0;
+
+  for (const candidate of candidates) {
     const prefixStart = Math.max(0, candidate - anchor.prefix.length);
     const prefix = messageText.slice(prefixStart, candidate);
     const suffixStart = candidate + anchor.quote.length;
     const suffix = messageText.slice(suffixStart, suffixStart + anchor.suffix.length);
     const prefixScore = matchingEdgeLength(prefix, anchor.prefix, "end");
     const suffixScore = matchingEdgeLength(suffix, anchor.suffix, "start");
-    return { offset: candidate, prefixScore, suffixScore, totalScore: prefixScore + suffixScore };
-  });
-  const bestScore = Math.max(...scoredCandidates.map(({ totalScore }) => totalScore));
-  if (bestScore <= 0) {
-    return -1;
+    const score = prefixScore + suffixScore;
+
+    if (score > bestScore) {
+      bestOffset = candidate;
+      bestScore = score;
+      bestCount = 1;
+    } else if (score === bestScore) {
+      bestCount += 1;
+    }
   }
 
-  const bestCandidates = scoredCandidates.filter(({ totalScore }) => totalScore === bestScore);
-  return bestCandidates.length === 1 ? bestCandidates[0].offset : -1;
+  return bestScore > 0 && bestCount === 1 ? bestOffset : -1;
 }
 
 function matchingEdgeLength(left: string, right: string, edge: "start" | "end") {
