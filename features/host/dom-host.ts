@@ -483,9 +483,15 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
     logger?.(`[QuoteCue host] send confirmation started: existing=${initialMessages.length}`);
     const observer = new MutationObserver(() => {
       const messages = userMessages();
-      const acceptedMessage = messages.find(
-        (message) => isNewMessage(message) && normalizedText(message) === expectedText,
-      );
+      const acceptedMessage = messages.find((message) => {
+        if (!isNewMessage(message)) {
+          return false;
+        }
+        if ((message.textContent?.length ?? 0) < expectedText.length) {
+          return false;
+        }
+        return normalizedText(message) === expectedText;
+      });
       logger?.(
         `[QuoteCue host] send confirmation observed: total=${messages.length}, matched=${Boolean(acceptedMessage)}`,
       );
