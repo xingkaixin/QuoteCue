@@ -1,5 +1,6 @@
-import type { SelectionCapture, SelectionRect } from "@/features/host-port/host-port";
+import { parseTextAnchor } from "@/features/annotations/annotation";
 import { rangeEndpointRect } from "@/features/annotations/selection-anchor";
+import type { SelectionCapture, SelectionRect } from "@/features/host-port/host-port";
 import { currentVisualViewportBounds } from "@/features/layout/use-visual-viewport";
 
 import {
@@ -73,17 +74,22 @@ export function createSelectionSurface(context: HostContext) {
     const end = textOffset(message, range.endContainer, range.endOffset);
     const messageText = message.textContent ?? "";
     const actionRect = rangeRect(range);
+    const anchor = parseTextAnchor({
+      end,
+      messageId: adapter.messages.id(message),
+      prefix: messageText.slice(Math.max(0, start - CONTEXT_LENGTH), start),
+      quote,
+      ...(displayQuote === quote ? {} : { displayQuote }),
+      start,
+      suffix: messageText.slice(end, end + CONTEXT_LENGTH),
+    });
+    if (!anchor) {
+      return unavailable("assistant-message-unavailable");
+    }
+
     return available({
       actionRect,
-      anchor: {
-        end,
-        messageId: adapter.messages.id(message) ?? "",
-        prefix: messageText.slice(Math.max(0, start - CONTEXT_LENGTH), start),
-        quote,
-        ...(displayQuote === quote ? {} : { displayQuote }),
-        start,
-        suffix: messageText.slice(end, end + CONTEXT_LENGTH),
-      },
+      anchor,
       rect: rectangleSnapshot(rangeEndpointRect(range)),
     });
   }

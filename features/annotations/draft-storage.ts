@@ -1,6 +1,6 @@
 import { browser } from "wxt/browser";
 
-import type { DraftAnnotation, TextAnchor } from "./annotation";
+import { parseTextAnchor, type DraftAnnotation } from "./annotation";
 
 const DRAFT_KEY_PREFIX = "quotecue:draft:";
 const LEGACY_DRAFT_KEY_PREFIX = "askgpt:draft:";
@@ -122,37 +122,8 @@ function decodeAnnotation(value: unknown): DraftAnnotation | null {
   if (!isRecord(value) || typeof value.id !== "string" || typeof value.comment !== "string") {
     return null;
   }
-  const anchor = decodeTextAnchor(value.anchor);
+  const anchor = parseTextAnchor(value.anchor);
   return anchor ? { id: value.id, anchor, comment: value.comment } : null;
-}
-
-function decodeTextAnchor(value: unknown): TextAnchor | null {
-  if (
-    !isRecord(value) ||
-    typeof value.messageId !== "string" ||
-    typeof value.quote !== "string" ||
-    (value.displayQuote !== undefined && typeof value.displayQuote !== "string") ||
-    typeof value.prefix !== "string" ||
-    typeof value.suffix !== "string" ||
-    !isTextOffset(value.start) ||
-    !isTextOffset(value.end) ||
-    value.end < value.start
-  ) {
-    return null;
-  }
-  return {
-    messageId: value.messageId,
-    quote: value.quote,
-    ...(value.displayQuote === undefined ? {} : { displayQuote: value.displayQuote }),
-    prefix: value.prefix,
-    suffix: value.suffix,
-    start: value.start,
-    end: value.end,
-  };
-}
-
-function isTextOffset(value: unknown): value is number {
-  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
