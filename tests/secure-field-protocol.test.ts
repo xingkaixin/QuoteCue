@@ -5,7 +5,7 @@ import {
   decodeSecureFieldEvent,
   decodeSecureFieldInit,
   SECURE_FIELD_INIT,
-} from "@/features/annotations/secure-field-protocol";
+} from "@/features/secure-field/secure-field-protocol";
 
 const config = {
   ariaLabel: "Annotation content",

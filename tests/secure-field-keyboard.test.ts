@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { isSecureFieldSaveShortcut } from "@/features/annotations/secure-field-keyboard";
+import { isSecureFieldSaveShortcut } from "@/features/secure-field/secure-field-keyboard";
 
 describe("secure field keyboard behavior", () => {
   it("saves a single-line field on Enter outside IME composition", () => {

@@ -2,8 +2,8 @@ import {
   decodeSecureFieldCommand,
   decodeSecureFieldInit,
   type SecureFieldConfig,
-} from "@/features/annotations/secure-field-protocol";
-import { isSecureFieldSaveShortcut } from "@/features/annotations/secure-field-keyboard";
+} from "@/features/secure-field/secure-field-protocol";
+import { isSecureFieldSaveShortcut } from "@/features/secure-field/secure-field-keyboard";
 
 const token = decodeURIComponent(window.location.hash.slice(1));
 
