@@ -14,6 +14,18 @@ export type ComposerSnapshot = {
   text: string;
 };
 
+export type IdentifiedConversation = {
+  kind: "identified";
+  id: string;
+};
+
+export type UnidentifiedConversation = {
+  kind: "unidentified";
+  sessionKey: string;
+};
+
+export type ConversationIdentity = IdentifiedConversation | UnidentifiedConversation;
+
 export type SelectionInvalidationReason = "content" | "layout";
 export type SelectionPresentationMode = "native-toolbar" | "overlay";
 
@@ -63,7 +75,7 @@ export type Host = {
     watchAcceptedSend(options: AcceptedSendWatcherOptions): () => void;
   };
   conversation: {
-    key(temporaryConversationKey: string): string;
+    identity(sessionKey: string): ConversationIdentity;
     subscribe(callback: () => void): () => void;
   };
   layout: {

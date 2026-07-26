@@ -8,6 +8,7 @@ import { createTextNormalizer } from "./text-normalizer";
 
 export type {
   ComposerSnapshot,
+  ConversationIdentity,
   Host,
   HostLayout,
   HostResult,
@@ -40,11 +41,13 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
       watchAcceptedSend: sendPipeline.watchAcceptedSend,
     },
     conversation: {
-      key(temporaryConversationKey: string) {
-        return (
-          context.window.location.pathname.match(adapter.conversationPathPattern)?.[1] ??
-          temporaryConversationKey
-        );
+      identity(sessionKey: string) {
+        const conversationId = context.window.location.pathname.match(
+          adapter.conversationPathPattern,
+        )?.[1];
+        return conversationId
+          ? { kind: "identified" as const, id: conversationId }
+          : { kind: "unidentified" as const, sessionKey };
       },
       subscribe: context.signals.subscribeNavigation,
     },

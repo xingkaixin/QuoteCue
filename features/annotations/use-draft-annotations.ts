@@ -1,19 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import type { ConversationIdentity, IdentifiedConversation } from "@/features/host-port/host-port";
+
 import type { DraftAnnotation } from "./annotation";
+import { sameConversationIdentity } from "./conversation-identity";
 import { loadDraftAnnotations, saveDraftAnnotations } from "./draft-storage";
 
 type DraftScopeState =
-  | { status: "loading"; conversationKey: string }
+  | { status: "loading"; conversationIdentity: ConversationIdentity }
   | {
       status: "ready";
-      conversationKey: string;
+      conversationIdentity: ConversationIdentity;
       annotations: DraftAnnotation[];
       revision: number;
     }
   | {
       status: "error";
-      conversationKey: string;
+      conversationIdentity: IdentifiedConversation;
       annotations: DraftAnnotation[];
       revision: number;
       operation: "load" | "save";
@@ -21,8 +24,8 @@ type DraftScopeState =
 
 type AvailableDraftScopeState = Extract<DraftScopeState, { status: "ready" | "error" }>;
 
-export function useDraftAnnotations(conversationKey: string) {
-  const [scope, setScope] = useState<DraftScopeState>(() => loadingScope(conversationKey));
+export function useDraftAnnotations(conversationIdentity: ConversationIdentity) {
+  const [scope, setScope] = useState<DraftScopeState>(() => initialScope(conversationIdentity));
   const scopeRef = useRef(scope);
   const loadGeneration = useRef(0);
   const saveQueue = useRef(Promise.resolve());
@@ -33,17 +36,27 @@ export function useDraftAnnotations(conversationKey: string) {
   }, []);
 
   const loadScope = useCallback(
-    (key: string) => {
+    (identity: ConversationIdentity) => {
       const generation = ++loadGeneration.current;
-      commitScope(loadingScope(key));
+      if (identity.kind === "unidentified") {
+        commitScope(readyScope(identity));
+        return;
+      }
+
+      commitScope(loadingScope(identity));
 
       void saveQueue.current
-        .then(() => loadDraftAnnotations(key))
+        .then(() => loadDraftAnnotations(identity))
         .then((annotations) => {
           if (generation !== loadGeneration.current) {
             return;
           }
-          commitScope({ status: "ready", conversationKey: key, annotations, revision: 0 });
+          commitScope({
+            status: "ready",
+            conversationIdentity: identity,
+            annotations,
+            revision: 0,
+          });
         })
         .catch((error: unknown) => {
           console.error("[QuoteCue] Failed to load draft annotations", error);
@@ -52,7 +65,7 @@ export function useDraftAnnotations(conversationKey: string) {
           }
           commitScope({
             status: "error",
-            conversationKey: key,
+            conversationIdentity: identity,
             annotations: [],
             revision: 0,
             operation: "load",
@@ -64,7 +77,12 @@ export function useDraftAnnotations(conversationKey: string) {
 
   const enqueueSave = useCallback(
     (snapshot: AvailableDraftScopeState) => {
-      const save = () => saveDraftAnnotations(snapshot.conversationKey, snapshot.annotations);
+      const conversation = snapshot.conversationIdentity;
+      if (conversation.kind === "unidentified") {
+        return;
+      }
+
+      const save = () => saveDraftAnnotations(conversation, snapshot.annotations);
       const pendingSave = saveQueue.current.then(save, save);
       saveQueue.current = pendingSave.catch(() => undefined);
 
@@ -78,8 +96,17 @@ export function useDraftAnnotations(conversationKey: string) {
         .catch((error: unknown) => {
           console.error("[QuoteCue] Failed to save draft annotations", error);
           const current = scopeRef.current;
-          if (isCurrentRevision(current, snapshot)) {
-            commitScope({ ...current, status: "error", operation: "save" });
+          if (
+            isCurrentRevision(current, snapshot) &&
+            current.conversationIdentity.kind === "identified"
+          ) {
+            commitScope({
+              status: "error",
+              conversationIdentity: current.conversationIdentity,
+              annotations: current.annotations,
+              revision: current.revision,
+              operation: "save",
+            });
           }
         });
     },
@@ -87,11 +114,11 @@ export function useDraftAnnotations(conversationKey: string) {
   );
 
   useEffect(() => {
-    loadScope(conversationKey);
+    loadScope(conversationIdentity);
     return () => {
       loadGeneration.current += 1;
     };
-  }, [conversationKey, loadScope]);
+  }, [conversationIdentity, loadScope]);
 
   const mutateAnnotations = useCallback(
     (
@@ -100,7 +127,7 @@ export function useDraftAnnotations(conversationKey: string) {
     ) => {
       const current = scopeRef.current;
       if (
-        !canMutateScope(current, conversationKey) ||
+        !canMutateScope(current, conversationIdentity) ||
         (expectedRevision !== undefined && current.revision !== expectedRevision)
       ) {
         return false;
@@ -121,11 +148,12 @@ export function useDraftAnnotations(conversationKey: string) {
       enqueueSave(next);
       return true;
     },
-    [commitScope, conversationKey, enqueueSave],
+    [commitScope, conversationIdentity, enqueueSave],
   );
 
-  const visibleScope =
-    scope.conversationKey === conversationKey ? scope : loadingScope(conversationKey);
+  const visibleScope = sameConversationIdentity(scope.conversationIdentity, conversationIdentity)
+    ? scope
+    : loadingScope(conversationIdentity);
   const annotations = visibleScope.status === "loading" ? [] : visibleScope.annotations;
   const isHydrated =
     visibleScope.status === "ready" ||
@@ -185,30 +213,40 @@ export function useDraftAnnotations(conversationKey: string) {
         return;
       }
       if (visibleScope.operation === "load") {
-        loadScope(conversationKey);
+        loadScope(conversationIdentity);
         return;
       }
       commitScope({
         status: "ready",
-        conversationKey: visibleScope.conversationKey,
+        conversationIdentity: visibleScope.conversationIdentity,
         annotations: visibleScope.annotations,
         revision: visibleScope.revision,
       });
       enqueueSave(visibleScope);
-    }, [commitScope, conversationKey, enqueueSave, loadScope, visibleScope]),
+    }, [commitScope, conversationIdentity, enqueueSave, loadScope, visibleScope]),
   };
 }
 
-function loadingScope(conversationKey: string): DraftScopeState {
-  return { status: "loading", conversationKey };
+function initialScope(conversationIdentity: ConversationIdentity): DraftScopeState {
+  return conversationIdentity.kind === "identified"
+    ? loadingScope(conversationIdentity)
+    : readyScope(conversationIdentity);
+}
+
+function loadingScope(conversationIdentity: ConversationIdentity): DraftScopeState {
+  return { status: "loading", conversationIdentity };
+}
+
+function readyScope(conversationIdentity: ConversationIdentity): DraftScopeState {
+  return { status: "ready", conversationIdentity, annotations: [], revision: 0 };
 }
 
 function canMutateScope(
   scope: DraftScopeState,
-  conversationKey: string,
+  conversationIdentity: ConversationIdentity,
 ): scope is AvailableDraftScopeState {
   return (
-    scope.conversationKey === conversationKey &&
+    sameConversationIdentity(scope.conversationIdentity, conversationIdentity) &&
     (scope.status === "ready" || (scope.status === "error" && scope.operation === "save"))
   );
 }
@@ -219,7 +257,7 @@ function isCurrentRevision(
 ): current is AvailableDraftScopeState {
   return (
     current.status !== "loading" &&
-    current.conversationKey === saved.conversationKey &&
+    sameConversationIdentity(current.conversationIdentity, saved.conversationIdentity) &&
     current.revision === saved.revision
   );
 }

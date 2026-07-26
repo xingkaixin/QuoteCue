@@ -5,7 +5,7 @@ import { messageAccess, sendControlAccess } from "@/features/host/site-capabilit
 
 const CHATGPT_ADAPTER: SiteAdapter = {
   composer: richTextComposer("#prompt-textarea[contenteditable='true']"),
-  conversationPathPattern: /^\/c\/([^/?#]+)/,
+  conversationPathPattern: /^\/(?:c|g\/[^/?#]+\/c)\/([^/?#]+)/,
   layout: composerLayout("button"),
   messages: messageAccess({
     assistantSelector: '[data-message-author-role="assistant"][data-message-id]',

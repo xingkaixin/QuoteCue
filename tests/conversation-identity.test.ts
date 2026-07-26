@@ -9,23 +9,39 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("conversation keys", () => {
+describe("conversation identities", () => {
   it("uses the URL conversation id when one exists", () => {
     window.history.replaceState({}, "", "/c/conversation-a");
 
-    expect(host.conversation.key("new-chat:tab-a")).toBe("conversation-a");
+    expect(host.conversation.identity("session-a")).toEqual({
+      kind: "identified",
+      id: "conversation-a",
+    });
   });
 
-  it("isolates new chats with a unique temporary key", () => {
-    window.history.replaceState({}, "", "/");
-    const firstKey = `new-chat:${crypto.randomUUID()}`;
-    const secondKey = `new-chat:${crypto.randomUUID()}`;
+  it("identifies ChatGPT GPT conversations", () => {
+    window.history.replaceState({}, "", "/g/gizmo-a/c/conversation-a");
 
-    expect(firstKey).toMatch(/^new-chat:/);
-    expect(secondKey).toMatch(/^new-chat:/);
-    expect(firstKey).not.toBe(secondKey);
-    expect(host.conversation.key(firstKey)).toBe(firstKey);
-    expect(host.conversation.key(secondKey)).toBe(secondKey);
+    expect(host.conversation.identity("session-a")).toEqual({
+      kind: "identified",
+      id: "conversation-a",
+    });
+  });
+
+  it("keeps unidentified sessions distinct without a magic prefix", () => {
+    window.history.replaceState({}, "", "/");
+    const firstSessionKey = crypto.randomUUID();
+    const secondSessionKey = crypto.randomUUID();
+
+    expect(firstSessionKey).not.toBe(secondSessionKey);
+    expect(host.conversation.identity(firstSessionKey)).toEqual({
+      kind: "unidentified",
+      sessionKey: firstSessionKey,
+    });
+    expect(host.conversation.identity(secondSessionKey)).toEqual({
+      kind: "unidentified",
+      sessionKey: secondSessionKey,
+    });
   });
 
   it("subscribes to history navigation without observing DOM changes", () => {

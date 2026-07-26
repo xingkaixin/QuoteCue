@@ -15,6 +15,7 @@ export type HostContractDefinition = {
   appendAssistantMessage: (text: string) => HTMLElement;
   appendUserMessage: (text: string) => void;
   conversation: {
+    additionalMatchedPaths?: string[];
     id: string;
     matchedPath: string;
     unmatchedPath: string;
@@ -55,13 +56,25 @@ export function runHostContractSuite(definition: HostContractDefinition) {
       expect(host().selection.presentation).toBe(definition.selectionPresentation);
     });
 
-    it("derives conversation ids and preserves temporary new-chat keys", () => {
+    it("identifies supported conversation paths and marks unmatched paths unidentified", () => {
       const siteHost = host();
-      window.history.replaceState({}, "", definition.conversation.matchedPath);
-      expect(siteHost.conversation.key("new-chat:contract")).toBe(definition.conversation.id);
+      const matchedPaths = [
+        definition.conversation.matchedPath,
+        ...(definition.conversation.additionalMatchedPaths ?? []),
+      ];
+      for (const path of matchedPaths) {
+        window.history.replaceState({}, "", path);
+        expect(siteHost.conversation.identity("session-contract")).toEqual({
+          kind: "identified",
+          id: definition.conversation.id,
+        });
+      }
 
       window.history.replaceState({}, "", definition.conversation.unmatchedPath);
-      expect(siteHost.conversation.key("new-chat:contract")).toBe("new-chat:contract");
+      expect(siteHost.conversation.identity("session-contract")).toEqual({
+        kind: "unidentified",
+        sessionKey: "session-contract",
+      });
     });
 
     it("indexes only assistant messages and round-trips a captured anchor", () => {
