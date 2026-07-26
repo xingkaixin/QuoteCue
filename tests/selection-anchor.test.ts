@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { TextAnchor } from "@/features/annotations/annotation";
 import {
@@ -113,6 +113,31 @@ describe("selection anchors", () => {
         end: 112,
       })?.toString(),
     ).toBe("unique phrase");
+  });
+
+  it("creates restored ranges from the message owner document", () => {
+    const isolatedDocument = document.implementation.createHTMLDocument();
+    isolatedDocument.body.innerHTML = "<div>isolated phrase</div>";
+    const message = isolatedDocument.body.firstElementChild;
+    if (!(message instanceof HTMLElement)) {
+      throw new Error("Expected an isolated message");
+    }
+    const createRange = vi.spyOn(isolatedDocument, "createRange");
+
+    const range = restoreTextAnchorFromIndex(
+      {
+        messageId: "assistant-isolated",
+        quote: "isolated phrase",
+        prefix: "",
+        suffix: "",
+        start: 0,
+        end: 15,
+      },
+      new Map([["assistant-isolated", message]]),
+    );
+
+    expect(createRange).toHaveBeenCalledOnce();
+    expect(range?.startContainer.ownerDocument).toBe(isolatedDocument);
   });
 
   it("restores a legacy rendered quote at an unchanged DOM position", () => {
