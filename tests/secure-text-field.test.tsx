@@ -2,7 +2,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { SecureTextField } from "@/features/annotations/SecureTextField";
+import { SecureTextField } from "@/features/secure-field/SecureTextField";
 
 vi.mock("wxt/browser", () => ({
   browser: {

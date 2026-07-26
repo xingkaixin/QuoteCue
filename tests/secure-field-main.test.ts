@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   SECURE_FIELD_INIT,
   type SecureFieldConfig,
-} from "@/features/annotations/secure-field-protocol";
+} from "@/features/secure-field/secure-field-protocol";
 
 const TOKEN = "frame-token";
 const config = {

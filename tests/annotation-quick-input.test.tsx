@@ -6,7 +6,7 @@ import { AnnotationQuickInput } from "@/features/annotations/AnnotationQuickInpu
 
 import { HostTestProvider } from "./fixtures/host-provider";
 
-vi.mock("@/features/annotations/SecureTextField", async () => {
+vi.mock("@/features/secure-field/SecureTextField", async () => {
   const { forwardRef, useEffect, useImperativeHandle, useRef } = await import("react");
   type FakeSecureFieldProps = {
     ariaLabel: string;

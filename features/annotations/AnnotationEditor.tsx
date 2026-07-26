@@ -4,10 +4,13 @@ import { useCallback, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { SelectionRect } from "@/features/host-port/host-port";
 import { useI18n } from "@/features/i18n/I18nProvider";
+import {
+  SecureTextField,
+  type SecureTextFieldHandle,
+} from "@/features/secure-field/SecureTextField";
 
 import type { DraftAnnotation } from "./annotation";
 import { useAnnotationEditorPosition } from "./annotation-editor-position";
-import { SecureTextField, type SecureTextFieldHandle } from "./SecureTextField";
 import { useDismissalWarning } from "./use-dismissal-warning";
 import { useOutsideDiscard } from "./use-outside-discard";
 
