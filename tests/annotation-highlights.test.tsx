@@ -32,6 +32,7 @@ vi.mock("@/features/annotations/selection-anchor", async (importOriginal) => ({
 const annotation: DraftAnnotation = {
   id: "annotation-1",
   anchor: {
+    format: "exact",
     messageId: "message-1",
     quote: "selected text",
     prefix: "",

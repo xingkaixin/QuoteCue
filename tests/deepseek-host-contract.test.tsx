@@ -239,6 +239,7 @@ function missingSelection(): never {
 function emptyAnchor() {
   return {
     end: 13,
+    format: "exact" as const,
     messageId: "assistant-one",
     prefix: "",
     quote: "selected text",

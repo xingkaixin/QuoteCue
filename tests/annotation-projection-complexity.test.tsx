@@ -119,6 +119,7 @@ function annotation(index: number): DraftAnnotation {
   return {
     id: `annotation-${index}`,
     anchor: {
+      format: "exact",
       messageId: "message-1",
       quote: "selected text",
       prefix: "",

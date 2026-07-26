@@ -8,6 +8,7 @@ const annotations: DraftAnnotation[] = [
   {
     id: "one",
     anchor: {
+      format: "exact",
       messageId: "message-one",
       quote: "全球招聘的基础设施层",
       prefix: "所以它卖的是：",
@@ -20,6 +21,7 @@ const annotations: DraftAnnotation[] = [
   {
     id: "two",
     anchor: {
+      format: "exact",
       messageId: "message-one",
       quote: "不会轻易切换",
       prefix: "而且粘性非常高，公司",
@@ -85,6 +87,7 @@ describe("compileAnnotatedPrompt", () => {
         anchor: {
           ...annotations[0].anchor,
           displayQuote: "alpha beta",
+          format: "exact" as const,
           quote: "alphabeta",
         },
         comment: "",

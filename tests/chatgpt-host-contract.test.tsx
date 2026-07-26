@@ -374,6 +374,7 @@ describe("ChatGPT host contract", () => {
       id: "private-annotation",
       anchor: {
         end: 20,
+        format: "exact",
         messageId: "private-message",
         prefix: "private prefix",
         quote: "private selected text",

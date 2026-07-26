@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AnnotationSummary } from "@/features/annotations/AnnotationSummary";
+import type { DraftAnnotation } from "@/features/annotations/annotation";
 import {
   numberAnnotations,
   type ProjectedAnnotation,
@@ -13,6 +14,7 @@ import { DELETE_UNDO_WINDOW_MS } from "@/features/annotations/use-deferred-annot
 const annotation = {
   id: "annotation-1",
   anchor: {
+    format: "exact" as const,
     messageId: "message-1",
     quote: "selected text",
     prefix: "",
@@ -320,14 +322,14 @@ async function mountSummary(overrides: Partial<SummaryProps> = {}) {
   };
 }
 
-function projectAnnotations(annotations: readonly (typeof annotation)[]): ProjectedAnnotation[] {
+function projectAnnotations(annotations: readonly DraftAnnotation[]): ProjectedAnnotation[] {
   return numberAnnotations(annotations).map(({ annotation: item, ordinal }) =>
     projectAnnotation(item, ordinal),
   );
 }
 
 function projectAnnotation(
-  item: typeof annotation,
+  item: DraftAnnotation,
   ordinal: number,
   isResolved = true,
 ): ProjectedAnnotation {

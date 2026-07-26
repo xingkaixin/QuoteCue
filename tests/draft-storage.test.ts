@@ -37,19 +37,29 @@ vi.mock("wxt/browser", () => ({
 const currentKey = "quotecue:draft:A";
 const legacyKey = "askgpt:draft:A";
 const conversationA = { kind: "identified", id: "A" } as const;
-const annotation: DraftAnnotation = {
+const unmarkedAnchor = {
+  messageId: "message-a",
+  quote: "selected text",
+  prefix: "before",
+  suffix: "after",
+  start: 4,
+  end: 17,
+};
+const unmarkedAnnotation = {
   id: "annotation-a",
-  anchor: {
-    messageId: "message-a",
-    quote: "selected text",
-    prefix: "before",
-    suffix: "after",
-    start: 4,
-    end: 17,
-  },
+  anchor: unmarkedAnchor,
   comment: "draft A",
 };
-const envelope = { version: 2, annotations: [annotation] };
+const annotation: DraftAnnotation = {
+  ...unmarkedAnnotation,
+  anchor: { ...unmarkedAnchor, format: "exact" },
+};
+const legacyAnnotation: DraftAnnotation = {
+  ...unmarkedAnnotation,
+  anchor: { ...unmarkedAnchor, format: "legacy-rendered" },
+};
+const envelope = { version: 3, annotations: [annotation] };
+const legacyEnvelope = { version: 3, annotations: [legacyAnnotation] };
 
 beforeEach(() => extensionStorage.reset());
 
@@ -76,26 +86,54 @@ describe("draft storage", () => {
     expect(extensionStorage.snapshot()).toEqual({ [currentKey]: envelope });
   });
 
-  it("migrates version 1 envelopes without losing annotations", async () => {
+  it("marks version 1 rendered quotes and does not migrate them twice", async () => {
+    const renderedAnnotation = {
+      ...unmarkedAnnotation,
+      anchor: { ...unmarkedAnchor, end: 9, quote: "alpha beta", start: 0 },
+    };
+    const migratedAnnotation = {
+      ...renderedAnnotation,
+      anchor: { ...renderedAnnotation.anchor, format: "legacy-rendered" },
+    };
+    const migratedEnvelope = { version: 3, annotations: [migratedAnnotation] };
     extensionStorage.reset({
-      [currentKey]: { version: 1, annotations: [annotation] },
+      [currentKey]: { version: 1, annotations: [renderedAnnotation] },
     });
 
-    await expect(loadDraftAnnotations(conversationA)).resolves.toEqual([annotation]);
-    expect(extensionStorage.snapshot()).toEqual({ [currentKey]: envelope });
+    await expect(loadDraftAnnotations(conversationA)).resolves.toEqual([migratedAnnotation]);
+    expect(extensionStorage.snapshot()).toEqual({ [currentKey]: migratedEnvelope });
+
+    extensionStorage.set.mockClear();
+    await expect(loadDraftAnnotations(conversationA)).resolves.toEqual([migratedAnnotation]);
+    expect(extensionStorage.set).not.toHaveBeenCalled();
   });
 
-  it("preserves the rendered quote in version 2 drafts", async () => {
-    const tableAnnotation = {
-      ...annotation,
+  it("marks unidentifiable version 2 anchors as legacy-rendered", async () => {
+    extensionStorage.reset({
+      [currentKey]: { version: 2, annotations: [unmarkedAnnotation] },
+    });
+
+    await expect(loadDraftAnnotations(conversationA)).resolves.toEqual([legacyAnnotation]);
+    expect(extensionStorage.snapshot()).toEqual({ [currentKey]: legacyEnvelope });
+  });
+
+  it("recognizes version 2 anchors with displayQuote as exact", async () => {
+    const storedTableAnnotation = {
+      ...unmarkedAnnotation,
       anchor: {
-        ...annotation.anchor,
+        ...unmarkedAnchor,
         displayQuote: "alpha beta",
         quote: "alphabeta",
       },
     };
-    const tableEnvelope = { version: 2, annotations: [tableAnnotation] };
-    extensionStorage.reset({ [currentKey]: tableEnvelope });
+    const tableAnnotation: DraftAnnotation = {
+      ...storedTableAnnotation,
+      anchor: { ...storedTableAnnotation.anchor, format: "exact" },
+    };
+    const tableEnvelope = { version: 3, annotations: [tableAnnotation] };
+    extensionStorage.reset({
+      [currentKey]: { version: 2, annotations: [storedTableAnnotation] },
+    });
 
     await expect(loadDraftAnnotations(conversationA)).resolves.toEqual([tableAnnotation]);
     expect(extensionStorage.snapshot()).toEqual({ [currentKey]: tableEnvelope });
@@ -104,25 +142,25 @@ describe("draft storage", () => {
   it("migrates raw arrays while preserving valid items and removing obsolete fields", async () => {
     extensionStorage.reset({
       [currentKey]: [
-        { ...annotation, createdAt: 1 },
+        { ...unmarkedAnnotation, createdAt: 1 },
         { id: 42, anchor: null },
-        { ...annotation, createdAt: 2 },
+        { ...unmarkedAnnotation, createdAt: 2 },
       ],
     });
 
-    await expect(loadDraftAnnotations(conversationA)).resolves.toEqual([annotation]);
-    expect(extensionStorage.snapshot()).toEqual({ [currentKey]: envelope });
+    await expect(loadDraftAnnotations(conversationA)).resolves.toEqual([legacyAnnotation]);
+    expect(extensionStorage.snapshot()).toEqual({ [currentKey]: legacyEnvelope });
   });
 
   it("writes the new envelope before removing a legacy key", async () => {
-    extensionStorage.reset({ [legacyKey]: [{ ...annotation, createdAt: 1 }] });
+    extensionStorage.reset({ [legacyKey]: [{ ...unmarkedAnnotation, createdAt: 1 }] });
 
-    await expect(loadDraftAnnotations(conversationA)).resolves.toEqual([annotation]);
-    expect(extensionStorage.snapshot()).toEqual({ [currentKey]: envelope });
+    await expect(loadDraftAnnotations(conversationA)).resolves.toEqual([legacyAnnotation]);
+    expect(extensionStorage.snapshot()).toEqual({ [currentKey]: legacyEnvelope });
   });
 
   it("keeps legacy data when the migration write fails", async () => {
-    const legacyDraft = [{ ...annotation, createdAt: 1 }];
+    const legacyDraft = [{ ...unmarkedAnnotation, createdAt: 1 }];
     extensionStorage.reset({ [legacyKey]: legacyDraft });
     extensionStorage.set.mockRejectedValueOnce(new Error("write failed"));
 
@@ -131,24 +169,24 @@ describe("draft storage", () => {
   });
 
   it("retries legacy cleanup without blocking a successfully migrated draft", async () => {
-    const legacyDraft = [{ ...annotation, createdAt: 1 }];
+    const legacyDraft = [{ ...unmarkedAnnotation, createdAt: 1 }];
     extensionStorage.reset({ [legacyKey]: legacyDraft });
     extensionStorage.remove.mockRejectedValueOnce(new Error("remove failed"));
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
 
-    await expect(loadDraftAnnotations(conversationA)).resolves.toEqual([annotation]);
+    await expect(loadDraftAnnotations(conversationA)).resolves.toEqual([legacyAnnotation]);
     expect(extensionStorage.snapshot()).toEqual({
-      [currentKey]: envelope,
+      [currentKey]: legacyEnvelope,
       [legacyKey]: legacyDraft,
     });
-    await expect(loadDraftAnnotations(conversationA)).resolves.toEqual([annotation]);
-    expect(extensionStorage.snapshot()).toEqual({ [currentKey]: envelope });
+    await expect(loadDraftAnnotations(conversationA)).resolves.toEqual([legacyAnnotation]);
+    expect(extensionStorage.snapshot()).toEqual({ [currentKey]: legacyEnvelope });
 
     consoleError.mockRestore();
   });
 
   it("preserves unknown versions and wholly invalid drafts", async () => {
-    const unknownVersion = { version: 3, annotations: [annotation] };
+    const unknownVersion = { version: 4, annotations: [annotation] };
     extensionStorage.reset({ [currentKey]: unknownVersion });
 
     await expect(loadDraftAnnotations(conversationA)).rejects.toThrow(
@@ -165,32 +203,45 @@ describe("draft storage", () => {
 
     const malformedDisplayQuote = {
       version: 2,
-      annotations: [{ ...annotation, anchor: { ...annotation.anchor, displayQuote: 42 } }],
+      annotations: [{ ...unmarkedAnnotation, anchor: { ...unmarkedAnchor, displayQuote: 42 } }],
     };
     extensionStorage.reset({ [currentKey]: malformedDisplayQuote });
     await expect(loadDraftAnnotations(conversationA)).rejects.toThrow(
       "Draft contains no valid annotations",
     );
     expect(extensionStorage.snapshot()).toEqual({ [currentKey]: malformedDisplayQuote });
+
+    const missingFormat = {
+      version: 3,
+      annotations: [unmarkedAnnotation],
+    };
+    extensionStorage.reset({ [currentKey]: missingFormat });
+    await expect(loadDraftAnnotations(conversationA)).rejects.toThrow(
+      "Draft contains no valid annotations",
+    );
+    expect(extensionStorage.snapshot()).toEqual({ [currentKey]: missingFormat });
   });
 
   it("filters anchors with empty required fields during migration", async () => {
     const emptyMessageId = {
-      ...annotation,
+      ...unmarkedAnnotation,
       id: "empty-message-id",
-      anchor: { ...annotation.anchor, messageId: "" },
+      anchor: { ...unmarkedAnchor, messageId: "" },
     };
     const emptyQuote = {
-      ...annotation,
+      ...unmarkedAnnotation,
       id: "empty-quote",
-      anchor: { ...annotation.anchor, quote: "" },
+      anchor: { ...unmarkedAnchor, quote: "" },
     };
     extensionStorage.reset({
-      [currentKey]: { version: 2, annotations: [emptyMessageId, annotation, emptyQuote] },
+      [currentKey]: {
+        version: 2,
+        annotations: [emptyMessageId, unmarkedAnnotation, emptyQuote],
+      },
     });
 
-    await expect(loadDraftAnnotations(conversationA)).resolves.toEqual([annotation]);
-    expect(extensionStorage.snapshot()).toEqual({ [currentKey]: envelope });
+    await expect(loadDraftAnnotations(conversationA)).resolves.toEqual([legacyAnnotation]);
+    expect(extensionStorage.snapshot()).toEqual({ [currentKey]: legacyEnvelope });
   });
 
   it("saves versioned drafts and clears current and legacy keys together", async () => {

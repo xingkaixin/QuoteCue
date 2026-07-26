@@ -10,11 +10,13 @@ export type {
 export function parseTextAnchor(value: unknown): TextAnchor | null {
   if (
     !isRecord(value) ||
+    (value.format !== "exact" && value.format !== "legacy-rendered") ||
     typeof value.messageId !== "string" ||
     value.messageId.length === 0 ||
     typeof value.quote !== "string" ||
     value.quote.length === 0 ||
     (value.displayQuote !== undefined && typeof value.displayQuote !== "string") ||
+    (value.format === "legacy-rendered" && value.displayQuote !== undefined) ||
     typeof value.prefix !== "string" ||
     typeof value.suffix !== "string" ||
     !isTextOffset(value.start) ||
@@ -24,15 +26,21 @@ export function parseTextAnchor(value: unknown): TextAnchor | null {
     return null;
   }
 
-  return {
+  const anchor = {
     messageId: value.messageId,
     quote: value.quote,
-    ...(value.displayQuote === undefined ? {} : { displayQuote: value.displayQuote }),
     prefix: value.prefix,
     suffix: value.suffix,
     start: value.start,
     end: value.end,
   };
+  return value.format === "exact"
+    ? {
+        ...anchor,
+        format: value.format,
+        ...(value.displayQuote === undefined ? {} : { displayQuote: value.displayQuote }),
+      }
+    : { ...anchor, format: value.format };
 }
 
 export function selectedTextFor(anchor: TextAnchor) {

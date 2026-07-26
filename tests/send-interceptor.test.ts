@@ -18,6 +18,7 @@ import {
 const annotation = {
   id: "annotation-1",
   anchor: {
+    format: "exact" as const,
     messageId: "message-1",
     quote: "selected text",
     prefix: "",

@@ -21,6 +21,7 @@ vi.mock("@/features/annotations/draft-storage", () => ({
 const annotation: DraftAnnotation = {
   id: "annotation-a",
   anchor: {
+    format: "exact",
     messageId: "message-a",
     quote: "selected text",
     prefix: "",

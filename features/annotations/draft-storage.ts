@@ -10,9 +10,15 @@ const ORPHANED_DRAFT_KEY_PREFIXES = [
   `${DRAFT_KEY_PREFIX}new-chat:`,
   `${LEGACY_DRAFT_KEY_PREFIX}new-chat:`,
 ];
-const LEGACY_DRAFT_STORAGE_VERSION = 1;
-const DRAFT_STORAGE_VERSION = 2;
+const RENDERED_QUOTE_DRAFT_STORAGE_VERSION = 1;
+const UNMARKED_ANCHOR_DRAFT_STORAGE_VERSION = 2;
+const DRAFT_STORAGE_VERSION = 3;
 let orphanedDraftCleanup: Promise<void> | null = null;
+
+type DraftStorageVersion =
+  | typeof RENDERED_QUOTE_DRAFT_STORAGE_VERSION
+  | typeof UNMARKED_ANCHOR_DRAFT_STORAGE_VERSION
+  | typeof DRAFT_STORAGE_VERSION;
 
 type StoredDraftEnvelope = {
   version: typeof DRAFT_STORAGE_VERSION;
@@ -86,33 +92,32 @@ function draftEnvelope(annotations: DraftAnnotation[]): StoredDraftEnvelope {
 
 function decodeStoredDraft(value: unknown): DecodedDraft {
   if (Array.isArray(value)) {
-    return { annotations: decodeAnnotations(value), needsMigration: true };
+    return {
+      annotations: decodeAnnotations(value, RENDERED_QUOTE_DRAFT_STORAGE_VERSION),
+      needsMigration: true,
+    };
   }
-  if (
-    !isRecord(value) ||
-    (value.version !== LEGACY_DRAFT_STORAGE_VERSION && value.version !== DRAFT_STORAGE_VERSION)
-  ) {
+  if (!isRecord(value) || !isDraftStorageVersion(value.version)) {
     throw new DraftStorageFormatError("Unsupported draft storage version");
   }
   if (!Array.isArray(value.annotations)) {
     throw new DraftStorageFormatError("Draft annotations must be an array");
   }
 
-  const annotations = decodeAnnotations(value.annotations);
+  const annotations = decodeAnnotations(value.annotations, value.version);
   return {
     annotations,
     needsMigration:
-      value.version === LEGACY_DRAFT_STORAGE_VERSION ||
-      annotations.length !== value.annotations.length,
+      value.version !== DRAFT_STORAGE_VERSION || annotations.length !== value.annotations.length,
   };
 }
 
-function decodeAnnotations(values: unknown[]) {
+function decodeAnnotations(values: unknown[], version: DraftStorageVersion) {
   const annotations: DraftAnnotation[] = [];
   const annotationIds = new Set<string>();
 
   for (const value of values) {
-    const annotation = decodeAnnotation(value);
+    const annotation = decodeAnnotation(value, version);
     if (!annotation || annotationIds.has(annotation.id)) {
       continue;
     }
@@ -126,12 +131,36 @@ function decodeAnnotations(values: unknown[]) {
   return annotations;
 }
 
-function decodeAnnotation(value: unknown): DraftAnnotation | null {
+function decodeAnnotation(value: unknown, version: DraftStorageVersion): DraftAnnotation | null {
   if (!isRecord(value) || typeof value.id !== "string" || typeof value.comment !== "string") {
     return null;
   }
-  const anchor = parseTextAnchor(value.anchor);
+  const anchor = decodeTextAnchor(value.anchor, version);
   return anchor ? { id: value.id, anchor, comment: value.comment } : null;
+}
+
+function decodeTextAnchor(value: unknown, version: DraftStorageVersion) {
+  if (version === DRAFT_STORAGE_VERSION) {
+    return parseTextAnchor(value);
+  }
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  // Version 2 may contain version 1 data rewritten unchanged; only displayQuote proves exact capture.
+  const format =
+    version === UNMARKED_ANCHOR_DRAFT_STORAGE_VERSION && value.displayQuote !== undefined
+      ? "exact"
+      : "legacy-rendered";
+  return parseTextAnchor({ ...value, format });
+}
+
+function isDraftStorageVersion(value: unknown): value is DraftStorageVersion {
+  return (
+    value === RENDERED_QUOTE_DRAFT_STORAGE_VERSION ||
+    value === UNMARKED_ANCHOR_DRAFT_STORAGE_VERSION ||
+    value === DRAFT_STORAGE_VERSION
+  );
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

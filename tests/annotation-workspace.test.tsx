@@ -40,6 +40,7 @@ vi.mock("@/features/annotations/use-annotation-projection", async () => {
 const selectionDraft: SelectionDraft = {
   anchor: {
     end: 16,
+    format: "exact",
     messageId: "assistant-one",
     prefix: "A ",
     quote: "focused answer",

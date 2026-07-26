@@ -76,6 +76,7 @@ export function createSelectionSurface(context: HostContext) {
     const actionRect = rangeRect(range);
     const anchor = parseTextAnchor({
       end,
+      format: "exact",
       messageId: adapter.messages.id(message),
       prefix: messageText.slice(Math.max(0, start - CONTEXT_LENGTH), start),
       quote,

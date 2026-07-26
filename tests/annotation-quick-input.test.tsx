@@ -42,6 +42,7 @@ vi.mock("@/features/annotations/SecureTextField", async () => {
 
 const draft = {
   anchor: {
+    format: "exact" as const,
     messageId: "message-1",
     quote: "selected text",
     prefix: "",
