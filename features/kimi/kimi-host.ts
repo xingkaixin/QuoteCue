@@ -25,9 +25,3 @@ const KIMI_ADAPTER: SiteAdapter = {
 export function createKimiHost(environment: HostEnvironment) {
   return createDomHost(environment, KIMI_ADAPTER);
 }
-
-export const kimiHost = createKimiHost({
-  document,
-  logger: import.meta.env.DEV ? (message) => console.debug(message) : undefined,
-  window,
-});

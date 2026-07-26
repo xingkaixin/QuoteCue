@@ -19,9 +19,3 @@ const CHATGPT_ADAPTER: SiteAdapter = {
 export function createChatGptHost(environment: HostEnvironment) {
   return createDomHost(environment, CHATGPT_ADAPTER);
 }
-
-export const chatGptHost = createChatGptHost({
-  document,
-  logger: import.meta.env.DEV ? (message) => console.debug(message) : undefined,
-  window,
-});

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
-import { activeHost } from "@/features/host/active-host";
-import type { SelectionInvalidationReason } from "@/features/host/dom-host";
+import { requireActiveHost } from "@/features/host/active-host";
+import type { Host, SelectionInvalidationReason } from "@/features/host/dom-host";
 import { clampPositionToViewport } from "@/features/layout/floating-position";
 import { currentVisualViewportBounds } from "@/features/layout/use-visual-viewport";
 
@@ -35,6 +35,7 @@ export function useAnnotationHighlights(
   annotations: DraftAnnotation[],
   activeAnnotationId: string | null,
 ) {
+  const host = requireActiveHost();
   const [layout, setLayout] = useState<AnnotationHighlightLayout>(EMPTY_LAYOUT);
   const layoutRef = useRef(layout);
 
@@ -61,14 +62,14 @@ export function useAnnotationHighlights(
         const invalidation = pendingInvalidation ?? "layout";
         pendingInvalidation = undefined;
         if (invalidation === "content") {
-          rangeByAnnotationId = resolveAnnotationRanges(annotations);
+          rangeByAnnotationId = resolveAnnotationRanges(annotations, host);
         }
         const projection = projectAnnotations(annotations, activeAnnotationId, rangeByAnnotationId);
         renderActiveHighlight(projection.activeRange);
         commitLayout(projection);
       });
     };
-    const stopObserving = activeHost.selection.observeInvalidation(scheduleProjection);
+    const stopObserving = host.selection.observeInvalidation(scheduleProjection);
     scheduleProjection("content");
 
     return () => {
@@ -86,7 +87,7 @@ export function useAnnotationHighlights(
       layoutRef.current = nextLayout;
       setLayout(nextLayout);
     }
-  }, [activeAnnotationId, annotations]);
+  }, [activeAnnotationId, annotations, host]);
 
   return layout;
 }
@@ -113,8 +114,8 @@ function projectAnnotations(
   return { activeRange, badgePositions, unresolvedAnnotationIds };
 }
 
-function resolveAnnotationRanges(annotations: DraftAnnotation[]) {
-  const messageIndex = activeHost.selection.messageIndex();
+function resolveAnnotationRanges(annotations: DraftAnnotation[], host: Host) {
+  const messageIndex = host.selection.messageIndex();
   const messageTextCache = new Map<HTMLElement, string>();
   return new Map(
     annotations.map((annotation) => [

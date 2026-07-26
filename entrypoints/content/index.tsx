@@ -4,21 +4,22 @@ import ReactDOM from "react-dom/client";
 import { createShadowRootUi } from "wxt/utils/content-script-ui/shadow-root";
 
 import { PortalContainerProvider } from "@/components/ui/portal-container";
+import { activeSite } from "@/features/host/active-host";
+import { SITE_URL_PATTERNS } from "@/features/host/site-urls";
 import { I18nProvider } from "@/features/i18n/I18nProvider";
 import { HostThemeProvider } from "@/features/theme/HostThemeProvider";
 
 import App from "./App";
 
 export default defineContentScript({
-  matches: [
-    "https://chatgpt.com/*",
-    "https://chat.deepseek.com/*",
-    "https://claude.ai/*",
-    "https://www.kimi.com/*",
-  ],
+  matches: SITE_URL_PATTERNS,
   cssInjectionMode: "ui",
 
   async main(context) {
+    if (!activeSite) {
+      return;
+    }
+
     const ui = await createShadowRootUi(context, {
       name: "quotecue-ui",
       position: "overlay",

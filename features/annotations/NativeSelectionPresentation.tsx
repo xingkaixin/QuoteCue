@@ -1,11 +1,12 @@
 import { useEffect } from "react";
 
-import { activeHost } from "@/features/host/active-host";
+import { requireActiveHost } from "@/features/host/active-host";
 import { useI18n } from "@/features/i18n/I18nProvider";
 
 import { useSelectionCapture, type SelectionCaptureOptions } from "./use-selection-capture";
 
 export function NativeSelectionPresentation(options: SelectionCaptureOptions) {
+  const host = requireActiveHost();
   const { messages } = useI18n();
   const { activate, selection } = useSelectionCapture(options);
 
@@ -14,12 +15,12 @@ export function NativeSelectionPresentation(options: SelectionCaptureOptions) {
       return;
     }
 
-    return activeHost.selection.mountAction({
+    return host.selection.mountAction({
       label: messages.addAnnotation,
       onActivate: activate,
       rect: selection.actionRect,
     });
-  }, [activate, messages.addAnnotation, selection]);
+  }, [activate, host, messages.addAnnotation, selection]);
 
   return null;
 }

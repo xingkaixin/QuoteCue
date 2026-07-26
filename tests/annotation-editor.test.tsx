@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AnnotationEditor } from "@/features/annotations/AnnotationEditor";
-import { activeHost } from "@/features/host/active-host";
+import { requireActiveHost } from "@/features/host/active-host";
 
 vi.mock("@/features/annotations/SecureTextField", async () => {
   const { forwardRef, useEffect, useImperativeHandle, useRef } = await import("react");
@@ -67,7 +67,7 @@ describe("AnnotationEditor", () => {
   it("coalesces scroll-driven anchor restores into one frame", async () => {
     vi.useFakeTimers();
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-    const restore = vi.spyOn(activeHost.selection, "restore").mockReturnValue({
+    const restore = vi.spyOn(requireActiveHost().selection, "restore").mockReturnValue({
       reason: "assistant-message-unavailable",
       status: "unavailable",
     });

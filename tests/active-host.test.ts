@@ -1,18 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { chatGptHost } from "@/features/chatgpt/chatgpt-host";
-import { claudeHost } from "@/features/claude/claude-host";
-import { deepSeekHost } from "@/features/deepseek/deepseek-host";
 import { hostForHostname } from "@/features/host/active-host";
-import { kimiHost } from "@/features/kimi/kimi-host";
+import { SITE_REGISTRY } from "@/features/host/site-registry";
 
 describe("active host selection", () => {
-  it.each([
-    ["chatgpt.com", chatGptHost],
-    ["claude.ai", claudeHost],
-    ["chat.deepseek.com", deepSeekHost],
-    ["www.kimi.com", kimiHost],
-  ])("maps %s to its host", (hostname, expectedHost) => {
-    expect(hostForHostname(hostname)).toBe(expectedHost);
+  it.each(SITE_REGISTRY)("creates the registered $hostname host", ({ hostname }) => {
+    expect(hostForHostname(hostname, { document, window })).not.toBeNull();
+  });
+
+  it("rejects unregistered hostnames", () => {
+    expect(hostForHostname("example.com", { document, window })).toBeNull();
   });
 });

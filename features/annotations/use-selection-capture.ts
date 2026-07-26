@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { activeHost } from "@/features/host/active-host";
+import { requireActiveHost } from "@/features/host/active-host";
 
 import type { SelectionCapture, SelectionDraft } from "./annotation";
 import { isQuoteCueEvent } from "./is-quotecue-event";
@@ -12,6 +12,7 @@ export type SelectionCaptureOptions = {
 };
 
 export function useSelectionCapture({ isEnabled, onActivate, resetKey }: SelectionCaptureOptions) {
+  const host = requireActiveHost();
   const [selection, setSelection] = useState<SelectionCapture | null>(null);
   const dismiss = useCallback(() => setSelection(null), []);
   const activate = useCallback(() => {
@@ -43,7 +44,7 @@ export function useSelectionCapture({ isEnabled, onActivate, resetKey }: Selecti
         cancelAnimationFrame(captureFrame);
       }
       captureFrame = requestAnimationFrame(() => {
-        const result = activeHost.selection.capture();
+        const result = host.selection.capture();
         setSelection(result.status === "available" ? result.value : null);
       });
     };
@@ -69,7 +70,7 @@ export function useSelectionCapture({ isEnabled, onActivate, resetKey }: Selecti
       window.removeEventListener("resize", dismiss);
       window.removeEventListener("scroll", dismiss, true);
     };
-  }, [dismiss, isEnabled]);
+  }, [dismiss, host, isEnabled]);
 
   return { activate, selection };
 }

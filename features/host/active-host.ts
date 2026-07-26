@@ -1,21 +1,22 @@
-import { chatGptHost } from "@/features/chatgpt/chatgpt-host";
-import { claudeHost } from "@/features/claude/claude-host";
-import { deepSeekHost } from "@/features/deepseek/deepseek-host";
-import { kimiHost } from "@/features/kimi/kimi-host";
+import type { Host, HostEnvironment } from "./dom-host";
+import { siteForHostname } from "./site-registry";
 
-import type { Host } from "./dom-host";
-
-export function hostForHostname(hostname: string): Host {
-  switch (hostname) {
-    case "claude.ai":
-      return claudeHost;
-    case "chat.deepseek.com":
-      return deepSeekHost;
-    case "www.kimi.com":
-      return kimiHost;
-    default:
-      return chatGptHost;
-  }
+export function hostForHostname(hostname: string, environment: HostEnvironment): Host | null {
+  return siteForHostname(hostname)?.createHost(environment) ?? null;
 }
 
-export const activeHost = hostForHostname(window.location.hostname);
+export const activeSite = siteForHostname(window.location.hostname);
+export const activeHost = activeSite
+  ? activeSite.createHost({
+      document,
+      logger: import.meta.env.DEV ? (message) => console.debug(message) : undefined,
+      window,
+    })
+  : null;
+
+export function requireActiveHost(): Host {
+  if (!activeHost) {
+    throw new Error(`QuoteCue does not support ${window.location.hostname}`);
+  }
+  return activeHost;
+}

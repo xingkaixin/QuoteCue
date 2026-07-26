@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { activeHost } from "./active-host";
+import { requireActiveHost } from "./active-host";
 
 const ANNOTATION_ROW_HEIGHT = 40;
 const POSITION_REFRESH_MS = 80;
@@ -21,6 +21,7 @@ export type AnnotatedComposerLayout = {
 };
 
 export function useAnnotatedComposerLayout(isActive: boolean) {
+  const host = requireActiveHost();
   const [layout, setLayout] = useState<AnnotatedComposerLayout | null>(null);
 
   useEffect(() => {
@@ -87,7 +88,7 @@ export function useAnnotatedComposerLayout(isActive: boolean) {
     }
 
     function refresh() {
-      const result = activeHost.layout.current();
+      const result = host.layout.current();
       if (result.status === "unavailable") {
         restoreSurface();
         restoreAction();
@@ -111,7 +112,7 @@ export function useAnnotatedComposerLayout(isActive: boolean) {
       refreshTimer = window.setTimeout(refresh, POSITION_REFRESH_MS);
     }
 
-    const stopObserving = activeHost.layout.subscribe(scheduleRefresh);
+    const stopObserving = host.layout.subscribe(scheduleRefresh);
     refresh();
 
     return () => {
@@ -120,7 +121,7 @@ export function useAnnotatedComposerLayout(isActive: boolean) {
       restoreSurface();
       restoreAction();
     };
-  }, [isActive]);
+  }, [host, isActive]);
 
   return layout;
 }

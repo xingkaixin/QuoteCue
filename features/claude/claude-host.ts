@@ -24,9 +24,3 @@ const CLAUDE_ADAPTER: SiteAdapter = {
 export function createClaudeHost(environment: HostEnvironment) {
   return createDomHost(environment, CLAUDE_ADAPTER);
 }
-
-export const claudeHost = createClaudeHost({
-  document,
-  logger: import.meta.env.DEV ? (message) => console.debug(message) : undefined,
-  window,
-});
