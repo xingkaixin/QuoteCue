@@ -266,6 +266,31 @@ describe("ChatGPT host contract", () => {
     expect(host.selection.restore(captured.value.anchor).status).toBe("available");
   });
 
+  it("classifies viewport and text changes for selection projections", async () => {
+    const fixture = installChatGptHostFixture();
+    const text = fixture.assistantMessage.querySelector("strong")?.firstChild;
+    if (!text) {
+      throw new Error("Expected assistant message text");
+    }
+    const onInvalidation = vi.fn();
+    const stop = createChatGptHost({ document, window }).selection.observeInvalidation(
+      onInvalidation,
+    );
+
+    window.dispatchEvent(new Event("resize"));
+    expect(onInvalidation).toHaveBeenLastCalledWith("layout");
+
+    onInvalidation.mockClear();
+    text.textContent = "updated answer";
+    await vi.waitFor(() => expect(onInvalidation).toHaveBeenCalledWith("content"));
+
+    stop();
+    onInvalidation.mockClear();
+    text.textContent = "detached observer";
+    await Promise.resolve();
+    expect(onInvalidation).not.toHaveBeenCalled();
+  });
+
   it("centers an offscreen annotation endpoint in its nearest scroll container", () => {
     const endpointTop = { value: 900 };
     const rangeRectsDescriptor = Object.getOwnPropertyDescriptor(Range.prototype, "getClientRects");
