@@ -291,6 +291,36 @@ describe("ChatGPT host contract", () => {
     expect(onInvalidation).not.toHaveBeenCalled();
   });
 
+  it("shares page observation until the final subscriber disconnects", () => {
+    let constructionCount = 0;
+    const disconnect = vi.fn();
+    const observe = vi.fn();
+    vi.stubGlobal(
+      "MutationObserver",
+      class {
+        constructor() {
+          constructionCount += 1;
+        }
+
+        disconnect = disconnect;
+        observe = observe;
+      },
+    );
+    const host = createChatGptHost({ document, window });
+
+    const stopLayoutObservation = host.layout.subscribe(vi.fn());
+    const stopSelectionObservation = host.selection.observeInvalidation(vi.fn());
+
+    expect(constructionCount).toBe(1);
+    expect(observe).toHaveBeenCalledTimes(2);
+
+    stopLayoutObservation();
+    expect(disconnect).not.toHaveBeenCalled();
+
+    stopSelectionObservation();
+    expect(disconnect).toHaveBeenCalledOnce();
+  });
+
   it("centers an offscreen annotation endpoint in its nearest scroll container", () => {
     const endpointTop = { value: 900 };
     const rangeRectsDescriptor = Object.getOwnPropertyDescriptor(Range.prototype, "getClientRects");
