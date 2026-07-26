@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { DraftAnnotation } from "@/features/annotations/annotation";
+import { numberAnnotations } from "@/features/annotations/annotation-projection";
 import { compileAnnotatedPrompt } from "@/features/annotations/prompt-compiler";
 import { createClaudeHost } from "@/features/claude/claude-host";
 import { registerSendInterceptor } from "@/features/host/register-send-interceptor";
@@ -65,7 +66,7 @@ describe("Claude host contract", () => {
     });
     const onSendAccepted = vi.fn();
     const interceptor = registerSendInterceptor({
-      annotations: () => [annotation()],
+      annotations: () => numberAnnotations([annotation()]),
       compilePrompt: compileAnnotatedPrompt,
       host,
       locale: () => "en",

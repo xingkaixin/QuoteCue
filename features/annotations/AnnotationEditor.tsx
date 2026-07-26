@@ -2,9 +2,10 @@ import { Trash2 } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import type { SelectionRect } from "@/features/host-port/host-port";
 import { useI18n } from "@/features/i18n/I18nProvider";
 
-import type { DraftAnnotation, SelectionDraft } from "./annotation";
+import type { DraftAnnotation } from "./annotation";
 import { useAnnotationEditorPosition } from "./annotation-editor-position";
 import { SecureTextField, type SecureTextFieldHandle } from "./SecureTextField";
 import { useDismissalWarning } from "./use-dismissal-warning";
@@ -12,20 +13,20 @@ import { useOutsideDiscard } from "./use-outside-discard";
 
 type AnnotationEditorProps = {
   annotation: DraftAnnotation;
-  draft: SelectionDraft;
   onCancel: () => void;
   onDelete: () => void;
   onSave: (comment: string) => void;
+  rect: SelectionRect;
 };
 
 const EDITOR_SIZE = { height: 164, width: 340 };
 
 export function AnnotationEditor({
   annotation,
-  draft,
   onCancel,
   onDelete,
   onSave,
+  rect,
 }: AnnotationEditorProps) {
   const { messages } = useI18n();
   const [comment, setComment] = useState(annotation.comment);
@@ -38,7 +39,7 @@ export function AnnotationEditor({
     onDismiss: onCancel,
     rootRef: editorRef,
   });
-  const position = useAnnotationEditorPosition(draft, editorRef, EDITOR_SIZE);
+  const position = useAnnotationEditorPosition(rect, editorRef, EDITOR_SIZE);
 
   useOutsideDiscard(editorRef, requestDismissal);
 

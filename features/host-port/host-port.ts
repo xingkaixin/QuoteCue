@@ -73,7 +73,6 @@ export type Host = {
   reportUnavailable(reason: HostUnavailableReason): void;
   selection: {
     capture(selection?: Selection | null): HostResult<SelectionCapture>;
-    draft(anchor: TextAnchor): HostResult<SelectionDraft>;
     messageIndex(root?: ParentNode): Map<string, HTMLElement>;
     mountAction(options: {
       label: string;
@@ -82,7 +81,6 @@ export type Host = {
     }): () => void;
     observeInvalidation(callback: (reason: SelectionInvalidationReason) => void): () => void;
     presentation: SelectionPresentationMode;
-    restore(anchor: TextAnchor): HostResult<Range>;
-    reveal(anchor: TextAnchor): HostResult<"scrolled" | "visible">;
+    reveal(range: Range): HostResult<"scrolled" | "visible">;
   };
 };

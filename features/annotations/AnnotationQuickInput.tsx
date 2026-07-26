@@ -1,23 +1,23 @@
 import { Plus } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 
+import type { SelectionRect } from "@/features/host-port/host-port";
 import { useI18n } from "@/features/i18n/I18nProvider";
 
-import type { SelectionDraft } from "./annotation";
 import { useAnnotationEditorPosition } from "./annotation-editor-position";
 import { SecureTextField, type SecureTextFieldHandle } from "./SecureTextField";
 import { useDismissalWarning } from "./use-dismissal-warning";
 import { useOutsideDiscard } from "./use-outside-discard";
 
 type AnnotationQuickInputProps = {
-  draft: SelectionDraft;
   onClose: () => void;
   onSave: (comment: string) => void;
+  rect: SelectionRect;
 };
 
 const QUICK_INPUT_SIZE = { height: 48, width: 320 };
 
-export function AnnotationQuickInput({ draft, onClose, onSave }: AnnotationQuickInputProps) {
+export function AnnotationQuickInput({ onClose, onSave, rect }: AnnotationQuickInputProps) {
   const { messages } = useI18n();
   const [comment, setComment] = useState("");
   const inputRef = useRef<SecureTextFieldHandle>(null);
@@ -29,7 +29,7 @@ export function AnnotationQuickInput({ draft, onClose, onSave }: AnnotationQuick
     onDismiss: onClose,
     rootRef,
   });
-  const position = useAnnotationEditorPosition(draft, rootRef, QUICK_INPUT_SIZE);
+  const position = useAnnotationEditorPosition(rect, rootRef, QUICK_INPUT_SIZE);
 
   useOutsideDiscard(rootRef, requestDismissal);
 

@@ -1,4 +1,4 @@
-import type { SelectionDraft, TextAnchor } from "@/features/host-port/host-port";
+import type { TextAnchor } from "@/features/host-port/host-port";
 
 export type {
   SelectionCapture,
@@ -19,5 +19,5 @@ export type DraftAnnotation = {
 
 export type AnnotationEditorState =
   | { status: "hidden" }
-  | { status: "quick"; annotationId: string; draft: SelectionDraft }
-  | { status: "expanded"; annotationId: string; draft: SelectionDraft };
+  | { status: "quick"; annotationId: string }
+  | { status: "expanded"; annotationId: string };

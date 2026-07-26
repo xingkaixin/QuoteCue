@@ -1,13 +1,5 @@
-import type {
-  SelectionCapture,
-  SelectionDraft,
-  SelectionRect,
-  TextAnchor,
-} from "@/features/host-port/host-port";
-import {
-  rangeEndpointRect,
-  restoreTextAnchorFromIndex,
-} from "@/features/annotations/selection-anchor";
+import type { SelectionCapture, SelectionRect } from "@/features/host-port/host-port";
+import { rangeEndpointRect } from "@/features/annotations/selection-anchor";
 import { currentVisualViewportBounds } from "@/features/layout/use-visual-viewport";
 
 import {
@@ -31,7 +23,6 @@ type SelectionToolbarCandidate = {
 
 export function createSelectionSurface(context: HostContext) {
   const { adapter, document: hostDocument, logger, signals, window: hostWindow } = context;
-  let cachedAssistantMessage: HTMLElement | null = null;
 
   function observeInvalidation(callback: (reason: SelectionInvalidationReason) => void) {
     const stopMutationObservation = signals.observeMutations(() => callback("content"), {
@@ -58,25 +49,6 @@ export function createSelectionSurface(context: HostContext) {
       }
     }
     return index;
-  }
-
-  function restore(anchor: TextAnchor): HostResult<Range> {
-    const message = assistantMessage(anchor.messageId);
-    const range = message
-      ? restoreTextAnchorFromIndex(anchor, new Map([[anchor.messageId, message]]))
-      : null;
-    return range ? available(range) : unavailable("assistant-message-unavailable");
-  }
-
-  function assistantMessage(messageId: string) {
-    if (
-      cachedAssistantMessage?.isConnected &&
-      adapter.messages.id(cachedAssistantMessage) === messageId
-    ) {
-      return cachedAssistantMessage;
-    }
-    cachedAssistantMessage = messageIndex().get(messageId) ?? null;
-    return cachedAssistantMessage;
   }
 
   function capture(selection = hostWindow.getSelection()): HostResult<SelectionCapture> {
@@ -223,23 +195,11 @@ export function createSelectionSurface(context: HostContext) {
     };
   }
 
-  function draft(anchor: TextAnchor): HostResult<SelectionDraft> {
-    const restored = restore(anchor);
-    return restored.status === "available"
-      ? available({
-          anchor,
-          rect: rectangleSnapshot(rangeEndpointRect(restored.value)),
-        })
-      : restored;
-  }
-
-  function reveal(anchor: TextAnchor): HostResult<SelectionRevealStatus> {
-    const restored = restore(anchor);
-    if (restored.status === "unavailable") {
-      return restored;
+  function reveal(range: Range): HostResult<SelectionRevealStatus> {
+    if (!range.endContainer.isConnected) {
+      return unavailable("assistant-message-unavailable");
     }
 
-    const range = restored.value;
     const endpointRect = rangeEndpointRect(range);
     const scrollContainer = nearestScrollContainer(range.endContainer);
     const viewportRect = scrollContainer
@@ -304,12 +264,10 @@ export function createSelectionSurface(context: HostContext) {
   return {
     presentation: adapter.selectionPresentation.mode,
     capture,
-    draft,
     messageIndex,
     mountAction,
     observeInvalidation,
     reveal,
-    restore,
   };
 }
 

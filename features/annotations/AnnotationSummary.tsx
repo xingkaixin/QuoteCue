@@ -12,14 +12,14 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import type { HostLayout } from "@/features/host-port/host-port";
 import { useI18n } from "@/features/i18n/I18nProvider";
 
-import type { DraftAnnotation } from "./annotation";
 import { selectedTextFor } from "./annotation";
+import type { ProjectedAnnotation } from "./annotation-projection";
 import { DELETE_UNDO_WINDOW_MS } from "./use-deferred-annotation-deletion";
 
 type AnnotationSummaryProps = {
-  annotations: DraftAnnotation[];
+  annotations: readonly ProjectedAnnotation[];
   onClear: () => void;
-  onEdit: (annotation: DraftAnnotation) => void;
+  onEdit: (annotation: ProjectedAnnotation) => void;
   onRemove: (annotationId: string) => void;
   onSend: () => void;
   onUndo: () => void;
@@ -28,7 +28,6 @@ type AnnotationSummaryProps = {
   position: HostLayout["summary"];
   sendStatus: "idle" | "pending" | "failed";
   sendPosition: HostLayout["send"];
-  unresolvedAnnotationIds: ReadonlySet<string>;
 };
 
 export function AnnotationSummary({
@@ -43,7 +42,6 @@ export function AnnotationSummary({
   position,
   sendStatus,
   sendPosition,
-  unresolvedAnnotationIds,
 }: AnnotationSummaryProps) {
   const { messages } = useI18n();
   const countButtonRef = useRef<HTMLButtonElement>(null);
@@ -142,13 +140,14 @@ export function AnnotationSummary({
               role="dialog"
             >
               <div className="qc-divide max-h-80 divide-y overscroll-contain overflow-y-auto">
-                {annotations.map((annotation, index) => {
-                  const isUnresolved = unresolvedAnnotationIds.has(annotation.id);
+                {annotations.map((projection) => {
+                  const { annotation, ordinal, range } = projection;
+                  const isUnresolved = range === null;
                   const comment = annotation.comment.trim();
                   return (
                     <div className="group/row relative flex gap-2.5 px-3 py-3" key={annotation.id}>
                       <span className="qc-accent-bg flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
-                        {index + 1}
+                        {ordinal}
                       </span>
                       <div className="min-w-0 flex-1 pr-20">
                         <div className="flex flex-wrap items-center gap-x-2">
@@ -175,16 +174,16 @@ export function AnnotationSummary({
                       </div>
                       <div className="qc-surface qc-divider absolute right-2.5 top-2.5 flex rounded-lg border opacity-0 shadow-sm transition-opacity group-hover/row:opacity-100 group-focus-within/row:opacity-100">
                         <button
-                          aria-label={messages.editNumberedAnnotation(index + 1)}
+                          aria-label={messages.editNumberedAnnotation(ordinal)}
                           className="qc-muted qc-hover qc-focus flex size-8 cursor-pointer items-center justify-center disabled:cursor-default disabled:opacity-40"
                           disabled={isUnresolved}
-                          onClick={() => onEdit(annotation)}
+                          onClick={() => onEdit(projection)}
                           type="button"
                         >
                           <Pencil aria-hidden="true" className="size-3.5" />
                         </button>
                         <button
-                          aria-label={messages.deleteNumberedAnnotation(index + 1)}
+                          aria-label={messages.deleteNumberedAnnotation(ordinal)}
                           className="qc-danger qc-divider qc-hover qc-focus flex size-8 cursor-pointer items-center justify-center border-l"
                           onClick={() => onRemove(annotation.id)}
                           type="button"

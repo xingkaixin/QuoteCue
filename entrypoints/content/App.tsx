@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AnnotationBadge } from "@/features/annotations/AnnotationBadge";
@@ -7,13 +7,14 @@ import { AnnotationQuickInput } from "@/features/annotations/AnnotationQuickInpu
 import { AnnotationSummary } from "@/features/annotations/AnnotationSummary";
 import { DraftPersistenceStatus } from "@/features/annotations/DraftPersistenceStatus";
 import { SelectionPresentation } from "@/features/annotations/SelectionPresentation";
+import type { ProjectedAnnotation } from "@/features/annotations/annotation-projection";
 import { compileAnnotatedPrompt } from "@/features/annotations/prompt-compiler";
 import type {
   AnnotationEditorState,
   DraftAnnotation,
   SelectionDraft,
 } from "@/features/annotations/annotation";
-import { useAnnotationHighlights } from "@/features/annotations/use-annotation-highlights";
+import { useAnnotationProjection } from "@/features/annotations/use-annotation-projection";
 import { useConversationKey } from "@/features/annotations/use-conversation-key";
 import { useDeferredAnnotationDeletion } from "@/features/annotations/use-deferred-annotation-deletion";
 import { useDraftAnnotations } from "@/features/annotations/use-draft-annotations";
@@ -48,7 +49,6 @@ export default function App() {
     pendingDeletionCount,
     pendingDeletionExpiresAt,
     requestDeletion,
-    undoDeletions,
     visibleAnnotations,
   } = useDeferredAnnotationDeletion(annotations, conversationKey, removeAnnotations);
   const startAnnotation = useCallback(
@@ -59,29 +59,24 @@ export default function App() {
         comment: "",
       };
       addAnnotation(annotation);
-      setEditor({ status: "quick", annotationId: annotation.id, draft });
+      setEditor({ status: "quick", annotationId: annotation.id });
       window.getSelection()?.removeAllRanges();
     },
     [addAnnotation],
   );
   const activeAnnotationId = editor.status === "hidden" ? null : editor.annotationId;
-  const activeAnnotation = visibleAnnotations.find(({ id }) => id === activeAnnotationId);
-  const { badgePositions, unresolvedAnnotationIds } = useAnnotationHighlights(
-    visibleAnnotations,
-    activeAnnotationId,
-  );
-  const annotationNumberById = useMemo(
-    () => new Map(visibleAnnotations.map(({ id }, index) => [id, index + 1])),
-    [visibleAnnotations],
+  const projectedAnnotations = useAnnotationProjection(visibleAnnotations, activeAnnotationId);
+  const activeProjection = projectedAnnotations.find(
+    ({ annotation }) => annotation.id === activeAnnotationId,
   );
   const composerLayout = useAnnotatedComposerLayout(isHydrated && annotations.length > 0);
-  const annotationsRef = useRef(visibleAnnotations);
+  const annotationsRef = useRef(projectedAnnotations);
   const sendActionsRef = useRef<SendActions>({
     submit: () => undefined,
     retry: () => undefined,
   });
 
-  annotationsRef.current = visibleAnnotations;
+  annotationsRef.current = projectedAnnotations;
 
   useEffect(() => {
     const interceptor = registerSendInterceptor({
@@ -124,25 +119,25 @@ export default function App() {
     setEditor({ status: "hidden" });
   };
 
-  const openEditor = (annotation: DraftAnnotation) => {
-    const reveal = host.selection.reveal(annotation.anchor);
+  const openEditor = (projection: ProjectedAnnotation) => {
+    if (!projection.range) {
+      return;
+    }
+    const reveal = host.selection.reveal(projection.range);
     if (reveal.status === "unavailable") {
       return;
     }
 
     if (reveal.value === "visible") {
-      showExpandedEditor(annotation);
+      showExpandedEditor(projection.annotation.id);
       return;
     }
 
-    requestAnimationFrame(() => showExpandedEditor(annotation));
+    requestAnimationFrame(() => showExpandedEditor(projection.annotation.id));
   };
 
-  const showExpandedEditor = (annotation: DraftAnnotation) => {
-    const draft = host.selection.draft(annotation.anchor);
-    if (draft.status === "available") {
-      setEditor({ status: "expanded", annotationId: annotation.id, draft: draft.value });
-    }
+  const showExpandedEditor = (annotationId: string) => {
+    setEditor({ status: "expanded", annotationId });
   };
 
   const deleteAnnotation = (annotationId: string) => {
@@ -169,36 +164,40 @@ export default function App() {
           resetKey={conversationKey}
         />
 
-        {editor.status === "quick" && (
+        {editor.status === "quick" && activeProjection?.rect && (
           <AnnotationQuickInput
-            draft={editor.draft}
             onClose={() => setEditor({ status: "hidden" })}
             onSave={saveActiveAnnotation}
+            rect={activeProjection.rect}
           />
         )}
 
-        {editor.status === "expanded" && activeAnnotation && (
+        {editor.status === "expanded" && activeProjection?.rect && (
           <AnnotationEditor
-            annotation={activeAnnotation}
-            draft={editor.draft}
+            annotation={activeProjection.annotation}
             onCancel={() => setEditor({ status: "hidden" })}
-            onDelete={() => deleteAnnotation(activeAnnotation.id)}
+            onDelete={() => deleteAnnotation(activeProjection.annotation.id)}
             onSave={saveActiveAnnotation}
+            rect={activeProjection.rect}
           />
         )}
 
-        {badgePositions.map((position) => (
-          <AnnotationBadge
-            {...position}
-            key={position.annotation.id}
-            number={annotationNumberById.get(position.annotation.id) ?? 0}
-            onEdit={openEditor}
-          />
-        ))}
+        {projectedAnnotations.map((projection) => {
+          const position = projection.badge;
+          return position ? (
+            <AnnotationBadge
+              entry={projection}
+              key={projection.annotation.id}
+              left={position.left}
+              onEdit={openEditor}
+              top={position.top}
+            />
+          ) : null;
+        })}
 
         {isHydrated && annotations.length > 0 && composerLayout && (
           <AnnotationSummary
-            annotations={visibleAnnotations}
+            annotations={projectedAnnotations}
             pendingDeletionCount={pendingDeletionCount}
             pendingDeletionExpiresAt={pendingDeletionExpiresAt}
             onClear={() => {
@@ -213,11 +212,10 @@ export default function App() {
               const action = sendState.status === "failed" ? "retry" : "submit";
               sendActionsRef.current[action]();
             }}
-            onUndo={undoDeletions}
+            onUndo={discardPendingDeletions}
             position={composerLayout.summary}
             sendStatus={annotationSendStatus(sendState)}
             sendPosition={composerLayout.send}
-            unresolvedAnnotationIds={unresolvedAnnotationIds}
           />
         )}
       </div>

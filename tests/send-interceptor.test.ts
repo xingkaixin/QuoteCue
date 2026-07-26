@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { numberAnnotations } from "@/features/annotations/annotation-projection";
 import { compileAnnotatedPrompt } from "@/features/annotations/prompt-compiler";
 import { createChatGptHost } from "@/features/chatgpt/chatgpt-host";
 import { registerSendInterceptor } from "@/features/host/register-send-interceptor";
@@ -67,7 +68,7 @@ describe("registerSendInterceptor", () => {
     const onSendAccepted = vi.fn();
     let currentAnnotations = [annotation];
     const interceptor = registerSendInterceptor({
-      annotations: () => currentAnnotations,
+      annotations: () => numberAnnotations(currentAnnotations),
       compilePrompt: compileAnnotatedPrompt,
       host: createChatGptHost({ document, window }),
       locale: () => "en",
@@ -261,7 +262,7 @@ describe("registerSendInterceptor", () => {
     const waitForButton = vi.spyOn(host.composer, "waitForButton").mockReturnValue(buttonResult);
     const watchAcceptedSend = vi.spyOn(host.composer, "watchAcceptedSend");
     const interceptor = registerSendInterceptor({
-      annotations: () => [annotation],
+      annotations: () => numberAnnotations([annotation]),
       compilePrompt: compileAnnotatedPrompt,
       host,
       locale: () => "en",
@@ -316,7 +317,7 @@ describe("registerSendInterceptor", () => {
       message.textContent = "still short";
     });
     const interceptor = registerSendInterceptor({
-      annotations: () => [annotation],
+      annotations: () => numberAnnotations([annotation]),
       compilePrompt: compileAnnotatedPrompt,
       host,
       locale: () => "en",
@@ -432,7 +433,7 @@ describe("registerSendInterceptor", () => {
 
 function createInterceptor(onSendAccepted = vi.fn()) {
   return registerSendInterceptor({
-    annotations: () => [annotation],
+    annotations: () => numberAnnotations([annotation]),
     compilePrompt: compileAnnotatedPrompt,
     host: createChatGptHost({ document, window }),
     locale: () => "en",

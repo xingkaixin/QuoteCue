@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { DraftAnnotation } from "@/features/annotations/annotation";
-import { useAnnotationHighlights } from "@/features/annotations/use-annotation-highlights";
+import { useAnnotationProjection } from "@/features/annotations/use-annotation-projection";
 import { createChatGptHost } from "@/features/chatgpt/chatgpt-host";
 import type { Host } from "@/features/host-port/host-port";
 
@@ -111,7 +111,7 @@ function ProjectionHarness({ annotations, host }: { annotations: DraftAnnotation
 }
 
 function Projection({ annotations }: { annotations: DraftAnnotation[] }) {
-  useAnnotationHighlights(annotations, null);
+  useAnnotationProjection(annotations, null);
   return null;
 }
 

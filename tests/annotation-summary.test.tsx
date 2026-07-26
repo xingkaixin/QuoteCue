@@ -4,6 +4,10 @@ import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AnnotationSummary } from "@/features/annotations/AnnotationSummary";
+import {
+  numberAnnotations,
+  type ProjectedAnnotation,
+} from "@/features/annotations/annotation-projection";
 import { DELETE_UNDO_WINDOW_MS } from "@/features/annotations/use-deferred-annotation-deletion";
 
 const annotation = {
@@ -64,7 +68,7 @@ describe("AnnotationSummary", () => {
   it("shows the comment section only when the annotation has content", async () => {
     const commentedAnnotation = { ...annotation, comment: "Make this more specific" };
     const { container, root, summary } = await mountSummary({
-      annotations: [commentedAnnotation],
+      annotations: projectAnnotations([commentedAnnotation]),
     });
 
     await hover(summary);
@@ -81,7 +85,7 @@ describe("AnnotationSummary", () => {
       anchor: { ...annotation.anchor, displayQuote: "alpha beta", quote: "alphabeta" },
     };
     const { container, root, summary } = await mountSummary({
-      annotations: [tableAnnotation],
+      annotations: projectAnnotations([tableAnnotation]),
     });
 
     await hover(summary);
@@ -113,7 +117,7 @@ describe("AnnotationSummary", () => {
       '[aria-label="Edit annotation 1"]',
     );
     await act(async () => editButton?.click());
-    expect(onEdit).toHaveBeenCalledWith(annotation);
+    expect(onEdit).toHaveBeenCalledWith(expect.objectContaining({ annotation }));
 
     await act(async () => {
       editButton?.focus();
@@ -155,7 +159,7 @@ describe("AnnotationSummary", () => {
   it("keeps deletion and clear controls enabled while an undo batch is pending", async () => {
     const onRemove = vi.fn();
     const mounted = await mountSummary({
-      annotations: [annotation, secondAnnotation],
+      annotations: projectAnnotations([annotation, secondAnnotation]),
       onRemove,
       pendingDeletionCount: 1,
     });
@@ -187,7 +191,7 @@ describe("AnnotationSummary", () => {
     const mounted = await mountSummary({ onClear, onUndo });
 
     await mounted.render({
-      annotations: [secondAnnotation],
+      annotations: projectAnnotations([secondAnnotation]),
       pendingDeletionCount: 1,
       pendingDeletionExpiresAt: 1_000,
     });
@@ -212,7 +216,7 @@ describe("AnnotationSummary", () => {
     expect(onUndo).toHaveBeenCalledOnce();
 
     await mounted.render({
-      annotations: [annotation],
+      annotations: projectAnnotations([annotation]),
       pendingDeletionCount: 0,
       pendingDeletionExpiresAt: null,
     });
@@ -241,7 +245,7 @@ describe("AnnotationSummary", () => {
 
   it("keeps unresolved annotations visible without offering misleading navigation", async () => {
     const { container, root, summary } = await mountSummary({
-      unresolvedAnnotationIds: new Set([annotation.id]),
+      annotations: [projectAnnotation(annotation, 1, false)],
     });
 
     await hover(summary);
@@ -257,6 +261,20 @@ describe("AnnotationSummary", () => {
 
     await act(async () => root.unmount());
   });
+
+  it("uses the supplied ordinal for every numbered control", async () => {
+    const { container, root, summary } = await mountSummary({
+      annotations: [projectAnnotation(annotation, 7)],
+    });
+
+    await hover(summary);
+
+    expect(container.textContent).toContain("7");
+    expect(container.querySelector('[aria-label="Edit annotation 7"]')).not.toBeNull();
+    expect(container.querySelector('[aria-label="Delete annotation 7"]')).not.toBeNull();
+
+    await act(async () => root.unmount());
+  });
 });
 
 type SummaryProps = ComponentProps<typeof AnnotationSummary>;
@@ -267,7 +285,7 @@ async function mountSummary(overrides: Partial<SummaryProps> = {}) {
   document.body.append(container);
   const root = createRoot(container);
   const baseProps: SummaryProps = {
-    annotations: [annotation],
+    annotations: projectAnnotations([annotation]),
     onClear: vi.fn(),
     onEdit: vi.fn(),
     onRemove: vi.fn(),
@@ -285,7 +303,6 @@ async function mountSummary(overrides: Partial<SummaryProps> = {}) {
       width: 36,
     },
     sendStatus: "idle",
-    unresolvedAnnotationIds: new Set(),
     ...overrides,
   };
   let currentProps = baseProps;
@@ -300,6 +317,26 @@ async function mountSummary(overrides: Partial<SummaryProps> = {}) {
     },
     root,
     summary: container.firstElementChild as HTMLElement,
+  };
+}
+
+function projectAnnotations(annotations: readonly (typeof annotation)[]): ProjectedAnnotation[] {
+  return numberAnnotations(annotations).map(({ annotation: item, ordinal }) =>
+    projectAnnotation(item, ordinal),
+  );
+}
+
+function projectAnnotation(
+  item: typeof annotation,
+  ordinal: number,
+  isResolved = true,
+): ProjectedAnnotation {
+  return {
+    annotation: item,
+    badge: null,
+    ordinal,
+    range: isResolved ? document.createRange() : null,
+    rect: isResolved ? { bottom: 30, height: 20, left: 10, right: 30, top: 10, width: 20 } : null,
   };
 }
 

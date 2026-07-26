@@ -61,7 +61,7 @@ describe("deferred annotation deletion", () => {
     await act(async () => vi.advanceTimersByTime(1_000));
     expect(commitDeletions).not.toHaveBeenCalled();
 
-    await act(async () => latestDeletion.undoDeletions());
+    await act(async () => latestDeletion.discardPendingDeletions());
     expect(latestDeletion.visibleAnnotations.map(({ id }) => id)).toEqual([
       "annotation-a",
       "annotation-b",

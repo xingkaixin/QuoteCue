@@ -66,7 +66,6 @@ export function useDeferredAnnotationDeletion(
     pendingDeletionCount: currentBatch?.annotationIds.length ?? 0,
     pendingDeletionExpiresAt: currentBatch?.expiresAt ?? null,
     requestDeletion,
-    undoDeletions: clearPendingDeletions,
     visibleAnnotations,
   };
 }

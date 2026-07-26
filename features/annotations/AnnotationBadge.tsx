@@ -1,15 +1,18 @@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useI18n } from "@/features/i18n/I18nProvider";
 
-import type { AnnotationBadgePosition } from "./use-annotation-highlights";
+import type { ProjectedAnnotation } from "./annotation-projection";
 
-type AnnotationBadgeProps = AnnotationBadgePosition & {
-  number: number;
-  onEdit: (annotation: AnnotationBadgePosition["annotation"]) => void;
+type AnnotationBadgeProps = {
+  entry: ProjectedAnnotation;
+  left: number;
+  onEdit: (annotation: ProjectedAnnotation) => void;
+  top: number;
 };
 
-export function AnnotationBadge({ annotation, left, number, onEdit, top }: AnnotationBadgeProps) {
+export function AnnotationBadge({ entry, left, onEdit, top }: AnnotationBadgeProps) {
   const { messages } = useI18n();
+  const { annotation, ordinal } = entry;
   const comment = annotation.comment.trim();
 
   return (
@@ -19,11 +22,11 @@ export function AnnotationBadge({ annotation, left, number, onEdit, top }: Annot
     >
       <Tooltip disabled={!comment}>
         <TooltipTrigger
-          aria-label={messages.viewAnnotation(number)}
+          aria-label={messages.viewAnnotation(ordinal)}
           className="qc-cue qc-focus qc-pressable flex size-5 cursor-pointer items-center justify-center rounded-full text-xs font-semibold"
-          onClick={() => onEdit(annotation)}
+          onClick={() => onEdit(entry)}
         >
-          {number}
+          {ordinal}
         </TooltipTrigger>
         {comment && (
           <TooltipContent className="max-w-64">
