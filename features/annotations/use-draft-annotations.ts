@@ -37,7 +37,8 @@ export function useDraftAnnotations(conversationKey: string) {
       const generation = ++loadGeneration.current;
       commitScope(loadingScope(key));
 
-      void loadDraftAnnotations(key)
+      void saveQueue.current
+        .then(() => loadDraftAnnotations(key))
         .then((annotations) => {
           if (generation !== loadGeneration.current) {
             return;

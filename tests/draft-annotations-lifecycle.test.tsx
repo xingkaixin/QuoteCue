@@ -7,7 +7,7 @@ import { useDraftAnnotations } from "@/features/annotations/use-draft-annotation
 
 const draftStorage = vi.hoisted(() => ({
   load: vi.fn(),
-  save: vi.fn(() => Promise.resolve()),
+  save: vi.fn((_conversationKey: string, _annotations: DraftAnnotation[]) => Promise.resolve()),
 }));
 
 vi.mock("@/features/annotations/draft-storage", () => ({
@@ -158,6 +158,56 @@ describe("draft annotation lifecycle", () => {
     expect(latestDrafts.status).toBe("ready");
     expect(latestDrafts.annotations).toEqual([annotation]);
     expect(draftStorage.save).not.toHaveBeenCalled();
+
+    await act(async () => root.unmount());
+  });
+
+  it("loads the latest queued edit after returning to a conversation", async () => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    const storedDrafts = new Map<string, DraftAnnotation[]>([
+      ["A", []],
+      ["B", []],
+    ]);
+    const pendingSaves: Array<{
+      annotations: DraftAnnotation[];
+      conversationKey: string;
+      resolve: () => void;
+    }> = [];
+    draftStorage.load.mockImplementation(async (conversationKey: string) =>
+      structuredClone(storedDrafts.get(conversationKey) ?? []),
+    );
+    draftStorage.save.mockImplementation(
+      (conversationKey: string, annotations: DraftAnnotation[]) =>
+        new Promise<void>((resolve) => {
+          pendingSaves.push({
+            annotations: structuredClone(annotations),
+            conversationKey,
+            resolve,
+          });
+        }),
+    );
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    await act(async () => root.render(<DraftHarness conversationKey="A" />));
+    await act(async () => latestDrafts.addAnnotation(annotation));
+    await act(async () => latestDrafts.updateAnnotation(annotation.id, "latest edit"));
+    await act(async () => root.render(<DraftHarness conversationKey="B" />));
+    await act(async () => root.render(<DraftHarness conversationKey="A" />));
+
+    await act(async () => {
+      const save = pendingSaves[0];
+      storedDrafts.set(save.conversationKey, save.annotations);
+      save.resolve();
+    });
+    await act(async () => {
+      const save = pendingSaves[1];
+      storedDrafts.set(save.conversationKey, save.annotations);
+      save.resolve();
+    });
+
+    expect(latestDrafts.annotations).toEqual([{ ...annotation, comment: "latest edit" }]);
 
     await act(async () => root.unmount());
   });
