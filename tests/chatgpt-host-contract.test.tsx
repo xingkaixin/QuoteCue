@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DraftAnnotation } from "@/features/annotations/annotation";
 import { numberAnnotations } from "@/features/annotations/annotation-projection";
 import { compileAnnotatedPrompt } from "@/features/annotations/prompt-compiler";
+import { restoreTextAnchorFromIndex } from "@/features/annotations/selection-anchor";
 import { createChatGptHost } from "@/features/chatgpt/chatgpt-host";
 import { registerSendInterceptor } from "@/features/host/register-send-interceptor";
 import { useAnnotatedComposerLayout } from "@/features/host/use-annotated-composer-layout";
@@ -224,7 +225,9 @@ describe("ChatGPT host contract", () => {
       displayQuote: renderedText,
       quote: "alphabeta",
     });
-    expect(host.selection.restore(captured.value.anchor).status).toBe("available");
+    expect(
+      restoreTextAnchorFromIndex(captured.value.anchor, host.selection.messageIndex()),
+    ).not.toBeNull();
   });
 
   it("keeps exact offsets when rendered selection text is trimmed", () => {
@@ -252,7 +255,9 @@ describe("ChatGPT host contract", () => {
       quote: "  alpha  ",
       start: 0,
     });
-    expect(host.selection.restore(captured.value.anchor).status).toBe("available");
+    expect(
+      restoreTextAnchorFromIndex(captured.value.anchor, host.selection.messageIndex()),
+    ).not.toBeNull();
   });
 
   it("classifies viewport and text changes for selection projections", async () => {
@@ -342,21 +347,15 @@ describe("ChatGPT host contract", () => {
     message.textContent = "target phrase";
     scrollContainer.append(message);
     document.body.append(scrollContainer);
-    const anchor = {
-      end: 13,
-      messageId: "assistant-scroll",
-      prefix: "",
-      quote: "target phrase",
-      start: 0,
-      suffix: "",
-    };
+    const range = document.createRange();
+    range.selectNodeContents(message);
     const host = createChatGptHost({ document, window });
 
-    expect(host.selection.reveal(anchor)).toEqual({ status: "available", value: "scrolled" });
+    expect(host.selection.reveal(range)).toEqual({ status: "available", value: "scrolled" });
     expect(scrollContainer.scrollTop).toBe(660);
 
     endpointTop.value = 200;
-    expect(host.selection.reveal(anchor)).toEqual({ status: "available", value: "visible" });
+    expect(host.selection.reveal(range)).toEqual({ status: "available", value: "visible" });
     expect(scrollContainer.scrollTop).toBe(660);
 
     if (rangeRectsDescriptor) {
@@ -364,29 +363,6 @@ describe("ChatGPT host contract", () => {
     } else {
       Reflect.deleteProperty(Range.prototype, "getClientRects");
     }
-  });
-
-  it("reuses the resolved message element for repeated anchor restores", () => {
-    const fixture = installChatGptHostFixture();
-    const querySelectorAll = vi.spyOn(document, "querySelectorAll");
-    const host = createChatGptHost({ document, window });
-    const anchor = {
-      end: 16,
-      messageId: "assistant-one",
-      prefix: "A ",
-      quote: "focused answer",
-      start: 2,
-      suffix: " for the contract fixture.",
-    };
-
-    expect(host.selection.restore(anchor).status).toBe("available");
-    expect(host.selection.restore(anchor).status).toBe("available");
-    expect(
-      querySelectorAll.mock.calls.filter(
-        ([selector]) => selector === '[data-message-author-role="assistant"][data-message-id]',
-      ),
-    ).toHaveLength(1);
-    expect(fixture.assistantMessage.isConnected).toBe(true);
   });
 
   it("reports typed host failures without annotation content", async () => {

@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { DraftAnnotation } from "@/features/annotations/annotation";
-import { useAnnotationHighlights } from "@/features/annotations/use-annotation-highlights";
+import { useAnnotationProjection } from "@/features/annotations/use-annotation-projection";
 
 import { HostTestProvider } from "./fixtures/host-provider";
 
@@ -70,6 +70,7 @@ describe("annotation badge scrolling", () => {
     await act(async () => root.render(<HighlightHarness />));
     await act(async () => vi.advanceTimersByTimeAsync(17));
     expect(container.querySelector("output")?.dataset.top).toBe("190");
+    expect(container.querySelector("output")?.dataset.ordinal).toBe("1");
 
     geometry.top = 100;
     geometry.restoreCount = 0;
@@ -175,23 +176,43 @@ describe("annotation badge scrolling", () => {
     expect(renderCount).toBe(rendersAfterInitialProjection);
     await act(async () => root.unmount());
   });
+
+  it("reuses the projected range when an annotation becomes active", async () => {
+    vi.useFakeTimers();
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    Object.defineProperty(globalThis, "CSS", { configurable: true, value: {} });
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    await act(async () => root.render(<HighlightHarness />));
+    await act(async () => vi.advanceTimersByTimeAsync(17));
+    expect(geometry.restoreCount).toBe(1);
+
+    geometry.restoreCount = 0;
+    await act(async () => root.render(<HighlightHarness activeAnnotationId={annotation.id} />));
+    expect(geometry.restoreCount).toBe(0);
+
+    await act(async () => root.unmount());
+  });
 });
 
-function HighlightHarness() {
+function HighlightHarness({ activeAnnotationId = null }: { activeAnnotationId?: string | null }) {
   return (
     <HostTestProvider>
-      <HighlightProbe />
+      <HighlightProbe activeAnnotationId={activeAnnotationId} />
     </HostTestProvider>
   );
 }
 
-function HighlightProbe() {
+function HighlightProbe({ activeAnnotationId }: { activeAnnotationId: string | null }) {
   renderCount += 1;
-  const { badgePositions, unresolvedAnnotationIds } = useAnnotationHighlights(annotationList, null);
+  const [projection] = useAnnotationProjection(annotationList, activeAnnotationId);
   return (
     <output
-      data-top={badgePositions[0]?.top}
-      data-unresolved={unresolvedAnnotationIds.has(annotation.id)}
+      data-ordinal={projection?.ordinal}
+      data-top={projection?.badge?.top}
+      data-unresolved={projection?.range === null}
     />
   );
 }

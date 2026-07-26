@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { restoreTextAnchorFromIndex } from "@/features/annotations/selection-anchor";
 import type { Host, HostEnvironment, HostResult } from "@/features/host/dom-host";
 
 export type CoreHostFixture = {
@@ -76,7 +77,9 @@ export function runHostContractSuite(definition: HostContractDefinition) {
         [definition.expectedMessageId, fixture.assistantMessage],
       ]);
       expect([...siteHost.selection.messageIndex().values()]).not.toContain(fixture.userMessage);
-      expect(siteHost.selection.restore(captured.anchor).status).toBe("available");
+      expect(
+        restoreTextAnchorFromIndex(captured.anchor, siteHost.selection.messageIndex()),
+      ).not.toBeNull();
     });
 
     it("rejects selections inside user messages", () => {
@@ -121,7 +124,9 @@ export function runHostContractSuite(definition: HostContractDefinition) {
         displayQuote: "alpha beta",
         quote: "alphabeta",
       });
-      expect(siteHost.selection.restore(captured.anchor).status).toBe("available");
+      expect(
+        restoreTextAnchorFromIndex(captured.anchor, siteHost.selection.messageIndex()),
+      ).not.toBeNull();
     });
 
     it("fails closed after the captured message identity changes", () => {
@@ -132,10 +137,7 @@ export function runHostContractSuite(definition: HostContractDefinition) {
 
       definition.invalidateCapturedIdentity(fixture);
 
-      expect(siteHost.selection.restore(anchor)).toEqual({
-        reason: "assistant-message-unavailable",
-        status: "unavailable",
-      });
+      expect(restoreTextAnchorFromIndex(anchor, siteHost.selection.messageIndex())).toBeNull();
     });
 
     it("snapshots, replaces, and restores the configured composer", () => {

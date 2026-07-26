@@ -1,48 +1,57 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useHost } from "@/features/host-port/HostProvider";
-import type { Host, SelectionInvalidationReason } from "@/features/host-port/host-port";
+import type {
+  Host,
+  SelectionInvalidationReason,
+  SelectionRect,
+} from "@/features/host-port/host-port";
 import { clampPositionToViewport } from "@/features/layout/floating-position";
 import { currentVisualViewportBounds } from "@/features/layout/use-visual-viewport";
 
 import type { DraftAnnotation } from "./annotation";
+import { numberAnnotations, type ProjectedAnnotation } from "./annotation-projection";
 import { rangeEndpointRect, restoreTextAnchorFromIndex } from "./selection-anchor";
 
 const HIGHLIGHT_NAME = "quotecue-annotations";
 const HIGHLIGHT_STYLE_ID = "quotecue-highlight-style";
 
-export type AnnotationBadgePosition = {
-  annotation: DraftAnnotation;
-  left: number;
-  top: number;
+type AnnotationGeometry = {
+  badge: ProjectedAnnotation["badge"];
+  range: Range;
+  rect: SelectionRect;
 };
 
-type AnnotationHighlightLayout = {
-  badgePositions: AnnotationBadgePosition[];
-  unresolvedAnnotationIds: ReadonlySet<string>;
-};
+const EMPTY_GEOMETRY = new Map<string, AnnotationGeometry>();
 
-type AnnotationProjection = AnnotationHighlightLayout & {
-  activeRange: Range | null;
-};
-
-const EMPTY_LAYOUT: AnnotationHighlightLayout = {
-  badgePositions: [],
-  unresolvedAnnotationIds: new Set(),
-};
-
-export function useAnnotationHighlights(
-  annotations: DraftAnnotation[],
+export function useAnnotationProjection(
+  annotations: readonly DraftAnnotation[],
   activeAnnotationId: string | null,
 ) {
   const host = useHost();
-  const [layout, setLayout] = useState<AnnotationHighlightLayout>(EMPTY_LAYOUT);
-  const layoutRef = useRef(layout);
+  const [geometryByAnnotationId, setGeometryByAnnotationId] =
+    useState<ReadonlyMap<string, AnnotationGeometry>>(EMPTY_GEOMETRY);
+  const geometryRef = useRef<ReadonlyMap<string, AnnotationGeometry>>(geometryByAnnotationId);
+  const numberedAnnotations = useMemo(() => numberAnnotations(annotations), [annotations]);
+  const projectedAnnotations = useMemo(
+    () =>
+      numberedAnnotations.map<ProjectedAnnotation>((entry) => ({
+        ...entry,
+        ...(geometryByAnnotationId.get(entry.annotation.id) ?? {
+          badge: null,
+          range: null,
+          rect: null,
+        }),
+      })),
+    [geometryByAnnotationId, numberedAnnotations],
+  );
+  const activeRange =
+    projectedAnnotations.find(({ annotation }) => annotation.id === activeAnnotationId)?.range ??
+    null;
 
   useEffect(() => {
     if (annotations.length === 0) {
-      clearHighlights();
-      commitLayout(EMPTY_LAYOUT);
+      commitGeometry(EMPTY_GEOMETRY);
       return;
     }
 
@@ -64,9 +73,7 @@ export function useAnnotationHighlights(
         if (invalidation === "content") {
           rangeByAnnotationId = resolveAnnotationRanges(annotations, host);
         }
-        const projection = projectAnnotations(annotations, activeAnnotationId, rangeByAnnotationId);
-        renderActiveHighlight(projection.activeRange);
-        commitLayout(projection);
+        commitGeometry(projectAnnotationGeometry(annotations, rangeByAnnotationId));
       });
     };
     const stopObserving = host.selection.observeInvalidation(scheduleProjection);
@@ -77,44 +84,26 @@ export function useAnnotationHighlights(
       if (projectionFrame !== undefined) {
         cancelAnimationFrame(projectionFrame);
       }
-      clearHighlights();
     };
 
-    function commitLayout(nextLayout: AnnotationHighlightLayout) {
-      if (sameLayout(layoutRef.current, nextLayout)) {
+    function commitGeometry(nextGeometry: ReadonlyMap<string, AnnotationGeometry>) {
+      if (sameGeometry(geometryRef.current, nextGeometry)) {
         return;
       }
-      layoutRef.current = nextLayout;
-      setLayout(nextLayout);
+      geometryRef.current = nextGeometry;
+      setGeometryByAnnotationId(nextGeometry);
     }
-  }, [activeAnnotationId, annotations, host]);
+  }, [annotations, host]);
 
-  return layout;
+  useEffect(() => {
+    renderActiveHighlight(activeRange);
+    return clearHighlights;
+  }, [activeRange]);
+
+  return projectedAnnotations;
 }
 
-function projectAnnotations(
-  annotations: DraftAnnotation[],
-  activeAnnotationId: string | null,
-  rangeByAnnotationId: ReadonlyMap<string, Range | null>,
-): AnnotationProjection {
-  const entries = annotations.map((annotation) => ({
-    annotation,
-    range: rangeByAnnotationId.get(annotation.id) ?? null,
-  }));
-  const unresolvedAnnotationIds = new Set(
-    entries.filter(({ range }) => range === null).map(({ annotation }) => annotation.id),
-  );
-  const badgePositions = entries
-    .filter((entry): entry is { annotation: DraftAnnotation; range: Range } => entry.range !== null)
-    .map(({ annotation, range }) => badgePosition(annotation, range))
-    .filter((position): position is AnnotationBadgePosition => position !== null);
-  const activeRange =
-    entries.find(({ annotation }) => annotation.id === activeAnnotationId)?.range ?? null;
-
-  return { activeRange, badgePositions, unresolvedAnnotationIds };
-}
-
-function resolveAnnotationRanges(annotations: DraftAnnotation[], host: Host) {
+function resolveAnnotationRanges(annotations: readonly DraftAnnotation[], host: Host) {
   const messageIndex = host.selection.messageIndex();
   const messageTextCache = new Map<HTMLElement, string>();
   return new Map(
@@ -123,6 +112,26 @@ function resolveAnnotationRanges(annotations: DraftAnnotation[], host: Host) {
       restoreTextAnchorFromIndex(annotation.anchor, messageIndex, messageTextCache),
     ]),
   );
+}
+
+function projectAnnotationGeometry(
+  annotations: readonly DraftAnnotation[],
+  rangeByAnnotationId: ReadonlyMap<string, Range | null>,
+) {
+  const geometry = new Map<string, AnnotationGeometry>();
+  for (const annotation of annotations) {
+    const range = rangeByAnnotationId.get(annotation.id);
+    if (!range) {
+      continue;
+    }
+    const rect = selectionRect(rangeEndpointRect(range));
+    geometry.set(annotation.id, {
+      badge: badgePosition(range, rect),
+      range,
+      rect,
+    });
+  }
+  return geometry;
 }
 
 function ensureHighlightStyle() {
@@ -145,8 +154,7 @@ function renderActiveHighlight(activeRange: Range | null) {
   }
 }
 
-function badgePosition(annotation: DraftAnnotation, range: Range) {
-  const rect = rangeEndpointRect(range);
+function badgePosition(range: Range, rect: SelectionRect) {
   const viewport = currentVisualViewportBounds();
 
   if (rect.width === 0 || rect.bottom < viewport.top || rect.top > viewport.top + viewport.height) {
@@ -155,24 +163,18 @@ function badgePosition(annotation: DraftAnnotation, range: Range) {
   if (isAnchorObscured(range, rect, viewport)) {
     return null;
   }
-  const position = clampPositionToViewport(
+  return clampPositionToViewport(
     { left: rect.right + 5, top: rect.top - 10 },
     { height: 24, width: 24 },
     { margin: 6, viewport },
   );
-
-  return {
-    annotation,
-    left: position.left,
-    top: position.top,
-  };
 }
 
 // 徽标固定在顶层，不随消息滚动容器裁剪；锚点滚到宿主浮层（如输入框）背后时，
 // 命中测试的首个非 QuoteCue 元素与锚点无包含关系，此时徽标应一并隐藏
 function isAnchorObscured(
   range: Range,
-  rect: { height: number; right: number; top: number },
+  rect: Pick<SelectionRect, "height" | "right" | "top">,
   viewport: ReturnType<typeof currentVisualViewportBounds>,
 ) {
   if (typeof document.elementsFromPoint !== "function") {
@@ -196,23 +198,61 @@ function isAnchorObscured(
   return hit !== undefined && !anchor.contains(hit) && !hit.contains(anchor);
 }
 
-function sameLayout(left: AnnotationHighlightLayout, right: AnnotationHighlightLayout) {
+function sameGeometry(
+  left: ReadonlyMap<string, AnnotationGeometry>,
+  right: ReadonlyMap<string, AnnotationGeometry>,
+) {
+  if (left.size !== right.size) {
+    return false;
+  }
+  for (const [annotationId, geometry] of left) {
+    const other = right.get(annotationId);
+    if (
+      !other ||
+      geometry.range !== other.range ||
+      !sameRect(geometry.rect, other.rect) ||
+      !sameBadge(geometry.badge, other.badge)
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function sameRect(left: SelectionRect, right: SelectionRect) {
   return (
-    sameIds(left.unresolvedAnnotationIds, right.unresolvedAnnotationIds) &&
-    left.badgePositions.length === right.badgePositions.length &&
-    left.badgePositions.every((position, index) => {
-      const other = right.badgePositions[index];
-      return (
-        position.annotation === other?.annotation &&
-        position.left === other.left &&
-        position.top === other.top
-      );
-    })
+    left.bottom === right.bottom &&
+    left.height === right.height &&
+    left.left === right.left &&
+    left.right === right.right &&
+    left.top === right.top &&
+    left.width === right.width
   );
 }
 
-function sameIds(left: ReadonlySet<string>, right: ReadonlySet<string>) {
-  return left.size === right.size && Array.from(left).every((id) => right.has(id));
+function sameBadge(
+  left: Pick<SelectionRect, "left" | "top"> | null,
+  right: Pick<SelectionRect, "left" | "top"> | null,
+) {
+  return left === right || (left !== null && right !== null && samePosition(left, right));
+}
+
+function samePosition(
+  left: Pick<SelectionRect, "left" | "top">,
+  right: Pick<SelectionRect, "left" | "top">,
+) {
+  return left.left === right.left && left.top === right.top;
+}
+
+function selectionRect(rect: SelectionRect): SelectionRect {
+  return {
+    bottom: rect.bottom,
+    height: rect.height,
+    left: rect.left,
+    right: rect.right,
+    top: rect.top,
+    width: rect.width,
+  };
 }
 
 function clearHighlights() {

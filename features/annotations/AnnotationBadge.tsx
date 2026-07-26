@@ -1,12 +1,12 @@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useI18n } from "@/features/i18n/I18nProvider";
 
-import type { NumberedAnnotation } from "./annotation-projection";
+import type { ProjectedAnnotation } from "./annotation-projection";
 
 type AnnotationBadgeProps = {
-  entry: NumberedAnnotation;
+  entry: ProjectedAnnotation;
   left: number;
-  onEdit: (annotation: NumberedAnnotation["annotation"]) => void;
+  onEdit: (annotation: ProjectedAnnotation) => void;
   top: number;
 };
 
@@ -24,7 +24,7 @@ export function AnnotationBadge({ entry, left, onEdit, top }: AnnotationBadgePro
         <TooltipTrigger
           aria-label={messages.viewAnnotation(ordinal)}
           className="qc-cue qc-focus qc-pressable flex size-5 cursor-pointer items-center justify-center rounded-full text-xs font-semibold"
-          onClick={() => onEdit(annotation)}
+          onClick={() => onEdit(entry)}
         >
           {ordinal}
         </TooltipTrigger>

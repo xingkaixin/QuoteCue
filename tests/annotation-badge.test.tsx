@@ -31,7 +31,7 @@ describe("AnnotationBadge", () => {
     expect(container.textContent).not.toContain("No comment added");
     expect(container.querySelector('[role="tooltip"]')).toBeNull();
     await act(async () => badge?.click());
-    expect(onEdit).toHaveBeenCalledWith(annotation);
+    expect(onEdit).toHaveBeenCalledWith(expect.objectContaining({ annotation }));
 
     await act(async () => root.unmount());
   });
@@ -45,9 +45,18 @@ describe("AnnotationBadge", () => {
 
     await act(async () => root.unmount());
   });
+
+  it("renders the ordinal supplied by the shared projection", async () => {
+    const { badge, root } = await mountBadge("", 7);
+
+    expect(badge?.textContent).toBe("7");
+    expect(badge?.getAttribute("aria-label")).toBe("View annotation 7");
+
+    await act(async () => root.unmount());
+  });
 });
 
-async function mountBadge(comment = "") {
+async function mountBadge(comment = "", ordinal = 1) {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   const container = document.createElement("div");
   document.body.append(container);
@@ -59,7 +68,20 @@ async function mountBadge(comment = "") {
       <PortalContainerProvider container={container}>
         <TooltipProvider delay={0}>
           <AnnotationBadge
-            entry={{ annotation: { ...annotation, comment }, ordinal: 1 }}
+            entry={{
+              annotation: { ...annotation, comment },
+              badge: { left: 10, top: 10 },
+              ordinal,
+              range: document.createRange(),
+              rect: {
+                bottom: 30,
+                height: 20,
+                left: 10,
+                right: 30,
+                top: 10,
+                width: 20,
+              },
+            }}
             left={10}
             onEdit={onEdit}
             top={10}

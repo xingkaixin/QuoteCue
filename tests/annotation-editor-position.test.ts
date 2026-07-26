@@ -2,23 +2,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { annotationEditorPosition } from "@/features/annotations/annotation-editor-position";
 
-const draft = {
-  anchor: {
-    messageId: "message-1",
-    quote: "selected text",
-    prefix: "",
-    suffix: "",
-    start: 0,
-    end: 13,
-  },
-  rect: { bottom: 120, height: 20, left: 80, right: 180, top: 100, width: 100 },
-};
+const rect = { bottom: 120, height: 20, left: 80, right: 180, top: 100, width: 100 };
 
 afterEach(() => vi.unstubAllGlobals());
 
 describe("annotation editor position", () => {
   it("places the editor beside and below the annotation endpoint when space is available", () => {
-    const position = annotationEditorPosition(draft, { height: 230, width: 380 }, viewport());
+    const position = annotationEditorPosition(rect, { height: 230, width: 380 }, viewport());
 
     expect(position).toMatchObject({ left: 190, top: 130 });
   });
@@ -26,8 +16,9 @@ describe("annotation editor position", () => {
   it("places the editor on the left when the right side would overflow", () => {
     const position = annotationEditorPosition(
       {
-        ...draft,
-        rect: { bottom: 120, height: 20, left: 800, right: 900, top: 100, width: 100 },
+        ...rect,
+        left: 800,
+        right: 900,
       },
       { height: 230, width: 380 },
       viewport(),
@@ -39,8 +30,9 @@ describe("annotation editor position", () => {
   it("places the editor above when the area below would overflow", () => {
     const position = annotationEditorPosition(
       {
-        ...draft,
-        rect: { bottom: 720, height: 20, left: 80, right: 180, top: 700, width: 100 },
+        ...rect,
+        bottom: 720,
+        top: 700,
       },
       { height: 230, width: 380 },
       viewport(),
@@ -53,14 +45,14 @@ describe("annotation editor position", () => {
     vi.stubGlobal("innerWidth", 320);
     vi.stubGlobal("innerHeight", 568);
 
-    const position = annotationEditorPosition(draft, { height: 230, width: 380 });
+    const position = annotationEditorPosition(rect, { height: 230, width: 380 });
 
     expect(position).toMatchObject({ left: 12, maxWidth: 296 });
   });
 
   it("honors visual viewport offsets", () => {
     const position = annotationEditorPosition(
-      draft,
+      rect,
       { height: 230, width: 380 },
       {
         height: 400,

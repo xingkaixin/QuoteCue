@@ -67,23 +67,18 @@ afterEach(() => {
 });
 
 describe("AnnotationEditor", () => {
-  it("coalesces scroll-driven anchor restores into one frame", async () => {
+  it("does not resolve anchors while laying out projected geometry", async () => {
     vi.useFakeTimers();
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     const host = createChatGptHost({ document, window });
-    const restore = vi.spyOn(host.selection, "restore").mockReturnValue({
-      reason: "assistant-message-unavailable",
-      status: "unavailable",
-    });
+    const messageIndex = vi.spyOn(host.selection, "messageIndex");
     const { root } = await renderEditor(vi.fn(), host);
-    restore.mockClear();
 
     for (let index = 0; index < 20; index += 1) {
       window.dispatchEvent(new Event("scroll"));
     }
-    expect(restore).not.toHaveBeenCalled();
     await act(async () => vi.advanceTimersByTimeAsync(17));
-    expect(restore).toHaveBeenCalledOnce();
+    expect(messageIndex).not.toHaveBeenCalled();
 
     await act(async () => root.unmount());
   });
@@ -291,10 +286,10 @@ function editor(onCancel: () => void, host?: Host) {
     <HostTestProvider host={host}>
       <AnnotationEditor
         annotation={annotation}
-        draft={draft}
         onCancel={onCancel}
         onDelete={vi.fn()}
         onSave={vi.fn()}
+        rect={draft.rect}
       />
     </HostTestProvider>
   );

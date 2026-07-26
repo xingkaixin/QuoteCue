@@ -13,13 +13,13 @@ import type { HostLayout } from "@/features/host-port/host-port";
 import { useI18n } from "@/features/i18n/I18nProvider";
 
 import { selectedTextFor } from "./annotation";
-import type { NumberedAnnotation } from "./annotation-projection";
+import type { ProjectedAnnotation } from "./annotation-projection";
 import { DELETE_UNDO_WINDOW_MS } from "./use-deferred-annotation-deletion";
 
 type AnnotationSummaryProps = {
-  annotations: readonly NumberedAnnotation[];
+  annotations: readonly ProjectedAnnotation[];
   onClear: () => void;
-  onEdit: (annotation: NumberedAnnotation["annotation"]) => void;
+  onEdit: (annotation: ProjectedAnnotation) => void;
   onRemove: (annotationId: string) => void;
   onSend: () => void;
   onUndo: () => void;
@@ -28,7 +28,6 @@ type AnnotationSummaryProps = {
   position: HostLayout["summary"];
   sendStatus: "idle" | "pending" | "failed";
   sendPosition: HostLayout["send"];
-  unresolvedAnnotationIds: ReadonlySet<string>;
 };
 
 export function AnnotationSummary({
@@ -43,7 +42,6 @@ export function AnnotationSummary({
   position,
   sendStatus,
   sendPosition,
-  unresolvedAnnotationIds,
 }: AnnotationSummaryProps) {
   const { messages } = useI18n();
   const countButtonRef = useRef<HTMLButtonElement>(null);
@@ -142,8 +140,9 @@ export function AnnotationSummary({
               role="dialog"
             >
               <div className="qc-divide max-h-80 divide-y overscroll-contain overflow-y-auto">
-                {annotations.map(({ annotation, ordinal }) => {
-                  const isUnresolved = unresolvedAnnotationIds.has(annotation.id);
+                {annotations.map((projection) => {
+                  const { annotation, ordinal, range } = projection;
+                  const isUnresolved = range === null;
                   const comment = annotation.comment.trim();
                   return (
                     <div className="group/row relative flex gap-2.5 px-3 py-3" key={annotation.id}>
@@ -178,7 +177,7 @@ export function AnnotationSummary({
                           aria-label={messages.editNumberedAnnotation(ordinal)}
                           className="qc-muted qc-hover qc-focus flex size-8 cursor-pointer items-center justify-center disabled:cursor-default disabled:opacity-40"
                           disabled={isUnresolved}
-                          onClick={() => onEdit(annotation)}
+                          onClick={() => onEdit(projection)}
                           type="button"
                         >
                           <Pencil aria-hidden="true" className="size-3.5" />
