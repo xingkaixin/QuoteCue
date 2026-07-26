@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { compileAnnotatedPrompt } from "@/features/annotations/prompt-compiler";
 import { createChatGptHost } from "@/features/chatgpt/chatgpt-host";
 import { registerSendInterceptor } from "@/features/host/register-send-interceptor";
 
@@ -67,6 +68,8 @@ describe("registerSendInterceptor", () => {
     let currentAnnotations = [annotation];
     const interceptor = registerSendInterceptor({
       annotations: () => currentAnnotations,
+      compilePrompt: compileAnnotatedPrompt,
+      host: createChatGptHost({ document, window }),
       locale: () => "en",
       onSendAccepted,
     });
@@ -259,6 +262,7 @@ describe("registerSendInterceptor", () => {
     const watchAcceptedSend = vi.spyOn(host.composer, "watchAcceptedSend");
     const interceptor = registerSendInterceptor({
       annotations: () => [annotation],
+      compilePrompt: compileAnnotatedPrompt,
       host,
       locale: () => "en",
       onSendAccepted: vi.fn(),
@@ -313,6 +317,7 @@ describe("registerSendInterceptor", () => {
     });
     const interceptor = registerSendInterceptor({
       annotations: () => [annotation],
+      compilePrompt: compileAnnotatedPrompt,
       host,
       locale: () => "en",
       onSendAccepted: vi.fn(),
@@ -428,6 +433,8 @@ describe("registerSendInterceptor", () => {
 function createInterceptor(onSendAccepted = vi.fn()) {
   return registerSendInterceptor({
     annotations: () => [annotation],
+    compilePrompt: compileAnnotatedPrompt,
+    host: createChatGptHost({ document, window }),
     locale: () => "en",
     onSendAccepted,
   });

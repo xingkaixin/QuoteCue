@@ -2,7 +2,7 @@ import { selectedTextFor, type DraftAnnotation } from "./annotation";
 import { messagesFor, type SupportedLocale } from "@/features/i18n/messages";
 
 export function compileAnnotatedPrompt(
-  annotations: DraftAnnotation[],
+  annotations: readonly DraftAnnotation[],
   userPrompt: string,
   locale: SupportedLocale = "zh-CN",
 ) {

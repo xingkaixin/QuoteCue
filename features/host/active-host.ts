@@ -1,4 +1,6 @@
-import type { Host, HostEnvironment } from "./dom-host";
+import type { Host } from "@/features/host-port/host-port";
+
+import type { HostEnvironment } from "./dom-host";
 import { siteForHostname } from "./site-registry";
 
 export function hostForHostname(hostname: string, environment: HostEnvironment): Host | null {
@@ -13,10 +15,3 @@ export const activeHost = activeSite
       window,
     })
   : null;
-
-export function requireActiveHost(): Host {
-  if (!activeHost) {
-    throw new Error(`QuoteCue does not support ${window.location.hostname}`);
-  }
-  return activeHost;
-}

@@ -2,8 +2,9 @@ import { createChatGptHost } from "@/features/chatgpt/chatgpt-host";
 import { createClaudeHost } from "@/features/claude/claude-host";
 import { createDeepSeekHost } from "@/features/deepseek/deepseek-host";
 import { createKimiHost } from "@/features/kimi/kimi-host";
+import type { Host } from "@/features/host-port/host-port";
 
-import type { Host, HostEnvironment } from "./dom-host";
+import type { HostEnvironment } from "./dom-host";
 import { SITE_URLS, type SiteUrl } from "./site-urls";
 
 export type SiteAccentTokens = {

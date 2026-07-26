@@ -4,6 +4,8 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { useConversationKey } from "@/features/annotations/use-conversation-key";
 
+import { HostTestProvider } from "./fixtures/host-provider";
+
 afterEach(() => {
   window.history.replaceState({}, "", "/");
   document.body.replaceChildren();
@@ -43,5 +45,13 @@ describe("useConversationKey", () => {
 });
 
 function ConversationKeyProbe() {
+  return (
+    <HostTestProvider>
+      <ConversationKeyValue />
+    </HostTestProvider>
+  );
+}
+
+function ConversationKeyValue() {
   return <output>{useConversationKey()}</output>;
 }

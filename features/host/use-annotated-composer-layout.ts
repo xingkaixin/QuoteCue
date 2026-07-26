@@ -1,27 +1,15 @@
 import { useEffect, useState } from "react";
 
-import { requireActiveHost } from "./active-host";
+import { useHost } from "@/features/host-port/HostProvider";
+import type { HostLayout } from "@/features/host-port/host-port";
 
 const ANNOTATION_ROW_HEIGHT = 40;
 const POSITION_REFRESH_MS = 80;
 
-export type ComposerPosition = {
-  left: number;
-  top: number;
-};
-
-export type ComposerRect = ComposerPosition & {
-  height: number;
-  width: number;
-};
-
-export type AnnotatedComposerLayout = {
-  send: ComposerRect;
-  summary: ComposerPosition;
-};
+type AnnotatedComposerLayout = Pick<HostLayout, "send" | "summary">;
 
 export function useAnnotatedComposerLayout(isActive: boolean) {
-  const host = requireActiveHost();
+  const host = useHost();
   const [layout, setLayout] = useState<AnnotatedComposerLayout | null>(null);
 
   useEffect(() => {

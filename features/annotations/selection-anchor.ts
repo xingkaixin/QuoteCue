@@ -1,4 +1,4 @@
-import type { TextAnchor } from "./annotation";
+import type { TextAnchor } from "@/features/host-port/host-port";
 
 type RangeBoundary = {
   node: Node;

@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { requireActiveHost } from "@/features/host/active-host";
+import { useHost } from "@/features/host-port/HostProvider";
 
 export function useConversationKey() {
-  const host = requireActiveHost();
+  const host = useHost();
   const [temporaryConversationKey] = useState(() => `new-chat:${crypto.randomUUID()}`);
   const resolveConversationKey = useCallback(
     () => host.conversation.key(temporaryConversationKey),

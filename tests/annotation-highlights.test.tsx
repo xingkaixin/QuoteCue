@@ -5,6 +5,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { DraftAnnotation } from "@/features/annotations/annotation";
 import { useAnnotationHighlights } from "@/features/annotations/use-annotation-highlights";
 
+import { HostTestProvider } from "./fixtures/host-provider";
+
 const geometry = vi.hoisted(() => ({
   anchorNode: null as Node | null,
   isResolved: true,
@@ -176,6 +178,14 @@ describe("annotation badge scrolling", () => {
 });
 
 function HighlightHarness() {
+  return (
+    <HostTestProvider>
+      <HighlightProbe />
+    </HostTestProvider>
+  );
+}
+
+function HighlightProbe() {
   renderCount += 1;
   const { badgePositions, unresolvedAnnotationIds } = useAnnotationHighlights(annotationList, null);
   return (

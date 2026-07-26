@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { DraftAnnotation } from "@/features/annotations/annotation";
+import { compileAnnotatedPrompt } from "@/features/annotations/prompt-compiler";
 import { registerSendInterceptor } from "@/features/host/register-send-interceptor";
 import { createKimiHost } from "@/features/kimi/kimi-host";
 
@@ -39,6 +40,7 @@ describe("Kimi host contract", () => {
     const onSendAccepted = vi.fn();
     const interceptor = registerSendInterceptor({
       annotations: () => [annotation()],
+      compilePrompt: compileAnnotatedPrompt,
       host,
       locale: () => "zh-CN",
       onSendAccepted,
@@ -69,6 +71,7 @@ describe("Kimi host contract", () => {
     });
     const interceptor = registerSendInterceptor({
       annotations: () => [annotation()],
+      compilePrompt: compileAnnotatedPrompt,
       host: createKimiHost({ document, window }),
       locale: () => "zh-CN",
       onSendAccepted: vi.fn(),
@@ -97,6 +100,7 @@ describe("Kimi host contract", () => {
     });
     const interceptor = registerSendInterceptor({
       annotations: () => [annotation()],
+      compilePrompt: compileAnnotatedPrompt,
       host: createKimiHost({ document, window }),
       locale: () => "zh-CN",
       onSendAccepted: vi.fn(),
@@ -122,6 +126,7 @@ describe("Kimi host contract", () => {
     });
     const interceptor = registerSendInterceptor({
       annotations: () => [annotation()],
+      compilePrompt: compileAnnotatedPrompt,
       host,
       locale: () => "zh-CN",
       onSendAccepted: vi.fn(),

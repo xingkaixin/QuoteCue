@@ -1,23 +1,18 @@
+import type {
+  HostResult,
+  HostUnavailableReason,
+  SelectionPresentationMode,
+} from "@/features/host-port/host-port";
+
 const HISTORY_CHANGE_EVENT = "quotecue:history-change";
 const historyPatchedWindows = new WeakSet<Window>();
 
-export type HostUnavailableReason =
-  | "assistant-message-unavailable"
-  | "composer-surface-unavailable"
-  | "composer-unavailable"
-  | "selection-unavailable"
-  | "send-control-unavailable";
-
-export type HostResult<T> =
-  | { status: "available"; value: T }
-  | { status: "unavailable"; reason: HostUnavailableReason };
-
-export type ComposerSnapshot = {
-  element: HTMLElement;
-  text: string;
-};
-
-export type SelectionInvalidationReason = "content" | "layout";
+export type {
+  ComposerSnapshot,
+  HostResult,
+  HostUnavailableReason,
+  SelectionInvalidationReason,
+} from "@/features/host-port/host-port";
 
 export type ComposerAccess = {
   normalize(text: string): string;
@@ -53,7 +48,7 @@ export type SiteAdapter = {
   conversationPathPattern: RegExp;
   layout: ComposerLayoutCapability;
   messages: MessageAccess;
-  selectionPresentation: { mode: "native-toolbar" | "overlay" };
+  selectionPresentation: { mode: SelectionPresentationMode };
   sendControl: SendControlAccess;
 };
 

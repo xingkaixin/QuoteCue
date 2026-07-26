@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { useAnnotatedComposerLayout } from "@/features/host/use-annotated-composer-layout";
 
 import { installChatGptHostFixture } from "./fixtures/chatgpt-host";
+import { HostTestProvider } from "./fixtures/host-provider";
 
 afterEach(() => {
   document.body.replaceChildren();
@@ -38,7 +39,13 @@ describe("useAnnotatedComposerLayout", () => {
     const container = document.createElement("div");
     document.body.append(container);
     const root = createRoot(container);
-    await act(async () => root.render(<LayoutProbe />));
+    await act(async () =>
+      root.render(
+        <HostTestProvider>
+          <LayoutProbe />
+        </HostTestProvider>,
+      ),
+    );
 
     expect(surface.style.paddingTop).toBe("45px");
     expect(action.style.visibility).toBe("hidden");

@@ -4,8 +4,9 @@ import ReactDOM from "react-dom/client";
 import { createShadowRootUi } from "wxt/utils/content-script-ui/shadow-root";
 
 import { PortalContainerProvider } from "@/components/ui/portal-container";
-import { activeSite } from "@/features/host/active-host";
+import { activeHost, activeSite } from "@/features/host/active-host";
 import { SITE_URL_PATTERNS } from "@/features/host/site-urls";
+import { HostProvider } from "@/features/host-port/HostProvider";
 import { I18nProvider } from "@/features/i18n/I18nProvider";
 import { HostThemeProvider } from "@/features/theme/HostThemeProvider";
 
@@ -17,7 +18,8 @@ export default defineContentScript({
 
   async main(context) {
     const site = activeSite;
-    if (!site) {
+    const host = activeHost;
+    if (!site || !host) {
       return;
     }
 
@@ -59,13 +61,15 @@ export default defineContentScript({
 
         const root = ReactDOM.createRoot(app);
         root.render(
-          <PortalContainerProvider container={container}>
-            <HostThemeProvider accentTokens={site.accentTokens} container={container}>
-              <I18nProvider>
-                <App />
-              </I18nProvider>
-            </HostThemeProvider>
-          </PortalContainerProvider>,
+          <HostProvider host={host}>
+            <PortalContainerProvider container={container}>
+              <HostThemeProvider accentTokens={site.accentTokens} container={container}>
+                <I18nProvider>
+                  <App />
+                </I18nProvider>
+              </HostThemeProvider>
+            </PortalContainerProvider>
+          </HostProvider>,
         );
         return root;
       },
