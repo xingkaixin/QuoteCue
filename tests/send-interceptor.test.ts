@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { createChatGptHost } from "@/features/chatgpt/chatgpt-host";
 import { registerSendInterceptor } from "@/features/host/register-send-interceptor";
 
 import {
@@ -235,6 +236,42 @@ describe("registerSendInterceptor", () => {
     expect(onSendAccepted).not.toHaveBeenCalled();
     expect(composer.textContent).toBe("");
     interceptor.dispose();
+  });
+
+  it("skips rendered text reads for new messages shorter than the expected send", async () => {
+    const composer = installComposer("original question");
+    const logger = vi.fn();
+    const host = createChatGptHost({ document, logger, window });
+    let messageInnerTextReads = 0;
+    const sendButton = installSendButton(() => {
+      const message = installUserMessage("short-user-message", "short");
+      Object.defineProperty(message, "innerText", {
+        configurable: true,
+        get: () => {
+          messageInnerTextReads += 1;
+          return message.textContent ?? "";
+        },
+      });
+      composer.replaceChildren();
+      message.textContent = "still short";
+    });
+    const interceptor = registerSendInterceptor({
+      annotations: () => [annotation],
+      host,
+      locale: () => "en",
+      onSendAccepted: vi.fn(),
+    });
+
+    const result = interceptor.submit(sendButton);
+    await vi.waitFor(() =>
+      expect(logger).toHaveBeenCalledWith(
+        "[QuoteCue host] send confirmation observed: total=1, matched=false",
+      ),
+    );
+    expect(messageInnerTextReads).toBe(0);
+
+    interceptor.dispose();
+    await expect(result).resolves.toEqual({ status: "failed", reason: "disposed" });
   });
 
   it("retries an unconfirmed send with the original supplemental question", async () => {

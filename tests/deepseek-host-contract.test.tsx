@@ -9,7 +9,11 @@ import { createDeepSeekHost } from "@/features/deepseek/deepseek-host";
 import { registerSendInterceptor } from "@/features/host/register-send-interceptor";
 import type { SelectionDraft } from "@/features/annotations/annotation";
 
-import { appendUserMessageItem, installDeepSeekHostFixture } from "./fixtures/deepseek-host";
+import {
+  appendAssistantMessageItem,
+  appendUserMessageItem,
+  installDeepSeekHostFixture,
+} from "./fixtures/deepseek-host";
 
 vi.mock("@/features/host/active-host", async () => {
   const { createDeepSeekHost: createHost } = await import("@/features/deepseek/deepseek-host");
@@ -200,6 +204,43 @@ describe("DeepSeek host contract", () => {
     expect(sentText).toContain("[Annotation 1]");
     expect(sentText).not.toContain("[Supplemental question]");
     interceptor.dispose();
+  });
+
+  it("does not read a streaming assistant response as a send confirmation candidate", async () => {
+    const fixture = installDeepSeekHostFixture();
+    const logger = vi.fn();
+    const host = createDeepSeekHost({ document, logger, window });
+    let assistantInnerTextReads = 0;
+    fixture.sendButton.addEventListener("click", () => {
+      const assistant = appendAssistantMessageItem("assistant-two", "streaming");
+      Object.defineProperty(assistant, "innerText", {
+        configurable: true,
+        get: () => {
+          assistantInnerTextReads += 1;
+          return assistant.textContent ?? "";
+        },
+      });
+      assistant.textContent = "streaming response";
+    });
+    const interceptor = registerSendInterceptor({
+      annotations: () => [
+        { id: "annotation-one", anchor: emptyAnchor(), comment: "Explain the tradeoff" },
+      ],
+      host,
+      locale: () => "en",
+      onSendAccepted: vi.fn(),
+    });
+
+    const result = interceptor.submit(fixture.sendButton);
+    await vi.waitFor(() =>
+      expect(logger).toHaveBeenCalledWith(
+        "[QuoteCue host] send confirmation observed: total=1, matched=false",
+      ),
+    );
+    expect(assistantInnerTextReads).toBe(0);
+
+    interceptor.dispose();
+    await expect(result).resolves.toEqual({ status: "failed", reason: "disposed" });
   });
 
   it("renders the floating QuoteCue action for overlay hosts", async () => {
