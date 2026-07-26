@@ -1,11 +1,18 @@
 import { browser } from "wxt/browser";
 
+import type { IdentifiedConversation } from "@/features/host-port/host-port";
+
 import { parseTextAnchor, type DraftAnnotation } from "./annotation";
 
 const DRAFT_KEY_PREFIX = "quotecue:draft:";
 const LEGACY_DRAFT_KEY_PREFIX = "askgpt:draft:";
+const ORPHANED_DRAFT_KEY_PREFIXES = [
+  `${DRAFT_KEY_PREFIX}new-chat:`,
+  `${LEGACY_DRAFT_KEY_PREFIX}new-chat:`,
+];
 const LEGACY_DRAFT_STORAGE_VERSION = 1;
 const DRAFT_STORAGE_VERSION = 2;
+let orphanedDraftCleanup: Promise<void> | null = null;
 
 type StoredDraftEnvelope = {
   version: typeof DRAFT_STORAGE_VERSION;
@@ -24,13 +31,14 @@ class DraftStorageFormatError extends Error {
   }
 }
 
-function draftStorageKey(prefix: string, conversationKey: string) {
-  return `${prefix}${conversationKey}`;
+function draftStorageKey(prefix: string, conversationId: string) {
+  return `${prefix}${conversationId}`;
 }
 
-export async function loadDraftAnnotations(conversationKey: string) {
-  const key = draftStorageKey(DRAFT_KEY_PREFIX, conversationKey);
-  const legacyKey = draftStorageKey(LEGACY_DRAFT_KEY_PREFIX, conversationKey);
+export async function loadDraftAnnotations(conversation: IdentifiedConversation) {
+  await removeOrphanedDraftsOnce();
+  const key = draftStorageKey(DRAFT_KEY_PREFIX, conversation.id);
+  const legacyKey = draftStorageKey(LEGACY_DRAFT_KEY_PREFIX, conversation.id);
   const result = await browser.storage.local.get([key, legacyKey]);
   const storedDraft = result[key];
 
@@ -57,11 +65,11 @@ export async function loadDraftAnnotations(conversationKey: string) {
 }
 
 export async function saveDraftAnnotations(
-  conversationKey: string,
+  conversation: IdentifiedConversation,
   annotations: DraftAnnotation[],
 ) {
-  const key = draftStorageKey(DRAFT_KEY_PREFIX, conversationKey);
-  const legacyKey = draftStorageKey(LEGACY_DRAFT_KEY_PREFIX, conversationKey);
+  const key = draftStorageKey(DRAFT_KEY_PREFIX, conversation.id);
+  const legacyKey = draftStorageKey(LEGACY_DRAFT_KEY_PREFIX, conversation.id);
 
   if (annotations.length === 0) {
     await browser.storage.local.remove([key, legacyKey]);
@@ -128,6 +136,24 @@ function decodeAnnotation(value: unknown): DraftAnnotation | null {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function removeOrphanedDraftsOnce() {
+  orphanedDraftCleanup ??= removeOrphanedDrafts().catch((error: unknown) => {
+    orphanedDraftCleanup = null;
+    throw error;
+  });
+  return orphanedDraftCleanup;
+}
+
+async function removeOrphanedDrafts() {
+  const storedValues = await browser.storage.local.get(null);
+  const orphanedKeys = Object.keys(storedValues).filter((key) =>
+    ORPHANED_DRAFT_KEY_PREFIXES.some((prefix) => key.startsWith(prefix)),
+  );
+  if (orphanedKeys.length > 0) {
+    await browser.storage.local.remove(orphanedKeys);
+  }
 }
 
 async function removeMigratedLegacyDraft(legacyKey: string) {

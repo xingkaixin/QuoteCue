@@ -34,12 +34,15 @@ policy.
 
 ## Storage and retention
 
-Draft annotations are stored in `chrome.storage.local` within the user's Chrome profile. QuoteCue
-does not operate a server and does not upload drafts to the developer.
+Draft annotations are stored in `chrome.storage.local` within the user's Chrome profile when
+QuoteCue can identify the conversation from the page URL. If a conversation cannot be identified,
+its draft remains only in memory and is discarded when the page session ends. QuoteCue does not
+operate a server and does not upload drafts to the developer.
 
 A conversation's stored draft is deleted when the annotated message is successfully sent or when
-the user clears all of its annotations. Users can also remove all locally stored QuoteCue data by
-uninstalling the extension.
+the user clears all of its annotations. QuoteCue also removes orphaned page-session drafts created
+by earlier versions. Users can remove all locally stored QuoteCue data by uninstalling the
+extension.
 
 ## Data sharing and sale
 

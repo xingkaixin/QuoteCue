@@ -46,6 +46,7 @@ const contracts: HostContractDefinition[] = [
       appendUserMessage("user-contract", text);
     },
     conversation: {
+      additionalMatchedPaths: ["/g/gizmo-contract/c/conversation-contract"],
       id: "conversation-contract",
       matchedPath: "/c/conversation-contract",
       unmatchedPath: "/",

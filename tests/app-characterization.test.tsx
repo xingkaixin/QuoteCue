@@ -7,13 +7,16 @@ import type { DraftAnnotation, SelectionDraft } from "@/features/annotations/ann
 import type { ProjectedAnnotation } from "@/features/annotations/annotation-projection";
 import { createChatGptHost } from "@/features/chatgpt/chatgpt-host";
 import { HostProvider } from "@/features/host-port/HostProvider";
+import type { IdentifiedConversation } from "@/features/host-port/host-port";
 import { I18nProvider } from "@/features/i18n/I18nProvider";
 
 import { appendUserMessage, installChatGptHostFixture } from "./fixtures/chatgpt-host";
 
 const draftStorage = vi.hoisted(() => ({
-  load: vi.fn<(conversationKey: string) => Promise<DraftAnnotation[]>>(),
-  save: vi.fn<(conversationKey: string, annotations: DraftAnnotation[]) => Promise<void>>(),
+  load: vi.fn<(conversation: IdentifiedConversation) => Promise<DraftAnnotation[]>>(),
+  save: vi.fn<
+    (conversation: IdentifiedConversation, annotations: DraftAnnotation[]) => Promise<void>
+  >(),
 }));
 
 vi.mock("@/features/annotations/draft-storage", () => ({
@@ -188,12 +191,12 @@ beforeEach(() => {
   storedDrafts.clear();
   draftStorage.load.mockReset();
   draftStorage.save.mockReset();
-  draftStorage.load.mockImplementation(async (conversationKey: string) =>
-    cloneAnnotations(storedDrafts.get(conversationKey) ?? []),
+  draftStorage.load.mockImplementation(async (conversation: IdentifiedConversation) =>
+    cloneAnnotations(storedDrafts.get(conversation.id) ?? []),
   );
   draftStorage.save.mockImplementation(
-    async (conversationKey: string, annotations: DraftAnnotation[]) => {
-      storedDrafts.set(conversationKey, cloneAnnotations(annotations));
+    async (conversation: IdentifiedConversation, annotations: DraftAnnotation[]) => {
+      storedDrafts.set(conversation.id, cloneAnnotations(annotations));
     },
   );
   Object.defineProperty(document, "execCommand", {

@@ -4,10 +4,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { DraftAnnotation } from "@/features/annotations/annotation";
 import { useDraftAnnotations } from "@/features/annotations/use-draft-annotations";
+import type { ConversationIdentity, IdentifiedConversation } from "@/features/host-port/host-port";
 
 const draftStorage = vi.hoisted(() => ({
   load: vi.fn(),
-  save: vi.fn((_conversationKey: string, _annotations: DraftAnnotation[]) => Promise.resolve()),
+  save: vi.fn((_conversation: IdentifiedConversation, _annotations: DraftAnnotation[]) =>
+    Promise.resolve(),
+  ),
 }));
 
 vi.mock("@/features/annotations/draft-storage", () => ({
@@ -27,6 +30,8 @@ const annotation: DraftAnnotation = {
   },
   comment: "draft A",
 };
+const conversationA = identifiedConversation("A");
+const conversationB = identifiedConversation("B");
 
 let latestDrafts: ReturnType<typeof useDraftAnnotations>;
 
@@ -41,19 +46,19 @@ describe("draft annotation lifecycle", () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     const pendingLoads = new Map<string, (annotations: DraftAnnotation[]) => void>();
     draftStorage.load.mockImplementation(
-      (conversationKey: string) =>
-        new Promise<DraftAnnotation[]>((resolve) => pendingLoads.set(conversationKey, resolve)),
+      (conversation: IdentifiedConversation) =>
+        new Promise<DraftAnnotation[]>((resolve) => pendingLoads.set(conversation.id, resolve)),
     );
     const container = document.createElement("div");
     document.body.append(container);
     const root = createRoot(container);
 
-    await act(async () => root.render(<DraftHarness conversationKey="A" />));
+    await act(async () => root.render(<DraftHarness conversationIdentity={conversationA} />));
     await act(async () => pendingLoads.get("A")?.([]));
     await act(async () => latestDrafts.addAnnotation(annotation));
     draftStorage.save.mockClear();
 
-    await act(async () => root.render(<DraftHarness conversationKey="B" />));
+    await act(async () => root.render(<DraftHarness conversationIdentity={conversationB} />));
 
     expect(draftStorage.save).not.toHaveBeenCalled();
 
@@ -68,7 +73,7 @@ describe("draft annotation lifecycle", () => {
     document.body.append(container);
     const root = createRoot(container);
 
-    await act(async () => root.render(<DraftHarness conversationKey="A" />));
+    await act(async () => root.render(<DraftHarness conversationIdentity={conversationA} />));
 
     expect(latestDrafts.status).toBe("error");
     expect(latestDrafts.errorOperation).toBe("load");
@@ -93,13 +98,37 @@ describe("draft annotation lifecycle", () => {
     document.body.append(container);
     const root = createRoot(container);
 
-    await act(async () => root.render(<DraftHarness conversationKey="A" />));
+    await act(async () => root.render(<DraftHarness conversationIdentity={conversationA} />));
     await act(async () => latestDrafts.addAnnotation({ ...annotation, id: "too-early" }));
     expect(latestDrafts.annotations).toEqual([]);
     expect(draftStorage.save).not.toHaveBeenCalled();
 
     await act(async () => resolveLoad([annotation]));
     expect(latestDrafts.annotations).toEqual([annotation]);
+
+    await act(async () => root.unmount());
+  });
+
+  it("keeps unidentified drafts in memory without touching storage", async () => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    await act(async () =>
+      root.render(
+        <DraftHarness conversationIdentity={{ kind: "unidentified", sessionKey: "session-a" }} />,
+      ),
+    );
+    expect(latestDrafts.status).toBe("ready");
+    expect(latestDrafts.isHydrated).toBe(true);
+
+    await act(async () => latestDrafts.addAnnotation(annotation));
+    await act(async () => latestDrafts.updateAnnotation(annotation.id, "memory only"));
+
+    expect(latestDrafts.annotations).toEqual([{ ...annotation, comment: "memory only" }]);
+    expect(draftStorage.load).not.toHaveBeenCalled();
+    expect(draftStorage.save).not.toHaveBeenCalled();
 
     await act(async () => root.unmount());
   });
@@ -111,7 +140,7 @@ describe("draft annotation lifecycle", () => {
     document.body.append(container);
     const root = createRoot(container);
 
-    await act(async () => root.render(<DraftHarness conversationKey="A" />));
+    await act(async () => root.render(<DraftHarness conversationIdentity={conversationA} />));
     const revision = latestDrafts.revision;
     draftStorage.save.mockClear();
     let didUpdate = true;
@@ -132,20 +161,20 @@ describe("draft annotation lifecycle", () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     const pendingLoads = new Map<string, Array<(annotations: DraftAnnotation[]) => void>>();
     draftStorage.load.mockImplementation(
-      (conversationKey: string) =>
+      (conversation: IdentifiedConversation) =>
         new Promise<DraftAnnotation[]>((resolve) => {
-          const resolvers = pendingLoads.get(conversationKey) ?? [];
+          const resolvers = pendingLoads.get(conversation.id) ?? [];
           resolvers.push(resolve);
-          pendingLoads.set(conversationKey, resolvers);
+          pendingLoads.set(conversation.id, resolvers);
         }),
     );
     const container = document.createElement("div");
     document.body.append(container);
     const root = createRoot(container);
 
-    await act(async () => root.render(<DraftHarness conversationKey="A" />));
-    await act(async () => root.render(<DraftHarness conversationKey="B" />));
-    await act(async () => root.render(<DraftHarness conversationKey="A" />));
+    await act(async () => root.render(<DraftHarness conversationIdentity={conversationA} />));
+    await act(async () => root.render(<DraftHarness conversationIdentity={conversationB} />));
+    await act(async () => root.render(<DraftHarness conversationIdentity={conversationA} />));
     const [firstA, secondA] = pendingLoads.get("A") ?? [];
     const [loadB] = pendingLoads.get("B") ?? [];
 
@@ -170,18 +199,18 @@ describe("draft annotation lifecycle", () => {
     ]);
     const pendingSaves: Array<{
       annotations: DraftAnnotation[];
-      conversationKey: string;
+      conversation: IdentifiedConversation;
       resolve: () => void;
     }> = [];
-    draftStorage.load.mockImplementation(async (conversationKey: string) =>
-      structuredClone(storedDrafts.get(conversationKey) ?? []),
+    draftStorage.load.mockImplementation(async (conversation: IdentifiedConversation) =>
+      structuredClone(storedDrafts.get(conversation.id) ?? []),
     );
     draftStorage.save.mockImplementation(
-      (conversationKey: string, annotations: DraftAnnotation[]) =>
+      (conversation: IdentifiedConversation, annotations: DraftAnnotation[]) =>
         new Promise<void>((resolve) => {
           pendingSaves.push({
             annotations: structuredClone(annotations),
-            conversationKey,
+            conversation,
             resolve,
           });
         }),
@@ -190,20 +219,20 @@ describe("draft annotation lifecycle", () => {
     document.body.append(container);
     const root = createRoot(container);
 
-    await act(async () => root.render(<DraftHarness conversationKey="A" />));
+    await act(async () => root.render(<DraftHarness conversationIdentity={conversationA} />));
     await act(async () => latestDrafts.addAnnotation(annotation));
     await act(async () => latestDrafts.updateAnnotation(annotation.id, "latest edit"));
-    await act(async () => root.render(<DraftHarness conversationKey="B" />));
-    await act(async () => root.render(<DraftHarness conversationKey="A" />));
+    await act(async () => root.render(<DraftHarness conversationIdentity={conversationB} />));
+    await act(async () => root.render(<DraftHarness conversationIdentity={conversationA} />));
 
     await act(async () => {
       const save = pendingSaves[0];
-      storedDrafts.set(save.conversationKey, save.annotations);
+      storedDrafts.set(save.conversation.id, save.annotations);
       save.resolve();
     });
     await act(async () => {
       const save = pendingSaves[1];
-      storedDrafts.set(save.conversationKey, save.annotations);
+      storedDrafts.set(save.conversation.id, save.annotations);
       save.resolve();
     });
 
@@ -227,7 +256,7 @@ describe("draft annotation lifecycle", () => {
     document.body.append(container);
     const root = createRoot(container);
 
-    await act(async () => root.render(<DraftHarness conversationKey="A" />));
+    await act(async () => root.render(<DraftHarness conversationIdentity={conversationA} />));
     await act(async () => latestDrafts.addAnnotation(annotation));
     await act(async () => latestDrafts.updateAnnotation(annotation.id, "updated"));
     expect(draftStorage.save).toHaveBeenCalledTimes(1);
@@ -255,7 +284,7 @@ describe("draft annotation lifecycle", () => {
     document.body.append(container);
     const root = createRoot(container);
 
-    await act(async () => root.render(<DraftHarness conversationKey="A" />));
+    await act(async () => root.render(<DraftHarness conversationIdentity={conversationA} />));
     await act(async () => latestDrafts.addAnnotation(annotation));
     await act(async () =>
       latestDrafts.addAnnotation({
@@ -296,7 +325,11 @@ describe("draft annotation lifecycle", () => {
   });
 });
 
-function DraftHarness({ conversationKey }: { conversationKey: string }) {
-  latestDrafts = useDraftAnnotations(conversationKey);
+function DraftHarness({ conversationIdentity }: { conversationIdentity: ConversationIdentity }) {
+  latestDrafts = useDraftAnnotations(conversationIdentity);
   return null;
+}
+
+function identifiedConversation(id: string): IdentifiedConversation {
+  return { kind: "identified", id };
 }

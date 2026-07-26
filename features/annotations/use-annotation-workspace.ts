@@ -5,10 +5,11 @@ import { useI18n } from "@/features/i18n/I18nProvider";
 
 import type { AnnotationEditorState, DraftAnnotation, SelectionDraft } from "./annotation";
 import type { ProjectedAnnotation } from "./annotation-projection";
+import { conversationScopeKey } from "./conversation-identity";
 import { compileAnnotatedPrompt } from "./prompt-compiler";
 import { registerSendInterceptor, type AnnotatedSendState } from "./register-send-interceptor";
 import { useAnnotationProjection } from "./use-annotation-projection";
-import { useConversationKey } from "./use-conversation-key";
+import { useConversationIdentity } from "./use-conversation-identity";
 import { useDeferredAnnotationDeletion } from "./use-deferred-annotation-deletion";
 import { useDraftAnnotations } from "./use-draft-annotations";
 
@@ -17,7 +18,8 @@ type SendController = ReturnType<typeof registerSendInterceptor>;
 export function useAnnotationWorkspace() {
   const host = useHost();
   const { locale } = useI18n();
-  const conversationKey = useConversationKey();
+  const conversationIdentity = useConversationIdentity();
+  const conversationScope = conversationScopeKey(conversationIdentity);
   const {
     annotations,
     status,
@@ -29,7 +31,7 @@ export function useAnnotationWorkspace() {
     removeSentAnnotations,
     clearAnnotations,
     retry,
-  } = useDraftAnnotations(conversationKey);
+  } = useDraftAnnotations(conversationIdentity);
   const [sendState, setSendState] = useState<AnnotatedSendState>({ status: "idle" });
   const [editorState, setEditorState] = useState<AnnotationEditorState>({ status: "hidden" });
   const {
@@ -38,7 +40,7 @@ export function useAnnotationWorkspace() {
     pendingDeletionExpiresAt,
     requestDeletion,
     visibleAnnotations,
-  } = useDeferredAnnotationDeletion(annotations, conversationKey, removeAnnotations);
+  } = useDeferredAnnotationDeletion(annotations, conversationScope, removeAnnotations);
   const activeAnnotationId = editorState.status === "hidden" ? null : editorState.annotationId;
   const projectedAnnotations = useAnnotationProjection(visibleAnnotations, activeAnnotationId);
   const activeProjection = projectedAnnotations.find(
@@ -75,7 +77,7 @@ export function useAnnotationWorkspace() {
     };
   }, [closeEditor, host, removeSentAnnotations]);
 
-  useEffect(closeEditor, [closeEditor, conversationKey]);
+  useEffect(closeEditor, [closeEditor, conversationScope]);
 
   const startAnnotation = useCallback(
     (draft: SelectionDraft) => {
@@ -171,7 +173,7 @@ export function useAnnotationWorkspace() {
     selection: {
       isEnabled: isHydrated,
       onActivate: startAnnotation,
-      resetKey: conversationKey,
+      resetKey: conversationScope,
     },
     summary: {
       annotations: projectedAnnotations,
