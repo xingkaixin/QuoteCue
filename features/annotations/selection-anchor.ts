@@ -141,7 +141,8 @@ function matchingEdgeLength(left: string, right: string, edge: "start" | "end") 
 }
 
 function rangeFromOffsets(root: HTMLElement, start: number, end: number) {
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const ownerDocument = root.ownerDocument;
+  const walker = ownerDocument.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   let currentOffset = 0;
   let startBoundary: RangeBoundary | null = null;
   let endBoundary: RangeBoundary | null = null;
@@ -168,7 +169,7 @@ function rangeFromOffsets(root: HTMLElement, start: number, end: number) {
     return null;
   }
 
-  const range = document.createRange();
+  const range = ownerDocument.createRange();
   range.setStart(startBoundary.node, startBoundary.offset);
   range.setEnd(endBoundary.node, endBoundary.offset);
   return range;

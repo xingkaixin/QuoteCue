@@ -10,56 +10,40 @@ import {
 } from "@/features/annotations/selection-anchor";
 import { currentVisualViewportBounds } from "@/features/layout/use-visual-viewport";
 
+import {
+  available,
+  createHostContext,
+  once,
+  unavailable,
+  type ComposerSnapshot,
+  type HostEnvironment,
+  type HostResult,
+  type HostUnavailableReason,
+  type SelectionInvalidationReason,
+  type SiteAdapter,
+} from "./host-context";
+import { createTextNormalizer } from "./text-normalizer";
+
+export type {
+  ComposerSnapshot,
+  HostEnvironment,
+  HostResult,
+  HostUnavailableReason,
+  SelectionInvalidationReason,
+  SiteAdapter,
+} from "./host-context";
+
 const CONTEXT_LENGTH = 48;
-const HISTORY_CHANGE_EVENT = "quotecue:history-change";
 const NATIVE_SELECTION_ACTION_ATTRIBUTE = "data-quotecue-native-action";
 const SCROLLABLE_OVERFLOW_PATTERN = /auto|overlay|scroll/;
 const SEND_ACCEPT_TIMEOUT_MS = 15_000;
 const SEND_BUTTON_APPEAR_TIMEOUT_MS = 2_000;
-const historyPatchedWindows = new WeakSet<Window>();
 
-export type HostUnavailableReason =
-  | "assistant-message-unavailable"
-  | "composer-surface-unavailable"
-  | "composer-unavailable"
-  | "selection-unavailable"
-  | "send-control-unavailable";
-
-export type HostResult<T> =
-  | { status: "available"; value: T }
-  | { status: "unavailable"; reason: HostUnavailableReason };
-
-export type ComposerSnapshot = {
-  element: HTMLElement;
-  text: string;
-};
-
-export type HostComposerLayout = {
+type HostComposerLayout = {
   action: HTMLElement | null;
   send: { height: number; left: number; top: number; width: number };
   summary: { left: number; top: number };
   surface: HTMLElement;
-};
-
-export type ComposerKind = "contenteditable" | "textarea";
-
-export type SelectionActionMode = "native-toolbar" | "overlay";
-
-export type SelectionInvalidationReason = "content" | "layout";
-
-export type SiteAdapter = {
-  assistantMessageSelector: string;
-  composerButtonSelector: string;
-  composerKind: ComposerKind;
-  composerSelector: string;
-  conversationPathPattern: RegExp;
-  selectionActionMode: SelectionActionMode;
-  sendButtonSelector: string;
-  userMessageSelector: string;
-  isAssistantMessage?(message: HTMLElement): boolean;
-  isSendButtonDisabled?(button: HTMLElement): boolean;
-  messageId(message: HTMLElement): string | undefined;
-  normalizeSubmittedText?(text: string): string;
 };
 
 type AcceptedSendWatcherOptions = {
@@ -71,37 +55,15 @@ type AcceptedSendWatcherOptions = {
 
 type SelectionRevealStatus = "scrolled" | "visible";
 
-type PageMutationInterest = {
-  attributeFilter?: readonly string[];
-  characterData?: boolean;
-  childList?: boolean;
-};
-
-type PageMutationSubscription = {
-  callback: () => void;
-  interest: PageMutationInterest;
-};
-
-type ViewportSubscription = {
-  callback: () => void;
-};
-
-export type HostEnvironment = {
-  document: Document;
-  logger?: (message: string) => void;
-  window: Window;
-};
-
 export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter) {
-  const { document: hostDocument, logger, window: hostWindow } = environment;
-  const pageObserver = createPageObserver(hostDocument, hostWindow);
+  const context = createHostContext(environment, adapter);
+  const { document: hostDocument, logger, signals, window: hostWindow } = context;
+  const { composerText, normalizedText } = createTextNormalizer(adapter);
   let cachedAssistantMessage: HTMLElement | null = null;
 
   function observePage(callback: () => void, includeViewport: boolean) {
-    const stopMutationObservation = pageObserver.observeMutations(callback, { childList: true });
-    const stopViewportObservation = includeViewport
-      ? pageObserver.observeViewport(callback)
-      : undefined;
+    const stopMutationObservation = signals.observeMutations(callback, { childList: true });
+    const stopViewportObservation = includeViewport ? signals.observeViewport(callback) : undefined;
 
     return () => {
       stopMutationObservation();
@@ -110,11 +72,11 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
   }
 
   function observeSelectionInvalidation(callback: (reason: SelectionInvalidationReason) => void) {
-    const stopMutationObservation = pageObserver.observeMutations(() => callback("content"), {
+    const stopMutationObservation = signals.observeMutations(() => callback("content"), {
       characterData: true,
       childList: true,
     });
-    const stopViewportObservation = pageObserver.observeViewport(() => callback("layout"));
+    const stopViewportObservation = signals.observeViewport(() => callback("layout"));
 
     return () => {
       stopMutationObservation();
@@ -290,7 +252,7 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
         insertAction();
       });
     };
-    const stopObserving = pageObserver.observeMutations(scheduleInsert, { childList: true });
+    const stopObserving = signals.observeMutations(scheduleInsert, { childList: true });
 
     insertAction();
 
@@ -364,15 +326,6 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
 
   function currentComposer() {
     return hostDocument.querySelector<HTMLElement>(adapter.composerSelector);
-  }
-
-  function composerText(composer: HTMLElement) {
-    if (adapter.composerKind === "textarea" && composer instanceof HTMLTextAreaElement) {
-      return composer.value;
-    }
-    return typeof composer.innerText === "string"
-      ? composer.innerText
-      : (composer.textContent ?? "");
   }
 
   function composerSnapshot(): HostResult<ComposerSnapshot> {
@@ -503,7 +456,7 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
         }
       };
       const onAbort = () => finish(unavailable("send-control-unavailable"));
-      stopObserving = pageObserver.observeMutations(findButton, {
+      stopObserving = signals.observeMutations(findButton, {
         attributeFilter: ["aria-disabled", "class", "disabled"],
         childList: true,
       });
@@ -574,7 +527,7 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
         options.onAccepted();
       }
     };
-    stopObserving = pageObserver.observeMutations(findAcceptedMessage, {
+    stopObserving = signals.observeMutations(findAcceptedMessage, {
       characterData: true,
       childList: true,
     });
@@ -677,13 +630,6 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
     return Array.from(hostDocument.querySelectorAll<HTMLElement>(adapter.userMessageSelector));
   }
 
-  // 折叠空白后比较：宿主会把段落间换行重排（\n\n 与 \n、fallback 下甚至变空格），
-  // 精确相等会漏认已发送的消息；折叠后仍是全文强匹配，不放松确认语义
-  function normalizedText(value: HTMLElement | string) {
-    const text = typeof value === "string" ? value : composerText(value);
-    return adapter.normalizeSubmittedText?.(text) ?? text.replace(/\s+/g, " ").trim();
-  }
-
   function selectComposerContents(composer: HTMLElement) {
     const selection = hostWindow.getSelection();
     const range = hostDocument.createRange();
@@ -753,7 +699,7 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
         );
       },
       subscribe(callback: () => void) {
-        return subscribeToNavigation(hostWindow, callback);
+        return signals.subscribeNavigation(callback);
       },
     },
     layout: {
@@ -778,128 +724,6 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
 
 export type Host = ReturnType<typeof createDomHost>;
 
-function createPageObserver(hostDocument: Document, hostWindow: Window) {
-  const mutationSubscriptions = new Set<PageMutationSubscription>();
-  const viewportSubscriptions = new Set<ViewportSubscription>();
-  let mutationObserver: MutationObserver | null = null;
-
-  const dispatchMutations = (records: MutationRecord[]) => {
-    for (const subscription of [...mutationSubscriptions]) {
-      if (records.some((record) => matchesMutationInterest(record, subscription.interest))) {
-        subscription.callback();
-      }
-    }
-  };
-  const updateMutationObservation = () => {
-    if (mutationSubscriptions.size === 0) {
-      mutationObserver?.disconnect();
-      mutationObserver = null;
-      return;
-    }
-
-    mutationObserver ??= new MutationObserver(dispatchMutations);
-    const interests = [...mutationSubscriptions].map(({ interest }) => interest);
-    const attributeFilter = [
-      ...new Set(interests.flatMap(({ attributeFilter: attributes }) => attributes ?? [])),
-    ];
-    mutationObserver.observe(hostDocument.body, {
-      ...(attributeFilter.length > 0 ? { attributeFilter, attributes: true } : {}),
-      characterData: interests.some(({ characterData }) => characterData),
-      childList: interests.some(({ childList }) => childList),
-      subtree: true,
-    });
-  };
-  const onViewportChange = () => {
-    for (const { callback } of [...viewportSubscriptions]) {
-      callback();
-    }
-  };
-
-  return {
-    observeMutations(callback: () => void, interest: PageMutationInterest) {
-      const subscription = { callback, interest };
-      mutationSubscriptions.add(subscription);
-      updateMutationObservation();
-
-      return once(() => {
-        mutationSubscriptions.delete(subscription);
-        updateMutationObservation();
-      });
-    },
-    observeViewport(callback: () => void) {
-      const subscription = { callback };
-      viewportSubscriptions.add(subscription);
-      if (viewportSubscriptions.size === 1) {
-        hostWindow.addEventListener("resize", onViewportChange);
-        hostWindow.addEventListener("scroll", onViewportChange, true);
-      }
-
-      return once(() => {
-        viewportSubscriptions.delete(subscription);
-        if (viewportSubscriptions.size === 0) {
-          hostWindow.removeEventListener("resize", onViewportChange);
-          hostWindow.removeEventListener("scroll", onViewportChange, true);
-        }
-      });
-    },
-  };
-}
-
-function matchesMutationInterest(record: MutationRecord, interest: PageMutationInterest) {
-  switch (record.type) {
-    case "attributes":
-      return (
-        record.attributeName !== null && interest.attributeFilter?.includes(record.attributeName)
-      );
-    case "characterData":
-      return interest.characterData === true;
-    case "childList":
-      return interest.childList === true;
-    default:
-      return false;
-  }
-}
-
-function subscribeToNavigation(hostWindow: Window, callback: () => void) {
-  patchHistoryOnce(hostWindow);
-  hostWindow.addEventListener(HISTORY_CHANGE_EVENT, callback);
-  hostWindow.addEventListener("popstate", callback);
-
-  return once(() => {
-    hostWindow.removeEventListener(HISTORY_CHANGE_EVENT, callback);
-    hostWindow.removeEventListener("popstate", callback);
-  });
-}
-
-function patchHistoryOnce(hostWindow: Window) {
-  if (historyPatchedWindows.has(hostWindow)) {
-    return;
-  }
-
-  historyPatchedWindows.add(hostWindow);
-  wrapHistoryMethod(hostWindow, "pushState");
-  wrapHistoryMethod(hostWindow, "replaceState");
-}
-
-function wrapHistoryMethod(hostWindow: Window, method: "pushState" | "replaceState") {
-  const original = hostWindow.history[method];
-  hostWindow.history[method] = function (data: unknown, unused: string, url?: string | URL | null) {
-    original.call(this, data, unused, url);
-    hostWindow.dispatchEvent(new Event(HISTORY_CHANGE_EVENT));
-  };
-}
-
-function once(callback: () => void) {
-  let active = true;
-  return () => {
-    if (!active) {
-      return;
-    }
-    active = false;
-    callback();
-  };
-}
-
 // 编辑器 preventDefault 即表示接管了粘贴；返回 false 交由调用方降级
 function dispatchSyntheticPaste(composer: HTMLElement, text: string) {
   if (typeof ClipboardEvent !== "function" || typeof DataTransfer !== "function") {
@@ -910,14 +734,6 @@ function dispatchSyntheticPaste(composer: HTMLElement, text: string) {
   return !composer.dispatchEvent(
     new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData }),
   );
-}
-
-function available<T>(value: T): HostResult<T> {
-  return { status: "available", value };
-}
-
-function unavailable(reason: HostUnavailableReason): HostResult<never> {
-  return { reason, status: "unavailable" };
 }
 
 type SelectionToolbarCandidate = {
