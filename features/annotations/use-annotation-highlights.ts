@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { activeHost } from "@/features/host/active-host";
+import type { SelectionInvalidationReason } from "@/features/host/dom-host";
 
 import type { DraftAnnotation } from "./annotation";
 import { rangeEndpointRect, restoreTextAnchorFromIndex } from "./selection-anchor";
@@ -44,19 +45,29 @@ export function useAnnotationHighlights(
 
     ensureHighlightStyle();
     let projectionFrame: number | undefined;
-    const scheduleProjection = () => {
+    let pendingInvalidation: SelectionInvalidationReason | undefined;
+    let rangeByAnnotationId = new Map<string, Range | null>();
+    const scheduleProjection = (reason: SelectionInvalidationReason) => {
+      if (reason === "content" || pendingInvalidation === undefined) {
+        pendingInvalidation = reason;
+      }
       if (projectionFrame !== undefined) {
         return;
       }
       projectionFrame = requestAnimationFrame(() => {
         projectionFrame = undefined;
-        const projection = projectAnnotations(annotations, activeAnnotationId);
+        const invalidation = pendingInvalidation ?? "layout";
+        pendingInvalidation = undefined;
+        if (invalidation === "content") {
+          rangeByAnnotationId = resolveAnnotationRanges(annotations);
+        }
+        const projection = projectAnnotations(annotations, activeAnnotationId, rangeByAnnotationId);
         renderActiveHighlight(projection.activeRange);
         commitLayout(projection);
       });
     };
     const stopObserving = activeHost.selection.observeInvalidation(scheduleProjection);
-    scheduleProjection();
+    scheduleProjection("content");
 
     return () => {
       stopObserving();
@@ -81,11 +92,11 @@ export function useAnnotationHighlights(
 function projectAnnotations(
   annotations: DraftAnnotation[],
   activeAnnotationId: string | null,
+  rangeByAnnotationId: ReadonlyMap<string, Range | null>,
 ): AnnotationProjection {
-  const messageIndex = activeHost.selection.messageIndex();
   const entries = annotations.map((annotation) => ({
     annotation,
-    range: restoreTextAnchorFromIndex(annotation.anchor, messageIndex),
+    range: rangeByAnnotationId.get(annotation.id) ?? null,
   }));
   const unresolvedAnnotationIds = new Set(
     entries.filter(({ range }) => range === null).map(({ annotation }) => annotation.id),
@@ -98,6 +109,17 @@ function projectAnnotations(
     entries.find(({ annotation }) => annotation.id === activeAnnotationId)?.range ?? null;
 
   return { activeRange, badgePositions, unresolvedAnnotationIds };
+}
+
+function resolveAnnotationRanges(annotations: DraftAnnotation[]) {
+  const messageIndex = activeHost.selection.messageIndex();
+  const messageTextCache = new Map<HTMLElement, string>();
+  return new Map(
+    annotations.map((annotation) => [
+      annotation.id,
+      restoreTextAnchorFromIndex(annotation.anchor, messageIndex, messageTextCache),
+    ]),
+  );
 }
 
 function ensureHighlightStyle() {

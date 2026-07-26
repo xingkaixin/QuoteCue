@@ -8,20 +8,23 @@ import { useAnnotationHighlights } from "@/features/annotations/use-annotation-h
 const geometry = vi.hoisted(() => ({
   anchorNode: null as Node | null,
   isResolved: true,
+  restoreCount: 0,
   top: 200,
 }));
 let renderCount = 0;
 
 vi.mock("@/features/annotations/selection-anchor", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/features/annotations/selection-anchor")>()),
-  restoreTextAnchorFromIndex: () =>
-    geometry.isResolved
+  restoreTextAnchorFromIndex: () => {
+    geometry.restoreCount += 1;
+    return geometry.isResolved
       ? {
           endContainer: geometry.anchorNode,
           getBoundingClientRect: () => annotationRect(),
           getClientRects: () => [annotationRect()],
         }
-      : null,
+      : null;
+  },
 }));
 
 const annotation: DraftAnnotation = {
@@ -41,6 +44,7 @@ const annotationList = [annotation];
 afterEach(() => {
   geometry.anchorNode = null;
   geometry.isResolved = true;
+  geometry.restoreCount = 0;
   geometry.top = 200;
   renderCount = 0;
   Reflect.deleteProperty(document, "elementsFromPoint");
@@ -66,10 +70,12 @@ describe("annotation badge scrolling", () => {
     expect(container.querySelector("output")?.dataset.top).toBe("190");
 
     geometry.top = 100;
+    geometry.restoreCount = 0;
     window.dispatchEvent(new Event("scroll"));
     await act(async () => vi.advanceTimersByTimeAsync(17));
 
     expect(container.querySelector("output")?.dataset.top).toBe("90");
+    expect(geometry.restoreCount).toBe(0);
 
     await act(async () => root.unmount());
   });
@@ -90,6 +96,29 @@ describe("annotation badge scrolling", () => {
     expect(output?.dataset.top).toBeUndefined();
     expect(output?.dataset.unresolved).toBe("true");
 
+    await act(async () => root.unmount());
+  });
+
+  it("re-resolves and fails closed after a content mutation", async () => {
+    vi.useFakeTimers();
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    Object.defineProperty(globalThis, "CSS", { configurable: true, value: {} });
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    await act(async () => root.render(<HighlightHarness />));
+    await act(async () => vi.advanceTimersByTimeAsync(17));
+    geometry.restoreCount = 0;
+    geometry.isResolved = false;
+    document.body.append(document.createElement("span"));
+    await act(async () => {
+      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(17);
+    });
+
+    expect(geometry.restoreCount).toBe(1);
+    expect(container.querySelector("output")?.dataset.unresolved).toBe("true");
     await act(async () => root.unmount());
   });
 
