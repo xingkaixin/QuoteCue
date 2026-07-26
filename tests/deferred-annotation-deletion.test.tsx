@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { DraftAnnotation } from "@/features/annotations/annotation";
 import { useDeferredAnnotationDeletion } from "@/features/annotations/use-deferred-annotation-deletion";
+import type { ConversationIdentity } from "@/features/host-port/host-port";
 
 const annotations: DraftAnnotation[] = [
   {
@@ -36,6 +37,8 @@ const annotations: DraftAnnotation[] = [
 
 let latestDeletion: ReturnType<typeof useDeferredAnnotationDeletion>;
 const commitDeletions = vi.fn();
+const conversationA = { kind: "identified", id: "A" } as const;
+const conversationB = { kind: "identified", id: "B" } as const;
 
 afterEach(() => {
   commitDeletions.mockReset();
@@ -51,7 +54,7 @@ describe("deferred annotation deletion", () => {
     document.body.append(container);
     const root = createRoot(container);
 
-    await act(async () => root.render(<DeletionHarness scopeKey="A" />));
+    await act(async () => root.render(<DeletionHarness conversationIdentity={conversationA} />));
     await act(async () => latestDeletion.requestDeletion("annotation-a"));
     const firstDeadline = latestDeletion.pendingDeletionExpiresAt;
     expect(latestDeletion.visibleAnnotations.map(({ id }) => id)).toEqual(["annotation-b"]);
@@ -81,7 +84,7 @@ describe("deferred annotation deletion", () => {
     document.body.append(container);
     const root = createRoot(container);
 
-    await act(async () => root.render(<DeletionHarness scopeKey="A" />));
+    await act(async () => root.render(<DeletionHarness conversationIdentity={conversationA} />));
     await act(async () => latestDeletion.requestDeletion("annotation-a"));
     await act(async () => latestDeletion.requestDeletion("annotation-b"));
     await act(async () => vi.advanceTimersByTime(5_000));
@@ -93,16 +96,37 @@ describe("deferred annotation deletion", () => {
     await act(async () => root.unmount());
   });
 
-  it("drops a pending batch when the conversation scope changes", async () => {
+  it("preserves a pending batch for an equivalent conversation identity", async () => {
     vi.useFakeTimers();
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     const container = document.createElement("div");
     document.body.append(container);
     const root = createRoot(container);
 
-    await act(async () => root.render(<DeletionHarness scopeKey="A" />));
+    await act(async () => root.render(<DeletionHarness conversationIdentity={conversationA} />));
     await act(async () => latestDeletion.requestDeletion("annotation-a"));
-    await act(async () => root.render(<DeletionHarness scopeKey="B" />));
+    await act(async () =>
+      root.render(
+        <DeletionHarness conversationIdentity={{ kind: "identified", id: conversationA.id }} />,
+      ),
+    );
+
+    expect(latestDeletion.pendingDeletionCount).toBe(1);
+    expect(latestDeletion.visibleAnnotations.map(({ id }) => id)).toEqual(["annotation-b"]);
+
+    await act(async () => root.unmount());
+  });
+
+  it("drops a pending batch when the conversation identity changes", async () => {
+    vi.useFakeTimers();
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    await act(async () => root.render(<DeletionHarness conversationIdentity={conversationA} />));
+    await act(async () => latestDeletion.requestDeletion("annotation-a"));
+    await act(async () => root.render(<DeletionHarness conversationIdentity={conversationB} />));
 
     expect(latestDeletion.pendingDeletionCount).toBe(0);
     expect(latestDeletion.visibleAnnotations.map(({ id }) => id)).toEqual([
@@ -116,13 +140,13 @@ describe("deferred annotation deletion", () => {
   });
 });
 
-function DeletionHarness({ scopeKey }: { scopeKey: string }) {
+function DeletionHarness({ conversationIdentity }: { conversationIdentity: ConversationIdentity }) {
   const [currentAnnotations, setCurrentAnnotations] = useState(annotations);
   const commit = useCallback((annotationIds: readonly string[]) => {
     commitDeletions(annotationIds);
     const deletedIds = new Set(annotationIds);
     setCurrentAnnotations((current) => current.filter(({ id }) => !deletedIds.has(id)));
   }, []);
-  latestDeletion = useDeferredAnnotationDeletion(currentAnnotations, scopeKey, commit);
+  latestDeletion = useDeferredAnnotationDeletion(currentAnnotations, conversationIdentity, commit);
   return null;
 }

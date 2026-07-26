@@ -46,12 +46,12 @@ export type TextAnchor = TextAnchorBase &
 
 export type SelectionRect = Pick<DOMRect, "bottom" | "height" | "left" | "right" | "top" | "width">;
 
-export type SelectionDraft = {
+export type AnchoredSelection = {
   anchor: TextAnchor;
   rect: SelectionRect;
 };
 
-export type SelectionCapture = SelectionDraft & {
+export type SelectionCapture = AnchoredSelection & {
   actionRect: SelectionRect;
 };
 
@@ -62,9 +62,9 @@ export type HostLayout = {
   surface: HTMLElement;
 };
 
-type AcceptedSendWatcherOptions = {
+type ConfirmedSendWatcherOptions = {
   expectedText: string;
-  onAccepted: () => void;
+  onConfirmed: () => void;
   onTimeout: () => void;
   signal: AbortSignal;
 };
@@ -77,7 +77,7 @@ export type Host = {
     snapshot(): HostResult<ComposerSnapshot>;
     subscribeToSubmit(callback: (event: Event, button: HTMLElement | null) => void): () => void;
     waitForButton(signal: AbortSignal): Promise<HostResult<HTMLElement>>;
-    watchAcceptedSend(options: AcceptedSendWatcherOptions): () => void;
+    watchConfirmedSend(options: ConfirmedSendWatcherOptions): () => void;
   };
   conversation: {
     identity(sessionKey: string): ConversationIdentity;

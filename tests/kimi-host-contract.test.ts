@@ -38,20 +38,20 @@ describe("Kimi host contract", () => {
         appendKimiUserMessage("user-two", fixture.composer.innerText);
       }
     });
-    const onSendAccepted = vi.fn();
+    const onSendConfirmed = vi.fn();
     const interceptor = registerSendInterceptor({
       annotations: () => numberAnnotations([annotation()]),
       compilePrompt: compileAnnotatedPrompt,
       host,
       locale: () => "zh-CN",
-      onSendAccepted,
+      onSendConfirmed,
     });
 
     await expect(interceptor.submit()).resolves.toEqual({
-      status: "accepted",
+      status: "confirmed",
       annotationIds: ["annotation-one"],
     });
-    expect(onSendAccepted).toHaveBeenCalledWith([annotation()]);
+    expect(onSendConfirmed).toHaveBeenCalledWith([annotation()]);
     expect(fixture.composer.innerText).toContain("[批注 1]");
     interceptor.dispose();
   });
@@ -75,11 +75,11 @@ describe("Kimi host contract", () => {
       compilePrompt: compileAnnotatedPrompt,
       host: createKimiHost({ document, window }),
       locale: () => "zh-CN",
-      onSendAccepted: vi.fn(),
+      onSendConfirmed: vi.fn(),
     });
 
     await expect(interceptor.submit()).resolves.toEqual({
-      status: "accepted",
+      status: "confirmed",
       annotationIds: ["annotation-one"],
     });
     expect(document.execCommand).not.toHaveBeenCalled();
@@ -87,7 +87,7 @@ describe("Kimi host contract", () => {
     interceptor.dispose();
   });
 
-  it("accepts Lexical whitespace reflow without weakening non-whitespace matching", async () => {
+  it("confirms Lexical whitespace reflow without weakening non-whitespace matching", async () => {
     const fixture = installKimiHostFixture("");
     fixture.sendControl.classList.remove("disabled");
     vi.mocked(document.execCommand).mockImplementation((command, _showUi, value) => {
@@ -104,18 +104,18 @@ describe("Kimi host contract", () => {
       compilePrompt: compileAnnotatedPrompt,
       host: createKimiHost({ document, window }),
       locale: () => "zh-CN",
-      onSendAccepted: vi.fn(),
+      onSendConfirmed: vi.fn(),
     });
 
     await expect(interceptor.submit()).resolves.toEqual({
-      status: "accepted",
+      status: "confirmed",
       annotationIds: ["annotation-one"],
     });
     expect(fixture.composer.innerText).toContain("回答：[批注 1]选中文本：");
     interceptor.dispose();
   });
 
-  it("accepts an unidentified optimistic user message after an unidentified predecessor", async () => {
+  it("confirms an unidentified optimistic user message after an unidentified predecessor", async () => {
     const fixture = installKimiHostFixture("");
     appendKimiUserMessage(undefined, "Previous optimistic message");
     const host = createKimiHost({ document, window });
@@ -130,11 +130,11 @@ describe("Kimi host contract", () => {
       compilePrompt: compileAnnotatedPrompt,
       host,
       locale: () => "zh-CN",
-      onSendAccepted: vi.fn(),
+      onSendConfirmed: vi.fn(),
     });
 
     await expect(interceptor.submit()).resolves.toEqual({
-      status: "accepted",
+      status: "confirmed",
       annotationIds: ["annotation-one"],
     });
     interceptor.dispose();

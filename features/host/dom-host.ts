@@ -7,6 +7,7 @@ import { createSendPipeline } from "./send-pipeline";
 import { createTextNormalizer } from "./text-normalizer";
 
 export type {
+  AnchoredSelection,
   ComposerSnapshot,
   ConversationIdentity,
   Host,
@@ -14,7 +15,6 @@ export type {
   HostResult,
   HostUnavailableReason,
   SelectionCapture,
-  SelectionDraft,
   SelectionInvalidationReason,
   SelectionPresentationMode,
   SelectionRect,
@@ -38,7 +38,7 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
       snapshot: composerDriver.snapshot,
       subscribeToSubmit: sendPipeline.subscribeToSubmit,
       waitForButton: sendPipeline.waitForButton,
-      watchAcceptedSend: sendPipeline.watchAcceptedSend,
+      watchConfirmedSend: sendPipeline.watchConfirmedSend,
     },
     conversation: {
       identity(sessionKey: string) {

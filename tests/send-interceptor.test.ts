@@ -45,8 +45,8 @@ afterEach(() => {
 describe("registerSendInterceptor", () => {
   it("submits annotations without adding an empty supplemental question", async () => {
     const composer = installComposer();
-    const onSendAccepted = vi.fn();
-    const interceptor = createInterceptor(onSendAccepted);
+    const onSendConfirmed = vi.fn();
+    const interceptor = createInterceptor(onSendConfirmed);
     const result = interceptor.submit();
     let replayedText = "";
     const onNativeSend = vi.fn(() => {
@@ -57,27 +57,27 @@ describe("registerSendInterceptor", () => {
     installSendButton(onNativeSend);
 
     await expect(result).resolves.toEqual({
-      status: "accepted",
+      status: "confirmed",
       annotationIds: ["annotation-1"],
     });
 
     expect(replayedText).toContain("[Annotation 1]");
     expect(replayedText).not.toContain("[Supplemental question]");
     expect(onNativeSend).toHaveBeenCalledOnce();
-    expect(onSendAccepted).toHaveBeenCalledOnce();
+    expect(onSendConfirmed).toHaveBeenCalledOnce();
     interceptor.dispose();
   });
 
   it("confirms the annotation snapshot compiled before later draft changes", async () => {
     const composer = installComposer("original question");
-    const onSendAccepted = vi.fn();
+    const onSendConfirmed = vi.fn();
     let currentAnnotations = [annotation];
     const interceptor = registerSendInterceptor({
       annotations: () => numberAnnotations(currentAnnotations),
       compilePrompt: compileAnnotatedPrompt,
       host: createChatGptHost({ document, window }),
       locale: () => "en",
-      onSendAccepted,
+      onSendConfirmed,
     });
     const sendButton = installSendButton(() => {
       const compiledText = composer.textContent ?? "";
@@ -87,10 +87,10 @@ describe("registerSendInterceptor", () => {
     });
 
     await expect(interceptor.submit(sendButton)).resolves.toEqual({
-      status: "accepted",
+      status: "confirmed",
       annotationIds: ["annotation-1"],
     });
-    expect(onSendAccepted).toHaveBeenCalledWith([annotation]);
+    expect(onSendConfirmed).toHaveBeenCalledWith([annotation]);
     interceptor.dispose();
   });
 
@@ -247,9 +247,9 @@ describe("registerSendInterceptor", () => {
     vi.spyOn(host.composer, "replaceText")
       .mockImplementationOnce(replace)
       .mockImplementation(originalReplace);
-    const onSendAccepted = vi.fn();
+    const onSendConfirmed = vi.fn();
     const onStateChange = vi.fn();
-    const interceptor = createInterceptor(onSendAccepted, { host, onStateChange });
+    const interceptor = createInterceptor(onSendConfirmed, { host, onStateChange });
     let retriedText = "";
     const sendButton = installSendButton(() => {
       retriedText = composer.textContent ?? "";
@@ -271,12 +271,12 @@ describe("registerSendInterceptor", () => {
     );
 
     await expect(interceptor.retry()).resolves.toEqual({
-      status: "accepted",
+      status: "confirmed",
       annotationIds: ["annotation-1"],
     });
     expect(retriedText).toContain("[Supplemental question]\noriginal question");
     expect(retriedText.match(/\[Annotation 1\]/g)).toHaveLength(1);
-    expect(onSendAccepted).toHaveBeenCalledWith([annotation]);
+    expect(onSendConfirmed).toHaveBeenCalledWith([annotation]);
     expect(interceptor.getState()).toEqual({ status: "idle" });
     interceptor.dispose();
   });
@@ -334,12 +334,12 @@ describe("registerSendInterceptor", () => {
     const controller = new AbortController();
     controller.abort();
     const host = createChatGptHost({ document, logger, window });
-    const onAccepted = vi.fn();
+    const onConfirmed = vi.fn();
     const onTimeout = vi.fn();
 
-    const stop = host.composer.watchAcceptedSend({
+    const stop = host.composer.watchConfirmedSend({
       expectedText: "compiled prompt",
-      onAccepted,
+      onConfirmed,
       onTimeout,
       signal: controller.signal,
     });
@@ -348,7 +348,7 @@ describe("registerSendInterceptor", () => {
     expect(logger).toHaveBeenCalledWith("[QuoteCue host] send confirmation skipped: aborted");
     expect(observe).not.toHaveBeenCalled();
     expect(setTimeout).not.toHaveBeenCalled();
-    expect(onAccepted).not.toHaveBeenCalled();
+    expect(onConfirmed).not.toHaveBeenCalled();
     expect(onTimeout).not.toHaveBeenCalled();
     stop();
   });
@@ -363,13 +363,13 @@ describe("registerSendInterceptor", () => {
       resolveButton = resolve;
     });
     const waitForButton = vi.spyOn(host.composer, "waitForButton").mockReturnValue(buttonResult);
-    const watchAcceptedSend = vi.spyOn(host.composer, "watchAcceptedSend");
+    const watchConfirmedSend = vi.spyOn(host.composer, "watchConfirmedSend");
     const interceptor = registerSendInterceptor({
       annotations: () => numberAnnotations([annotation]),
       compilePrompt: compileAnnotatedPrompt,
       host,
       locale: () => "en",
-      onSendAccepted: vi.fn(),
+      onSendConfirmed: vi.fn(),
     });
 
     const result = interceptor.submit();
@@ -379,15 +379,15 @@ describe("registerSendInterceptor", () => {
 
     resolveButton({ status: "available", value: sendButton });
     await Promise.resolve();
-    expect(watchAcceptedSend).not.toHaveBeenCalled();
+    expect(watchConfirmedSend).not.toHaveBeenCalled();
     expect(composer.textContent).toBe("original question");
   });
 
-  it("does not accept a send when only the composer becomes empty", async () => {
+  it("does not confirm a send when only the composer becomes empty", async () => {
     vi.useFakeTimers();
     const composer = installComposer("original question");
-    const onSendAccepted = vi.fn();
-    const interceptor = createInterceptor(onSendAccepted);
+    const onSendConfirmed = vi.fn();
+    const interceptor = createInterceptor(onSendConfirmed);
     const sendButton = installSendButton(() => composer.replaceChildren());
 
     const result = interceptor.submit(sendButton);
@@ -397,7 +397,7 @@ describe("registerSendInterceptor", () => {
       status: "failed",
       reason: "confirmation-timeout",
     });
-    expect(onSendAccepted).not.toHaveBeenCalled();
+    expect(onSendConfirmed).not.toHaveBeenCalled();
     expect(composer.textContent).toBe("");
     interceptor.dispose();
   });
@@ -424,7 +424,7 @@ describe("registerSendInterceptor", () => {
       compilePrompt: compileAnnotatedPrompt,
       host,
       locale: () => "en",
-      onSendAccepted: vi.fn(),
+      onSendConfirmed: vi.fn(),
     });
 
     const result = interceptor.submit(sendButton);
@@ -442,8 +442,8 @@ describe("registerSendInterceptor", () => {
   it("retries an unconfirmed send with the original supplemental question", async () => {
     vi.useFakeTimers();
     const composer = installComposer("original question");
-    const onSendAccepted = vi.fn();
-    const interceptor = createInterceptor(onSendAccepted);
+    const onSendConfirmed = vi.fn();
+    const interceptor = createInterceptor(onSendConfirmed);
     let sendCount = 0;
     let retriedText = "";
     installSendButton(() => {
@@ -464,19 +464,19 @@ describe("registerSendInterceptor", () => {
     });
 
     await expect(interceptor.retry()).resolves.toEqual({
-      status: "accepted",
+      status: "confirmed",
       annotationIds: ["annotation-1"],
     });
     expect(retriedText).toContain("[Supplemental question]\noriginal question");
     expect(retriedText.match(/\[Annotation 1\]/g)).toHaveLength(1);
-    expect(onSendAccepted).toHaveBeenCalledWith([annotation]);
+    expect(onSendConfirmed).toHaveBeenCalledWith([annotation]);
     interceptor.dispose();
   });
 
-  it("accepts a matching user message after the composer node is replaced", async () => {
+  it("confirms a matching user message after the composer node is replaced", async () => {
     const composer = installComposer("original question");
-    const onSendAccepted = vi.fn();
-    const interceptor = createInterceptor(onSendAccepted);
+    const onSendConfirmed = vi.fn();
+    const interceptor = createInterceptor(onSendConfirmed);
     const sendButton = installSendButton(() => {
       const compiledText = composer.textContent ?? "";
       composer.remove();
@@ -485,17 +485,17 @@ describe("registerSendInterceptor", () => {
     });
 
     await expect(interceptor.submit(sendButton)).resolves.toEqual({
-      status: "accepted",
+      status: "confirmed",
       annotationIds: ["annotation-1"],
     });
-    expect(onSendAccepted).toHaveBeenCalledWith([annotation]);
+    expect(onSendConfirmed).toHaveBeenCalledWith([annotation]);
     interceptor.dispose();
   });
 
-  it("accepts a sent message whose line breaks were reflowed by the host", async () => {
+  it("confirms a sent message whose line breaks were reflowed by the host", async () => {
     const composer = installComposer();
-    const onSendAccepted = vi.fn();
-    const interceptor = createInterceptor(onSendAccepted);
+    const onSendConfirmed = vi.fn();
+    const interceptor = createInterceptor(onSendConfirmed);
     installSendButton(() => {
       const reflowedText = (composer.textContent ?? "").replace(/\n{2,}/g, "\n");
       composer.replaceChildren();
@@ -503,10 +503,10 @@ describe("registerSendInterceptor", () => {
     });
 
     await expect(interceptor.submit()).resolves.toEqual({
-      status: "accepted",
+      status: "confirmed",
       annotationIds: ["annotation-1"],
     });
-    expect(onSendAccepted).toHaveBeenCalledWith([annotation]);
+    expect(onSendConfirmed).toHaveBeenCalledWith([annotation]);
     interceptor.dispose();
   });
 
@@ -514,8 +514,8 @@ describe("registerSendInterceptor", () => {
     vi.useFakeTimers();
     const composer = installComposer("original question");
     installUserMessage("old-message", "unrelated");
-    const onSendAccepted = vi.fn();
-    const interceptor = createInterceptor(onSendAccepted);
+    const onSendConfirmed = vi.fn();
+    const interceptor = createInterceptor(onSendConfirmed);
     const sendButton = installSendButton(() => {
       const compiledText = composer.textContent ?? "";
       composer.replaceChildren();
@@ -529,7 +529,7 @@ describe("registerSendInterceptor", () => {
       status: "failed",
       reason: "confirmation-timeout",
     });
-    expect(onSendAccepted).not.toHaveBeenCalled();
+    expect(onSendConfirmed).not.toHaveBeenCalled();
     interceptor.dispose();
   });
 });
@@ -541,7 +541,7 @@ type CreateInterceptorOptions = {
 };
 
 function createInterceptor(
-  onSendAccepted = vi.fn(),
+  onSendConfirmed = vi.fn(),
   {
     annotations = [annotation],
     host = createChatGptHost({ document, window }),
@@ -553,7 +553,7 @@ function createInterceptor(
     compilePrompt: compileAnnotatedPrompt,
     host,
     locale: () => "en",
-    onSendAccepted,
+    onSendConfirmed,
     onStateChange,
   });
 }

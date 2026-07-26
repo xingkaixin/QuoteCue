@@ -197,21 +197,21 @@ export function runHostContractSuite(definition: HostContractDefinition) {
     it("confirms only normalized user messages", async () => {
       definition.installFixture();
       const siteHost = host();
-      const onAccepted = vi.fn();
+      const onConfirmed = vi.fn();
       const onTimeout = vi.fn();
-      const stop = siteHost.composer.watchAcceptedSend({
+      const stop = siteHost.composer.watchConfirmedSend({
         expectedText: "first\nsecond",
-        onAccepted,
+        onConfirmed,
         onTimeout,
         signal: new AbortController().signal,
       });
 
       definition.appendAssistantMessage("first \n second");
       await Promise.resolve();
-      expect(onAccepted).not.toHaveBeenCalled();
+      expect(onConfirmed).not.toHaveBeenCalled();
 
       definition.appendUserMessage("first \n second");
-      await vi.waitFor(() => expect(onAccepted).toHaveBeenCalledOnce());
+      await vi.waitFor(() => expect(onConfirmed).toHaveBeenCalledOnce());
       expect(onTimeout).not.toHaveBeenCalled();
       stop();
     });

@@ -1,24 +1,31 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import type { ConversationIdentity } from "@/features/host-port/host-port";
+
 import type { DraftAnnotation } from "./annotation";
+import { sameConversationIdentity } from "./conversation-identity";
 
 export const DELETE_UNDO_WINDOW_MS = 5_000;
 
 type PendingDeletionBatch = {
   annotationIds: string[];
+  conversationIdentity: ConversationIdentity;
   expiresAt: number;
-  scopeKey: string;
 };
 
 export function useDeferredAnnotationDeletion(
   annotations: DraftAnnotation[],
-  scopeKey: string,
+  conversationIdentity: ConversationIdentity,
   commitDeletions: (annotationIds: readonly string[]) => void,
 ) {
   const [pendingDeletionBatch, setPendingDeletionBatch] = useState<PendingDeletionBatch | null>(
     null,
   );
-  const currentBatch = pendingDeletionBatch?.scopeKey === scopeKey ? pendingDeletionBatch : null;
+  const currentBatch =
+    pendingDeletionBatch &&
+    sameConversationIdentity(pendingDeletionBatch.conversationIdentity, conversationIdentity)
+      ? pendingDeletionBatch
+      : null;
   const visibleAnnotations = useMemo(() => {
     if (!currentBatch) {
       return annotations;
@@ -41,7 +48,15 @@ export function useDeferredAnnotationDeletion(
     return () => window.clearTimeout(timer);
   }, [commitDeletions, currentBatch]);
 
-  useEffect(() => setPendingDeletionBatch(null), [scopeKey]);
+  useEffect(
+    () =>
+      setPendingDeletionBatch((current) =>
+        current && sameConversationIdentity(current.conversationIdentity, conversationIdentity)
+          ? current
+          : null,
+      ),
+    [conversationIdentity],
+  );
 
   const requestDeletion = useCallback(
     (annotationId: string) => {
@@ -51,12 +66,12 @@ export function useDeferredAnnotationDeletion(
       }
       setPendingDeletionBatch({
         annotationIds: [...(currentBatch?.annotationIds ?? []), annotationId],
+        conversationIdentity,
         expiresAt: Date.now() + DELETE_UNDO_WINDOW_MS,
-        scopeKey,
       });
       return true;
     },
-    [annotations, currentBatch, scopeKey],
+    [annotations, conversationIdentity, currentBatch],
   );
 
   const clearPendingDeletions = useCallback(() => setPendingDeletionBatch(null), []);

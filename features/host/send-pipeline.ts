@@ -1,12 +1,12 @@
 import { available, once, unavailable, type HostContext, type HostResult } from "./host-context";
 import type { TextNormalizer } from "./text-normalizer";
 
-const SEND_ACCEPT_TIMEOUT_MS = 15_000;
+const SEND_CONFIRM_TIMEOUT_MS = 15_000;
 const SEND_BUTTON_APPEAR_TIMEOUT_MS = 2_000;
 
-type AcceptedSendWatcherOptions = {
+type ConfirmedSendWatcherOptions = {
   expectedText: string;
-  onAccepted: () => void;
+  onConfirmed: () => void;
   onTimeout: () => void;
   signal: AbortSignal;
 };
@@ -75,7 +75,7 @@ export function createSendPipeline(context: HostContext, textNormalizer: TextNor
     });
   }
 
-  function watchAcceptedSend(options: AcceptedSendWatcherOptions) {
+  function watchConfirmedSend(options: ConfirmedSendWatcherOptions) {
     if (options.signal.aborted) {
       logger?.("[QuoteCue host] send confirmation skipped: aborted");
       return () => undefined;
@@ -114,9 +114,9 @@ export function createSendPipeline(context: HostContext, textNormalizer: TextNor
       }
       options.signal.removeEventListener("abort", cleanup);
     });
-    const findAcceptedMessage = () => {
+    const findConfirmedMessage = () => {
       const messages = userMessages();
-      const acceptedMessage = messages.find((message) => {
+      const confirmedMessage = messages.find((message) => {
         if (!isNewMessage(message)) {
           return false;
         }
@@ -126,14 +126,14 @@ export function createSendPipeline(context: HostContext, textNormalizer: TextNor
         return normalizedRenderedText(message) === expectedText;
       });
       logger?.(
-        `[QuoteCue host] send confirmation observed: total=${messages.length}, matched=${Boolean(acceptedMessage)}`,
+        `[QuoteCue host] send confirmation observed: total=${messages.length}, matched=${Boolean(confirmedMessage)}`,
       );
-      if (acceptedMessage) {
+      if (confirmedMessage) {
         cleanup();
-        options.onAccepted();
+        options.onConfirmed();
       }
     };
-    stopObserving = signals.observeMutations(findAcceptedMessage, {
+    stopObserving = signals.observeMutations(findConfirmedMessage, {
       characterData: true,
       childList: true,
     });
@@ -141,7 +141,7 @@ export function createSendPipeline(context: HostContext, textNormalizer: TextNor
       logger?.("[QuoteCue host] send confirmation timed out");
       cleanup();
       options.onTimeout();
-    }, SEND_ACCEPT_TIMEOUT_MS);
+    }, SEND_CONFIRM_TIMEOUT_MS);
 
     options.signal.addEventListener("abort", cleanup, { once: true });
     return cleanup;
@@ -186,5 +186,5 @@ export function createSendPipeline(context: HostContext, textNormalizer: TextNor
     return Array.from(hostDocument.querySelectorAll<HTMLElement>(adapter.messages.userSelector));
   }
 
-  return { isButtonAvailable, subscribeToSubmit, waitForButton, watchAcceptedSend };
+  return { isButtonAvailable, subscribeToSubmit, waitForButton, watchConfirmedSend };
 }

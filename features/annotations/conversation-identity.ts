@@ -9,9 +9,3 @@ export function sameConversationIdentity(left: ConversationIdentity, right: Conv
   }
   return false;
 }
-
-export function conversationScopeKey(identity: ConversationIdentity) {
-  return identity.kind === "identified"
-    ? `identified:${identity.id}`
-    : `unidentified:${identity.sessionKey}`;
-}

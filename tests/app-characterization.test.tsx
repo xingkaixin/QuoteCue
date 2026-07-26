@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import App from "@/entrypoints/content/App";
-import type { DraftAnnotation, SelectionDraft } from "@/features/annotations/annotation";
+import type { DraftAnnotation, AnchoredSelection } from "@/features/annotations/annotation";
 import type { ProjectedAnnotation } from "@/features/annotations/annotation-projection";
 import { createChatGptHost } from "@/features/chatgpt/chatgpt-host";
 import { HostProvider } from "@/features/host-port/HostProvider";
@@ -62,13 +62,13 @@ vi.mock("@/features/annotations/SelectionPresentation", () => ({
     onActivate,
   }: {
     isEnabled: boolean;
-    onActivate: (draft: SelectionDraft) => void;
+    onActivate: (selection: AnchoredSelection) => void;
   }) {
     return (
       <button
         data-testid="start-annotation"
         disabled={!isEnabled}
-        onClick={() => onActivate(selectionDraft)}
+        onClick={() => onActivate(anchoredSelection)}
         type="button"
       >
         Start annotation
@@ -171,7 +171,7 @@ vi.mock("@/features/annotations/AnnotationSummary", () => ({
   },
 }));
 
-const selectionDraft: SelectionDraft = {
+const anchoredSelection: AnchoredSelection = {
   anchor: {
     end: 16,
     format: "exact",

@@ -65,20 +65,20 @@ describe("Claude host contract", () => {
         replaceVoiceWithSend((text) => appendClaudeUserMessage(2, text));
       }
     });
-    const onSendAccepted = vi.fn();
+    const onSendConfirmed = vi.fn();
     const interceptor = registerSendInterceptor({
       annotations: () => numberAnnotations([annotation()]),
       compilePrompt: compileAnnotatedPrompt,
       host,
       locale: () => "en",
-      onSendAccepted,
+      onSendConfirmed,
     });
 
     await expect(interceptor.submit()).resolves.toEqual({
-      status: "accepted",
+      status: "confirmed",
       annotationIds: ["annotation-one"],
     });
-    expect(onSendAccepted).toHaveBeenCalledWith([annotation()]);
+    expect(onSendConfirmed).toHaveBeenCalledWith([annotation()]);
     expect(fixture.composer.innerText).toContain("[Annotation 1]");
     interceptor.dispose();
   });

@@ -164,7 +164,7 @@ describe("ChatGPT host contract", () => {
     expect(container.textContent).toBe("112,708|456,748,36,36");
 
     let annotations = [annotation];
-    const onSendAccepted = vi.fn(() => {
+    const onSendConfirmed = vi.fn(() => {
       annotations = [];
     });
     fixture.action.addEventListener("click", () => {
@@ -176,14 +176,14 @@ describe("ChatGPT host contract", () => {
       compilePrompt: compileAnnotatedPrompt,
       host,
       locale: () => "en",
-      onSendAccepted,
+      onSendConfirmed,
     });
 
     await expect(interceptor.submit(fixture.action)).resolves.toEqual({
-      status: "accepted",
+      status: "confirmed",
       annotationIds: ["annotation-one"],
     });
-    expect(onSendAccepted).toHaveBeenCalledWith([annotation]);
+    expect(onSendConfirmed).toHaveBeenCalledWith([annotation]);
     expect(annotations).toEqual([]);
 
     interceptor.dispose();
@@ -388,7 +388,7 @@ describe("ChatGPT host contract", () => {
       compilePrompt: compileAnnotatedPrompt,
       host,
       locale: () => "en",
-      onSendAccepted: vi.fn(),
+      onSendConfirmed: vi.fn(),
     });
 
     await expect(interceptor.submit()).resolves.toEqual({
