@@ -11,13 +11,18 @@ vi.mock("@/features/secure-field/SecureTextField", async () => {
   type FakeSecureFieldProps = {
     ariaLabel: string;
     className?: string;
+    name: string;
     onCancel: () => void;
     onChange: (value: string) => void;
+    placeholder: string;
     value: string;
   };
   return {
     SecureTextField: forwardRef<{ focus: () => void }, FakeSecureFieldProps>(
-      function FakeSecureTextField({ ariaLabel, className, onCancel, onChange, value }, ref) {
+      function FakeSecureTextField(
+        { ariaLabel, className, name, onCancel, onChange, placeholder, value },
+        ref,
+      ) {
         const fieldRef = useRef<HTMLInputElement>(null);
         useImperativeHandle(ref, () => ({ focus: () => fieldRef.current?.focus() }), []);
         useEffect(() => fieldRef.current?.focus(), []);
@@ -25,12 +30,14 @@ vi.mock("@/features/secure-field/SecureTextField", async () => {
           <input
             aria-label={ariaLabel}
             className={className}
+            name={name}
             onChange={(event) => onChange(event.currentTarget.value)}
             onKeyDown={(event) => {
               if (event.key === "Escape") {
                 onCancel();
               }
             }}
+            placeholder={placeholder}
             ref={fieldRef}
             value={value}
           />
@@ -66,21 +73,23 @@ afterEach(() => {
 });
 
 describe("AnnotationQuickInput", () => {
-  it("uses compact controls without a persistent field focus ring", async () => {
+  it("exposes a focused input and labelled save action", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     const { container, root } = await renderQuickInput(vi.fn(), vi.fn());
     const shell = container.firstElementChild;
-    const input = container.querySelector("input");
+    const input = container.querySelector<HTMLInputElement>("input");
     const saveButton = container.querySelector<HTMLButtonElement>('[aria-label="Save annotation"]');
 
-    expect(shell?.classList).toContain("h-12");
-    expect(shell?.classList).toContain("w-[320px]");
     expect(shell?.classList).toContain("qc-divider");
-    expect(shell?.classList).toContain("shadow-sm");
     expect(shell?.classList).not.toContain("qc-elevated");
-    expect(input?.classList).toContain("h-9");
-    expect(input?.className).not.toContain("data-[focused=true]:ring");
-    expect(saveButton?.classList).toContain("size-10");
+    expect(input?.type).toBe("text");
+    expect(input?.name).toBe("quotecue-annotation-comment");
+    expect(input?.getAttribute("aria-label")).toBe("Annotation content");
+    expect(input?.placeholder).toBe("Add an optional comment…");
+    expect(input?.value).toBe("");
+    expect(document.activeElement).toBe(input);
+    expect(saveButton?.type).toBe("button");
+    expect(saveButton?.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
 
     await act(async () => root.unmount());
   });
