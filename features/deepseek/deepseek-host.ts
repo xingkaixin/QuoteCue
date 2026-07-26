@@ -28,9 +28,3 @@ const DEEPSEEK_ADAPTER: SiteAdapter = {
 export function createDeepSeekHost(environment: HostEnvironment) {
   return createDomHost(environment, DEEPSEEK_ADAPTER);
 }
-
-export const deepSeekHost = createDeepSeekHost({
-  document,
-  logger: import.meta.env.DEV ? (message) => console.debug(message) : undefined,
-  window,
-});

@@ -1,6 +1,8 @@
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "wxt";
 
+import { SITE_URL_PATTERNS } from "./features/host/site-urls";
+
 export default defineConfig({
   modules: ["@wxt-dev/module-react"],
   alias: {
@@ -16,21 +18,11 @@ export default defineConfig({
       128: "icon/128.png",
     },
     permissions: ["storage"],
-    host_permissions: [
-      "https://chatgpt.com/*",
-      "https://chat.deepseek.com/*",
-      "https://claude.ai/*",
-      "https://www.kimi.com/*",
-    ],
+    host_permissions: SITE_URL_PATTERNS,
     web_accessible_resources: [
       {
         resources: ["secure-field.html"],
-        matches: [
-          "https://chatgpt.com/*",
-          "https://chat.deepseek.com/*",
-          "https://claude.ai/*",
-          "https://www.kimi.com/*",
-        ],
+        matches: SITE_URL_PATTERNS,
       },
     ],
   },

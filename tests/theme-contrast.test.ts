@@ -1,25 +1,28 @@
 import { describe, expect, it } from "vitest";
 
-import { HOST_THEME_TOKENS } from "@/features/theme/HostThemeProvider";
+import { SITE_REGISTRY } from "@/features/host/site-registry";
+import { hostThemeTokens } from "@/features/theme/HostThemeProvider";
 
 describe("theme token contrast", () => {
-  for (const [theme, tokens] of Object.entries(HOST_THEME_TOKENS)) {
-    it(`${theme} keeps text and controls distinguishable`, () => {
-      expect(contrast(tokens.text, tokens.surface)).toBeGreaterThanOrEqual(4.5);
-      expect(contrast(tokens.muted, tokens.surface)).toBeGreaterThanOrEqual(4.5);
-      expect(contrast(tokens.border, tokens.surface)).toBeGreaterThanOrEqual(3);
-      expect(contrast(fallbackColor(tokens.accent), tokens.surface)).toBeGreaterThanOrEqual(3);
-      expect(contrast(tokens.danger, tokens.surface)).toBeGreaterThanOrEqual(4.5);
-      expect(
-        contrast(fallbackColor(tokens["accent-foreground"]), fallbackColor(tokens.accent)),
-      ).toBeGreaterThanOrEqual(4.5);
-      expect(
-        contrast(
-          fallbackColor(tokens["accent-subtle-foreground"]),
-          fallbackColor(tokens["accent-subtle"]),
-        ),
-      ).toBeGreaterThanOrEqual(4.5);
-    });
+  for (const site of SITE_REGISTRY) {
+    for (const [theme, tokens] of Object.entries(hostThemeTokens(site.accentTokens))) {
+      it(`${site.hostname} ${theme} keeps text and controls distinguishable`, () => {
+        expect(contrast(tokens.text, tokens.surface)).toBeGreaterThanOrEqual(4.5);
+        expect(contrast(tokens.muted, tokens.surface)).toBeGreaterThanOrEqual(4.5);
+        expect(contrast(tokens.border, tokens.surface)).toBeGreaterThanOrEqual(3);
+        expect(contrast(fallbackColor(tokens.accent), tokens.surface)).toBeGreaterThanOrEqual(3);
+        expect(contrast(tokens.danger, tokens.surface)).toBeGreaterThanOrEqual(4.5);
+        expect(
+          contrast(fallbackColor(tokens["accent-foreground"]), fallbackColor(tokens.accent)),
+        ).toBeGreaterThanOrEqual(4.5);
+        expect(
+          contrast(
+            fallbackColor(tokens["accent-subtle-foreground"]),
+            fallbackColor(tokens["accent-subtle"]),
+          ),
+        ).toBeGreaterThanOrEqual(4.5);
+      });
+    }
   }
 });
 

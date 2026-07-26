@@ -10,7 +10,7 @@ import {
   positionAdjacentToRect,
   type FloatingElementSize,
 } from "@/features/layout/floating-position";
-import { activeHost } from "@/features/host/active-host";
+import { requireActiveHost } from "@/features/host/active-host";
 
 import type { SelectionDraft } from "./annotation";
 import { rangeEndpointRect } from "./selection-anchor";
@@ -23,6 +23,7 @@ export function useAnnotationEditorPosition(
   elementRef: RefObject<HTMLElement | null>,
   fallbackSize: FloatingElementSize,
 ) {
+  const host = requireActiveHost();
   const viewport = useVisualViewportBounds();
   const [position, setPosition] = useState(() =>
     annotationEditorPosition(draft, fallbackSize, currentVisualViewportBounds()),
@@ -37,7 +38,7 @@ export function useAnnotationEditorPosition(
         height: elementRect?.height || fallbackSize.height,
         width: elementRect?.width || fallbackSize.width,
       };
-      const restored = activeHost.selection.restore(draft.anchor);
+      const restored = host.selection.restore(draft.anchor);
       const restoredRect =
         restored.status === "available" ? rangeEndpointRect(restored.value) : null;
       const nextPosition = annotationEditorPosition(
@@ -67,7 +68,7 @@ export function useAnnotationEditorPosition(
         cancelAnimationFrame(refreshFrame);
       }
     };
-  }, [draft, elementRef, fallbackSize, viewport]);
+  }, [draft, elementRef, fallbackSize, host, viewport]);
 
   return position;
 }

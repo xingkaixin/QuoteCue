@@ -17,7 +17,11 @@ import {
 vi.mock("@/features/host/active-host", async () => {
   const { createDeepSeekHost: createHost } = await import("@/features/deepseek/deepseek-host");
   const host = createHost({ document, window });
-  return { activeHost: host, hostForHostname: () => host };
+  return {
+    activeHost: host,
+    hostForHostname: () => host,
+    requireActiveHost: () => host,
+  };
 });
 
 beforeEach(() => {

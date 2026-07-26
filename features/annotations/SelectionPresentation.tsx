@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
 
-import { activeHost } from "@/features/host/active-host";
+import { requireActiveHost } from "@/features/host/active-host";
 import type { SiteAdapter } from "@/features/host/dom-host";
 
 import { NativeSelectionPresentation } from "./NativeSelectionPresentation";
@@ -16,6 +16,6 @@ const PRESENTATIONS: Record<
 };
 
 export function SelectionPresentation(options: SelectionCaptureOptions) {
-  const Presentation = PRESENTATIONS[activeHost.selection.presentation];
+  const Presentation = PRESENTATIONS[requireActiveHost().selection.presentation];
   return <Presentation {...options} />;
 }

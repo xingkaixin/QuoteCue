@@ -2,7 +2,7 @@ import type { DraftAnnotation } from "@/features/annotations/annotation";
 import { compileAnnotatedPrompt } from "@/features/annotations/prompt-compiler";
 import type { SupportedLocale } from "@/features/i18n/messages";
 
-import { activeHost } from "./active-host";
+import { requireActiveHost } from "./active-host";
 import type { ComposerSnapshot, Host } from "./dom-host";
 
 export type AnnotatedSendFailureReason =
@@ -48,7 +48,7 @@ type StartedSend = {
 };
 
 export function registerSendInterceptor(options: SendInterceptorOptions) {
-  const host = options.host ?? activeHost;
+  const host = options.host ?? requireActiveHost();
   let activeAttempt: SendAttempt | null = null;
   let lastFailedAttempt: SendAttempt | null = null;
   let isDispatchingReplay = false;

@@ -4,10 +4,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   detectHostTheme,
-  HOST_THEME_TOKENS,
+  hostThemeTokens,
   HostThemeProvider,
   useHostTheme,
 } from "@/features/theme/HostThemeProvider";
+import { siteForHostname } from "@/features/host/site-registry";
+
+const KIMI_ACCENT_TOKENS = requiredSite("www.kimi.com").accentTokens;
+const KIMI_THEME_TOKENS = hostThemeTokens(KIMI_ACCENT_TOKENS);
 
 afterEach(() => {
   document.documentElement.removeAttribute("class");
@@ -18,9 +22,10 @@ afterEach(() => {
 });
 
 describe("host theme", () => {
-  it("inherits Kimi's host accent when earlier host tokens are absent", () => {
-    expect(HOST_THEME_TOKENS.light.accent).toContain("--Colors-KMBlue");
-    expect(HOST_THEME_TOKENS.dark["accent-subtle"]).toContain("--Colors-KMBlue");
+  it("uses only Kimi's registered accent tokens", () => {
+    expect(KIMI_THEME_TOKENS.light.accent).toContain("--Colors-KMBlue");
+    expect(KIMI_THEME_TOKENS.dark["accent-subtle"]).toContain("--Colors-KMBlue");
+    expect(KIMI_THEME_TOKENS.light.accent).not.toMatch(/--theme-|--dsw-|--cds-/);
   });
 
   it("prefers explicit host state and falls back to system preference", () => {
@@ -53,7 +58,7 @@ describe("host theme", () => {
 
     await act(async () => {
       root.render(
-        <HostThemeProvider container={themeContainer}>
+        <HostThemeProvider accentTokens={KIMI_ACCENT_TOKENS} container={themeContainer}>
           <ThemeProbe />
         </HostThemeProvider>,
       );
@@ -68,13 +73,13 @@ describe("host theme", () => {
     expect(container.textContent).toBe("dark");
     expect(themeContainer.dataset.quotecueTheme).toBe("dark");
     expect(themeContainer.style.getPropertyValue("--qc-surface")).toBe(
-      HOST_THEME_TOKENS.dark.surface,
+      KIMI_THEME_TOKENS.dark.surface,
     );
     expect(themeContainer.style.getPropertyValue("--qc-accent")).toBe(
-      HOST_THEME_TOKENS.dark.accent,
+      KIMI_THEME_TOKENS.dark.accent,
     );
     expect(themeContainer.style.getPropertyValue("--qc-accent-subtle")).toBe(
-      HOST_THEME_TOKENS.dark["accent-subtle"],
+      KIMI_THEME_TOKENS.dark["accent-subtle"],
     );
 
     await act(async () => root.unmount());
@@ -83,4 +88,12 @@ describe("host theme", () => {
 
 function ThemeProbe() {
   return useHostTheme();
+}
+
+function requiredSite(hostname: string) {
+  const site = siteForHostname(hostname);
+  if (!site) {
+    throw new Error(`Missing site registration for ${hostname}`);
+  }
+  return site;
 }

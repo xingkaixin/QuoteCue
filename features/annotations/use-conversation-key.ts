@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { activeHost } from "@/features/host/active-host";
+import { requireActiveHost } from "@/features/host/active-host";
 
 export function useConversationKey() {
+  const host = requireActiveHost();
   const [temporaryConversationKey] = useState(() => `new-chat:${crypto.randomUUID()}`);
   const resolveConversationKey = useCallback(
-    () => activeHost.conversation.key(temporaryConversationKey),
-    [temporaryConversationKey],
+    () => host.conversation.key(temporaryConversationKey),
+    [host, temporaryConversationKey],
   );
   const [conversationKey, setConversationKey] = useState(resolveConversationKey);
 
@@ -15,8 +16,8 @@ export function useConversationKey() {
       const nextKey = resolveConversationKey();
       setConversationKey((currentKey) => (currentKey === nextKey ? currentKey : nextKey));
     };
-    return activeHost.conversation.subscribe(refresh);
-  }, [resolveConversationKey]);
+    return host.conversation.subscribe(refresh);
+  }, [host, resolveConversationKey]);
 
   return conversationKey;
 }

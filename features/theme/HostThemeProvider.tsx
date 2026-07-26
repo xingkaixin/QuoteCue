@@ -7,47 +7,20 @@ import {
   useState,
 } from "react";
 
+import type { SiteAccentTokens } from "@/features/host/site-registry";
+
 export type HostTheme = "dark" | "light";
 
 const HostThemeContext = createContext<HostTheme>("light");
 const DARK_MEDIA_QUERY = "(prefers-color-scheme: dark)";
-// --theme-* 来自 ChatGPT，--dsw-* 来自 DeepSeek，--cds-* 来自 Claude，--Colors-* 来自 Kimi
-const HOST_ACCENT_TOKENS = {
-  accent:
-    "var(--theme-submit-btn-bg, var(--dsw-alias-brand-primary, var(--cds-fill-brand, var(--Colors-KMBlue, #2563eb))))",
-  "accent-foreground": "var(--theme-submit-btn-text, var(--cds-on-brand, #ffffff))",
-  "accent-subtle":
-    "var(--theme-secondary-btn-bg, var(--cds-fill-brand, var(--Colors-KMBlue, #2563eb)))",
-  "accent-subtle-foreground": "var(--theme-secondary-btn-text, var(--cds-on-brand, #ffffff))",
-  "accent-text":
-    "var(--theme-accent-text, var(--dsw-alias-brand-primary, var(--cds-fill-brand, var(--Colors-KMBlue, #2563eb))))",
-} as const;
-
-export const HOST_THEME_TOKENS = {
-  light: {
-    ...HOST_ACCENT_TOKENS,
-    border: "#8a8a8a",
-    danger: "#b91c1c",
-    muted: "#525252",
-    surface: "#ffffff",
-    text: "#171717",
-  },
-  dark: {
-    ...HOST_ACCENT_TOKENS,
-    border: "#737373",
-    danger: "#f87171",
-    muted: "#a3a3a3",
-    surface: "#171717",
-    text: "#fafafa",
-  },
-} as const;
 
 type HostThemeProviderProps = {
+  accentTokens: SiteAccentTokens;
   children: ReactNode;
   container: HTMLElement;
 };
 
-export function HostThemeProvider({ children, container }: HostThemeProviderProps) {
+export function HostThemeProvider({ accentTokens, children, container }: HostThemeProviderProps) {
   const [theme, setTheme] = useState(detectHostTheme);
 
   useEffect(() => {
@@ -73,7 +46,7 @@ export function HostThemeProvider({ children, container }: HostThemeProviderProp
   }, []);
 
   useLayoutEffect(() => {
-    const tokens = HOST_THEME_TOKENS[theme];
+    const tokens = hostThemeTokens(accentTokens)[theme];
     container.dataset.quotecueTheme = theme;
     container.style.color = tokens.text;
     container.style.colorScheme = theme;
@@ -88,13 +61,34 @@ export function HostThemeProvider({ children, container }: HostThemeProviderProp
         container.style.removeProperty(`--qc-${role}`);
       }
     };
-  }, [container, theme]);
+  }, [accentTokens, container, theme]);
 
   return <HostThemeContext.Provider value={theme}>{children}</HostThemeContext.Provider>;
 }
 
 export function useHostTheme() {
   return useContext(HostThemeContext);
+}
+
+export function hostThemeTokens(accentTokens: SiteAccentTokens) {
+  return {
+    light: {
+      ...accentTokens,
+      border: "#8a8a8a",
+      danger: "#b91c1c",
+      muted: "#525252",
+      surface: "#ffffff",
+      text: "#171717",
+    },
+    dark: {
+      ...accentTokens,
+      border: "#737373",
+      danger: "#f87171",
+      muted: "#a3a3a3",
+      surface: "#171717",
+      text: "#fafafa",
+    },
+  } as const;
 }
 
 export function detectHostTheme(

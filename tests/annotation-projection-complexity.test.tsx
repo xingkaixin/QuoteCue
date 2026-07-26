@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { DraftAnnotation } from "@/features/annotations/annotation";
 import { useAnnotationHighlights } from "@/features/annotations/use-annotation-highlights";
-import { chatGptHost } from "@/features/chatgpt/chatgpt-host";
+import { requireActiveHost } from "@/features/host/active-host";
 
 import { appendAssistantMessage } from "./fixtures/chatgpt-host";
 
@@ -33,7 +33,7 @@ describe("annotation projection complexity", () => {
       },
     });
     const annotations = Array.from({ length: 20 }, (_, index) => annotation(index));
-    const messageIndex = vi.spyOn(chatGptHost.selection, "messageIndex");
+    const messageIndex = vi.spyOn(requireActiveHost().selection, "messageIndex");
     const host = document.createElement("div");
     const shadowRoot = host.attachShadow({ mode: "open" });
     const container = document.createElement("div");
@@ -72,7 +72,7 @@ describe("annotation projection complexity", () => {
       getClientRects: { configurable: true, value: () => [] },
     });
     const message = appendAssistantMessage("message-1", "selected text");
-    const messageIndex = vi.spyOn(chatGptHost.selection, "messageIndex");
+    const messageIndex = vi.spyOn(requireActiveHost().selection, "messageIndex");
     const host = document.createElement("div");
     const shadowRoot = host.attachShadow({ mode: "open" });
     const container = document.createElement("div");

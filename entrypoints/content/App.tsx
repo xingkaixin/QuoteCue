@@ -20,11 +20,12 @@ import {
   registerSendInterceptor,
   type AnnotatedSendState,
 } from "@/features/host/register-send-interceptor";
-import { activeHost } from "@/features/host/active-host";
+import { requireActiveHost } from "@/features/host/active-host";
 import { useAnnotatedComposerLayout } from "@/features/host/use-annotated-composer-layout";
 import { useI18n } from "@/features/i18n/I18nProvider";
 
 export default function App() {
+  const host = requireActiveHost();
   const { locale } = useI18n();
   const conversationKey = useConversationKey();
   const {
@@ -121,7 +122,7 @@ export default function App() {
   };
 
   const openEditor = (annotation: DraftAnnotation) => {
-    const reveal = activeHost.selection.reveal(annotation.anchor);
+    const reveal = host.selection.reveal(annotation.anchor);
     if (reveal.status === "unavailable") {
       return;
     }
@@ -135,7 +136,7 @@ export default function App() {
   };
 
   const showExpandedEditor = (annotation: DraftAnnotation) => {
-    const draft = activeHost.selection.draft(annotation);
+    const draft = host.selection.draft(annotation);
     if (draft.status === "available") {
       setEditor({ status: "expanded", annotationId: annotation.id, draft: draft.value });
     }
