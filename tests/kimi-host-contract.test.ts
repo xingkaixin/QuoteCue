@@ -167,6 +167,7 @@ function annotation(): DraftAnnotation {
     id: "annotation-one",
     anchor: {
       end: 16,
+      format: "exact",
       messageId: "assistant-one",
       prefix: "A ",
       quote: "focused answer",

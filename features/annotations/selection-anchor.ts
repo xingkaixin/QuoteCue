@@ -60,9 +60,11 @@ function resolveTextAnchor(messageText: string, anchor: TextAnchor) {
     return { quote: anchor.quote, start: anchor.start };
   }
 
-  const positionalQuote = legacyPositionalQuote(messageText, anchor);
-  if (positionalQuote !== null) {
-    return { quote: positionalQuote, start: anchor.start };
+  if (anchor.format === "legacy-rendered") {
+    const positionalQuote = legacyPositionalQuote(messageText, anchor);
+    if (positionalQuote !== null) {
+      return { quote: positionalQuote, start: anchor.start };
+    }
   }
 
   const candidates = quoteOffsets(messageText, anchor.quote);
@@ -75,12 +77,7 @@ function resolveTextAnchor(messageText: string, anchor: TextAnchor) {
 }
 
 function legacyPositionalQuote(messageText: string, anchor: TextAnchor) {
-  const storedSpanLength = anchor.end - anchor.start;
-  if (
-    storedSpanLength === anchor.quote.length ||
-    anchor.start > messageText.length ||
-    anchor.end > messageText.length
-  ) {
+  if (anchor.start > messageText.length || anchor.end > messageText.length) {
     return null;
   }
 

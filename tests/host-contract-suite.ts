@@ -84,6 +84,7 @@ export function runHostContractSuite(definition: HostContractDefinition) {
 
       const captured = availableValue(siteHost.selection.capture());
       expect(captured.anchor).toMatchObject({
+        format: "exact",
         messageId: definition.expectedMessageId,
         quote: "focused answer",
       });

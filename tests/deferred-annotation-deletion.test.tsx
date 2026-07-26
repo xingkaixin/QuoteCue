@@ -9,6 +9,7 @@ const annotations: DraftAnnotation[] = [
   {
     id: "annotation-a",
     anchor: {
+      format: "exact",
       messageId: "message-a",
       quote: "first",
       prefix: "",
@@ -21,6 +22,7 @@ const annotations: DraftAnnotation[] = [
   {
     id: "annotation-b",
     anchor: {
+      format: "exact",
       messageId: "message-b",
       quote: "second",
       prefix: "",

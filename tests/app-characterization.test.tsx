@@ -174,6 +174,7 @@ vi.mock("@/features/annotations/AnnotationSummary", () => ({
 const selectionDraft: SelectionDraft = {
   anchor: {
     end: 16,
+    format: "exact",
     messageId: "assistant-one",
     prefix: "A ",
     quote: "focused answer",

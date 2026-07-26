@@ -17,6 +17,7 @@ describe("selection anchors", () => {
 
   it("restores a range after surrounding markup changes", () => {
     const anchor: TextAnchor = {
+      format: "exact",
       messageId: "assistant-one",
       quote: "全球雇佣与薪资合规 SaaS 平台",
       prefix: "Deel 是一个 ",
@@ -36,6 +37,7 @@ describe("selection anchors", () => {
       </div>
     `;
     const range = restore({
+      format: "exact",
       messageId: "assistant-one",
       quote: "target",
       prefix: "missing prefix",
@@ -52,6 +54,7 @@ describe("selection anchors", () => {
       <div>alpha target beta gamma target delta</div>
     `;
     const range = restore({
+      format: "exact",
       messageId: "assistant-one",
       quote: "target",
       prefix: "gamma ",
@@ -71,6 +74,7 @@ describe("selection anchors", () => {
 
     expect(
       restore({
+        format: "exact",
         messageId: "assistant-one",
         quote: "target",
         prefix: "same ",
@@ -88,6 +92,7 @@ describe("selection anchors", () => {
 
     expect(
       restore({
+        format: "exact",
         messageId: "assistant-one",
         quote: "unique phrase",
         prefix: "old prefix",
@@ -105,6 +110,7 @@ describe("selection anchors", () => {
 
     expect(
       restore({
+        format: "exact",
         messageId: "assistant-one",
         quote: "unique phrase",
         prefix: "before ",
@@ -126,6 +132,7 @@ describe("selection anchors", () => {
 
     const range = restoreTextAnchorFromIndex(
       {
+        format: "exact",
         messageId: "assistant-isolated",
         quote: "isolated phrase",
         prefix: "",
@@ -147,6 +154,7 @@ describe("selection anchors", () => {
 
     expect(
       restore({
+        format: "legacy-rendered",
         messageId: "assistant-one",
         quote: "alpha beta",
         prefix: "",
@@ -164,6 +172,7 @@ describe("selection anchors", () => {
 
     expect(
       restore({
+        format: "legacy-rendered",
         messageId: "assistant-one",
         quote: "alpha beta",
         prefix: "",
@@ -179,6 +188,7 @@ describe("selection anchors", () => {
 
     expect(
       restore({
+        format: "exact",
         messageId: "assistant-one",
         quote: "alpha beta",
         prefix: "",
@@ -189,11 +199,28 @@ describe("selection anchors", () => {
     ).toBeNull();
   });
 
+  it("uses the legacy marker when stored and rendered spans have equal lengths", () => {
+    document.body.innerHTML = "<div>alpha\tbeta</div>";
+
+    expect(
+      restore({
+        format: "legacy-rendered",
+        messageId: "assistant-one",
+        quote: "alpha beta",
+        prefix: "",
+        suffix: "",
+        start: 0,
+        end: 10,
+      })?.toString(),
+    ).toBe("alpha\tbeta");
+  });
+
   it("fails closed for an empty quote", () => {
     document.body.innerHTML = "<div>abc</div>";
 
     expect(
       restore({
+        format: "exact",
         messageId: "assistant-one",
         quote: "",
         prefix: "",
@@ -208,6 +235,7 @@ describe("selection anchors", () => {
     document.body.innerHTML = "<div>xaaaaaZ</div>";
 
     const range = restore({
+      format: "exact",
       messageId: "assistant-one",
       quote: "aaa",
       prefix: "xa",
@@ -225,6 +253,7 @@ describe("selection anchors", () => {
 
     expect(
       restore({
+        format: "exact",
         messageId: "assistant-one",
         quote: "a",
         prefix: "missing",

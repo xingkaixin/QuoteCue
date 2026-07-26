@@ -29,8 +29,7 @@ export type ConversationIdentity = IdentifiedConversation | UnidentifiedConversa
 export type SelectionInvalidationReason = "content" | "layout";
 export type SelectionPresentationMode = "native-toolbar" | "overlay";
 
-export type TextAnchor = {
-  displayQuote?: string;
+type TextAnchorBase = {
   end: number;
   messageId: string;
   prefix: string;
@@ -38,6 +37,12 @@ export type TextAnchor = {
   start: number;
   suffix: string;
 };
+
+export type TextAnchor = TextAnchorBase &
+  (
+    | { displayQuote?: string; format: "exact" }
+    | { displayQuote?: never; format: "legacy-rendered" }
+  );
 
 export type SelectionRect = Pick<DOMRect, "bottom" | "height" | "left" | "right" | "top" | "width">;
 
