@@ -2,8 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { numberAnnotations } from "@/features/annotations/annotation-projection";
 import { compileAnnotatedPrompt } from "@/features/annotations/prompt-compiler";
+import {
+  registerSendInterceptor,
+  type AnnotatedSendState,
+} from "@/features/annotations/register-send-interceptor";
 import { createChatGptHost } from "@/features/chatgpt/chatgpt-host";
-import { registerSendInterceptor } from "@/features/annotations/register-send-interceptor";
+import type { Host } from "@/features/host-port/host-port";
 
 import {
   appendComposer as installComposer,
@@ -160,6 +164,48 @@ describe("registerSendInterceptor", () => {
     expect(composer.textContent).toBe("original question");
   });
 
+  it("leaves native clicks untouched when there are no annotations", () => {
+    const composer = installComposer("original question");
+    const sendButton = installSendButton();
+    const hostClick = vi.fn();
+    sendButton.addEventListener("click", hostClick);
+    const onStateChange = vi.fn();
+    const interceptor = createInterceptor(undefined, { annotations: [], onStateChange });
+    onStateChange.mockClear();
+    const event = new MouseEvent("click", { bubbles: true, cancelable: true });
+
+    expect(sendButton.dispatchEvent(event)).toBe(true);
+    expect(event.defaultPrevented).toBe(false);
+    expect(hostClick).toHaveBeenCalledOnce();
+    expect(composer.textContent).toBe("original question");
+    expect(interceptor.getState()).toEqual({ status: "idle" });
+    expect(onStateChange).not.toHaveBeenCalled();
+    interceptor.dispose();
+  });
+
+  it("leaves native Enter untouched when there are no annotations", () => {
+    const composer = installComposer("original question");
+    installSendButton();
+    const hostKeydown = vi.fn();
+    composer.addEventListener("keydown", hostKeydown);
+    const onStateChange = vi.fn();
+    const interceptor = createInterceptor(undefined, { annotations: [], onStateChange });
+    onStateChange.mockClear();
+    const event = new KeyboardEvent("keydown", {
+      bubbles: true,
+      cancelable: true,
+      key: "Enter",
+    });
+
+    expect(composer.dispatchEvent(event)).toBe(true);
+    expect(event.defaultPrevented).toBe(false);
+    expect(hostKeydown).toHaveBeenCalledOnce();
+    expect(composer.textContent).toBe("original question");
+    expect(interceptor.getState()).toEqual({ status: "idle" });
+    expect(onStateChange).not.toHaveBeenCalled();
+    interceptor.dispose();
+  });
+
   it("leaves native Enter untouched when no send button is available", () => {
     const composer = installComposer("original question");
     const interceptor = createInterceptor();
@@ -175,6 +221,62 @@ describe("registerSendInterceptor", () => {
     expect(event.defaultPrevented).toBe(false);
     expect(hostKeydown).toHaveBeenCalledOnce();
     expect(composer.textContent).toBe("original question");
+    interceptor.dispose();
+  });
+
+  it.each([
+    {
+      failure: "returns false",
+      replace(composer: HTMLElement, compiledText: string) {
+        composer.textContent = compiledText;
+        return false;
+      },
+    },
+    {
+      failure: "throws",
+      replace(composer: HTMLElement, compiledText: string) {
+        composer.textContent = compiledText;
+        throw new Error("host editor failed");
+      },
+    },
+  ])("rolls back and retries when composer replacement $failure", async ({ replace }) => {
+    const composer = installComposer("original question");
+    const host = createChatGptHost({ document, window });
+    const originalReplace = host.composer.replaceText.bind(host.composer);
+    vi.spyOn(host.composer, "replaceText")
+      .mockImplementationOnce(replace)
+      .mockImplementation(originalReplace);
+    const onSendAccepted = vi.fn();
+    const onStateChange = vi.fn();
+    const interceptor = createInterceptor(onSendAccepted, { host, onStateChange });
+    let retriedText = "";
+    const sendButton = installSendButton(() => {
+      retriedText = composer.textContent ?? "";
+      composer.replaceChildren();
+      installUserMessage("retried-user-message", retriedText);
+    });
+
+    await expect(interceptor.submit(sendButton)).resolves.toEqual({
+      status: "failed",
+      reason: "replace-failed",
+    });
+    expect(composer.textContent).toBe("original question");
+    expect(interceptor.getState()).toMatchObject({
+      status: "failed",
+      reason: "replace-failed",
+    });
+    expect(onStateChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ status: "failed", reason: "replace-failed" }),
+    );
+
+    await expect(interceptor.retry()).resolves.toEqual({
+      status: "accepted",
+      annotationIds: ["annotation-1"],
+    });
+    expect(retriedText).toContain("[Supplemental question]\noriginal question");
+    expect(retriedText.match(/\[Annotation 1\]/g)).toHaveLength(1);
+    expect(onSendAccepted).toHaveBeenCalledWith([annotation]);
+    expect(interceptor.getState()).toEqual({ status: "idle" });
     interceptor.dispose();
   });
 
@@ -431,12 +533,26 @@ describe("registerSendInterceptor", () => {
   });
 });
 
-function createInterceptor(onSendAccepted = vi.fn()) {
+type CreateInterceptorOptions = {
+  annotations?: readonly (typeof annotation)[];
+  host?: Host;
+  onStateChange?: (state: AnnotatedSendState) => void;
+};
+
+function createInterceptor(
+  onSendAccepted = vi.fn(),
+  {
+    annotations = [annotation],
+    host = createChatGptHost({ document, window }),
+    onStateChange,
+  }: CreateInterceptorOptions = {},
+) {
   return registerSendInterceptor({
-    annotations: () => numberAnnotations([annotation]),
+    annotations: () => numberAnnotations(annotations),
     compilePrompt: compileAnnotatedPrompt,
-    host: createChatGptHost({ document, window }),
+    host,
     locale: () => "en",
     onSendAccepted,
+    onStateChange,
   });
 }
