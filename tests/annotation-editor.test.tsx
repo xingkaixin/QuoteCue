@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AnnotationEditor } from "@/features/annotations/AnnotationEditor";
+import { activeHost } from "@/features/host/active-host";
 
 vi.mock("@/features/annotations/SecureTextField", async () => {
   const { forwardRef, useEffect, useImperativeHandle, useRef } = await import("react");
@@ -57,11 +58,32 @@ const draft = {
 };
 
 afterEach(() => {
+  vi.useRealTimers();
   document.body.replaceChildren();
   vi.restoreAllMocks();
 });
 
 describe("AnnotationEditor", () => {
+  it("coalesces scroll-driven anchor restores into one frame", async () => {
+    vi.useFakeTimers();
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    const restore = vi.spyOn(activeHost.selection, "restore").mockReturnValue({
+      reason: "assistant-message-unavailable",
+      status: "unavailable",
+    });
+    const { root } = await renderEditor(vi.fn());
+    restore.mockClear();
+
+    for (let index = 0; index < 20; index += 1) {
+      window.dispatchEvent(new Event("scroll"));
+    }
+    expect(restore).not.toHaveBeenCalled();
+    await act(async () => vi.advanceTimersByTimeAsync(17));
+    expect(restore).toHaveBeenCalledOnce();
+
+    await act(async () => root.unmount());
+  });
+
   it("uses compact fields and text actions without a persistent focus ring", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     const { container, root } = await renderEditor(vi.fn());

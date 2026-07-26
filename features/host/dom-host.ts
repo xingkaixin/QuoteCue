@@ -8,6 +8,7 @@ import {
   rangeEndpointRect,
   restoreTextAnchorFromIndex,
 } from "@/features/annotations/selection-anchor";
+import { currentVisualViewportBounds } from "@/features/layout/use-visual-viewport";
 
 const CONTEXT_LENGTH = 48;
 const NATIVE_SELECTION_ACTION_ATTRIBUTE = "data-quotecue-native-action";
@@ -76,6 +77,7 @@ export type HostEnvironment = {
 
 export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter) {
   const { document: hostDocument, logger, window: hostWindow } = environment;
+  let cachedAssistantMessage: HTMLElement | null = null;
 
   function observePage(callback: () => void, includeViewport: boolean) {
     const observer = new MutationObserver(callback);
@@ -127,8 +129,22 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
   }
 
   function restoreAnchor(anchor: TextAnchor): HostResult<Range> {
-    const range = restoreTextAnchorFromIndex(anchor, messageIndex());
+    const message = assistantMessage(anchor.messageId);
+    const range = message
+      ? restoreTextAnchorFromIndex(anchor, new Map([[anchor.messageId, message]]))
+      : null;
     return range ? available(range) : unavailable("assistant-message-unavailable");
+  }
+
+  function assistantMessage(messageId: string) {
+    if (
+      cachedAssistantMessage?.isConnected &&
+      adapter.messageId(cachedAssistantMessage) === messageId
+    ) {
+      return cachedAssistantMessage;
+    }
+    cachedAssistantMessage = messageIndex().get(messageId) ?? null;
+    return cachedAssistantMessage;
   }
 
   function captureSelection(selection = hostWindow.getSelection()): HostResult<SelectionCapture> {
@@ -288,7 +304,7 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
     const scrollContainer = nearestScrollContainer(range.endContainer);
     const viewportRect = scrollContainer
       ? scrollContainer.getBoundingClientRect()
-      : visualViewportRect();
+      : viewportRectangle();
 
     if (endpointRect.bottom >= viewportRect.top && endpointRect.top <= viewportRect.bottom) {
       return available("visible");
@@ -297,9 +313,9 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
     const offset =
       endpointRect.top + endpointRect.height / 2 - (viewportRect.top + viewportRect.height / 2);
     if (scrollContainer) {
-      scrollContainer.scrollTop += offset;
+      scrollContainer.scrollTop = scrollContainer.scrollTop + offset;
     } else {
-      hostWindow.scrollBy({ behavior: "auto", top: offset });
+      hostWindow.scrollBy({ behavior: "instant", top: offset });
     }
     return available("scrolled");
   }
@@ -321,11 +337,9 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
     return null;
   }
 
-  function visualViewportRect() {
-    const viewport = hostWindow.visualViewport;
-    const top = viewport?.offsetTop ?? 0;
-    const height = viewport?.height ?? hostWindow.innerHeight;
-    return { bottom: top + height, height, top };
+  function viewportRectangle() {
+    const viewport = currentVisualViewportBounds(hostWindow);
+    return { bottom: viewport.top + viewport.height, height: viewport.height, top: viewport.top };
   }
 
   function currentComposer() {

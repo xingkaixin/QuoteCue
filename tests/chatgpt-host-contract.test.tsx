@@ -339,6 +339,29 @@ describe("ChatGPT host contract", () => {
     }
   });
 
+  it("reuses the resolved message element for repeated anchor restores", () => {
+    const fixture = installChatGptHostFixture();
+    const querySelectorAll = vi.spyOn(document, "querySelectorAll");
+    const host = createChatGptHost({ document, window });
+    const anchor = {
+      end: 16,
+      messageId: "assistant-one",
+      prefix: "A ",
+      quote: "focused answer",
+      start: 2,
+      suffix: " for the contract fixture.",
+    };
+
+    expect(host.selection.restore(anchor).status).toBe("available");
+    expect(host.selection.restore(anchor).status).toBe("available");
+    expect(
+      querySelectorAll.mock.calls.filter(
+        ([selector]) => selector === '[data-message-author-role="assistant"][data-message-id]',
+      ),
+    ).toHaveLength(1);
+    expect(fixture.assistantMessage.isConnected).toBe(true);
+  });
+
   it("reports typed host failures without annotation content", async () => {
     document.body.innerHTML = "<main></main>";
     const logs: string[] = [];

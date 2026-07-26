@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 
 import { activeHost } from "@/features/host/active-host";
 import type { SelectionInvalidationReason } from "@/features/host/dom-host";
+import { clampPositionToViewport } from "@/features/layout/floating-position";
+import { currentVisualViewportBounds } from "@/features/layout/use-visual-viewport";
 
 import type { DraftAnnotation } from "./annotation";
 import { rangeEndpointRect, restoreTextAnchorFromIndex } from "./selection-anchor";
@@ -144,24 +146,34 @@ function renderActiveHighlight(activeRange: Range | null) {
 
 function badgePosition(annotation: DraftAnnotation, range: Range) {
   const rect = rangeEndpointRect(range);
+  const viewport = currentVisualViewportBounds();
 
-  if (rect.width === 0 || rect.bottom < 0 || rect.top > window.innerHeight) {
+  if (rect.width === 0 || rect.bottom < viewport.top || rect.top > viewport.top + viewport.height) {
     return null;
   }
-  if (isAnchorObscured(range, rect)) {
+  if (isAnchorObscured(range, rect, viewport)) {
     return null;
   }
+  const position = clampPositionToViewport(
+    { left: rect.right + 5, top: rect.top - 10 },
+    { height: 24, width: 24 },
+    { margin: 6, viewport },
+  );
 
   return {
     annotation,
-    left: Math.min(rect.right + 5, window.innerWidth - 30),
-    top: Math.max(rect.top - 10, 6),
+    left: position.left,
+    top: position.top,
   };
 }
 
 // 徽标固定在顶层，不随消息滚动容器裁剪；锚点滚到宿主浮层（如输入框）背后时，
 // 命中测试的首个非 QuoteCue 元素与锚点无包含关系，此时徽标应一并隐藏
-function isAnchorObscured(range: Range, rect: { height: number; right: number; top: number }) {
+function isAnchorObscured(
+  range: Range,
+  rect: { height: number; right: number; top: number },
+  viewport: ReturnType<typeof currentVisualViewportBounds>,
+) {
   if (typeof document.elementsFromPoint !== "function") {
     return false;
   }
@@ -172,8 +184,11 @@ function isAnchorObscured(range: Range, rect: { height: number; right: number; t
     return false;
   }
 
-  const x = Math.min(Math.max(rect.right - 1, 0), window.innerWidth - 1);
-  const y = Math.min(Math.max(rect.top + rect.height / 2, 0), window.innerHeight - 1);
+  const x = Math.min(Math.max(rect.right - 1, viewport.left), viewport.left + viewport.width - 1);
+  const y = Math.min(
+    Math.max(rect.top + rect.height / 2, viewport.top),
+    viewport.top + viewport.height - 1,
+  );
   const hit = document
     .elementsFromPoint(x, y)
     .find((element) => !element.closest("[data-quotecue-host]"));

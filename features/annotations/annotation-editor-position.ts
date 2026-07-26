@@ -6,6 +6,10 @@ import {
   useVisualViewportBounds,
   type VisualViewportBounds,
 } from "@/features/layout/use-visual-viewport";
+import {
+  positionAdjacentToRect,
+  type FloatingElementSize,
+} from "@/features/layout/floating-position";
 import { activeHost } from "@/features/host/active-host";
 
 import type { SelectionDraft } from "./annotation";
@@ -14,15 +18,10 @@ import { rangeEndpointRect } from "./selection-anchor";
 const VIEWPORT_MARGIN = 12;
 const ANCHOR_GAP = 10;
 
-type EditorSize = {
-  height: number;
-  width: number;
-};
-
 export function useAnnotationEditorPosition(
   draft: SelectionDraft,
   elementRef: RefObject<HTMLElement | null>,
-  fallbackSize: EditorSize,
+  fallbackSize: FloatingElementSize,
 ) {
   const viewport = useVisualViewportBounds();
   const [position, setPosition] = useState(() =>
@@ -30,7 +29,9 @@ export function useAnnotationEditorPosition(
   );
 
   useLayoutEffect(() => {
+    let refreshFrame: number | undefined;
     const refresh = () => {
+      refreshFrame = undefined;
       const elementRect = elementRef.current?.getBoundingClientRect();
       const size = {
         height: elementRect?.height || fallbackSize.height,
@@ -46,17 +47,25 @@ export function useAnnotationEditorPosition(
       );
       setPosition((current) => (samePosition(current, nextPosition) ? current : nextPosition));
     };
+    const scheduleRefresh = () => {
+      if (refreshFrame === undefined) {
+        refreshFrame = requestAnimationFrame(refresh);
+      }
+    };
     const resizeObserver =
-      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(refresh);
+      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(scheduleRefresh);
 
     if (elementRef.current) {
       resizeObserver?.observe(elementRef.current);
     }
-    window.addEventListener("scroll", refresh, true);
+    window.addEventListener("scroll", scheduleRefresh, true);
     refresh();
     return () => {
       resizeObserver?.disconnect();
-      window.removeEventListener("scroll", refresh, true);
+      window.removeEventListener("scroll", scheduleRefresh, true);
+      if (refreshFrame !== undefined) {
+        cancelAnimationFrame(refreshFrame);
+      }
     };
   }, [draft, elementRef, fallbackSize, viewport]);
 
@@ -65,46 +74,14 @@ export function useAnnotationEditorPosition(
 
 export function annotationEditorPosition(
   draft: SelectionDraft,
-  size: EditorSize,
+  size: FloatingElementSize,
   viewport: VisualViewportBounds = currentVisualViewportBounds(),
 ) {
-  const horizontalMargin = Math.min(VIEWPORT_MARGIN, viewport.width / 2);
-  const verticalMargin = Math.min(VIEWPORT_MARGIN, viewport.height / 2);
-  const maxWidth = Math.max(0, viewport.width - horizontalMargin * 2);
-  const maxHeight = Math.max(0, viewport.height - verticalMargin * 2);
-  const renderedWidth = Math.min(size.width, maxWidth);
-  const renderedHeight = Math.min(size.height, maxHeight);
-  const minLeft = viewport.left + horizontalMargin;
-  const minTop = viewport.top + verticalMargin;
-  const maxLeft = Math.max(
-    minLeft,
-    viewport.left + viewport.width - renderedWidth - horizontalMargin,
-  );
-  const maxTop = Math.max(minTop, viewport.top + viewport.height - renderedHeight - verticalMargin);
-  const left = adjacentPosition(
-    draft.rect.right + ANCHOR_GAP,
-    draft.rect.left - renderedWidth - ANCHOR_GAP,
-    minLeft,
-    maxLeft,
-  );
-  const top = adjacentPosition(
-    draft.rect.bottom + ANCHOR_GAP,
-    draft.rect.top - renderedHeight - ANCHOR_GAP,
-    minTop,
-    maxTop,
-  );
-
-  return { left, maxHeight, maxWidth, top };
-}
-
-function adjacentPosition(after: number, before: number, minimum: number, maximum: number) {
-  if (after >= minimum && after <= maximum) {
-    return after;
-  }
-  if (before >= minimum && before <= maximum) {
-    return before;
-  }
-  return Math.min(Math.max(after, minimum), maximum);
+  return positionAdjacentToRect(draft.rect, size, {
+    gap: ANCHOR_GAP,
+    margin: VIEWPORT_MARGIN,
+    viewport,
+  });
 }
 
 function samePosition(
