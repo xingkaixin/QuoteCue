@@ -1,0 +1,196 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+
+import { useHost } from "@/features/host-port/HostProvider";
+import { useI18n } from "@/features/i18n/I18nProvider";
+
+import type { AnnotationEditorState, DraftAnnotation, SelectionDraft } from "./annotation";
+import type { ProjectedAnnotation } from "./annotation-projection";
+import { compileAnnotatedPrompt } from "./prompt-compiler";
+import { registerSendInterceptor, type AnnotatedSendState } from "./register-send-interceptor";
+import { useAnnotationProjection } from "./use-annotation-projection";
+import { useConversationKey } from "./use-conversation-key";
+import { useDeferredAnnotationDeletion } from "./use-deferred-annotation-deletion";
+import { useDraftAnnotations } from "./use-draft-annotations";
+
+type SendController = ReturnType<typeof registerSendInterceptor>;
+
+export function useAnnotationWorkspace() {
+  const host = useHost();
+  const { locale } = useI18n();
+  const conversationKey = useConversationKey();
+  const {
+    annotations,
+    status,
+    errorOperation,
+    isHydrated,
+    addAnnotation,
+    updateAnnotation,
+    removeAnnotations,
+    removeSentAnnotations,
+    clearAnnotations,
+    retry,
+  } = useDraftAnnotations(conversationKey);
+  const [sendState, setSendState] = useState<AnnotatedSendState>({ status: "idle" });
+  const [editorState, setEditorState] = useState<AnnotationEditorState>({ status: "hidden" });
+  const {
+    discardPendingDeletions,
+    pendingDeletionCount,
+    pendingDeletionExpiresAt,
+    requestDeletion,
+    visibleAnnotations,
+  } = useDeferredAnnotationDeletion(annotations, conversationKey, removeAnnotations);
+  const activeAnnotationId = editorState.status === "hidden" ? null : editorState.annotationId;
+  const projectedAnnotations = useAnnotationProjection(visibleAnnotations, activeAnnotationId);
+  const activeProjection = projectedAnnotations.find(
+    ({ annotation }) => annotation.id === activeAnnotationId,
+  );
+  const annotationsRef = useRef<readonly ProjectedAnnotation[]>(projectedAnnotations);
+  const localeRef = useRef(locale);
+  const sendControllerRef = useRef<SendController | null>(null);
+
+  annotationsRef.current = projectedAnnotations;
+  localeRef.current = locale;
+
+  const closeEditor = useCallback(() => setEditorState({ status: "hidden" }), []);
+
+  useEffect(() => {
+    const controller = registerSendInterceptor({
+      annotations: () => annotationsRef.current,
+      compilePrompt: compileAnnotatedPrompt,
+      host,
+      locale: () => localeRef.current,
+      onSendAccepted: (sentAnnotations) => {
+        removeSentAnnotations(sentAnnotations);
+        closeEditor();
+      },
+      onStateChange: setSendState,
+    });
+    sendControllerRef.current = controller;
+
+    return () => {
+      if (sendControllerRef.current === controller) {
+        sendControllerRef.current = null;
+      }
+      controller.dispose();
+    };
+  }, [closeEditor, host, removeSentAnnotations]);
+
+  useEffect(closeEditor, [closeEditor, conversationKey]);
+
+  const startAnnotation = useCallback(
+    (draft: SelectionDraft) => {
+      const annotation: DraftAnnotation = {
+        id: crypto.randomUUID(),
+        anchor: draft.anchor,
+        comment: "",
+      };
+      if (!addAnnotation(annotation)) {
+        return;
+      }
+      setEditorState({ status: "quick", annotationId: annotation.id });
+      host.selection.clear();
+    },
+    [addAnnotation, host],
+  );
+
+  const saveActiveAnnotation = useCallback(
+    (comment: string) => {
+      if (editorState.status !== "hidden" && updateAnnotation(editorState.annotationId, comment)) {
+        closeEditor();
+      }
+    },
+    [closeEditor, editorState, updateAnnotation],
+  );
+
+  const openEditor = useCallback(
+    (projection: ProjectedAnnotation) => {
+      if (!projection.range) {
+        return;
+      }
+      const reveal = host.selection.reveal(projection.range);
+      if (reveal.status === "unavailable") {
+        return;
+      }
+
+      const showEditor = () =>
+        setEditorState({ status: "expanded", annotationId: projection.annotation.id });
+      if (reveal.value === "visible") {
+        showEditor();
+        return;
+      }
+      requestAnimationFrame(showEditor);
+    },
+    [host],
+  );
+
+  const deleteAnnotation = useCallback(
+    (annotationId: string) => {
+      if (!requestDeletion(annotationId)) {
+        return;
+      }
+      if (activeAnnotationId === annotationId) {
+        closeEditor();
+      }
+    },
+    [activeAnnotationId, closeEditor, requestDeletion],
+  );
+
+  const clearAll = useCallback(() => {
+    if (!clearAnnotations()) {
+      return;
+    }
+    discardPendingDeletions();
+    closeEditor();
+  }, [clearAnnotations, closeEditor, discardPendingDeletions]);
+
+  const send = useCallback(() => {
+    const controller = sendControllerRef.current;
+    if (!controller) {
+      return;
+    }
+    if (sendState.status === "failed") {
+      void controller.retry();
+      return;
+    }
+    void controller.submit();
+  }, [sendState.status]);
+
+  return {
+    draft: {
+      errorOperation,
+      isHydrated,
+      retry,
+      status,
+    },
+    editor: {
+      close: closeEditor,
+      projection: activeProjection,
+      save: saveActiveAnnotation,
+      status: editorState.status,
+    },
+    selection: {
+      isEnabled: isHydrated,
+      onActivate: startAnnotation,
+      resetKey: conversationKey,
+    },
+    summary: {
+      annotations: projectedAnnotations,
+      clear: clearAll,
+      isVisible: isHydrated && annotations.length > 0,
+      open: openEditor,
+      pendingDeletionCount,
+      pendingDeletionExpiresAt,
+      remove: deleteAnnotation,
+      send,
+      sendStatus: annotationSendStatus(sendState),
+      undoDeletion: discardPendingDeletions,
+    },
+  };
+}
+
+function annotationSendStatus(state: AnnotatedSendState): "idle" | "pending" | "failed" {
+  if (state.status === "idle") {
+    return "idle";
+  }
+  return state.status === "failed" ? "failed" : "pending";
+}

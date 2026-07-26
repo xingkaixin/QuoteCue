@@ -4,7 +4,7 @@ import type { DraftAnnotation } from "@/features/annotations/annotation";
 import { numberAnnotations } from "@/features/annotations/annotation-projection";
 import { compileAnnotatedPrompt } from "@/features/annotations/prompt-compiler";
 import { createClaudeHost } from "@/features/claude/claude-host";
-import { registerSendInterceptor } from "@/features/host/register-send-interceptor";
+import { registerSendInterceptor } from "@/features/annotations/register-send-interceptor";
 
 import {
   appendClaudeSelectionToolbar,

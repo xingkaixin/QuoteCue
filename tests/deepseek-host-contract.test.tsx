@@ -7,7 +7,7 @@ import { numberAnnotations } from "@/features/annotations/annotation-projection"
 import { compileAnnotatedPrompt } from "@/features/annotations/prompt-compiler";
 import { SelectionPresentation } from "@/features/annotations/SelectionPresentation";
 import { createDeepSeekHost } from "@/features/deepseek/deepseek-host";
-import { registerSendInterceptor } from "@/features/host/register-send-interceptor";
+import { registerSendInterceptor } from "@/features/annotations/register-send-interceptor";
 import type { SelectionDraft } from "@/features/annotations/annotation";
 
 import {

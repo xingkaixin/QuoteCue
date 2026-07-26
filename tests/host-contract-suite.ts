@@ -80,6 +80,8 @@ export function runHostContractSuite(definition: HostContractDefinition) {
       expect(
         restoreTextAnchorFromIndex(captured.anchor, siteHost.selection.messageIndex()),
       ).not.toBeNull();
+      siteHost.selection.clear();
+      expect(window.getSelection()?.rangeCount).toBe(0);
     });
 
     it("rejects selections inside user messages", () => {

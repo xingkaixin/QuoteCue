@@ -73,6 +73,7 @@ export type Host = {
   reportUnavailable(reason: HostUnavailableReason): void;
   selection: {
     capture(selection?: Selection | null): HostResult<SelectionCapture>;
+    clear(): void;
     messageIndex(root?: ParentNode): Map<string, HTMLElement>;
     mountAction(options: {
       label: string;
