@@ -2,6 +2,7 @@ import { parseTextAnchor } from "@/features/annotations/annotation";
 import { rangeEndpointRect } from "@/features/annotations/selection-anchor";
 import type { SelectionCapture, SelectionRect } from "@/features/host-port/host-port";
 import { currentVisualViewportBounds } from "@/features/layout/use-visual-viewport";
+import { QUOTECUE_HOST_SELECTOR, QUOTECUE_NATIVE_ACTION_ATTR } from "@/lib/dom-identity";
 
 import {
   available,
@@ -12,7 +13,6 @@ import {
 } from "./host-context";
 
 const CONTEXT_LENGTH = 48;
-const NATIVE_SELECTION_ACTION_ATTRIBUTE = "data-quotecue-native-action";
 const SCROLLABLE_OVERFLOW_PATTERN = /auto|overlay|scroll/;
 
 type SelectionRevealStatus = "scrolled" | "visible";
@@ -123,7 +123,7 @@ export function createSelectionSurface(context: HostContext) {
       0,
     );
     const isNearbyFixedToolbar =
-      !candidate.matches("[data-quotecue-host]") &&
+      !candidate.matches(QUOTECUE_HOST_SELECTOR) &&
       hostWindow.getComputedStyle(candidate).position === "fixed" &&
       rect.width >= 80 &&
       rect.width <= 480 &&
@@ -170,7 +170,7 @@ export function createSelectionSurface(context: HostContext) {
       }
 
       action = sourceAction.cloneNode(true) as HTMLButtonElement;
-      action.setAttribute(NATIVE_SELECTION_ACTION_ATTRIBUTE, "");
+      action.setAttribute(QUOTECUE_NATIVE_ACTION_ATTR, "");
       action.setAttribute("aria-label", options.label);
       action.removeAttribute("aria-describedby");
       action.removeAttribute("id");

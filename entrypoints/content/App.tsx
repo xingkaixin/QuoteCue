@@ -7,6 +7,7 @@ import { DraftPersistenceStatus } from "@/features/annotations/DraftPersistenceS
 import { SelectionPresentation } from "@/features/annotations/SelectionPresentation";
 import { useAnnotationWorkspace } from "@/features/annotations/use-annotation-workspace";
 import { useAnnotatedComposerLayout } from "@/features/host/use-annotated-composer-layout";
+import { QUOTECUE_ROOT_ATTR } from "@/lib/dom-identity";
 
 export default function App() {
   const { draft, editor, selection, summary } = useAnnotationWorkspace();
@@ -15,7 +16,7 @@ export default function App() {
 
   return (
     <TooltipProvider delay={180}>
-      <div data-quotecue-root>
+      <div {...{ [QUOTECUE_ROOT_ATTR]: "" }}>
         {draft.status === "loading" && <DraftPersistenceStatus status="loading" />}
 
         {draft.status === "error" && draft.errorOperation && (

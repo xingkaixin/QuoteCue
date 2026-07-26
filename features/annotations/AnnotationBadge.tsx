@@ -1,5 +1,6 @@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useI18n } from "@/features/i18n/I18nProvider";
+import { Z_LAYER } from "@/lib/dom-identity";
 
 import type { ProjectedAnnotation } from "./annotation-projection";
 
@@ -17,8 +18,8 @@ export function AnnotationBadge({ entry, left, onEdit, top }: AnnotationBadgePro
 
   return (
     <div
-      className="quotecue-interactive fixed z-[2147483646] flex size-6 items-center justify-center"
-      style={{ left, top }}
+      className="quotecue-interactive fixed flex size-6 items-center justify-center"
+      style={{ left, top, zIndex: Z_LAYER.floating }}
     >
       <Tooltip disabled={!comment}>
         <TooltipTrigger

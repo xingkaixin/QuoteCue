@@ -5,6 +5,7 @@ import { numberAnnotations } from "@/features/annotations/annotation-projection"
 import { compileAnnotatedPrompt } from "@/features/annotations/prompt-compiler";
 import { createClaudeHost } from "@/features/claude/claude-host";
 import { registerSendInterceptor } from "@/features/annotations/register-send-interceptor";
+import { QUOTECUE_NATIVE_ACTION_SELECTOR } from "@/lib/dom-identity";
 
 import {
   appendClaudeSelectionToolbar,
@@ -38,7 +39,7 @@ describe("Claude host contract", () => {
     const { actionRow, replyButton } = appendClaudeSelectionToolbar();
     await nextFrame();
 
-    const action = actionRow.querySelector<HTMLButtonElement>("[data-quotecue-native-action]");
+    const action = actionRow.querySelector<HTMLButtonElement>(QUOTECUE_NATIVE_ACTION_SELECTOR);
     expect(actionRow.firstElementChild).toBe(action);
     expect(action?.nextElementSibling).toBe(replyButton);
     expect(action?.className).toBe(replyButton.className);

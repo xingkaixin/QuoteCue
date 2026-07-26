@@ -3,6 +3,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { useI18n } from "@/features/i18n/I18nProvider";
 import { positionAdjacentToRect } from "@/features/layout/floating-position";
 import { useVisualViewportBounds } from "@/features/layout/use-visual-viewport";
+import { Z_LAYER } from "@/lib/dom-identity";
 
 import type { SelectionCapture } from "./annotation";
 
@@ -46,11 +47,11 @@ export function SelectionActionButton({ onActivate, rect }: SelectionActionButto
   return (
     <button
       aria-label={messages.addAnnotation}
-      className="quotecue-interactive qc-surface qc-divider qc-pressable qc-focus fixed z-[2147483646] flex h-8 cursor-pointer items-center rounded-full border px-3 text-sm font-medium shadow-sm"
+      className="quotecue-interactive qc-surface qc-divider qc-pressable qc-focus fixed flex h-8 cursor-pointer items-center rounded-full border px-3 text-sm font-medium shadow-sm"
       onClick={onActivate}
       onMouseDown={(event) => event.preventDefault()}
       ref={buttonRef}
-      style={{ left, top }}
+      style={{ left, top, zIndex: Z_LAYER.floating }}
       type="button"
     >
       QuoteCue

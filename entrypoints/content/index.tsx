@@ -9,6 +9,7 @@ import { SITE_URL_PATTERNS } from "@/features/host/site-urls";
 import { HostProvider } from "@/features/host-port/HostProvider";
 import { I18nProvider } from "@/features/i18n/I18nProvider";
 import { HostThemeProvider } from "@/features/theme/HostThemeProvider";
+import { QUOTECUE_HOST_ATTR, Z_LAYER } from "@/lib/dom-identity";
 
 import App from "./App";
 
@@ -53,10 +54,11 @@ export default defineContentScript({
       onMount(container) {
         const shadowRoot = container.getRootNode();
         if (shadowRoot instanceof ShadowRoot) {
-          shadowRoot.host.setAttribute("data-quotecue-host", "");
+          shadowRoot.host.setAttribute(QUOTECUE_HOST_ATTR, "");
         }
         const app = document.createElement("div");
         app.id = "quotecue-root";
+        app.style.zIndex = String(Z_LAYER.base);
         container.append(app);
 
         const root = ReactDOM.createRoot(app);

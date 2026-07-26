@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { SelectionDraft } from "@/features/annotations/annotation";
 import { SelectionPresentation } from "@/features/annotations/SelectionPresentation";
+import { QUOTECUE_HOST_ATTR, QUOTECUE_NATIVE_ACTION_SELECTOR } from "@/lib/dom-identity";
 
 import { appendAssistantMessage, appendSelectionToolbar } from "./fixtures/chatgpt-host";
 import { HostTestProvider } from "./fixtures/host-provider";
@@ -30,7 +31,7 @@ describe("selection overlay", () => {
       await nextFrame();
     });
 
-    const action = actionRow.querySelector<HTMLButtonElement>("[data-quotecue-native-action]");
+    const action = actionRow.querySelector<HTMLButtonElement>(QUOTECUE_NATIVE_ACTION_SELECTOR);
     expect(actionRow.firstElementChild).toBe(action);
     expect(action?.className).toBe(firstAction.className);
     expect(action?.textContent).toBe("QuoteCue");
@@ -60,20 +61,20 @@ describe("selection overlay", () => {
       );
       await nextFrame();
     });
-    expect(actionRow.querySelector("[data-quotecue-native-action]")).not.toBeNull();
+    expect(actionRow.querySelector(QUOTECUE_NATIVE_ACTION_SELECTOR)).not.toBeNull();
 
     await act(async () => {
       document.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Escape" }));
     });
-    expect(actionRow.querySelector("[data-quotecue-native-action]")).toBeNull();
+    expect(actionRow.querySelector(QUOTECUE_NATIVE_ACTION_SELECTOR)).toBeNull();
 
     await act(async () => {
       document.dispatchEvent(new KeyboardEvent("keyup", { bubbles: true, key: "ArrowRight" }));
       await nextFrame();
     });
-    expect(actionRow.querySelector("[data-quotecue-native-action]")).not.toBeNull();
+    expect(actionRow.querySelector(QUOTECUE_NATIVE_ACTION_SELECTOR)).not.toBeNull();
     await act(async () => window.dispatchEvent(new Event("scroll")));
-    expect(actionRow.querySelector("[data-quotecue-native-action]")).toBeNull();
+    expect(actionRow.querySelector(QUOTECUE_NATIVE_ACTION_SELECTOR)).toBeNull();
 
     await act(async () => root.unmount());
   });
@@ -92,10 +93,10 @@ describe("selection overlay", () => {
       document.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
       await nextFrame();
     });
-    expect(actionRow.querySelector("[data-quotecue-native-action]")).not.toBeNull();
+    expect(actionRow.querySelector(QUOTECUE_NATIVE_ACTION_SELECTOR)).not.toBeNull();
 
     const host = document.createElement("quotecue-ui");
-    host.setAttribute("data-quotecue-host", "");
+    host.setAttribute(QUOTECUE_HOST_ATTR, "");
     const shadowRoot = host.attachShadow({ mode: "closed" });
     const internalButton = document.createElement("button");
     shadowRoot.append(internalButton);
@@ -105,7 +106,7 @@ describe("selection overlay", () => {
       internalButton.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, composed: true }));
       await nextFrame();
     });
-    expect(actionRow.querySelector("[data-quotecue-native-action]")).not.toBeNull();
+    expect(actionRow.querySelector(QUOTECUE_NATIVE_ACTION_SELECTOR)).not.toBeNull();
 
     await act(async () => root.unmount());
   });

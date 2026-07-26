@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { AnnotationEditor } from "@/features/annotations/AnnotationEditor";
 import { createChatGptHost } from "@/features/chatgpt/chatgpt-host";
 import type { Host } from "@/features/host-port/host-port";
+import { QUOTECUE_HOST_ATTR } from "@/lib/dom-identity";
 
 import { HostTestProvider } from "./fixtures/host-provider";
 
@@ -262,7 +263,7 @@ describe("AnnotationEditor", () => {
     Object.defineProperty(Element.prototype, "animate", { configurable: true, value: animate });
     const onCancel = vi.fn();
     const host = document.createElement("quotecue-ui");
-    host.setAttribute("data-quotecue-host", "");
+    host.setAttribute(QUOTECUE_HOST_ATTR, "");
     const shadowRoot = host.attachShadow({ mode: "closed" });
     const container = document.createElement("div");
     const otherControl = document.createElement("button");

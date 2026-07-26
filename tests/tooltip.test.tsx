@@ -34,7 +34,11 @@ describe("TooltipContent", () => {
 
     expect(host.shadowRoot).toBeNull();
     expect(shadowRoot.textContent).toContain("Tooltip text");
-    expect(document.body.querySelector("[data-quotecue-portal]")).toBeNull();
+    const portal = Array.from(container.children).find(
+      (child) => child.textContent === "Tooltip text",
+    );
+    expect(portal?.parentElement).toBe(container);
+    expect(portal?.getRootNode()).toBe(shadowRoot);
 
     await act(async () => root.unmount());
   });

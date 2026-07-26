@@ -9,6 +9,7 @@ import { restoreTextAnchorFromIndex } from "@/features/annotations/selection-anc
 import { createChatGptHost } from "@/features/chatgpt/chatgpt-host";
 import { registerSendInterceptor } from "@/features/annotations/register-send-interceptor";
 import { useAnnotatedComposerLayout } from "@/features/host/use-annotated-composer-layout";
+import { QUOTECUE_NATIVE_ACTION_SELECTOR } from "@/lib/dom-identity";
 
 import {
   appendSelectionToolbar,
@@ -57,7 +58,7 @@ describe("ChatGPT host contract", () => {
     const { actionRow, firstAction } = appendSelectionToolbar();
     await nextFrame();
 
-    const action = actionRow.querySelector<HTMLButtonElement>("[data-quotecue-native-action]");
+    const action = actionRow.querySelector<HTMLButtonElement>(QUOTECUE_NATIVE_ACTION_SELECTOR);
     expect(actionRow.firstElementChild).toBe(action);
     expect(action?.className).toBe(firstAction.className);
     expect(action?.textContent).toBe("QuoteCue");
@@ -95,7 +96,7 @@ describe("ChatGPT host contract", () => {
     expect(requestAnimationFrame).toHaveBeenCalledOnce();
 
     await new Promise<void>((resolve) => nativeRequestAnimationFrame(() => resolve()));
-    expect(actionRow.querySelector("[data-quotecue-native-action]")).not.toBeNull();
+    expect(actionRow.querySelector(QUOTECUE_NATIVE_ACTION_SELECTOR)).not.toBeNull();
 
     await Promise.resolve();
     getComputedStyle.mockClear();
@@ -122,7 +123,7 @@ describe("ChatGPT host contract", () => {
       },
     });
 
-    expect(actionRow.querySelector("[data-quotecue-native-action]")).not.toBeNull();
+    expect(actionRow.querySelector(QUOTECUE_NATIVE_ACTION_SELECTOR)).not.toBeNull();
     stop();
   });
 
