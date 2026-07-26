@@ -52,7 +52,7 @@ describe("ChatGPT host contract", () => {
       },
     });
     const { actionRow, firstAction } = appendSelectionToolbar();
-    await Promise.resolve();
+    await nextFrame();
 
     const action = actionRow.querySelector<HTMLButtonElement>("[data-quotecue-native-action]");
     expect(actionRow.firstElementChild).toBe(action);
@@ -64,6 +64,43 @@ describe("ChatGPT host contract", () => {
     action?.click();
     expect(onActivate).toHaveBeenCalledOnce();
     expect(action?.isConnected).toBe(false);
+    stop();
+  });
+
+  it("coalesces toolbar discovery and skips scans while its action is connected", async () => {
+    const nativeRequestAnimationFrame = window.requestAnimationFrame.bind(window);
+    const requestAnimationFrame = vi.spyOn(window, "requestAnimationFrame");
+    const getComputedStyle = vi.spyOn(window, "getComputedStyle");
+    const stop = createChatGptHost({ document, window }).selection.mountAction({
+      label: "Add QuoteCue annotation",
+      onActivate: vi.fn(),
+      rect: {
+        bottom: 220,
+        height: 20,
+        left: 100,
+        right: 360,
+        top: 200,
+        width: 260,
+      },
+    });
+    getComputedStyle.mockClear();
+
+    const { actionRow } = appendSelectionToolbar();
+    await Promise.resolve();
+    document.body.append(document.createElement("span"));
+    await Promise.resolve();
+    expect(requestAnimationFrame).toHaveBeenCalledOnce();
+
+    await new Promise<void>((resolve) => nativeRequestAnimationFrame(() => resolve()));
+    expect(actionRow.querySelector("[data-quotecue-native-action]")).not.toBeNull();
+
+    await Promise.resolve();
+    getComputedStyle.mockClear();
+    document.body.append(document.createElement("span"));
+    await Promise.resolve();
+    expect(requestAnimationFrame).toHaveBeenCalledOnce();
+    expect(getComputedStyle).not.toHaveBeenCalled();
+
     stop();
   });
 
@@ -310,14 +347,22 @@ describe("ChatGPT host contract", () => {
 
     const stopLayoutObservation = host.layout.subscribe(vi.fn());
     const stopSelectionObservation = host.selection.observeInvalidation(vi.fn());
+    const stopActionObservation = host.selection.mountAction({
+      label: "Add QuoteCue annotation",
+      onActivate: vi.fn(),
+      rect: { bottom: 20, height: 10, left: 0, right: 20, top: 10, width: 20 },
+    });
 
     expect(constructionCount).toBe(1);
-    expect(observe).toHaveBeenCalledTimes(2);
+    expect(observe).toHaveBeenCalledTimes(3);
 
     stopLayoutObservation();
     expect(disconnect).not.toHaveBeenCalled();
 
     stopSelectionObservation();
+    expect(disconnect).not.toHaveBeenCalled();
+
+    stopActionObservation();
     expect(disconnect).toHaveBeenCalledOnce();
   });
 
@@ -448,4 +493,8 @@ function selectRangeWithRenderedText(range: Range, renderedText: string) {
   selection.removeAllRanges();
   selection.addRange(range);
   return vi.spyOn(selection, "toString").mockReturnValue(renderedText);
+}
+
+function nextFrame() {
+  return new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 }

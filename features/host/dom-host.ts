@@ -246,6 +246,7 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
     rect: SelectionDraft["rect"];
   }) {
     let action: HTMLButtonElement | null = null;
+    let insertFrame: number | null = null;
 
     const preserveSelection = (event: Event) => {
       event.preventDefault();
@@ -280,13 +281,24 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
       });
       toolbar.prepend(action);
     };
-    const observer = new MutationObserver(insertAction);
+    const scheduleInsert = () => {
+      if (action?.isConnected || insertFrame !== null) {
+        return;
+      }
+      insertFrame = hostWindow.requestAnimationFrame(() => {
+        insertFrame = null;
+        insertAction();
+      });
+    };
+    const stopObserving = pageObserver.observeMutations(scheduleInsert, { childList: true });
 
-    observer.observe(hostDocument.body, { childList: true, subtree: true });
     insertAction();
 
     return () => {
-      observer.disconnect();
+      stopObserving();
+      if (insertFrame !== null) {
+        hostWindow.cancelAnimationFrame(insertFrame);
+      }
       removeAction();
     };
   }
@@ -468,9 +480,18 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
     }
 
     return new Promise<HostResult<HTMLElement>>((resolve) => {
+      let isFinished = false;
+      let stopObserving: () => void = () => undefined;
+      let timeout: number | undefined;
       const finish = (result: HostResult<HTMLElement>) => {
-        observer.disconnect();
-        hostWindow.clearTimeout(timeout);
+        if (isFinished) {
+          return;
+        }
+        isFinished = true;
+        stopObserving();
+        if (timeout !== undefined) {
+          hostWindow.clearTimeout(timeout);
+        }
         signal.removeEventListener("abort", onAbort);
         resolve(result);
       };
@@ -482,23 +503,25 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
         }
       };
       const onAbort = () => finish(unavailable("send-control-unavailable"));
-      const observer = new MutationObserver(findButton);
-      const timeout = hostWindow.setTimeout(() => {
+      stopObserving = pageObserver.observeMutations(findButton, {
+        attributeFilter: ["aria-disabled", "class", "disabled"],
+        childList: true,
+      });
+      timeout = hostWindow.setTimeout(() => {
         logger?.("[QuoteCue host] send control wait timed out");
         finish(unavailable("send-control-unavailable"));
       }, SEND_BUTTON_APPEAR_TIMEOUT_MS);
 
       signal.addEventListener("abort", onAbort, { once: true });
-      observer.observe(hostDocument.body, {
-        attributeFilter: ["aria-disabled", "class", "disabled"],
-        attributes: true,
-        childList: true,
-        subtree: true,
-      });
     });
   }
 
   function watchForAcceptedSend(options: AcceptedSendWatcherOptions) {
+    if (options.signal.aborted) {
+      logger?.("[QuoteCue host] send confirmation skipped: aborted");
+      return () => undefined;
+    }
+
     const initialMessages = userMessages();
     const lastInitialMessage = initialMessages.at(-1);
     const existingMessageIds = new Set(
@@ -523,7 +546,16 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
     };
     const expectedText = normalizedText(options.expectedText);
     logger?.(`[QuoteCue host] send confirmation started: existing=${initialMessages.length}`);
-    const observer = new MutationObserver(() => {
+    let stopObserving: () => void = () => undefined;
+    let timeout: number | undefined;
+    const cleanup = once(() => {
+      stopObserving();
+      if (timeout !== undefined) {
+        hostWindow.clearTimeout(timeout);
+      }
+      options.signal.removeEventListener("abort", cleanup);
+    });
+    const findAcceptedMessage = () => {
       const messages = userMessages();
       const acceptedMessage = messages.find((message) => {
         if (!isNewMessage(message)) {
@@ -541,20 +573,18 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
         cleanup();
         options.onAccepted();
       }
+    };
+    stopObserving = pageObserver.observeMutations(findAcceptedMessage, {
+      characterData: true,
+      childList: true,
     });
-    const timeout = hostWindow.setTimeout(() => {
+    timeout = hostWindow.setTimeout(() => {
       logger?.("[QuoteCue host] send confirmation timed out");
       cleanup();
       options.onTimeout();
     }, SEND_ACCEPT_TIMEOUT_MS);
-    const cleanup = () => {
-      observer.disconnect();
-      hostWindow.clearTimeout(timeout);
-      options.signal.removeEventListener("abort", cleanup);
-    };
 
     options.signal.addEventListener("abort", cleanup, { once: true });
-    observer.observe(hostDocument.body, { childList: true, characterData: true, subtree: true });
     return cleanup;
   }
 

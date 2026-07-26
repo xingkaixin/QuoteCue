@@ -95,6 +95,9 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
         const sendButtonResult = host.composer.isButtonAvailable(initialButton)
           ? { status: "available" as const, value: initialButton }
           : await host.composer.waitForButton(attempt.controller.signal);
+        if (activeAttempt !== attempt) {
+          return;
+        }
         if (sendButtonResult.status === "unavailable") {
           host.reportUnavailable(sendButtonResult.reason);
           finishFailed(attempt, "send-unavailable");
@@ -108,9 +111,6 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
           onAccepted: () => finishAccepted(attempt),
           onTimeout: () => finishFailed(attempt, "confirmation-timeout"),
         });
-        if (activeAttempt !== attempt) {
-          return;
-        }
         setState({ status: "awaiting-confirmation", attemptId: attempt.id });
         isDispatchingReplay = true;
         try {
