@@ -1,7 +1,8 @@
-import type { DraftAnnotation } from "@/features/annotations/annotation";
-import type { NumberedAnnotation } from "@/features/annotations/annotation-projection";
 import type { SupportedLocale } from "@/features/i18n/messages";
 import type { ComposerSnapshot, Host } from "@/features/host-port/host-port";
+
+import type { DraftAnnotation } from "./annotation";
+import type { NumberedAnnotation } from "./annotation-projection";
 
 export type AnnotatedSendFailureReason =
   | "composer-unavailable"

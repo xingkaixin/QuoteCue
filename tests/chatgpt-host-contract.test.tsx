@@ -7,7 +7,7 @@ import { numberAnnotations } from "@/features/annotations/annotation-projection"
 import { compileAnnotatedPrompt } from "@/features/annotations/prompt-compiler";
 import { restoreTextAnchorFromIndex } from "@/features/annotations/selection-anchor";
 import { createChatGptHost } from "@/features/chatgpt/chatgpt-host";
-import { registerSendInterceptor } from "@/features/host/register-send-interceptor";
+import { registerSendInterceptor } from "@/features/annotations/register-send-interceptor";
 import { useAnnotatedComposerLayout } from "@/features/host/use-annotated-composer-layout";
 
 import {

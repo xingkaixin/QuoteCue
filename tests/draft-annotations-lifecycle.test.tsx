@@ -104,6 +104,30 @@ describe("draft annotation lifecycle", () => {
     await act(async () => root.unmount());
   });
 
+  it("rejects updates for unknown annotations without advancing the revision", async () => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    draftStorage.load.mockResolvedValue([annotation]);
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    await act(async () => root.render(<DraftHarness conversationKey="A" />));
+    const revision = latestDrafts.revision;
+    draftStorage.save.mockClear();
+    let didUpdate = true;
+
+    await act(async () => {
+      didUpdate = latestDrafts.updateAnnotation("missing-annotation", "lost update");
+    });
+
+    expect(didUpdate).toBe(false);
+    expect(latestDrafts.revision).toBe(revision);
+    expect(latestDrafts.annotations).toEqual([annotation]);
+    expect(draftStorage.save).not.toHaveBeenCalled();
+
+    await act(async () => root.unmount());
+  });
+
   it("commits only the latest load during A to B to A navigation", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     const pendingLoads = new Map<string, Array<(annotations: DraftAnnotation[]) => void>>();

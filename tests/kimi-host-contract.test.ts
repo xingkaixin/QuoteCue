@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DraftAnnotation } from "@/features/annotations/annotation";
 import { numberAnnotations } from "@/features/annotations/annotation-projection";
 import { compileAnnotatedPrompt } from "@/features/annotations/prompt-compiler";
-import { registerSendInterceptor } from "@/features/host/register-send-interceptor";
+import { registerSendInterceptor } from "@/features/annotations/register-send-interceptor";
 import { createKimiHost } from "@/features/kimi/kimi-host";
 
 import { appendKimiUserMessage, installKimiHostFixture } from "./fixtures/kimi-host";

@@ -88,6 +88,10 @@ export function createSelectionSurface(context: HostContext) {
     });
   }
 
+  function clear() {
+    hostWindow.getSelection()?.removeAllRanges();
+  }
+
   function selectionToolbar(selectionRect: SelectionRect) {
     let closest: SelectionToolbarCandidate | null = null;
     for (const element of hostDocument.body.children) {
@@ -264,6 +268,7 @@ export function createSelectionSurface(context: HostContext) {
   return {
     presentation: adapter.selectionPresentation.mode,
     capture,
+    clear,
     messageIndex,
     mountAction,
     observeInvalidation,
