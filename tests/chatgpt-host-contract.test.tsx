@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { DraftAnnotation } from "@/features/annotations/annotation";
+import { numberAnnotations } from "@/features/annotations/annotation-projection";
 import { compileAnnotatedPrompt } from "@/features/annotations/prompt-compiler";
 import { createChatGptHost } from "@/features/chatgpt/chatgpt-host";
 import { registerSendInterceptor } from "@/features/host/register-send-interceptor";
@@ -169,7 +170,7 @@ describe("ChatGPT host contract", () => {
       appendUserMessage("user-one", sentText);
     });
     const interceptor = registerSendInterceptor({
-      annotations: () => annotations,
+      annotations: () => numberAnnotations(annotations),
       compilePrompt: compileAnnotatedPrompt,
       host,
       locale: () => "en",
@@ -405,7 +406,7 @@ describe("ChatGPT host contract", () => {
       comment: "private comment",
     };
     const interceptor = registerSendInterceptor({
-      annotations: () => [privateAnnotation],
+      annotations: () => numberAnnotations([privateAnnotation]),
       compilePrompt: compileAnnotatedPrompt,
       host,
       locale: () => "en",

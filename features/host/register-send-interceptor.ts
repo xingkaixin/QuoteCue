@@ -1,4 +1,5 @@
 import type { DraftAnnotation } from "@/features/annotations/annotation";
+import type { NumberedAnnotation } from "@/features/annotations/annotation-projection";
 import type { SupportedLocale } from "@/features/i18n/messages";
 import type { ComposerSnapshot, Host } from "@/features/host-port/host-port";
 
@@ -22,9 +23,9 @@ export type AnnotatedSendState =
   | { status: "failed"; attemptId: string | null; reason: AnnotatedSendFailureReason };
 
 type SendInterceptorOptions = {
-  annotations: () => readonly DraftAnnotation[];
+  annotations: () => readonly NumberedAnnotation[];
   compilePrompt: (
-    annotations: readonly DraftAnnotation[],
+    annotations: readonly NumberedAnnotation[],
     originalText: string,
     locale: SupportedLocale,
   ) => string;
@@ -38,7 +39,7 @@ type SendAttempt = {
   id: string;
   snapshot: ComposerSnapshot;
   compiledText: string;
-  annotations: readonly DraftAnnotation[];
+  annotations: readonly NumberedAnnotation[];
   controller: AbortController;
   result: Promise<AnnotatedSendResult>;
   resolve: (result: AnnotatedSendResult) => void;
@@ -71,11 +72,12 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
     attempt.controller.abort();
     activeAttempt = null;
     lastFailedAttempt = null;
-    options.onSendAccepted(attempt.annotations);
+    const sentAnnotations = attempt.annotations.map(({ annotation }) => annotation);
+    options.onSendAccepted(sentAnnotations);
     setState({ status: "idle" });
     attempt.resolve({
       status: "accepted",
-      annotationIds: attempt.annotations.map(({ id }) => id),
+      annotationIds: sentAnnotations.map(({ id }) => id),
     });
   };
 
@@ -231,7 +233,7 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
 function createAttempt(
   snapshot: ComposerSnapshot,
   compiledText: string,
-  annotations: readonly DraftAnnotation[],
+  annotations: readonly NumberedAnnotation[],
 ): SendAttempt {
   let resolve: (result: AnnotatedSendResult) => void = () => undefined;
   const result = new Promise<AnnotatedSendResult>((resultResolve) => {
@@ -248,10 +250,13 @@ function createAttempt(
   };
 }
 
-function snapshotAnnotations(annotations: readonly DraftAnnotation[]): DraftAnnotation[] {
-  return annotations.map((annotation) => ({
-    ...annotation,
-    anchor: { ...annotation.anchor },
+function snapshotAnnotations(annotations: readonly NumberedAnnotation[]): NumberedAnnotation[] {
+  return annotations.map(({ annotation, ordinal }) => ({
+    annotation: {
+      ...annotation,
+      anchor: { ...annotation.anchor },
+    },
+    ordinal,
   }));
 }
 

@@ -7,6 +7,10 @@ import { AnnotationQuickInput } from "@/features/annotations/AnnotationQuickInpu
 import { AnnotationSummary } from "@/features/annotations/AnnotationSummary";
 import { DraftPersistenceStatus } from "@/features/annotations/DraftPersistenceStatus";
 import { SelectionPresentation } from "@/features/annotations/SelectionPresentation";
+import {
+  numberAnnotations,
+  type NumberedAnnotation,
+} from "@/features/annotations/annotation-projection";
 import { compileAnnotatedPrompt } from "@/features/annotations/prompt-compiler";
 import type {
   AnnotationEditorState,
@@ -70,18 +74,22 @@ export default function App() {
     visibleAnnotations,
     activeAnnotationId,
   );
-  const annotationNumberById = useMemo(
-    () => new Map(visibleAnnotations.map(({ id }, index) => [id, index + 1])),
+  const numberedAnnotations = useMemo(
+    () => numberAnnotations(visibleAnnotations),
     [visibleAnnotations],
   );
+  const numberedAnnotationById = useMemo(
+    () => new Map(numberedAnnotations.map((entry) => [entry.annotation.id, entry])),
+    [numberedAnnotations],
+  );
   const composerLayout = useAnnotatedComposerLayout(isHydrated && annotations.length > 0);
-  const annotationsRef = useRef(visibleAnnotations);
+  const annotationsRef = useRef<readonly NumberedAnnotation[]>(numberedAnnotations);
   const sendActionsRef = useRef<SendActions>({
     submit: () => undefined,
     retry: () => undefined,
   });
 
-  annotationsRef.current = visibleAnnotations;
+  annotationsRef.current = numberedAnnotations;
 
   useEffect(() => {
     const interceptor = registerSendInterceptor({
@@ -187,18 +195,22 @@ export default function App() {
           />
         )}
 
-        {badgePositions.map((position) => (
-          <AnnotationBadge
-            {...position}
-            key={position.annotation.id}
-            number={annotationNumberById.get(position.annotation.id) ?? 0}
-            onEdit={openEditor}
-          />
-        ))}
+        {badgePositions.map((position) => {
+          const entry = numberedAnnotationById.get(position.annotation.id);
+          return entry ? (
+            <AnnotationBadge
+              entry={entry}
+              key={position.annotation.id}
+              left={position.left}
+              onEdit={openEditor}
+              top={position.top}
+            />
+          ) : null;
+        })}
 
         {isHydrated && annotations.length > 0 && composerLayout && (
           <AnnotationSummary
-            annotations={visibleAnnotations}
+            annotations={numberedAnnotations}
             pendingDeletionCount={pendingDeletionCount}
             pendingDeletionExpiresAt={pendingDeletionExpiresAt}
             onClear={() => {

@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { DraftAnnotation } from "@/features/annotations/annotation";
+import { numberAnnotations } from "@/features/annotations/annotation-projection";
 import { compileAnnotatedPrompt } from "@/features/annotations/prompt-compiler";
 import { SelectionPresentation } from "@/features/annotations/SelectionPresentation";
 import { createDeepSeekHost } from "@/features/deepseek/deepseek-host";
@@ -73,7 +74,7 @@ describe("DeepSeek host contract", () => {
       appendUserMessageItem("user-two", fixture.composer.value);
     });
     const interceptor = registerSendInterceptor({
-      annotations: () => annotations,
+      annotations: () => numberAnnotations(annotations),
       compilePrompt: compileAnnotatedPrompt,
       host,
       locale: () => "en",
@@ -110,9 +111,10 @@ describe("DeepSeek host contract", () => {
     });
     const onSendAccepted = vi.fn();
     const interceptor = registerSendInterceptor({
-      annotations: () => [
-        { id: "annotation-one", anchor: emptyAnchor(), comment: "Explain the tradeoff" },
-      ],
+      annotations: () =>
+        numberAnnotations([
+          { id: "annotation-one", anchor: emptyAnchor(), comment: "Explain the tradeoff" },
+        ]),
       compilePrompt: compileAnnotatedPrompt,
       host,
       locale: () => "en",
@@ -150,9 +152,10 @@ describe("DeepSeek host contract", () => {
       assistant.textContent = "streaming response";
     });
     const interceptor = registerSendInterceptor({
-      annotations: () => [
-        { id: "annotation-one", anchor: emptyAnchor(), comment: "Explain the tradeoff" },
-      ],
+      annotations: () =>
+        numberAnnotations([
+          { id: "annotation-one", anchor: emptyAnchor(), comment: "Explain the tradeoff" },
+        ]),
       compilePrompt: compileAnnotatedPrompt,
       host,
       locale: () => "en",

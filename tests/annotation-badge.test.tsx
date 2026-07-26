@@ -59,9 +59,8 @@ async function mountBadge(comment = "") {
       <PortalContainerProvider container={container}>
         <TooltipProvider delay={0}>
           <AnnotationBadge
-            annotation={{ ...annotation, comment }}
+            entry={{ annotation: { ...annotation, comment }, ordinal: 1 }}
             left={10}
-            number={1}
             onEdit={onEdit}
             top={10}
           />

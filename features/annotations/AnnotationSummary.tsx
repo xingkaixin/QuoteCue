@@ -12,14 +12,14 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import type { HostLayout } from "@/features/host-port/host-port";
 import { useI18n } from "@/features/i18n/I18nProvider";
 
-import type { DraftAnnotation } from "./annotation";
 import { selectedTextFor } from "./annotation";
+import type { NumberedAnnotation } from "./annotation-projection";
 import { DELETE_UNDO_WINDOW_MS } from "./use-deferred-annotation-deletion";
 
 type AnnotationSummaryProps = {
-  annotations: DraftAnnotation[];
+  annotations: readonly NumberedAnnotation[];
   onClear: () => void;
-  onEdit: (annotation: DraftAnnotation) => void;
+  onEdit: (annotation: NumberedAnnotation["annotation"]) => void;
   onRemove: (annotationId: string) => void;
   onSend: () => void;
   onUndo: () => void;
@@ -142,13 +142,13 @@ export function AnnotationSummary({
               role="dialog"
             >
               <div className="qc-divide max-h-80 divide-y overscroll-contain overflow-y-auto">
-                {annotations.map((annotation, index) => {
+                {annotations.map(({ annotation, ordinal }) => {
                   const isUnresolved = unresolvedAnnotationIds.has(annotation.id);
                   const comment = annotation.comment.trim();
                   return (
                     <div className="group/row relative flex gap-2.5 px-3 py-3" key={annotation.id}>
                       <span className="qc-accent-bg flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
-                        {index + 1}
+                        {ordinal}
                       </span>
                       <div className="min-w-0 flex-1 pr-20">
                         <div className="flex flex-wrap items-center gap-x-2">
@@ -175,7 +175,7 @@ export function AnnotationSummary({
                       </div>
                       <div className="qc-surface qc-divider absolute right-2.5 top-2.5 flex rounded-lg border opacity-0 shadow-sm transition-opacity group-hover/row:opacity-100 group-focus-within/row:opacity-100">
                         <button
-                          aria-label={messages.editNumberedAnnotation(index + 1)}
+                          aria-label={messages.editNumberedAnnotation(ordinal)}
                           className="qc-muted qc-hover qc-focus flex size-8 cursor-pointer items-center justify-center disabled:cursor-default disabled:opacity-40"
                           disabled={isUnresolved}
                           onClick={() => onEdit(annotation)}
@@ -184,7 +184,7 @@ export function AnnotationSummary({
                           <Pencil aria-hidden="true" className="size-3.5" />
                         </button>
                         <button
-                          aria-label={messages.deleteNumberedAnnotation(index + 1)}
+                          aria-label={messages.deleteNumberedAnnotation(ordinal)}
                           className="qc-danger qc-divider qc-hover qc-focus flex size-8 cursor-pointer items-center justify-center border-l"
                           onClick={() => onRemove(annotation.id)}
                           type="button"

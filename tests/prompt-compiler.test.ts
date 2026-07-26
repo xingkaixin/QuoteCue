@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { DraftAnnotation } from "@/features/annotations/annotation";
+import { numberAnnotations } from "@/features/annotations/annotation-projection";
 import { compileAnnotatedPrompt } from "@/features/annotations/prompt-compiler";
 
 const annotations: DraftAnnotation[] = [
@@ -32,7 +33,8 @@ const annotations: DraftAnnotation[] = [
 
 describe("compileAnnotatedPrompt", () => {
   it("combines annotations and the user's prompt in display order", () => {
-    expect(compileAnnotatedPrompt(annotations, "请综合判断这个商业模式。")).toMatchInlineSnapshot(`
+    expect(compileAnnotatedPrompt(numberAnnotations(annotations), "请综合判断这个商业模式。"))
+      .toMatchInlineSnapshot(`
         "请结合以下批注回答：
 
         [批注 1]
@@ -49,13 +51,15 @@ describe("compileAnnotatedPrompt", () => {
   });
 
   it("does not add an empty supplemental question", () => {
-    expect(compileAnnotatedPrompt(annotations.slice(0, 1), "  ")).not.toContain("[补充问题]");
+    expect(compileAnnotatedPrompt(numberAnnotations(annotations.slice(0, 1)), "  ")).not.toContain(
+      "[补充问题]",
+    );
   });
 
   it("keeps a selected text annotation without an empty comment label", () => {
     const selectionOnly = [{ ...annotations[0], comment: "" }];
 
-    expect(compileAnnotatedPrompt(selectionOnly, "")).toBe(
+    expect(compileAnnotatedPrompt(numberAnnotations(selectionOnly), "")).toBe(
       "请结合以下批注回答：\n\n[批注 1]\n选中文本：全球招聘的基础设施层",
     );
   });
@@ -63,7 +67,7 @@ describe("compileAnnotatedPrompt", () => {
   it("uses the active locale for an annotation-only prompt", () => {
     const selectionOnly = [{ ...annotations[0], comment: "" }];
 
-    expect(compileAnnotatedPrompt(selectionOnly, "", "en")).toBe(
+    expect(compileAnnotatedPrompt(numberAnnotations(selectionOnly), "", "en")).toBe(
       "Please respond based on the following annotations:\n\n[Annotation 1]\nSelected text: 全球招聘的基础设施层",
     );
   });
@@ -81,6 +85,14 @@ describe("compileAnnotatedPrompt", () => {
       },
     ];
 
-    expect(compileAnnotatedPrompt(tableSelection, "", "en")).toContain("Selected text: alpha beta");
+    expect(compileAnnotatedPrompt(numberAnnotations(tableSelection), "", "en")).toContain(
+      "Selected text: alpha beta",
+    );
+  });
+
+  it("uses the supplied ordinal instead of deriving one from array position", () => {
+    expect(
+      compileAnnotatedPrompt([{ annotation: annotations[0], ordinal: 7 }], "", "en"),
+    ).toContain("[Annotation 7]");
   });
 });

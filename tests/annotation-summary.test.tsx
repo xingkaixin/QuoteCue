@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AnnotationSummary } from "@/features/annotations/AnnotationSummary";
+import { numberAnnotations } from "@/features/annotations/annotation-projection";
 import { DELETE_UNDO_WINDOW_MS } from "@/features/annotations/use-deferred-annotation-deletion";
 
 const annotation = {
@@ -64,7 +65,7 @@ describe("AnnotationSummary", () => {
   it("shows the comment section only when the annotation has content", async () => {
     const commentedAnnotation = { ...annotation, comment: "Make this more specific" };
     const { container, root, summary } = await mountSummary({
-      annotations: [commentedAnnotation],
+      annotations: numberAnnotations([commentedAnnotation]),
     });
 
     await hover(summary);
@@ -81,7 +82,7 @@ describe("AnnotationSummary", () => {
       anchor: { ...annotation.anchor, displayQuote: "alpha beta", quote: "alphabeta" },
     };
     const { container, root, summary } = await mountSummary({
-      annotations: [tableAnnotation],
+      annotations: numberAnnotations([tableAnnotation]),
     });
 
     await hover(summary);
@@ -155,7 +156,7 @@ describe("AnnotationSummary", () => {
   it("keeps deletion and clear controls enabled while an undo batch is pending", async () => {
     const onRemove = vi.fn();
     const mounted = await mountSummary({
-      annotations: [annotation, secondAnnotation],
+      annotations: numberAnnotations([annotation, secondAnnotation]),
       onRemove,
       pendingDeletionCount: 1,
     });
@@ -187,7 +188,7 @@ describe("AnnotationSummary", () => {
     const mounted = await mountSummary({ onClear, onUndo });
 
     await mounted.render({
-      annotations: [secondAnnotation],
+      annotations: numberAnnotations([secondAnnotation]),
       pendingDeletionCount: 1,
       pendingDeletionExpiresAt: 1_000,
     });
@@ -212,7 +213,7 @@ describe("AnnotationSummary", () => {
     expect(onUndo).toHaveBeenCalledOnce();
 
     await mounted.render({
-      annotations: [annotation],
+      annotations: numberAnnotations([annotation]),
       pendingDeletionCount: 0,
       pendingDeletionExpiresAt: null,
     });
@@ -257,6 +258,20 @@ describe("AnnotationSummary", () => {
 
     await act(async () => root.unmount());
   });
+
+  it("uses the supplied ordinal for every numbered control", async () => {
+    const { container, root, summary } = await mountSummary({
+      annotations: [{ annotation, ordinal: 7 }],
+    });
+
+    await hover(summary);
+
+    expect(container.textContent).toContain("7");
+    expect(container.querySelector('[aria-label="Edit annotation 7"]')).not.toBeNull();
+    expect(container.querySelector('[aria-label="Delete annotation 7"]')).not.toBeNull();
+
+    await act(async () => root.unmount());
+  });
 });
 
 type SummaryProps = ComponentProps<typeof AnnotationSummary>;
@@ -267,7 +282,7 @@ async function mountSummary(overrides: Partial<SummaryProps> = {}) {
   document.body.append(container);
   const root = createRoot(container);
   const baseProps: SummaryProps = {
-    annotations: [annotation],
+    annotations: numberAnnotations([annotation]),
     onClear: vi.fn(),
     onEdit: vi.fn(),
     onRemove: vi.fn(),
