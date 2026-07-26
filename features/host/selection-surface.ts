@@ -1,9 +1,9 @@
 import type {
-  DraftAnnotation,
   SelectionCapture,
   SelectionDraft,
+  SelectionRect,
   TextAnchor,
-} from "@/features/annotations/annotation";
+} from "@/features/host-port/host-port";
 import {
   rangeEndpointRect,
   restoreTextAnchorFromIndex,
@@ -116,7 +116,7 @@ export function createSelectionSurface(context: HostContext) {
     });
   }
 
-  function selectionToolbar(selectionRect: SelectionDraft["rect"]) {
+  function selectionToolbar(selectionRect: SelectionRect) {
     let closest: SelectionToolbarCandidate | null = null;
     for (const element of hostDocument.body.children) {
       const candidate = selectionToolbarCandidate(element, selectionRect);
@@ -130,7 +130,7 @@ export function createSelectionSurface(context: HostContext) {
 
   function selectionToolbarCandidate(
     candidate: Element,
-    selectionRect: SelectionDraft["rect"],
+    selectionRect: SelectionRect,
   ): SelectionToolbarCandidate | null {
     const rect = candidate.getBoundingClientRect();
     const horizontalOverlap =
@@ -164,11 +164,7 @@ export function createSelectionSurface(context: HostContext) {
     return actionRow ? { actionRow, distance: verticalDistance } : null;
   }
 
-  function mountAction(options: {
-    label: string;
-    onActivate: () => void;
-    rect: SelectionDraft["rect"];
-  }) {
+  function mountAction(options: { label: string; onActivate: () => void; rect: SelectionRect }) {
     let action: HTMLButtonElement | null = null;
     let insertFrame: number | null = null;
 
@@ -227,11 +223,11 @@ export function createSelectionSurface(context: HostContext) {
     };
   }
 
-  function draft(annotation: DraftAnnotation): HostResult<SelectionDraft> {
-    const restored = restore(annotation.anchor);
+  function draft(anchor: TextAnchor): HostResult<SelectionDraft> {
+    const restored = restore(anchor);
     return restored.status === "available"
       ? available({
-          anchor: annotation.anchor,
+          anchor,
           rect: rectangleSnapshot(rangeEndpointRect(restored.value)),
         })
       : restored;
@@ -325,7 +321,7 @@ function rangeRect(range: Range) {
   return rectangleSnapshot(rect);
 }
 
-function rectangleSnapshot(rect: SelectionDraft["rect"]) {
+function rectangleSnapshot(rect: SelectionRect): SelectionRect {
   return {
     bottom: rect.bottom,
     height: rect.height,

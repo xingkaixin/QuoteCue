@@ -1,9 +1,9 @@
 import type { DraftAnnotation } from "@/features/annotations/annotation";
 import { compileAnnotatedPrompt } from "@/features/annotations/prompt-compiler";
 import type { SupportedLocale } from "@/features/i18n/messages";
+import type { ComposerSnapshot, Host } from "@/features/host-port/host-port";
 
 import { requireActiveHost } from "./active-host";
-import type { ComposerSnapshot, Host } from "./dom-host";
 
 export type AnnotatedSendFailureReason =
   | "composer-unavailable"

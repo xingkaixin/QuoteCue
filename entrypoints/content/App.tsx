@@ -136,7 +136,7 @@ export default function App() {
   };
 
   const showExpandedEditor = (annotation: DraftAnnotation) => {
-    const draft = host.selection.draft(annotation);
+    const draft = host.selection.draft(annotation.anchor);
     if (draft.status === "available") {
       setEditor({ status: "expanded", annotationId: annotation.id, draft: draft.value });
     }

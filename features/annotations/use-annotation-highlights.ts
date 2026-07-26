@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { requireActiveHost } from "@/features/host/active-host";
-import type { Host, SelectionInvalidationReason } from "@/features/host/dom-host";
+import type { Host, SelectionInvalidationReason } from "@/features/host-port/host-port";
 import { clampPositionToViewport } from "@/features/layout/floating-position";
 import { currentVisualViewportBounds } from "@/features/layout/use-visual-viewport";
 

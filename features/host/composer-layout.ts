@@ -5,13 +5,7 @@ import {
   type HostContext,
   type HostResult,
 } from "./host-context";
-
-type HostComposerLayout = {
-  action: HTMLElement | null;
-  send: { height: number; left: number; top: number; width: number };
-  summary: { left: number; top: number };
-  surface: HTMLElement;
-};
+import type { HostLayout, SelectionRect } from "@/features/host-port/host-port";
 
 export function createComposerLayout(
   context: HostContext,
@@ -19,7 +13,7 @@ export function createComposerLayout(
 ) {
   const { adapter, document: hostDocument, signals, window: hostWindow } = context;
 
-  function current(): HostResult<HostComposerLayout> {
+  function current(): HostResult<HostLayout> {
     const composer = currentComposer();
     if (!composer) {
       return unavailable("composer-unavailable");
@@ -34,22 +28,12 @@ export function createComposerLayout(
     const rect = surface.getBoundingClientRect();
     const action = findComposerAction(boundary ?? surface, rect);
     const actionRect = action?.getBoundingClientRect();
-    const fallback = adapter.layout.fallbackAction;
+    const send = actionRect
+      ? rectangleSnapshot(actionRect)
+      : fallbackRectangle(rect, adapter.layout.fallbackAction);
     return available({
       action,
-      send: actionRect
-        ? {
-            height: actionRect.height,
-            left: actionRect.left,
-            top: actionRect.top,
-            width: actionRect.width,
-          }
-        : {
-            height: fallback.height,
-            left: rect.right - fallback.width - fallback.rightInset,
-            top: rect.bottom - fallback.height - fallback.bottomInset,
-            width: fallback.width,
-          },
+      send,
       summary: { left: rect.left + 12, top: rect.top + 8 },
       surface,
     });
@@ -100,6 +84,33 @@ export function createComposerLayout(
   }
 
   return { current, subscribe };
+}
+
+function fallbackRectangle(
+  surface: DOMRect,
+  fallback: ComposerLayoutCapability["fallbackAction"],
+): SelectionRect {
+  const left = surface.right - fallback.width - fallback.rightInset;
+  const top = surface.bottom - fallback.height - fallback.bottomInset;
+  return {
+    bottom: top + fallback.height,
+    height: fallback.height,
+    left,
+    right: left + fallback.width,
+    top,
+    width: fallback.width,
+  };
+}
+
+function rectangleSnapshot(rect: DOMRect): SelectionRect {
+  return {
+    bottom: rect.bottom,
+    height: rect.height,
+    left: rect.left,
+    right: rect.right,
+    top: rect.top,
+    width: rect.width,
+  };
 }
 
 export function composerLayout(

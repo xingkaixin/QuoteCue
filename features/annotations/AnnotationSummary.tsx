@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { Fragment, useEffect, useRef, useState } from "react";
 
-import type { ComposerPosition, ComposerRect } from "@/features/host/use-annotated-composer-layout";
+import type { HostLayout } from "@/features/host-port/host-port";
 import { useI18n } from "@/features/i18n/I18nProvider";
 
 import type { DraftAnnotation } from "./annotation";
@@ -25,9 +25,9 @@ type AnnotationSummaryProps = {
   onUndo: () => void;
   pendingDeletionCount: number;
   pendingDeletionExpiresAt: number | null;
-  position: ComposerPosition;
+  position: HostLayout["summary"];
   sendStatus: "idle" | "pending" | "failed";
-  sendPosition: ComposerRect;
+  sendPosition: HostLayout["send"];
   unresolvedAnnotationIds: ReadonlySet<string>;
 };
 

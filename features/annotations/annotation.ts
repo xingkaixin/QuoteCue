@@ -1,12 +1,11 @@
-export type TextAnchor = {
-  messageId: string;
-  quote: string;
-  displayQuote?: string;
-  prefix: string;
-  suffix: string;
-  start: number;
-  end: number;
-};
+import type { SelectionDraft, TextAnchor } from "@/features/host-port/host-port";
+
+export type {
+  SelectionCapture,
+  SelectionDraft,
+  SelectionRect,
+  TextAnchor,
+} from "@/features/host-port/host-port";
 
 export function selectedTextFor(anchor: TextAnchor) {
   return anchor.displayQuote ?? anchor.quote;
@@ -16,17 +15,6 @@ export type DraftAnnotation = {
   id: string;
   anchor: TextAnchor;
   comment: string;
-};
-
-export type SelectionRect = Pick<DOMRect, "bottom" | "height" | "left" | "right" | "top" | "width">;
-
-export type SelectionDraft = {
-  anchor: TextAnchor;
-  rect: SelectionRect;
-};
-
-export type SelectionCapture = SelectionDraft & {
-  actionRect: SelectionRect;
 };
 
 export type AnnotationEditorState =
