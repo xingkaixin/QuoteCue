@@ -1,5 +1,4 @@
-const QUOTECUE_BOUNDARY_SELECTOR =
-  "[data-quotecue-host], [data-quotecue-native-action], [data-quotecue-root]";
+import { QUOTECUE_BOUNDARY_SELECTOR } from "@/lib/dom-identity";
 
 export function isQuoteCueEvent(event: Event) {
   return event

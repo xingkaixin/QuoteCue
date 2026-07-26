@@ -11,6 +11,7 @@ import { Fragment, useEffect, useRef, useState } from "react";
 
 import type { HostLayout } from "@/features/host-port/host-port";
 import { useI18n } from "@/features/i18n/I18nProvider";
+import { Z_LAYER } from "@/lib/dom-identity";
 
 import { selectedTextFor } from "./annotation";
 import type { ProjectedAnnotation } from "./annotation-projection";
@@ -132,11 +133,13 @@ export function AnnotationSummary({
         </div>
 
         {isOpen && (
-          <div className="absolute bottom-full left-0 z-[2147483647] w-[min(24rem,calc(100dvw-1.5rem))] pb-1">
+          <div
+            className="absolute bottom-full left-0 w-[min(24rem,calc(100dvw-1.5rem))] pb-1"
+            style={{ zIndex: Z_LAYER.tooltip }}
+          >
             <div
               aria-label={messages.annotationCount(annotations.length)}
               className="qc-surface qc-elevated overflow-hidden rounded-2xl"
-              data-quotecue-portal=""
               role="dialog"
             >
               <div className="qc-divide max-h-80 divide-y overscroll-contain overflow-y-auto">

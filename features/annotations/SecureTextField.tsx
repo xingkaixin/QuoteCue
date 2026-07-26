@@ -101,7 +101,6 @@ export const SecureTextField = forwardRef<SecureTextFieldHandle, SecureTextField
       <iframe
         aria-label={ariaLabel}
         className={className}
-        data-quotecue-secure-field=""
         onLoad={connect}
         ref={frameRef}
         referrerPolicy="no-referrer"

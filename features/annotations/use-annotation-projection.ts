@@ -8,6 +8,7 @@ import type {
 } from "@/features/host-port/host-port";
 import { clampPositionToViewport } from "@/features/layout/floating-position";
 import { currentVisualViewportBounds } from "@/features/layout/use-visual-viewport";
+import { QUOTECUE_HOST_SELECTOR } from "@/lib/dom-identity";
 
 import type { DraftAnnotation } from "./annotation";
 import { numberAnnotations, type ProjectedAnnotation } from "./annotation-projection";
@@ -194,7 +195,7 @@ function isAnchorObscured(
   );
   const hit = document
     .elementsFromPoint(x, y)
-    .find((element) => !element.closest("[data-quotecue-host]"));
+    .find((element) => !element.closest(QUOTECUE_HOST_SELECTOR));
   return hit !== undefined && !anchor.contains(hit) && !hit.contains(anchor);
 }
 
