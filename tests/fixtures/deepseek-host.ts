@@ -1,3 +1,5 @@
+import { requiredElement, setElementRect } from "./fixture-utils";
+
 export const DEEPSEEK_SEND_ICON_PATH = "M8.3125 0.981587C8.66767 1.0545";
 
 export type DeepSeekHostFixture = {
@@ -39,14 +41,8 @@ export function installDeepSeekHostFixture(): DeepSeekHostFixture {
   const surface = requiredElement<HTMLElement>('[data-fixture="composer-surface"]');
   const thinkContent = requiredElement<HTMLElement>(".ds-think-content");
 
-  Object.defineProperty(surface, "getBoundingClientRect", {
-    configurable: true,
-    value: () => ({ bottom: 792, height: 92, left: 100, right: 500, top: 700, width: 400 }),
-  });
-  Object.defineProperty(sendButton, "getBoundingClientRect", {
-    configurable: true,
-    value: () => ({ bottom: 784, height: 34, left: 458, right: 492, top: 750, width: 34 }),
-  });
+  setElementRect(surface, new DOMRect(100, 700, 400, 92));
+  setElementRect(sendButton, new DOMRect(458, 750, 34, 34));
 
   return { assistantContent, composer, sendButton, surface, thinkContent };
 }
@@ -74,12 +70,4 @@ export function appendAssistantMessageItem(itemKey: string, text: string) {
   item.append(message);
   (document.querySelector("main") ?? document.body).append(item);
   return item;
-}
-
-function requiredElement<T extends Element>(selector: string) {
-  const element = document.querySelector<T>(selector);
-  if (!element) {
-    throw new Error(`Fixture is missing ${selector}`);
-  }
-  return element;
 }

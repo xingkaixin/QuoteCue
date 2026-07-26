@@ -1,3 +1,5 @@
+import { requiredElement, setElementRect } from "./fixture-utils";
+
 export type ClaudeHostFixture = {
   assistantMessage: HTMLElement;
   composer: HTMLElement;
@@ -35,10 +37,7 @@ export function installClaudeHostFixture(composerText = "Original question"): Cl
     configurable: true,
     get: () => composer.textContent ?? "",
   });
-  Object.defineProperty(surface, "getBoundingClientRect", {
-    configurable: true,
-    value: () => ({ bottom: 792, height: 102, left: 100, right: 868, top: 690, width: 768 }),
-  });
+  setElementRect(surface, new DOMRect(100, 690, 768, 102));
   setButtonRect(voiceButton, 828);
   setButtonRect(requiredElement('button[aria-label="Press and hold to record"]'), 788);
 
@@ -82,25 +81,11 @@ export function appendClaudeSelectionToolbar() {
   replyButton.textContent = "Reply";
   actionRow.append(replyButton);
   toolbar.append(actionRow);
-  Object.defineProperty(toolbar, "getBoundingClientRect", {
-    configurable: true,
-    value: () => new DOMRect(100, 150, 160, 36),
-  });
+  setElementRect(toolbar, new DOMRect(100, 150, 160, 36));
   document.body.append(toolbar);
   return { actionRow, replyButton };
 }
 
 function setButtonRect(button: HTMLButtonElement, left: number) {
-  Object.defineProperty(button, "getBoundingClientRect", {
-    configurable: true,
-    value: () => ({ bottom: 780, height: 32, left, right: left + 32, top: 748, width: 32 }),
-  });
-}
-
-function requiredElement<T extends Element>(selector: string) {
-  const element = document.querySelector<T>(selector);
-  if (!element) {
-    throw new Error(`Fixture is missing ${selector}`);
-  }
-  return element;
+  setElementRect(button, new DOMRect(left, 748, 32, 32));
 }

@@ -1,3 +1,5 @@
+import { requiredElement, setElementRect } from "./fixture-utils";
+
 export type KimiHostFixture = {
   assistantMessage: HTMLElement;
   composer: HTMLElement;
@@ -37,14 +39,8 @@ export function installKimiHostFixture(composerText = "Original question"): Kimi
     configurable: true,
     get: () => composer.textContent ?? "",
   });
-  Object.defineProperty(surface, "getBoundingClientRect", {
-    configurable: true,
-    value: () => ({ bottom: 792, height: 130, left: 100, right: 868, top: 662, width: 768 }),
-  });
-  Object.defineProperty(sendControl, "getBoundingClientRect", {
-    configurable: true,
-    value: () => ({ bottom: 780, height: 36, left: 822, right: 858, top: 744, width: 36 }),
-  });
+  setElementRect(surface, new DOMRect(100, 662, 768, 130));
+  setElementRect(sendControl, new DOMRect(822, 744, 36, 36));
 
   return { assistantMessage, composer, sendControl, surface };
 }
@@ -64,12 +60,4 @@ export function appendKimiUserMessage(messageId: string | undefined, text: strin
   message.append(content, actions);
   (document.querySelector("main") ?? document.body).append(message);
   return message;
-}
-
-function requiredElement<T extends Element>(selector: string) {
-  const element = document.querySelector<T>(selector);
-  if (!element) {
-    throw new Error(`Fixture is missing ${selector}`);
-  }
-  return element;
 }
