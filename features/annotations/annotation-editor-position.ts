@@ -29,7 +29,9 @@ export function useAnnotationEditorPosition(
   );
 
   useLayoutEffect(() => {
+    let refreshFrame: number | undefined;
     const refresh = () => {
+      refreshFrame = undefined;
       const elementRect = elementRef.current?.getBoundingClientRect();
       const size = {
         height: elementRect?.height || fallbackSize.height,
@@ -45,17 +47,25 @@ export function useAnnotationEditorPosition(
       );
       setPosition((current) => (samePosition(current, nextPosition) ? current : nextPosition));
     };
+    const scheduleRefresh = () => {
+      if (refreshFrame === undefined) {
+        refreshFrame = requestAnimationFrame(refresh);
+      }
+    };
     const resizeObserver =
-      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(refresh);
+      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(scheduleRefresh);
 
     if (elementRef.current) {
       resizeObserver?.observe(elementRef.current);
     }
-    window.addEventListener("scroll", refresh, true);
+    window.addEventListener("scroll", scheduleRefresh, true);
     refresh();
     return () => {
       resizeObserver?.disconnect();
-      window.removeEventListener("scroll", refresh, true);
+      window.removeEventListener("scroll", scheduleRefresh, true);
+      if (refreshFrame !== undefined) {
+        cancelAnimationFrame(refreshFrame);
+      }
     };
   }, [draft, elementRef, fallbackSize, viewport]);
 

@@ -77,6 +77,7 @@ export type HostEnvironment = {
 
 export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter) {
   const { document: hostDocument, logger, window: hostWindow } = environment;
+  let cachedAssistantMessage: HTMLElement | null = null;
 
   function observePage(callback: () => void, includeViewport: boolean) {
     const observer = new MutationObserver(callback);
@@ -128,8 +129,22 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
   }
 
   function restoreAnchor(anchor: TextAnchor): HostResult<Range> {
-    const range = restoreTextAnchorFromIndex(anchor, messageIndex());
+    const message = assistantMessage(anchor.messageId);
+    const range = message
+      ? restoreTextAnchorFromIndex(anchor, new Map([[anchor.messageId, message]]))
+      : null;
     return range ? available(range) : unavailable("assistant-message-unavailable");
+  }
+
+  function assistantMessage(messageId: string) {
+    if (
+      cachedAssistantMessage?.isConnected &&
+      adapter.messageId(cachedAssistantMessage) === messageId
+    ) {
+      return cachedAssistantMessage;
+    }
+    cachedAssistantMessage = messageIndex().get(messageId) ?? null;
+    return cachedAssistantMessage;
   }
 
   function captureSelection(selection = hostWindow.getSelection()): HostResult<SelectionCapture> {
@@ -298,9 +313,9 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
     const offset =
       endpointRect.top + endpointRect.height / 2 - (viewportRect.top + viewportRect.height / 2);
     if (scrollContainer) {
-      scrollContainer.scrollTop += offset;
+      scrollContainer.scrollTop = scrollContainer.scrollTop + offset;
     } else {
-      hostWindow.scrollBy({ behavior: "auto", top: offset });
+      hostWindow.scrollBy({ behavior: "instant", top: offset });
     }
     return available("scrolled");
   }
