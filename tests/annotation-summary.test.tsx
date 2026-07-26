@@ -43,13 +43,16 @@ describe("AnnotationSummary", () => {
 
     expect(countButton?.tagName).toBe("BUTTON");
     expect(countButton?.tabIndex).toBe(0);
+    expect(countButton?.getAttribute("aria-haspopup")).toBe("dialog");
+    expect(countButton?.getAttribute("aria-expanded")).toBe("false");
     expect(container.querySelector('[role="dialog"]')).toBeNull();
 
     await hover(summary);
 
     const dialog = container.querySelector('[role="dialog"]');
     expect(dialog?.classList).toContain("qc-elevated");
-    expect(dialog?.classList).not.toContain("border");
+    expect(dialog?.getAttribute("aria-label")).toBe("1 annotation");
+    expect(countButton?.getAttribute("aria-expanded")).toBe("true");
     expect(container.textContent).toContain("Selected text:");
     expect(container.textContent).toContain("selected text");
     expect(container.textContent).not.toContain("User comment:");
@@ -57,8 +60,8 @@ describe("AnnotationSummary", () => {
     const editButton = container.querySelector<HTMLButtonElement>(
       '[aria-label="Edit annotation 1"]',
     );
-    expect(editButton?.parentElement?.classList).toContain("opacity-0");
-    expect(editButton?.parentElement?.classList).toContain("group-hover/row:opacity-100");
+    expect(editButton?.type).toBe("button");
+    expect(editButton?.disabled).toBe(false);
     expect(document.activeElement).not.toBe(editButton);
 
     await leave(summary);
@@ -98,7 +101,7 @@ describe("AnnotationSummary", () => {
     await act(async () => root.unmount());
   });
 
-  it("keeps hover-only controls compact and keyboard accessible", async () => {
+  it("opens controls from the keyboard and restores focus on Escape", async () => {
     const onEdit = vi.fn();
     const { container, root, summary } = await mountSummary({ onEdit });
     const countButton = findCountButton(container);
@@ -106,18 +109,21 @@ describe("AnnotationSummary", () => {
       '[aria-label="Clear all annotations"]',
     );
 
-    expect(countButton?.classList).toContain("h-8");
-    expect(clearButton?.classList).toContain("size-8");
-    expect(clearButton?.classList).toContain("opacity-0");
-    expect(clearButton?.classList).toContain("group-hover/summary:opacity-100");
+    expect(clearButton).not.toBeNull();
+    expect(clearButton?.type).toBe("button");
+    expect(clearButton?.tabIndex).toBe(0);
+    expect(clearButton?.disabled).toBe(false);
+    expect(countButton?.getAttribute("aria-expanded")).toBe("false");
 
-    await act(async () => countButton?.focus());
+    await act(async () => clearButton?.focus());
     expect(container.querySelector('[role="dialog"]')).not.toBeNull();
     expect(countButton?.getAttribute("aria-expanded")).toBe("true");
 
     const editButton = container.querySelector<HTMLButtonElement>(
       '[aria-label="Edit annotation 1"]',
     );
+    expect(editButton).not.toBeNull();
+    expect(editButton?.tabIndex).toBe(0);
     await act(async () => editButton?.click());
     expect(onEdit).toHaveBeenCalledWith(expect.objectContaining({ annotation }));
 

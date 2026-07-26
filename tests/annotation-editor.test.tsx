@@ -14,13 +14,18 @@ vi.mock("@/features/secure-field/SecureTextField", async () => {
   type FakeSecureFieldProps = {
     ariaLabel: string;
     className?: string;
+    name: string;
     onCancel: () => void;
     onChange: (value: string) => void;
+    placeholder: string;
     value: string;
   };
   return {
     SecureTextField: forwardRef<{ focus: () => void }, FakeSecureFieldProps>(
-      function FakeSecureTextField({ ariaLabel, className, onCancel, onChange, value }, ref) {
+      function FakeSecureTextField(
+        { ariaLabel, className, name, onCancel, onChange, placeholder, value },
+        ref,
+      ) {
         const fieldRef = useRef<HTMLTextAreaElement>(null);
         useImperativeHandle(ref, () => ({ focus: () => fieldRef.current?.focus() }), []);
         useEffect(() => fieldRef.current?.focus(), []);
@@ -28,12 +33,14 @@ vi.mock("@/features/secure-field/SecureTextField", async () => {
           <textarea
             aria-label={ariaLabel}
             className={className}
+            name={name}
             onChange={(event) => onChange(event.currentTarget.value)}
             onKeyDown={(event) => {
               if (event.key === "Escape") {
                 onCancel();
               }
             }}
+            placeholder={placeholder}
             ref={fieldRef}
             value={value}
           />
@@ -85,29 +92,38 @@ describe("AnnotationEditor", () => {
     await act(async () => root.unmount());
   });
 
-  it("uses compact fields and text actions without a persistent focus ring", async () => {
+  it("exposes focused editing actions and dispatches changes", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-    const { container, root } = await renderEditor(vi.fn());
+    const onDelete = vi.fn();
+    const onSave = vi.fn();
+    const { container, root } = await renderEditor(vi.fn(), undefined, { onDelete, onSave });
     const shell = container.firstElementChild;
-    const textarea = container.querySelector("textarea");
+    const textarea = container.querySelector<HTMLTextAreaElement>("textarea");
     const cancelButton = findButton(container, "Cancel");
     const saveButton = findButton(container, "Save");
     const deleteButton = container.querySelector<HTMLButtonElement>(
       '[aria-label="Delete annotation"]',
     );
 
-    expect(shell?.classList).toContain("w-[340px]");
-    expect(shell?.classList).toContain("p-3");
     expect(shell?.classList).toContain("qc-divider");
-    expect(shell?.classList).toContain("shadow-sm");
     expect(shell?.classList).not.toContain("qc-elevated");
-    expect(textarea?.classList).toContain("h-24");
-    expect(textarea?.className).not.toContain("data-[focused=true]:ring");
-    expect(cancelButton?.classList).toContain("h-8");
-    expect(saveButton?.classList).toContain("h-8");
+    expect(textarea?.getAttribute("aria-label")).toBe("Annotation content");
+    expect(textarea?.name).toBe("quotecue-annotation-comment");
+    expect(textarea?.placeholder).toBe("Add an optional comment…");
+    expect(textarea?.value).toBe("saved comment");
+    expect(document.activeElement).toBe(textarea);
+    expect(cancelButton?.type).toBe("button");
+    expect(saveButton?.type).toBe("button");
+    expect(deleteButton?.type).toBe("button");
     expect(cancelButton?.querySelector("svg")).toBeNull();
     expect(saveButton?.querySelector("svg")).toBeNull();
-    expect(deleteButton?.querySelector("svg")?.classList).toContain("size-4");
+    expect(deleteButton?.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
+
+    await act(async () => changeTextarea(textarea, " revised comment "));
+    await act(async () => saveButton?.click());
+    await act(async () => deleteButton?.click());
+    expect(onSave).toHaveBeenCalledWith("revised comment");
+    expect(onDelete).toHaveBeenCalledOnce();
 
     await act(async () => root.unmount());
   });
@@ -296,22 +312,35 @@ describe("AnnotationEditor", () => {
   });
 });
 
-async function renderEditor(onCancel: () => void, host?: Host) {
+type EditorActions = {
+  onDelete: () => void;
+  onSave: (comment: string) => void;
+};
+
+async function renderEditor(
+  onCancel: () => void,
+  host?: Host,
+  actions: EditorActions = { onDelete: vi.fn(), onSave: vi.fn() },
+) {
   const container = document.createElement("div");
   document.body.append(container);
   const root = createRoot(container);
-  await act(async () => root.render(editor(onCancel, host)));
+  await act(async () => root.render(editor(onCancel, host, actions)));
   return { container, root };
 }
 
-function editor(onCancel: () => void, host?: Host) {
+function editor(
+  onCancel: () => void,
+  host?: Host,
+  actions: EditorActions = { onDelete: vi.fn(), onSave: vi.fn() },
+) {
   return (
     <HostTestProvider host={host}>
       <AnnotationEditor
         annotation={annotation}
         onCancel={onCancel}
-        onDelete={vi.fn()}
-        onSave={vi.fn()}
+        onDelete={actions.onDelete}
+        onSave={actions.onSave}
         rect={draft.rect}
       />
     </HostTestProvider>
