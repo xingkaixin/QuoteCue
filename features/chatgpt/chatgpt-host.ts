@@ -1,15 +1,19 @@
 import { createDomHost, type HostEnvironment, type SiteAdapter } from "@/features/host/dom-host";
+import { richTextComposer } from "@/features/host/composer-access";
+import { composerLayout } from "@/features/host/composer-layout";
+import { messageAccess, sendControlAccess } from "@/features/host/site-capabilities";
 
 const CHATGPT_ADAPTER: SiteAdapter = {
-  assistantMessageSelector: '[data-message-author-role="assistant"][data-message-id]',
-  composerButtonSelector: "button",
-  composerKind: "contenteditable",
-  composerSelector: "#prompt-textarea[contenteditable='true']",
+  composer: richTextComposer("#prompt-textarea[contenteditable='true']"),
   conversationPathPattern: /^\/c\/([^/?#]+)/,
-  selectionActionMode: "native-toolbar",
-  sendButtonSelector: "button[data-testid='send-button']",
-  userMessageSelector: '[data-message-author-role="user"][data-message-id]',
-  messageId: (message) => message.dataset.messageId,
+  layout: composerLayout("button"),
+  messages: messageAccess({
+    assistantSelector: '[data-message-author-role="assistant"][data-message-id]',
+    id: (message) => message.dataset.messageId,
+    userSelector: '[data-message-author-role="user"][data-message-id]',
+  }),
+  selectionPresentation: { mode: "native-toolbar" },
+  sendControl: sendControlAccess("button[data-testid='send-button']"),
 };
 
 export function createChatGptHost(environment: HostEnvironment) {

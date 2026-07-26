@@ -3,8 +3,7 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { DraftAnnotation } from "@/features/annotations/annotation";
-import { SelectionActionButton } from "@/features/annotations/SelectionActionButton";
-import { useSelectionOverlay } from "@/features/annotations/use-selection-overlay";
+import { SelectionPresentation } from "@/features/annotations/SelectionPresentation";
 import { createDeepSeekHost } from "@/features/deepseek/deepseek-host";
 import { registerSendInterceptor } from "@/features/host/register-send-interceptor";
 import type { SelectionDraft } from "@/features/annotations/annotation";
@@ -203,8 +202,7 @@ describe("DeepSeek host contract", () => {
 });
 
 function OverlayHarness({ onActivate }: { onActivate: (draft: SelectionDraft) => void }) {
-  const action = useSelectionOverlay(true, "conversation-a", onActivate);
-  return action ? <SelectionActionButton {...action} /> : null;
+  return <SelectionPresentation isEnabled onActivate={onActivate} resetKey="conversation-a" />;
 }
 
 function selectNodeContents(node: ChildNode | null | undefined) {

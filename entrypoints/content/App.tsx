@@ -6,7 +6,7 @@ import { AnnotationEditor } from "@/features/annotations/AnnotationEditor";
 import { AnnotationQuickInput } from "@/features/annotations/AnnotationQuickInput";
 import { AnnotationSummary } from "@/features/annotations/AnnotationSummary";
 import { DraftPersistenceStatus } from "@/features/annotations/DraftPersistenceStatus";
-import { SelectionActionButton } from "@/features/annotations/SelectionActionButton";
+import { SelectionPresentation } from "@/features/annotations/SelectionPresentation";
 import type {
   AnnotationEditorState,
   DraftAnnotation,
@@ -16,7 +16,6 @@ import { useAnnotationHighlights } from "@/features/annotations/use-annotation-h
 import { useConversationKey } from "@/features/annotations/use-conversation-key";
 import { useDeferredAnnotationDeletion } from "@/features/annotations/use-deferred-annotation-deletion";
 import { useDraftAnnotations } from "@/features/annotations/use-draft-annotations";
-import { useSelectionOverlay } from "@/features/annotations/use-selection-overlay";
 import {
   registerSendInterceptor,
   type AnnotatedSendState,
@@ -63,8 +62,6 @@ export default function App() {
     },
     [addAnnotation],
   );
-  const selectionOverlayAction = useSelectionOverlay(isHydrated, conversationKey, startAnnotation);
-
   const activeAnnotationId = editor.status === "hidden" ? null : editor.annotationId;
   const activeAnnotation = visibleAnnotations.find(({ id }) => id === activeAnnotationId);
   const { badgePositions, unresolvedAnnotationIds } = useAnnotationHighlights(
@@ -162,7 +159,11 @@ export default function App() {
           <DraftPersistenceStatus operation={errorOperation} onRetry={retry} status="error" />
         )}
 
-        {selectionOverlayAction && <SelectionActionButton {...selectionOverlayAction} />}
+        <SelectionPresentation
+          isEnabled={isHydrated}
+          onActivate={startAnnotation}
+          resetKey={conversationKey}
+        />
 
         {editor.status === "quick" && (
           <AnnotationQuickInput

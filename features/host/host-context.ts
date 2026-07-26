@@ -19,19 +19,42 @@ export type ComposerSnapshot = {
 
 export type SelectionInvalidationReason = "content" | "layout";
 
+export type ComposerAccess = {
+  normalize(text: string): string;
+  read(composer: HTMLElement): string;
+  selector: string;
+  write(composer: HTMLElement, text: string, environment: HostEnvironment): boolean;
+};
+
+export type ComposerLayoutCapability = {
+  actionSelector: string;
+  fallbackAction: {
+    bottomInset: number;
+    height: number;
+    rightInset: number;
+    width: number;
+  };
+};
+
+export type MessageAccess = {
+  assistantSelector: string;
+  id(message: HTMLElement): string | undefined;
+  isAssistant(message: HTMLElement): boolean;
+  userSelector: string;
+};
+
+export type SendControlAccess = {
+  isDisabled(button: HTMLElement): boolean;
+  selector: string;
+};
+
 export type SiteAdapter = {
-  assistantMessageSelector: string;
-  composerButtonSelector: string;
-  composerKind: "contenteditable" | "textarea";
-  composerSelector: string;
+  composer: ComposerAccess;
   conversationPathPattern: RegExp;
-  selectionActionMode: "native-toolbar" | "overlay";
-  sendButtonSelector: string;
-  userMessageSelector: string;
-  isAssistantMessage?(message: HTMLElement): boolean;
-  isSendButtonDisabled?(button: HTMLElement): boolean;
-  messageId(message: HTMLElement): string | undefined;
-  normalizeSubmittedText?(text: string): string;
+  layout: ComposerLayoutCapability;
+  messages: MessageAccess;
+  selectionPresentation: { mode: "native-toolbar" | "overlay" };
+  sendControl: SendControlAccess;
 };
 
 export type HostEnvironment = {

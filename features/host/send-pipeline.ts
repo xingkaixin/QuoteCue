@@ -13,10 +13,10 @@ type AcceptedSendWatcherOptions = {
 
 export function createSendPipeline(context: HostContext, textNormalizer: TextNormalizer) {
   const { adapter, document: hostDocument, logger, signals, window: hostWindow } = context;
-  const { normalizedText } = textNormalizer;
+  const { normalizedRenderedText } = textNormalizer;
 
   const currentSendButton = () =>
-    hostDocument.querySelector<HTMLElement>(adapter.sendButtonSelector);
+    hostDocument.querySelector<HTMLElement>(adapter.sendControl.selector);
 
   function isButtonAvailable(button: HTMLElement | null): button is HTMLElement {
     return (
@@ -24,7 +24,7 @@ export function createSendPipeline(context: HostContext, textNormalizer: TextNor
       button.isConnected &&
       !button.matches(":disabled") &&
       button.getAttribute("aria-disabled") !== "true" &&
-      !(adapter.isSendButtonDisabled?.(button) ?? false)
+      !adapter.sendControl.isDisabled(button)
     );
   }
 
@@ -85,11 +85,11 @@ export function createSendPipeline(context: HostContext, textNormalizer: TextNor
     const lastInitialMessage = initialMessages.at(-1);
     const existingMessageIds = new Set(
       initialMessages
-        .map((message) => adapter.messageId(message))
+        .map((message) => adapter.messages.id(message))
         .filter((messageId): messageId is string => messageId !== undefined),
     );
     const isNewMessage = (message: HTMLElement) => {
-      const messageId = adapter.messageId(message);
+      const messageId = adapter.messages.id(message);
       if (messageId) {
         return !existingMessageIds.has(messageId);
       }
@@ -103,7 +103,7 @@ export function createSendPipeline(context: HostContext, textNormalizer: TextNor
         )
       );
     };
-    const expectedText = normalizedText(options.expectedText);
+    const expectedText = normalizedRenderedText(options.expectedText);
     logger?.(`[QuoteCue host] send confirmation started: existing=${initialMessages.length}`);
     let stopObserving: () => void = () => undefined;
     let timeout: number | undefined;
@@ -123,7 +123,7 @@ export function createSendPipeline(context: HostContext, textNormalizer: TextNor
         if ((message.textContent?.length ?? 0) < expectedText.length) {
           return false;
         }
-        return normalizedText(message) === expectedText;
+        return normalizedRenderedText(message) === expectedText;
       });
       logger?.(
         `[QuoteCue host] send confirmation observed: total=${messages.length}, matched=${Boolean(acceptedMessage)}`,
@@ -151,7 +151,9 @@ export function createSendPipeline(context: HostContext, textNormalizer: TextNor
     const onClick = (event: MouseEvent) => {
       const target = event.target;
       const button =
-        target instanceof Element ? target.closest<HTMLElement>(adapter.sendButtonSelector) : null;
+        target instanceof Element
+          ? target.closest<HTMLElement>(adapter.sendControl.selector)
+          : null;
       if (button) {
         callback(event, button);
       }
@@ -160,7 +162,7 @@ export function createSendPipeline(context: HostContext, textNormalizer: TextNor
       const target = event.target;
       const isSubmitKey =
         target instanceof Element &&
-        target.closest(adapter.composerSelector) !== null &&
+        target.closest(adapter.composer.selector) !== null &&
         event.key === "Enter" &&
         !event.shiftKey &&
         !event.altKey &&
@@ -181,7 +183,7 @@ export function createSendPipeline(context: HostContext, textNormalizer: TextNor
   }
 
   function userMessages() {
-    return Array.from(hostDocument.querySelectorAll<HTMLElement>(adapter.userMessageSelector));
+    return Array.from(hostDocument.querySelectorAll<HTMLElement>(adapter.messages.userSelector));
   }
 
   return { isButtonAvailable, subscribeToSubmit, waitForButton, watchAcceptedSend };
