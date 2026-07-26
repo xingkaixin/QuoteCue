@@ -23,7 +23,15 @@ describe("annotation projection complexity", () => {
       getBoundingClientRect: { configurable: true, value: () => new DOMRect() },
       getClientRects: { configurable: true, value: () => [] },
     });
-    appendAssistantMessage("message-1", "selected text");
+    const message = appendAssistantMessage("message-1", "selected text");
+    let messageTextReads = 0;
+    Object.defineProperty(message, "textContent", {
+      configurable: true,
+      get: () => {
+        messageTextReads += 1;
+        return "selected text";
+      },
+    });
     const annotations = Array.from({ length: 20 }, (_, index) => annotation(index));
     const messageIndex = vi.spyOn(chatGptHost.selection, "messageIndex");
     const host = document.createElement("div");
@@ -36,6 +44,7 @@ describe("annotation projection complexity", () => {
     await act(async () => root.render(<ProjectionHarness annotations={annotations} />));
     await act(async () => vi.advanceTimersByTimeAsync(17));
     expect(messageIndex).toHaveBeenCalledOnce();
+    expect(messageTextReads).toBe(1);
 
     await act(async () => root.unmount());
   });

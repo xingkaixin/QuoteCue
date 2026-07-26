@@ -42,6 +42,8 @@ export type ComposerKind = "contenteditable" | "textarea";
 
 export type SelectionActionMode = "native-toolbar" | "overlay";
 
+export type SelectionInvalidationReason = "content" | "layout";
+
 export type SiteAdapter = {
   assistantMessageSelector: string;
   composerButtonSelector: string;
@@ -89,6 +91,24 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
         hostWindow.removeEventListener("resize", callback);
         hostWindow.removeEventListener("scroll", callback, true);
       }
+    };
+  }
+
+  function observeSelectionInvalidation(callback: (reason: SelectionInvalidationReason) => void) {
+    const observer = new MutationObserver(() => callback("content"));
+    const invalidateLayout = () => callback("layout");
+    observer.observe(hostDocument.body, {
+      characterData: true,
+      childList: true,
+      subtree: true,
+    });
+    hostWindow.addEventListener("resize", invalidateLayout);
+    hostWindow.addEventListener("scroll", invalidateLayout, true);
+
+    return () => {
+      observer.disconnect();
+      hostWindow.removeEventListener("resize", invalidateLayout);
+      hostWindow.removeEventListener("scroll", invalidateLayout, true);
     };
   }
 
@@ -702,7 +722,7 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
       draft: selectionDraft,
       messageIndex,
       mountAction: mountSelectionAction,
-      observeInvalidation: (callback: () => void) => observePage(callback, true),
+      observeInvalidation: observeSelectionInvalidation,
       reveal: revealAnchor,
       restore: restoreAnchor,
     },

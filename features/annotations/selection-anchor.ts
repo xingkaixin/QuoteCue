@@ -23,13 +23,25 @@ export function rangeEndpointRect(range: Range) {
 export function restoreTextAnchorFromIndex(
   anchor: TextAnchor,
   messageIndex: ReadonlyMap<string, HTMLElement>,
+  messageTextCache?: Map<HTMLElement, string>,
 ) {
   const message = messageIndex.get(anchor.messageId);
-  return message ? restoreTextAnchorInMessage(anchor, message) : null;
+  return message
+    ? restoreTextAnchorInMessage(anchor, message, readMessageText(message, messageTextCache))
+    : null;
 }
 
-function restoreTextAnchorInMessage(anchor: TextAnchor, message: HTMLElement) {
-  const messageText = message.textContent ?? "";
+function readMessageText(message: HTMLElement, cache?: Map<HTMLElement, string>) {
+  const cached = cache?.get(message);
+  if (cached !== undefined) {
+    return cached;
+  }
+  const text = message.textContent ?? "";
+  cache?.set(message, text);
+  return text;
+}
+
+function restoreTextAnchorInMessage(anchor: TextAnchor, message: HTMLElement, messageText: string) {
   const resolved = resolveTextAnchor(messageText, anchor);
 
   if (!resolved) {
