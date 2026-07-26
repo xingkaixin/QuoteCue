@@ -11,10 +11,12 @@ import {
 import { currentVisualViewportBounds } from "@/features/layout/use-visual-viewport";
 
 const CONTEXT_LENGTH = 48;
+const HISTORY_CHANGE_EVENT = "quotecue:history-change";
 const NATIVE_SELECTION_ACTION_ATTRIBUTE = "data-quotecue-native-action";
 const SCROLLABLE_OVERFLOW_PATTERN = /auto|overlay|scroll/;
 const SEND_ACCEPT_TIMEOUT_MS = 15_000;
 const SEND_BUTTON_APPEAR_TIMEOUT_MS = 2_000;
+const historyPatchedWindows = new WeakSet<Window>();
 
 export type HostUnavailableReason =
   | "assistant-message-unavailable"
@@ -69,6 +71,21 @@ type AcceptedSendWatcherOptions = {
 
 type SelectionRevealStatus = "scrolled" | "visible";
 
+type PageMutationInterest = {
+  attributeFilter?: readonly string[];
+  characterData?: boolean;
+  childList?: boolean;
+};
+
+type PageMutationSubscription = {
+  callback: () => void;
+  interest: PageMutationInterest;
+};
+
+type ViewportSubscription = {
+  callback: () => void;
+};
+
 export type HostEnvironment = {
   document: Document;
   logger?: (message: string) => void;
@@ -77,40 +94,31 @@ export type HostEnvironment = {
 
 export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter) {
   const { document: hostDocument, logger, window: hostWindow } = environment;
+  const pageObserver = createPageObserver(hostDocument, hostWindow);
   let cachedAssistantMessage: HTMLElement | null = null;
 
   function observePage(callback: () => void, includeViewport: boolean) {
-    const observer = new MutationObserver(callback);
-    observer.observe(hostDocument.body, { childList: true, subtree: true });
-    if (includeViewport) {
-      hostWindow.addEventListener("resize", callback);
-      hostWindow.addEventListener("scroll", callback, true);
-    }
+    const stopMutationObservation = pageObserver.observeMutations(callback, { childList: true });
+    const stopViewportObservation = includeViewport
+      ? pageObserver.observeViewport(callback)
+      : undefined;
 
     return () => {
-      observer.disconnect();
-      if (includeViewport) {
-        hostWindow.removeEventListener("resize", callback);
-        hostWindow.removeEventListener("scroll", callback, true);
-      }
+      stopMutationObservation();
+      stopViewportObservation?.();
     };
   }
 
   function observeSelectionInvalidation(callback: (reason: SelectionInvalidationReason) => void) {
-    const observer = new MutationObserver(() => callback("content"));
-    const invalidateLayout = () => callback("layout");
-    observer.observe(hostDocument.body, {
+    const stopMutationObservation = pageObserver.observeMutations(() => callback("content"), {
       characterData: true,
       childList: true,
-      subtree: true,
     });
-    hostWindow.addEventListener("resize", invalidateLayout);
-    hostWindow.addEventListener("scroll", invalidateLayout, true);
+    const stopViewportObservation = pageObserver.observeViewport(() => callback("layout"));
 
     return () => {
-      observer.disconnect();
-      hostWindow.removeEventListener("resize", invalidateLayout);
-      hostWindow.removeEventListener("scroll", invalidateLayout, true);
+      stopMutationObservation();
+      stopViewportObservation();
     };
   }
 
@@ -238,6 +246,7 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
     rect: SelectionDraft["rect"];
   }) {
     let action: HTMLButtonElement | null = null;
+    let insertFrame: number | null = null;
 
     const preserveSelection = (event: Event) => {
       event.preventDefault();
@@ -272,13 +281,24 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
       });
       toolbar.prepend(action);
     };
-    const observer = new MutationObserver(insertAction);
+    const scheduleInsert = () => {
+      if (action?.isConnected || insertFrame !== null) {
+        return;
+      }
+      insertFrame = hostWindow.requestAnimationFrame(() => {
+        insertFrame = null;
+        insertAction();
+      });
+    };
+    const stopObserving = pageObserver.observeMutations(scheduleInsert, { childList: true });
 
-    observer.observe(hostDocument.body, { childList: true, subtree: true });
     insertAction();
 
     return () => {
-      observer.disconnect();
+      stopObserving();
+      if (insertFrame !== null) {
+        hostWindow.cancelAnimationFrame(insertFrame);
+      }
       removeAction();
     };
   }
@@ -460,9 +480,18 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
     }
 
     return new Promise<HostResult<HTMLElement>>((resolve) => {
+      let isFinished = false;
+      let stopObserving: () => void = () => undefined;
+      let timeout: number | undefined;
       const finish = (result: HostResult<HTMLElement>) => {
-        observer.disconnect();
-        hostWindow.clearTimeout(timeout);
+        if (isFinished) {
+          return;
+        }
+        isFinished = true;
+        stopObserving();
+        if (timeout !== undefined) {
+          hostWindow.clearTimeout(timeout);
+        }
         signal.removeEventListener("abort", onAbort);
         resolve(result);
       };
@@ -474,23 +503,25 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
         }
       };
       const onAbort = () => finish(unavailable("send-control-unavailable"));
-      const observer = new MutationObserver(findButton);
-      const timeout = hostWindow.setTimeout(() => {
+      stopObserving = pageObserver.observeMutations(findButton, {
+        attributeFilter: ["aria-disabled", "class", "disabled"],
+        childList: true,
+      });
+      timeout = hostWindow.setTimeout(() => {
         logger?.("[QuoteCue host] send control wait timed out");
         finish(unavailable("send-control-unavailable"));
       }, SEND_BUTTON_APPEAR_TIMEOUT_MS);
 
       signal.addEventListener("abort", onAbort, { once: true });
-      observer.observe(hostDocument.body, {
-        attributeFilter: ["aria-disabled", "class", "disabled"],
-        attributes: true,
-        childList: true,
-        subtree: true,
-      });
     });
   }
 
   function watchForAcceptedSend(options: AcceptedSendWatcherOptions) {
+    if (options.signal.aborted) {
+      logger?.("[QuoteCue host] send confirmation skipped: aborted");
+      return () => undefined;
+    }
+
     const initialMessages = userMessages();
     const lastInitialMessage = initialMessages.at(-1);
     const existingMessageIds = new Set(
@@ -515,7 +546,16 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
     };
     const expectedText = normalizedText(options.expectedText);
     logger?.(`[QuoteCue host] send confirmation started: existing=${initialMessages.length}`);
-    const observer = new MutationObserver(() => {
+    let stopObserving: () => void = () => undefined;
+    let timeout: number | undefined;
+    const cleanup = once(() => {
+      stopObserving();
+      if (timeout !== undefined) {
+        hostWindow.clearTimeout(timeout);
+      }
+      options.signal.removeEventListener("abort", cleanup);
+    });
+    const findAcceptedMessage = () => {
       const messages = userMessages();
       const acceptedMessage = messages.find((message) => {
         if (!isNewMessage(message)) {
@@ -533,20 +573,18 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
         cleanup();
         options.onAccepted();
       }
+    };
+    stopObserving = pageObserver.observeMutations(findAcceptedMessage, {
+      characterData: true,
+      childList: true,
     });
-    const timeout = hostWindow.setTimeout(() => {
+    timeout = hostWindow.setTimeout(() => {
       logger?.("[QuoteCue host] send confirmation timed out");
       cleanup();
       options.onTimeout();
     }, SEND_ACCEPT_TIMEOUT_MS);
-    const cleanup = () => {
-      observer.disconnect();
-      hostWindow.clearTimeout(timeout);
-      options.signal.removeEventListener("abort", cleanup);
-    };
 
     options.signal.addEventListener("abort", cleanup, { once: true });
-    observer.observe(hostDocument.body, { childList: true, characterData: true, subtree: true });
     return cleanup;
   }
 
@@ -715,12 +753,7 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
         );
       },
       subscribe(callback: () => void) {
-        const stopObserving = observePage(callback, false);
-        hostWindow.addEventListener("popstate", callback);
-        return () => {
-          stopObserving();
-          hostWindow.removeEventListener("popstate", callback);
-        };
+        return subscribeToNavigation(hostWindow, callback);
       },
     },
     layout: {
@@ -744,6 +777,128 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
 }
 
 export type Host = ReturnType<typeof createDomHost>;
+
+function createPageObserver(hostDocument: Document, hostWindow: Window) {
+  const mutationSubscriptions = new Set<PageMutationSubscription>();
+  const viewportSubscriptions = new Set<ViewportSubscription>();
+  let mutationObserver: MutationObserver | null = null;
+
+  const dispatchMutations = (records: MutationRecord[]) => {
+    for (const subscription of [...mutationSubscriptions]) {
+      if (records.some((record) => matchesMutationInterest(record, subscription.interest))) {
+        subscription.callback();
+      }
+    }
+  };
+  const updateMutationObservation = () => {
+    if (mutationSubscriptions.size === 0) {
+      mutationObserver?.disconnect();
+      mutationObserver = null;
+      return;
+    }
+
+    mutationObserver ??= new MutationObserver(dispatchMutations);
+    const interests = [...mutationSubscriptions].map(({ interest }) => interest);
+    const attributeFilter = [
+      ...new Set(interests.flatMap(({ attributeFilter: attributes }) => attributes ?? [])),
+    ];
+    mutationObserver.observe(hostDocument.body, {
+      ...(attributeFilter.length > 0 ? { attributeFilter, attributes: true } : {}),
+      characterData: interests.some(({ characterData }) => characterData),
+      childList: interests.some(({ childList }) => childList),
+      subtree: true,
+    });
+  };
+  const onViewportChange = () => {
+    for (const { callback } of [...viewportSubscriptions]) {
+      callback();
+    }
+  };
+
+  return {
+    observeMutations(callback: () => void, interest: PageMutationInterest) {
+      const subscription = { callback, interest };
+      mutationSubscriptions.add(subscription);
+      updateMutationObservation();
+
+      return once(() => {
+        mutationSubscriptions.delete(subscription);
+        updateMutationObservation();
+      });
+    },
+    observeViewport(callback: () => void) {
+      const subscription = { callback };
+      viewportSubscriptions.add(subscription);
+      if (viewportSubscriptions.size === 1) {
+        hostWindow.addEventListener("resize", onViewportChange);
+        hostWindow.addEventListener("scroll", onViewportChange, true);
+      }
+
+      return once(() => {
+        viewportSubscriptions.delete(subscription);
+        if (viewportSubscriptions.size === 0) {
+          hostWindow.removeEventListener("resize", onViewportChange);
+          hostWindow.removeEventListener("scroll", onViewportChange, true);
+        }
+      });
+    },
+  };
+}
+
+function matchesMutationInterest(record: MutationRecord, interest: PageMutationInterest) {
+  switch (record.type) {
+    case "attributes":
+      return (
+        record.attributeName !== null && interest.attributeFilter?.includes(record.attributeName)
+      );
+    case "characterData":
+      return interest.characterData === true;
+    case "childList":
+      return interest.childList === true;
+    default:
+      return false;
+  }
+}
+
+function subscribeToNavigation(hostWindow: Window, callback: () => void) {
+  patchHistoryOnce(hostWindow);
+  hostWindow.addEventListener(HISTORY_CHANGE_EVENT, callback);
+  hostWindow.addEventListener("popstate", callback);
+
+  return once(() => {
+    hostWindow.removeEventListener(HISTORY_CHANGE_EVENT, callback);
+    hostWindow.removeEventListener("popstate", callback);
+  });
+}
+
+function patchHistoryOnce(hostWindow: Window) {
+  if (historyPatchedWindows.has(hostWindow)) {
+    return;
+  }
+
+  historyPatchedWindows.add(hostWindow);
+  wrapHistoryMethod(hostWindow, "pushState");
+  wrapHistoryMethod(hostWindow, "replaceState");
+}
+
+function wrapHistoryMethod(hostWindow: Window, method: "pushState" | "replaceState") {
+  const original = hostWindow.history[method];
+  hostWindow.history[method] = function (data: unknown, unused: string, url?: string | URL | null) {
+    original.call(this, data, unused, url);
+    hostWindow.dispatchEvent(new Event(HISTORY_CHANGE_EVENT));
+  };
+}
+
+function once(callback: () => void) {
+  let active = true;
+  return () => {
+    if (!active) {
+      return;
+    }
+    active = false;
+    callback();
+  };
+}
 
 // 编辑器 preventDefault 即表示接管了粘贴；返回 false 交由调用方降级
 function dispatchSyntheticPaste(composer: HTMLElement, text: string) {

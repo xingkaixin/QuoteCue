@@ -67,7 +67,7 @@ describe("Claude host contract", () => {
       rect: { bottom: 220, height: 20, left: 100, right: 260, top: 200, width: 160 },
     });
     const { actionRow, replyButton } = appendClaudeSelectionToolbar();
-    await Promise.resolve();
+    await nextFrame();
 
     const action = actionRow.querySelector<HTMLButtonElement>("[data-quotecue-native-action]");
     expect(actionRow.firstElementChild).toBe(action);
@@ -136,4 +136,8 @@ function annotation(): DraftAnnotation {
     },
     comment: "Explain the tradeoff",
   };
+}
+
+function nextFrame() {
+  return new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 }

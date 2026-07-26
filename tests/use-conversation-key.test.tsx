@@ -31,7 +31,6 @@ describe("useConversationKey", () => {
 
     await act(async () => {
       window.history.replaceState({}, "", "/c/conversation-a");
-      document.body.append(document.createElement("span"));
     });
     expect(firstContainer.querySelector("output")?.textContent).toBe("conversation-a");
     expect(secondContainer.querySelector("output")?.textContent).toBe("conversation-a");

@@ -219,6 +219,62 @@ describe("registerSendInterceptor", () => {
     interceptor.dispose();
   });
 
+  it("does not register confirmation work for an already aborted signal", () => {
+    vi.useFakeTimers();
+    const observe = vi.spyOn(MutationObserver.prototype, "observe");
+    const setTimeout = vi.spyOn(window, "setTimeout");
+    const logger = vi.fn();
+    const controller = new AbortController();
+    controller.abort();
+    const host = createChatGptHost({ document, logger, window });
+    const onAccepted = vi.fn();
+    const onTimeout = vi.fn();
+
+    const stop = host.composer.watchAcceptedSend({
+      expectedText: "compiled prompt",
+      onAccepted,
+      onTimeout,
+      signal: controller.signal,
+    });
+    vi.advanceTimersByTime(15_001);
+
+    expect(logger).toHaveBeenCalledWith("[QuoteCue host] send confirmation skipped: aborted");
+    expect(observe).not.toHaveBeenCalled();
+    expect(setTimeout).not.toHaveBeenCalled();
+    expect(onAccepted).not.toHaveBeenCalled();
+    expect(onTimeout).not.toHaveBeenCalled();
+    stop();
+  });
+
+  it("does not watch a send attempt disposed while waiting for its button", async () => {
+    const composer = installComposer("original question");
+    const sendButton = installSendButton();
+    const host = createChatGptHost({ document, window });
+    let resolveButton: (result: { status: "available"; value: HTMLElement }) => void = () =>
+      undefined;
+    const buttonResult = new Promise<{ status: "available"; value: HTMLElement }>((resolve) => {
+      resolveButton = resolve;
+    });
+    const waitForButton = vi.spyOn(host.composer, "waitForButton").mockReturnValue(buttonResult);
+    const watchAcceptedSend = vi.spyOn(host.composer, "watchAcceptedSend");
+    const interceptor = registerSendInterceptor({
+      annotations: () => [annotation],
+      host,
+      locale: () => "en",
+      onSendAccepted: vi.fn(),
+    });
+
+    const result = interceptor.submit();
+    await vi.waitFor(() => expect(waitForButton).toHaveBeenCalledOnce());
+    interceptor.dispose();
+    await expect(result).resolves.toEqual({ status: "failed", reason: "disposed" });
+
+    resolveButton({ status: "available", value: sendButton });
+    await Promise.resolve();
+    expect(watchAcceptedSend).not.toHaveBeenCalled();
+    expect(composer.textContent).toBe("original question");
+  });
+
   it("does not accept a send when only the composer becomes empty", async () => {
     vi.useFakeTimers();
     const composer = installComposer("original question");
