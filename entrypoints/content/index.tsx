@@ -16,7 +16,8 @@ export default defineContentScript({
   cssInjectionMode: "ui",
 
   async main(context) {
-    if (!activeSite) {
+    const site = activeSite;
+    if (!site) {
       return;
     }
 
@@ -59,7 +60,7 @@ export default defineContentScript({
         const root = ReactDOM.createRoot(app);
         root.render(
           <PortalContainerProvider container={container}>
-            <HostThemeProvider container={container}>
+            <HostThemeProvider accentTokens={site.accentTokens} container={container}>
               <I18nProvider>
                 <App />
               </I18nProvider>
