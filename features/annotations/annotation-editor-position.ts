@@ -10,7 +10,7 @@ import {
   positionAdjacentToRect,
   type FloatingElementSize,
 } from "@/features/layout/floating-position";
-import { requireActiveHost } from "@/features/host/active-host";
+import { useHost } from "@/features/host-port/HostProvider";
 
 import type { SelectionDraft } from "./annotation";
 import { rangeEndpointRect } from "./selection-anchor";
@@ -23,7 +23,7 @@ export function useAnnotationEditorPosition(
   elementRef: RefObject<HTMLElement | null>,
   fallbackSize: FloatingElementSize,
 ) {
-  const host = requireActiveHost();
+  const host = useHost();
   const viewport = useVisualViewportBounds();
   const [position, setPosition] = useState(() =>
     annotationEditorPosition(draft, fallbackSize, currentVisualViewportBounds()),

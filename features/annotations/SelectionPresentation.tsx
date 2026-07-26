@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
 
-import { requireActiveHost } from "@/features/host/active-host";
+import { useHost } from "@/features/host-port/HostProvider";
 import type { SelectionPresentationMode } from "@/features/host-port/host-port";
 
 import { NativeSelectionPresentation } from "./NativeSelectionPresentation";
@@ -13,6 +13,7 @@ const PRESENTATIONS: Record<SelectionPresentationMode, ComponentType<SelectionCa
 };
 
 export function SelectionPresentation(options: SelectionCaptureOptions) {
-  const Presentation = PRESENTATIONS[requireActiveHost().selection.presentation];
+  const host = useHost();
+  const Presentation = PRESENTATIONS[host.selection.presentation];
   return <Presentation {...options} />;
 }

@@ -7,6 +7,7 @@ import { AnnotationQuickInput } from "@/features/annotations/AnnotationQuickInpu
 import { AnnotationSummary } from "@/features/annotations/AnnotationSummary";
 import { DraftPersistenceStatus } from "@/features/annotations/DraftPersistenceStatus";
 import { SelectionPresentation } from "@/features/annotations/SelectionPresentation";
+import { compileAnnotatedPrompt } from "@/features/annotations/prompt-compiler";
 import type {
   AnnotationEditorState,
   DraftAnnotation,
@@ -20,12 +21,12 @@ import {
   registerSendInterceptor,
   type AnnotatedSendState,
 } from "@/features/host/register-send-interceptor";
-import { requireActiveHost } from "@/features/host/active-host";
 import { useAnnotatedComposerLayout } from "@/features/host/use-annotated-composer-layout";
+import { useHost } from "@/features/host-port/HostProvider";
 import { useI18n } from "@/features/i18n/I18nProvider";
 
 export default function App() {
-  const host = requireActiveHost();
+  const host = useHost();
   const { locale } = useI18n();
   const conversationKey = useConversationKey();
   const {
@@ -85,6 +86,8 @@ export default function App() {
   useEffect(() => {
     const interceptor = registerSendInterceptor({
       annotations: () => annotationsRef.current,
+      compilePrompt: compileAnnotatedPrompt,
+      host,
       locale: () => locale,
       onSendAccepted: (sentAnnotations) => {
         removeSentAnnotations(sentAnnotations);
@@ -105,7 +108,7 @@ export default function App() {
       sendActionsRef.current = { submit: () => undefined, retry: () => undefined };
       interceptor.dispose();
     };
-  }, [locale, removeSentAnnotations]);
+  }, [host, locale, removeSentAnnotations]);
 
   useEffect(() => {
     setEditor({ status: "hidden" });

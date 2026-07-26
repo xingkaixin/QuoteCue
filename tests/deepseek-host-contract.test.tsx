@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { DraftAnnotation } from "@/features/annotations/annotation";
+import { compileAnnotatedPrompt } from "@/features/annotations/prompt-compiler";
 import { SelectionPresentation } from "@/features/annotations/SelectionPresentation";
 import { createDeepSeekHost } from "@/features/deepseek/deepseek-host";
 import { registerSendInterceptor } from "@/features/host/register-send-interceptor";
@@ -13,16 +14,7 @@ import {
   appendUserMessageItem,
   installDeepSeekHostFixture,
 } from "./fixtures/deepseek-host";
-
-vi.mock("@/features/host/active-host", async () => {
-  const { createDeepSeekHost: createHost } = await import("@/features/deepseek/deepseek-host");
-  const host = createHost({ document, window });
-  return {
-    activeHost: host,
-    hostForHostname: () => host,
-    requireActiveHost: () => host,
-  };
-});
+import { HostTestProvider } from "./fixtures/host-provider";
 
 beforeEach(() => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
@@ -82,6 +74,7 @@ describe("DeepSeek host contract", () => {
     });
     const interceptor = registerSendInterceptor({
       annotations: () => annotations,
+      compilePrompt: compileAnnotatedPrompt,
       host,
       locale: () => "en",
       onSendAccepted,
@@ -120,6 +113,7 @@ describe("DeepSeek host contract", () => {
       annotations: () => [
         { id: "annotation-one", anchor: emptyAnchor(), comment: "Explain the tradeoff" },
       ],
+      compilePrompt: compileAnnotatedPrompt,
       host,
       locale: () => "en",
       onSendAccepted,
@@ -159,6 +153,7 @@ describe("DeepSeek host contract", () => {
       annotations: () => [
         { id: "annotation-one", anchor: emptyAnchor(), comment: "Explain the tradeoff" },
       ],
+      compilePrompt: compileAnnotatedPrompt,
       host,
       locale: () => "en",
       onSendAccepted: vi.fn(),
@@ -182,8 +177,15 @@ describe("DeepSeek host contract", () => {
     document.body.append(container);
     const root = createRoot(container);
     const onActivate = vi.fn();
+    const host = createDeepSeekHost({ document, window });
 
-    await act(async () => root.render(<OverlayHarness onActivate={onActivate} />));
+    await act(async () =>
+      root.render(
+        <HostTestProvider host={host}>
+          <OverlayHarness onActivate={onActivate} />
+        </HostTestProvider>,
+      ),
+    );
     selectNodeContents(fixture.assistantContent.querySelector("strong")?.firstChild);
     await act(async () => {
       document.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));

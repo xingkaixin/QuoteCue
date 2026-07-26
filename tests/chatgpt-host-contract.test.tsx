@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { DraftAnnotation } from "@/features/annotations/annotation";
+import { compileAnnotatedPrompt } from "@/features/annotations/prompt-compiler";
 import { createChatGptHost } from "@/features/chatgpt/chatgpt-host";
 import { registerSendInterceptor } from "@/features/host/register-send-interceptor";
 import { useAnnotatedComposerLayout } from "@/features/host/use-annotated-composer-layout";
@@ -12,6 +13,7 @@ import {
   appendUserMessage,
   installChatGptHostFixture,
 } from "./fixtures/chatgpt-host";
+import { HostTestProvider } from "./fixtures/host-provider";
 
 beforeEach(() => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
@@ -149,7 +151,13 @@ describe("ChatGPT host contract", () => {
     const container = document.createElement("div");
     document.body.append(container);
     const root = createRoot(container);
-    await act(async () => root.render(<LayoutProbe />));
+    await act(async () =>
+      root.render(
+        <HostTestProvider host={host}>
+          <LayoutProbe />
+        </HostTestProvider>,
+      ),
+    );
     expect(container.textContent).toBe("112,708|456,748,36,36");
 
     let annotations = [annotation];
@@ -162,6 +170,7 @@ describe("ChatGPT host contract", () => {
     });
     const interceptor = registerSendInterceptor({
       annotations: () => annotations,
+      compilePrompt: compileAnnotatedPrompt,
       host,
       locale: () => "en",
       onSendAccepted,
@@ -397,6 +406,7 @@ describe("ChatGPT host contract", () => {
     };
     const interceptor = registerSendInterceptor({
       annotations: () => [privateAnnotation],
+      compilePrompt: compileAnnotatedPrompt,
       host,
       locale: () => "en",
       onSendAccepted: vi.fn(),

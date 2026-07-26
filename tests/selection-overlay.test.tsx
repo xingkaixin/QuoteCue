@@ -6,6 +6,7 @@ import type { SelectionDraft } from "@/features/annotations/annotation";
 import { SelectionPresentation } from "@/features/annotations/SelectionPresentation";
 
 import { appendAssistantMessage, appendSelectionToolbar } from "./fixtures/chatgpt-host";
+import { HostTestProvider } from "./fixtures/host-provider";
 
 afterEach(() => {
   window.getSelection()?.removeAllRanges();
@@ -111,7 +112,11 @@ describe("selection overlay", () => {
 });
 
 function SelectionHarness({ onActivate }: { onActivate: (draft: SelectionDraft) => void }) {
-  return <SelectionPresentation isEnabled onActivate={onActivate} resetKey="conversation-a" />;
+  return (
+    <HostTestProvider>
+      <SelectionPresentation isEnabled onActivate={onActivate} resetKey="conversation-a" />
+    </HostTestProvider>
+  );
 }
 
 function selectText(node: ChildNode | null) {

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { requireActiveHost } from "@/features/host/active-host";
+import { useHost } from "@/features/host-port/HostProvider";
 
 import type { SelectionCapture, SelectionDraft } from "./annotation";
 import { isQuoteCueEvent } from "./is-quotecue-event";
@@ -12,7 +12,7 @@ export type SelectionCaptureOptions = {
 };
 
 export function useSelectionCapture({ isEnabled, onActivate, resetKey }: SelectionCaptureOptions) {
-  const host = requireActiveHost();
+  const host = useHost();
   const [selection, setSelection] = useState<SelectionCapture | null>(null);
   const dismiss = useCallback(() => setSelection(null), []);
   const activate = useCallback(() => {

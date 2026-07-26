@@ -15,10 +15,3 @@ export const activeHost = activeSite
       window,
     })
   : null;
-
-export function requireActiveHost(): Host {
-  if (!activeHost) {
-    throw new Error(`QuoteCue does not support ${window.location.hostname}`);
-  }
-  return activeHost;
-}

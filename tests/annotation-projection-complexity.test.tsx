@@ -4,9 +4,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { DraftAnnotation } from "@/features/annotations/annotation";
 import { useAnnotationHighlights } from "@/features/annotations/use-annotation-highlights";
-import { requireActiveHost } from "@/features/host/active-host";
+import { createChatGptHost } from "@/features/chatgpt/chatgpt-host";
+import type { Host } from "@/features/host-port/host-port";
 
 import { appendAssistantMessage } from "./fixtures/chatgpt-host";
+import { HostTestProvider } from "./fixtures/host-provider";
 
 afterEach(() => {
   vi.useRealTimers();
@@ -33,15 +35,16 @@ describe("annotation projection complexity", () => {
       },
     });
     const annotations = Array.from({ length: 20 }, (_, index) => annotation(index));
-    const messageIndex = vi.spyOn(requireActiveHost().selection, "messageIndex");
-    const host = document.createElement("div");
-    const shadowRoot = host.attachShadow({ mode: "open" });
+    const host = createChatGptHost({ document, window });
+    const messageIndex = vi.spyOn(host.selection, "messageIndex");
+    const shadowHost = document.createElement("div");
+    const shadowRoot = shadowHost.attachShadow({ mode: "open" });
     const container = document.createElement("div");
     shadowRoot.append(container);
-    document.body.append(host);
+    document.body.append(shadowHost);
     const root = createRoot(container);
 
-    await act(async () => root.render(<ProjectionHarness annotations={annotations} />));
+    await act(async () => root.render(<ProjectionHarness annotations={annotations} host={host} />));
     await act(async () => vi.advanceTimersByTimeAsync(17));
     expect(messageIndex).toHaveBeenCalledOnce();
     expect(messageTextReads).toBe(1);
@@ -72,15 +75,18 @@ describe("annotation projection complexity", () => {
       getClientRects: { configurable: true, value: () => [] },
     });
     const message = appendAssistantMessage("message-1", "selected text");
-    const messageIndex = vi.spyOn(requireActiveHost().selection, "messageIndex");
-    const host = document.createElement("div");
-    const shadowRoot = host.attachShadow({ mode: "open" });
+    const host = createChatGptHost({ document, window });
+    const messageIndex = vi.spyOn(host.selection, "messageIndex");
+    const shadowHost = document.createElement("div");
+    const shadowRoot = shadowHost.attachShadow({ mode: "open" });
     const container = document.createElement("div");
     shadowRoot.append(container);
-    document.body.append(host);
+    document.body.append(shadowHost);
     const root = createRoot(container);
 
-    await act(async () => root.render(<ProjectionHarness annotations={[annotation(0)]} />));
+    await act(async () =>
+      root.render(<ProjectionHarness annotations={[annotation(0)]} host={host} />),
+    );
     await act(async () => vi.advanceTimersByTimeAsync(17));
     messageIndex.mockClear();
     await act(async () => {
@@ -96,7 +102,15 @@ describe("annotation projection complexity", () => {
   });
 });
 
-function ProjectionHarness({ annotations }: { annotations: DraftAnnotation[] }) {
+function ProjectionHarness({ annotations, host }: { annotations: DraftAnnotation[]; host?: Host }) {
+  return (
+    <HostTestProvider host={host}>
+      <Projection annotations={annotations} />
+    </HostTestProvider>
+  );
+}
+
+function Projection({ annotations }: { annotations: DraftAnnotation[] }) {
   useAnnotationHighlights(annotations, null);
   return null;
 }

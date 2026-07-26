@@ -3,7 +3,10 @@ import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AnnotationEditor } from "@/features/annotations/AnnotationEditor";
-import { requireActiveHost } from "@/features/host/active-host";
+import { createChatGptHost } from "@/features/chatgpt/chatgpt-host";
+import type { Host } from "@/features/host-port/host-port";
+
+import { HostTestProvider } from "./fixtures/host-provider";
 
 vi.mock("@/features/annotations/SecureTextField", async () => {
   const { forwardRef, useEffect, useImperativeHandle, useRef } = await import("react");
@@ -67,11 +70,12 @@ describe("AnnotationEditor", () => {
   it("coalesces scroll-driven anchor restores into one frame", async () => {
     vi.useFakeTimers();
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-    const restore = vi.spyOn(requireActiveHost().selection, "restore").mockReturnValue({
+    const host = createChatGptHost({ document, window });
+    const restore = vi.spyOn(host.selection, "restore").mockReturnValue({
       reason: "assistant-message-unavailable",
       status: "unavailable",
     });
-    const { root } = await renderEditor(vi.fn());
+    const { root } = await renderEditor(vi.fn(), host);
     restore.mockClear();
 
     for (let index = 0; index < 20; index += 1) {
@@ -274,23 +278,25 @@ describe("AnnotationEditor", () => {
   });
 });
 
-async function renderEditor(onCancel: () => void) {
+async function renderEditor(onCancel: () => void, host?: Host) {
   const container = document.createElement("div");
   document.body.append(container);
   const root = createRoot(container);
-  await act(async () => root.render(editor(onCancel)));
+  await act(async () => root.render(editor(onCancel, host)));
   return { container, root };
 }
 
-function editor(onCancel: () => void) {
+function editor(onCancel: () => void, host?: Host) {
   return (
-    <AnnotationEditor
-      annotation={annotation}
-      draft={draft}
-      onCancel={onCancel}
-      onDelete={vi.fn()}
-      onSave={vi.fn()}
-    />
+    <HostTestProvider host={host}>
+      <AnnotationEditor
+        annotation={annotation}
+        draft={draft}
+        onCancel={onCancel}
+        onDelete={vi.fn()}
+        onSave={vi.fn()}
+      />
+    </HostTestProvider>
   );
 }
 

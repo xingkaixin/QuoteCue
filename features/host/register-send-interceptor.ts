@@ -1,9 +1,6 @@
 import type { DraftAnnotation } from "@/features/annotations/annotation";
-import { compileAnnotatedPrompt } from "@/features/annotations/prompt-compiler";
 import type { SupportedLocale } from "@/features/i18n/messages";
 import type { ComposerSnapshot, Host } from "@/features/host-port/host-port";
-
-import { requireActiveHost } from "./active-host";
 
 export type AnnotatedSendFailureReason =
   | "composer-unavailable"
@@ -26,7 +23,12 @@ export type AnnotatedSendState =
 
 type SendInterceptorOptions = {
   annotations: () => readonly DraftAnnotation[];
-  host?: Host;
+  compilePrompt: (
+    annotations: readonly DraftAnnotation[],
+    originalText: string,
+    locale: SupportedLocale,
+  ) => string;
+  host: Host;
   locale: () => SupportedLocale;
   onSendAccepted: (annotations: readonly DraftAnnotation[]) => void;
   onStateChange?: (state: AnnotatedSendState) => void;
@@ -48,7 +50,7 @@ type StartedSend = {
 };
 
 export function registerSendInterceptor(options: SendInterceptorOptions) {
-  const host = options.host ?? requireActiveHost();
+  const host = options.host;
   let activeAttempt: SendAttempt | null = null;
   let lastFailedAttempt: SendAttempt | null = null;
   let isDispatchingReplay = false;
@@ -164,7 +166,7 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
     const originalText =
       retryOriginalText && snapshot.text.trim().length === 0 ? retryOriginalText : snapshot.text;
     const ownedSnapshot = { ...snapshot, text: originalText };
-    const compiledText = compileAnnotatedPrompt(annotations, originalText, options.locale());
+    const compiledText = options.compilePrompt(annotations, originalText, options.locale());
     const attempt = createAttempt(ownedSnapshot, compiledText, annotations);
     activeAttempt = attempt;
     lastFailedAttempt = null;

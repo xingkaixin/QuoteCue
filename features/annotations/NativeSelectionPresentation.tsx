@@ -1,12 +1,12 @@
 import { useEffect } from "react";
 
-import { requireActiveHost } from "@/features/host/active-host";
+import { useHost } from "@/features/host-port/HostProvider";
 import { useI18n } from "@/features/i18n/I18nProvider";
 
 import { useSelectionCapture, type SelectionCaptureOptions } from "./use-selection-capture";
 
 export function NativeSelectionPresentation(options: SelectionCaptureOptions) {
-  const host = requireActiveHost();
+  const host = useHost();
   const { messages } = useI18n();
   const { activate, selection } = useSelectionCapture(options);
 

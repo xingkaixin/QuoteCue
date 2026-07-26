@@ -4,6 +4,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AnnotationQuickInput } from "@/features/annotations/AnnotationQuickInput";
 
+import { HostTestProvider } from "./fixtures/host-provider";
+
 vi.mock("@/features/annotations/SecureTextField", async () => {
   const { forwardRef, useEffect, useImperativeHandle, useRef } = await import("react");
   type FakeSecureFieldProps = {
@@ -139,7 +141,11 @@ async function renderQuickInput(onClose: () => void, onSave: (comment: string) =
   document.body.append(container);
   const root = createRoot(container);
   await act(async () => {
-    root.render(<AnnotationQuickInput draft={draft} onClose={onClose} onSave={onSave} />);
+    root.render(
+      <HostTestProvider>
+        <AnnotationQuickInput draft={draft} onClose={onClose} onSave={onSave} />
+      </HostTestProvider>,
+    );
   });
   return { container, root };
 }

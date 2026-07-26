@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import { requireActiveHost } from "@/features/host/active-host";
+import { useHost } from "@/features/host-port/HostProvider";
 import type { Host, SelectionInvalidationReason } from "@/features/host-port/host-port";
 import { clampPositionToViewport } from "@/features/layout/floating-position";
 import { currentVisualViewportBounds } from "@/features/layout/use-visual-viewport";
@@ -35,7 +35,7 @@ export function useAnnotationHighlights(
   annotations: DraftAnnotation[],
   activeAnnotationId: string | null,
 ) {
-  const host = requireActiveHost();
+  const host = useHost();
   const [layout, setLayout] = useState<AnnotationHighlightLayout>(EMPTY_LAYOUT);
   const layoutRef = useRef(layout);
 
