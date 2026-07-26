@@ -8,6 +8,7 @@ import {
   rangeEndpointRect,
   restoreTextAnchorFromIndex,
 } from "@/features/annotations/selection-anchor";
+import { currentVisualViewportBounds } from "@/features/layout/use-visual-viewport";
 
 const CONTEXT_LENGTH = 48;
 const NATIVE_SELECTION_ACTION_ATTRIBUTE = "data-quotecue-native-action";
@@ -288,7 +289,7 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
     const scrollContainer = nearestScrollContainer(range.endContainer);
     const viewportRect = scrollContainer
       ? scrollContainer.getBoundingClientRect()
-      : visualViewportRect();
+      : viewportRectangle();
 
     if (endpointRect.bottom >= viewportRect.top && endpointRect.top <= viewportRect.bottom) {
       return available("visible");
@@ -321,11 +322,9 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
     return null;
   }
 
-  function visualViewportRect() {
-    const viewport = hostWindow.visualViewport;
-    const top = viewport?.offsetTop ?? 0;
-    const height = viewport?.height ?? hostWindow.innerHeight;
-    return { bottom: top + height, height, top };
+  function viewportRectangle() {
+    const viewport = currentVisualViewportBounds(hostWindow);
+    return { bottom: viewport.top + viewport.height, height: viewport.height, top: viewport.top };
   }
 
   function currentComposer() {

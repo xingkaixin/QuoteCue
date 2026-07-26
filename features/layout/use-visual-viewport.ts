@@ -29,8 +29,8 @@ export function useVisualViewportBounds() {
   return bounds;
 }
 
-export function currentVisualViewportBounds(): VisualViewportBounds {
-  const viewport = window.visualViewport;
+export function currentVisualViewportBounds(sourceWindow: Window = window): VisualViewportBounds {
+  const viewport = sourceWindow.visualViewport;
   return viewport
     ? {
         height: viewport.height,
@@ -38,7 +38,12 @@ export function currentVisualViewportBounds(): VisualViewportBounds {
         top: viewport.offsetTop,
         width: viewport.width,
       }
-    : { height: window.innerHeight, left: 0, top: 0, width: window.innerWidth };
+    : {
+        height: sourceWindow.innerHeight,
+        left: 0,
+        top: 0,
+        width: sourceWindow.innerWidth,
+      };
 }
 
 function sameBounds(left: VisualViewportBounds, right: VisualViewportBounds) {
