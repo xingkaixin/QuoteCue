@@ -29,14 +29,18 @@ export function useDismissalWarning({
 }: UseDismissalWarningOptions) {
   const hasWarnedRef = useRef(false);
   const isDismissingRef = useRef(false);
+  const isDirtyRef = useRef(isDirty);
+  const onDismissRef = useRef(onDismiss);
+  isDirtyRef.current = isDirty;
+  onDismissRef.current = onDismiss;
 
   const requestDismissal = useCallback(() => {
     if (isDismissingRef.current) {
       return true;
     }
-    if (!isDirty || hasWarnedRef.current) {
+    if (!isDirtyRef.current || hasWarnedRef.current) {
       isDismissingRef.current = true;
-      onDismiss();
+      onDismissRef.current();
       return true;
     }
 
@@ -49,7 +53,7 @@ export function useDismissalWarning({
     }
     requestAnimationFrame(focusEditor);
     return false;
-  }, [focusEditor, isDirty, onDismiss, rootRef]);
+  }, [focusEditor, rootRef]);
 
   const resetWarning = useCallback(() => {
     hasWarnedRef.current = false;

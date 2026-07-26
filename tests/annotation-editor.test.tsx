@@ -235,6 +235,27 @@ describe("AnnotationEditor", () => {
     await act(async () => root.unmount());
   });
 
+  it("preserves a pending focus dismissal across parent rerenders", async () => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    const addEventListener = vi.spyOn(document, "addEventListener");
+    const onCancel = vi.fn();
+    const { container, root } = await renderEditor(() => onCancel());
+    const outsideButton = document.createElement("button");
+    document.body.append(outsideButton);
+
+    await act(async () => outsideButton.focus());
+    await act(async () => root.render(editor(() => onCancel())));
+    await act(async () => focusSettled());
+
+    expect(container.querySelector("textarea")).not.toBeNull();
+    expect(onCancel).toHaveBeenCalledOnce();
+    expect(
+      addEventListener.mock.calls.filter(([eventName]) => eventName === "pointerdown"),
+    ).toHaveLength(1);
+
+    await act(async () => root.unmount());
+  });
+
   it("distinguishes editor controls from other QuoteCue controls in a closed shadow", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     const animate = vi.fn();
