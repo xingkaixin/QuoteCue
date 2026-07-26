@@ -14,7 +14,7 @@ export type AnnotatedSendFailureReason =
   | "send-unavailable";
 
 export type AnnotatedSendResult =
-  | { status: "accepted"; revision: number }
+  | { status: "accepted"; annotationIds: string[] }
   | { status: "failed"; reason: AnnotatedSendFailureReason };
 
 export type AnnotatedSendState =
@@ -25,10 +25,10 @@ export type AnnotatedSendState =
   | { status: "failed"; attemptId: string | null; reason: AnnotatedSendFailureReason };
 
 type SendInterceptorOptions = {
-  draft: () => { annotations: DraftAnnotation[]; revision: number };
+  annotations: () => readonly DraftAnnotation[];
   host?: Host;
   locale: () => SupportedLocale;
-  onSendAccepted: (revision: number) => void;
+  onSendAccepted: (annotations: readonly DraftAnnotation[]) => void;
   onStateChange?: (state: AnnotatedSendState) => void;
 };
 
@@ -36,7 +36,7 @@ type SendAttempt = {
   id: string;
   snapshot: ComposerSnapshot;
   compiledText: string;
-  revision: number;
+  annotations: readonly DraftAnnotation[];
   controller: AbortController;
   result: Promise<AnnotatedSendResult>;
   resolve: (result: AnnotatedSendResult) => void;
@@ -69,9 +69,12 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
     attempt.controller.abort();
     activeAttempt = null;
     lastFailedAttempt = null;
-    options.onSendAccepted(attempt.revision);
+    options.onSendAccepted(attempt.annotations);
     setState({ status: "idle" });
-    attempt.resolve({ status: "accepted", revision: attempt.revision });
+    attempt.resolve({
+      status: "accepted",
+      annotationIds: attempt.annotations.map(({ id }) => id),
+    });
   };
 
   const finishFailed = (attempt: SendAttempt, reason: AnnotatedSendFailureReason) => {
@@ -133,7 +136,7 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
       return { isOwned: true, result: activeAttempt.result };
     }
 
-    const { annotations, revision } = options.draft();
+    const annotations = snapshotAnnotations(options.annotations());
     if (annotations.length === 0) {
       return failedResult("no-annotations");
     }
@@ -162,7 +165,7 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
       retryOriginalText && snapshot.text.trim().length === 0 ? retryOriginalText : snapshot.text;
     const ownedSnapshot = { ...snapshot, text: originalText };
     const compiledText = compileAnnotatedPrompt(annotations, originalText, options.locale());
-    const attempt = createAttempt(ownedSnapshot, compiledText, revision);
+    const attempt = createAttempt(ownedSnapshot, compiledText, annotations);
     activeAttempt = attempt;
     lastFailedAttempt = null;
     setState({ status: "preparing", attemptId: attempt.id });
@@ -226,7 +229,7 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
 function createAttempt(
   snapshot: ComposerSnapshot,
   compiledText: string,
-  revision: number,
+  annotations: readonly DraftAnnotation[],
 ): SendAttempt {
   let resolve: (result: AnnotatedSendResult) => void = () => undefined;
   const result = new Promise<AnnotatedSendResult>((resultResolve) => {
@@ -236,11 +239,18 @@ function createAttempt(
     id: crypto.randomUUID(),
     snapshot,
     compiledText,
-    revision,
+    annotations,
     controller: new AbortController(),
     result,
     resolve,
   };
+}
+
+function snapshotAnnotations(annotations: readonly DraftAnnotation[]): DraftAnnotation[] {
+  return annotations.map((annotation) => ({
+    ...annotation,
+    anchor: { ...annotation.anchor },
+  }));
 }
 
 function failedResult(reason: AnnotatedSendFailureReason): StartedSend {

@@ -97,14 +97,17 @@ describe("Claude host contract", () => {
     });
     const onSendAccepted = vi.fn();
     const interceptor = registerSendInterceptor({
-      draft: () => ({ annotations: [annotation()], revision: 1 }),
+      annotations: () => [annotation()],
       host,
       locale: () => "en",
       onSendAccepted,
     });
 
-    await expect(interceptor.submit()).resolves.toEqual({ status: "accepted", revision: 1 });
-    expect(onSendAccepted).toHaveBeenCalledWith(1);
+    await expect(interceptor.submit()).resolves.toEqual({
+      status: "accepted",
+      annotationIds: ["annotation-one"],
+    });
+    expect(onSendAccepted).toHaveBeenCalledWith([annotation()]);
     expect(fixture.composer.innerText).toContain("[Annotation 1]");
     interceptor.dispose();
   });
