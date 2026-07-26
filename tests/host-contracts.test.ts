@@ -55,7 +55,7 @@ const contracts: HostContractDefinition[] = [
       fixture.assistantMessage.remove();
       appendAssistantMessage("assistant-one", "Changed assistant answer");
     },
-    selectionActionMode: "native-toolbar",
+    selectionPresentation: "native-toolbar",
     setSendDisabled(control, isDisabled) {
       (control as HTMLButtonElement).disabled = isDisabled;
     },
@@ -92,7 +92,7 @@ const contracts: HostContractDefinition[] = [
       wrapper.dataset.rsIndex = "2";
       appendClaudeAssistantMessage(1, "Changed assistant answer");
     },
-    selectionActionMode: "native-toolbar",
+    selectionPresentation: "native-toolbar",
     setSendDisabled(control, isDisabled) {
       (control as HTMLButtonElement).disabled = isDisabled;
     },
@@ -127,7 +127,7 @@ const contracts: HostContractDefinition[] = [
       fixture.assistantMessage.remove();
       appendAssistantMessageItem("assistant-one", "Changed assistant answer");
     },
-    selectionActionMode: "overlay",
+    selectionPresentation: "overlay",
     setSendDisabled(control, isDisabled) {
       control.classList.toggle("ds-button--disabled", isDisabled);
     },
@@ -159,7 +159,7 @@ const contracts: HostContractDefinition[] = [
       fixture.assistantMessage.remove();
       appendKimiAssistantMessage("assistant-one", "Changed assistant answer");
     },
-    selectionActionMode: "overlay",
+    selectionPresentation: "overlay",
     setSendDisabled(control, isDisabled) {
       control.classList.toggle("disabled", isDisabled);
     },

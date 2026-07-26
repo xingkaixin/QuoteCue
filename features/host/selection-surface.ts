@@ -48,11 +48,11 @@ export function createSelectionSurface(context: HostContext) {
 
   function messageIndex(root: ParentNode = hostDocument) {
     const index = new Map<string, HTMLElement>();
-    for (const message of root.querySelectorAll<HTMLElement>(adapter.assistantMessageSelector)) {
-      if (adapter.isAssistantMessage && !adapter.isAssistantMessage(message)) {
+    for (const message of root.querySelectorAll<HTMLElement>(adapter.messages.assistantSelector)) {
+      if (!adapter.messages.isAssistant(message)) {
         continue;
       }
-      const messageId = adapter.messageId(message);
+      const messageId = adapter.messages.id(message);
       if (messageId && !index.has(messageId)) {
         index.set(messageId, message);
       }
@@ -71,7 +71,7 @@ export function createSelectionSurface(context: HostContext) {
   function assistantMessage(messageId: string) {
     if (
       cachedAssistantMessage?.isConnected &&
-      adapter.messageId(cachedAssistantMessage) === messageId
+      adapter.messages.id(cachedAssistantMessage) === messageId
     ) {
       return cachedAssistantMessage;
     }
@@ -105,7 +105,7 @@ export function createSelectionSurface(context: HostContext) {
       actionRect,
       anchor: {
         end,
-        messageId: adapter.messageId(message) ?? "",
+        messageId: adapter.messages.id(message) ?? "",
         prefix: messageText.slice(Math.max(0, start - CONTEXT_LENGTH), start),
         quote,
         ...(displayQuote === quote ? {} : { displayQuote }),
@@ -301,14 +301,12 @@ export function createSelectionSurface(context: HostContext) {
 
   function closestAssistantMessage(node: Node) {
     const element = node instanceof Element ? node : node.parentElement;
-    const message = element?.closest<HTMLElement>(adapter.assistantMessageSelector) ?? null;
-    return message && (!adapter.isAssistantMessage || adapter.isAssistantMessage(message))
-      ? message
-      : null;
+    const message = element?.closest<HTMLElement>(adapter.messages.assistantSelector) ?? null;
+    return message && adapter.messages.isAssistant(message) ? message : null;
   }
 
   return {
-    actionMode: adapter.selectionActionMode,
+    presentation: adapter.selectionPresentation.mode,
     capture,
     draft,
     messageIndex,

@@ -1,4 +1,10 @@
-import { available, unavailable, type HostContext, type HostResult } from "./host-context";
+import {
+  available,
+  unavailable,
+  type ComposerLayoutCapability,
+  type HostContext,
+  type HostResult,
+} from "./host-context";
 
 type HostComposerLayout = {
   action: HTMLElement | null;
@@ -28,6 +34,7 @@ export function createComposerLayout(
     const rect = surface.getBoundingClientRect();
     const action = findComposerAction(boundary ?? surface, rect);
     const actionRect = action?.getBoundingClientRect();
+    const fallback = adapter.layout.fallbackAction;
     return available({
       action,
       send: actionRect
@@ -37,7 +44,12 @@ export function createComposerLayout(
             top: actionRect.top,
             width: actionRect.width,
           }
-        : { height: 36, left: rect.right - 44, top: rect.bottom - 44, width: 36 },
+        : {
+            height: fallback.height,
+            left: rect.right - fallback.width - fallback.rightInset,
+            top: rect.bottom - fallback.height - fallback.bottomInset,
+            width: fallback.width,
+          },
       summary: { left: rect.left + 12, top: rect.top + 8 },
       surface,
     });
@@ -70,7 +82,7 @@ export function createComposerLayout(
   }
 
   function findComposerAction(root: HTMLElement, surfaceRect: DOMRect) {
-    return Array.from(root.querySelectorAll<HTMLElement>(adapter.composerButtonSelector))
+    return Array.from(root.querySelectorAll<HTMLElement>(adapter.layout.actionSelector))
       .map((button) => ({ button, rect: button.getBoundingClientRect() }))
       .filter(({ rect }) => {
         const centerX = rect.left + rect.width / 2;
@@ -88,4 +100,16 @@ export function createComposerLayout(
   }
 
   return { current, subscribe };
+}
+
+export function composerLayout(
+  actionSelector: string,
+  fallbackAction: ComposerLayoutCapability["fallbackAction"] = {
+    bottomInset: 8,
+    height: 36,
+    rightInset: 8,
+    width: 36,
+  },
+): ComposerLayoutCapability {
+  return { actionSelector, fallbackAction };
 }

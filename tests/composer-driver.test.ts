@@ -1,7 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { richTextComposer, textareaComposer } from "@/features/host/composer-access";
 import { createComposerDriver } from "@/features/host/composer-driver";
-import { createHostContext, type SiteAdapter } from "@/features/host/host-context";
+import {
+  createHostContext,
+  type ComposerAccess,
+  type SiteAdapter,
+} from "@/features/host/host-context";
 import { createTextNormalizer } from "@/features/host/text-normalizer";
 
 afterEach(() => {
@@ -50,13 +55,23 @@ describe("composer driver", () => {
     expect(composer.innerHTML).toBe("<p>replacement</p>");
     expect(onInput).toHaveBeenCalledOnce();
   });
+
+  it("writes textarea values without entering the rich-text fallback ladder", () => {
+    const execCommand = installExecCommand(true);
+    const composer = document.createElement("textarea");
+    document.body.append(composer);
+
+    expect(driver(textareaComposer("textarea")).replaceText(composer, "replacement")).toBe(true);
+    expect(composer.value).toBe("replacement");
+    expect(execCommand).not.toHaveBeenCalled();
+  });
 });
 
-function driver() {
-  const hostAdapter = adapter();
+function driver(composer = richTextComposer("[contenteditable]")) {
+  const hostAdapter = adapter(composer);
   return createComposerDriver(
     createHostContext({ document, window }, hostAdapter),
-    createTextNormalizer(hostAdapter),
+    createTextNormalizer(hostAdapter.composer),
   );
 }
 
@@ -74,16 +89,21 @@ function installExecCommand(result: boolean) {
   return execCommand;
 }
 
-function adapter(): SiteAdapter {
+function adapter(composer: ComposerAccess): SiteAdapter {
   return {
-    assistantMessageSelector: "article",
-    composerButtonSelector: "button",
-    composerKind: "contenteditable",
-    composerSelector: "[contenteditable]",
+    composer,
     conversationPathPattern: /^\/c\/([^/]+)/,
-    selectionActionMode: "overlay",
-    sendButtonSelector: "button",
-    userMessageSelector: "[data-user]",
-    messageId: (message) => message.id,
+    layout: {
+      actionSelector: "button",
+      fallbackAction: { bottomInset: 8, height: 36, rightInset: 8, width: 36 },
+    },
+    messages: {
+      assistantSelector: "article",
+      id: (message) => message.id,
+      isAssistant: () => true,
+      userSelector: "[data-user]",
+    },
+    selectionPresentation: { mode: "overlay" },
+    sendControl: { isDisabled: () => false, selector: "button" },
   };
 }

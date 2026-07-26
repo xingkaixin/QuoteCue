@@ -21,7 +21,7 @@ export type {
 
 export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter) {
   const context = createHostContext(environment, adapter);
-  const textNormalizer = createTextNormalizer(adapter);
+  const textNormalizer = createTextNormalizer(adapter.composer);
   const composerDriver = createComposerDriver(context, textNormalizer);
   const sendPipeline = createSendPipeline(context, textNormalizer);
   const layout = createComposerLayout(context, composerDriver.current);

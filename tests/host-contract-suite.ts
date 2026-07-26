@@ -23,7 +23,7 @@ export type HostContractDefinition = {
   installFixture: () => CoreHostFixture;
   invalidateCapturedIdentity: (fixture: CoreHostFixture) => void;
   name: string;
-  selectionActionMode: "native-toolbar" | "overlay";
+  selectionPresentation: "native-toolbar" | "overlay";
   setSendDisabled: (control: HTMLElement, isDisabled: boolean) => void;
 };
 
@@ -49,8 +49,8 @@ export function runHostContractSuite(definition: HostContractDefinition) {
       vi.restoreAllMocks();
     });
 
-    it("exposes the configured selection action mode", () => {
-      expect(host().selection.actionMode).toBe(definition.selectionActionMode);
+    it("exposes the configured selection presentation", () => {
+      expect(host().selection.presentation).toBe(definition.selectionPresentation);
     });
 
     it("derives conversation ids and preserves temporary new-chat keys", () => {

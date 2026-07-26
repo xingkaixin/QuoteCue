@@ -71,7 +71,7 @@ export function useSelectionOverlay(
   }, [dismissSelectionAction, isEnabled]);
 
   useEffect(() => {
-    if (!selectionDraft || activeHost.selection.actionMode !== "native-toolbar") {
+    if (!selectionDraft || activeHost.selection.presentation !== "native-toolbar") {
       return;
     }
 
@@ -82,7 +82,7 @@ export function useSelectionOverlay(
     });
   }, [activateSelection, messages.addAnnotation, selectionDraft]);
 
-  if (activeHost.selection.actionMode !== "overlay" || !selectionDraft) {
+  if (activeHost.selection.presentation !== "overlay" || !selectionDraft) {
     return null;
   }
   return { onActivate: activateSelection, rect: selectionDraft.rect };
