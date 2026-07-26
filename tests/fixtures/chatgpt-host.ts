@@ -6,6 +6,7 @@ export type ChatGptHostFixture = {
   composer: HTMLElement;
   form: HTMLFormElement;
   surface: HTMLElement;
+  userMessage: HTMLElement;
 };
 
 export function installChatGptHostFixture(): ChatGptHostFixture {
@@ -30,6 +31,7 @@ export function installChatGptHostFixture(): ChatGptHostFixture {
   const form = requiredElement<HTMLFormElement>("form");
   const surface = requiredElement<HTMLElement>('[data-fixture="composer-surface"]');
   const action = requiredElement<HTMLButtonElement>('button[data-testid="send-button"]');
+  const userMessage = appendUserMessage("user-initial", "Original question");
 
   Object.defineProperty(composer, "innerText", {
     configurable: true,
@@ -38,7 +40,7 @@ export function installChatGptHostFixture(): ChatGptHostFixture {
   setElementRect(surface, new DOMRect(100, 700, 400, 92));
   setElementRect(action, new DOMRect(456, 748, 36, 36));
 
-  return { action, assistantMessage, composer, form, surface };
+  return { action, assistantMessage, composer, form, surface, userMessage };
 }
 
 export function appendUserMessage(messageId: string, text: string) {

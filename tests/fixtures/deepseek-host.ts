@@ -8,6 +8,7 @@ export type DeepSeekHostFixture = {
   sendButton: HTMLElement;
   surface: HTMLElement;
   thinkContent: HTMLElement;
+  userMessage: HTMLElement;
 };
 
 export function installDeepSeekHostFixture(): DeepSeekHostFixture {
@@ -40,11 +41,12 @@ export function installDeepSeekHostFixture(): DeepSeekHostFixture {
   const sendButton = requiredElement<HTMLElement>(".ds-button--circle");
   const surface = requiredElement<HTMLElement>('[data-fixture="composer-surface"]');
   const thinkContent = requiredElement<HTMLElement>(".ds-think-content");
+  const userMessage = requiredElement<HTMLElement>('[data-virtual-list-item-key="user-one"]');
 
   setElementRect(surface, new DOMRect(100, 700, 400, 92));
   setElementRect(sendButton, new DOMRect(458, 750, 34, 34));
 
-  return { assistantContent, composer, sendButton, surface, thinkContent };
+  return { assistantContent, composer, sendButton, surface, thinkContent, userMessage };
 }
 
 export function appendUserMessageItem(itemKey: string, text: string) {

@@ -40,66 +40,6 @@ afterEach(() => {
 });
 
 describe("DeepSeek host contract", () => {
-  it("exposes the overlay selection action mode", () => {
-    expect(createDeepSeekHost({ document, window }).selection.actionMode).toBe("overlay");
-  });
-
-  it("uses the DeepSeek conversation path for draft keys", () => {
-    const host = createDeepSeekHost({ document, window });
-    window.history.replaceState({}, "", "/a/chat/s/session-one");
-    expect(host.conversation.key("new-chat:tab-a")).toBe("session-one");
-
-    window.history.replaceState({}, "", "/");
-    expect(host.conversation.key("new-chat:tab-a")).toBe("new-chat:tab-a");
-  });
-
-  it("anchors selections to the virtual list item key", () => {
-    const fixture = installDeepSeekHostFixture();
-    const host = createDeepSeekHost({ document, window });
-    selectNodeContents(fixture.assistantContent.querySelector("strong")?.firstChild);
-
-    const result = host.selection.capture();
-
-    expect(result.status).toBe("available");
-    if (result.status === "available") {
-      expect(result.value.anchor).toMatchObject({
-        messageId: "assistant-one",
-        quote: "focused answer",
-      });
-    }
-  });
-
-  it("restores table selections with rendered cell separators", () => {
-    const fixture = installDeepSeekHostFixture();
-    fixture.assistantContent.innerHTML =
-      "<table><tbody><tr><td>alpha</td><td>beta</td></tr></tbody></table>";
-    const cells = fixture.assistantContent.querySelectorAll("td");
-    const start = cells.item(0).firstChild;
-    const end = cells.item(1).firstChild;
-    if (!start || !end) {
-      throw new Error("Expected table cell text");
-    }
-    const range = document.createRange();
-    range.setStart(start, 0);
-    range.setEnd(end, end.textContent?.length ?? 0);
-    const selectionTextSpy = selectRangeWithRenderedText(range, "alpha beta");
-    const host = createDeepSeekHost({ document, window });
-
-    const captured = host.selection.capture();
-    selectionTextSpy.mockRestore();
-    expect(captured.status).toBe("available");
-    if (captured.status === "unavailable") {
-      return;
-    }
-
-    expect(captured.value.anchor).toMatchObject({
-      displayQuote: "alpha beta",
-      messageId: "assistant-one",
-      quote: "alphabeta",
-    });
-    expect(host.selection.restore(captured.value.anchor).status).toBe("available");
-  });
-
   it("rejects selections inside collapsible think content", () => {
     const fixture = installDeepSeekHostFixture();
     const host = createDeepSeekHost({ document, window });
@@ -152,16 +92,6 @@ describe("DeepSeek host contract", () => {
     expect(annotations).toEqual([]);
 
     interceptor.dispose();
-  });
-
-  it("treats the ds-button--disabled class as an unavailable send control", () => {
-    const fixture = installDeepSeekHostFixture();
-    const host = createDeepSeekHost({ document, window });
-    const sendButton = fixture.sendButton;
-
-    expect(host.composer.isButtonAvailable(sendButton)).toBe(true);
-    fixture.sendButton.classList.add("ds-button--disabled");
-    expect(host.composer.isButtonAvailable(sendButton)).toBe(false);
   });
 
   it("takes over a native send on an empty composer and fills in annotations", async () => {
@@ -293,16 +223,6 @@ function selectNodeContents(node: ChildNode | null | undefined) {
   });
   window.getSelection()?.removeAllRanges();
   window.getSelection()?.addRange(range);
-}
-
-function selectRangeWithRenderedText(range: Range, renderedText: string) {
-  const selection = window.getSelection();
-  if (!selection) {
-    throw new Error("Expected a document selection");
-  }
-  selection.removeAllRanges();
-  selection.addRange(range);
-  return vi.spyOn(selection, "toString").mockReturnValue(renderedText);
 }
 
 function missingSelection(): never {

@@ -8,7 +8,6 @@ import { registerSendInterceptor } from "@/features/host/register-send-intercept
 import { useAnnotatedComposerLayout } from "@/features/host/use-annotated-composer-layout";
 
 import {
-  appendAssistantMessage,
   appendSelectionToolbar,
   appendUserMessage,
   installChatGptHostFixture,
@@ -179,63 +178,6 @@ describe("ChatGPT host contract", () => {
     await act(async () => root.unmount());
     expect(fixture.surface.style.paddingTop).toBe("5px");
     expect(fixture.action.style.visibility).toBe("");
-  });
-
-  it("rejects selections spanning assistant messages", () => {
-    const fixture = installChatGptHostFixture();
-    const secondMessage = appendAssistantMessage("assistant-two", "A second answer");
-    const firstText = fixture.assistantMessage.querySelector("strong")?.firstChild;
-    const secondText = secondMessage.firstChild;
-    if (!firstText || !secondText) {
-      throw new Error("Expected fixture message text");
-    }
-    const range = document.createRange();
-    range.setStart(firstText, 0);
-    range.setEnd(secondText, 8);
-    window.getSelection()?.addRange(range);
-
-    const result = createChatGptHost({ document, window }).selection.capture();
-
-    expect(result).toEqual({
-      reason: "assistant-message-unavailable",
-      status: "unavailable",
-    });
-  });
-
-  it("restores table selections while preserving their rendered text", () => {
-    const fixture = installChatGptHostFixture();
-    fixture.assistantMessage.innerHTML =
-      "<table><tbody><tr><td>alpha</td><td>beta</td></tr><tr><td>gamma</td><td>delta</td></tr></tbody></table>";
-    const cells = fixture.assistantMessage.querySelectorAll("td");
-    const start = cells.item(0).firstChild;
-    const end = cells.item(3).firstChild;
-    if (!start || !end) {
-      throw new Error("Expected table cell text");
-    }
-    const range = document.createRange();
-    range.setStart(start, 0);
-    range.setEnd(end, end.textContent?.length ?? 0);
-    const selectionTextSpy = selectRangeWithRenderedText(range, "alpha beta\ngamma delta");
-    const logs: string[] = [];
-    const host = createChatGptHost({
-      document,
-      logger: (message) => logs.push(message),
-      window,
-    });
-
-    const captured = host.selection.capture();
-    selectionTextSpy.mockRestore();
-    expect(captured.status).toBe("available");
-    if (captured.status === "unavailable") {
-      return;
-    }
-
-    expect(captured.value.anchor).toMatchObject({
-      displayQuote: "alpha beta\ngamma delta",
-      quote: "alphabetagammadelta",
-    });
-    expect(host.selection.restore(captured.value.anchor).status).toBe("available");
-    expect(logs).toEqual(["[QuoteCue host] selection text mismatch: rendered=22, dom=19"]);
   });
 
   it.each([

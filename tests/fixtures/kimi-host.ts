@@ -5,6 +5,7 @@ export type KimiHostFixture = {
   composer: HTMLElement;
   sendControl: HTMLElement;
   surface: HTMLElement;
+  userMessage: HTMLElement;
 };
 
 export function installKimiHostFixture(composerText = "Original question"): KimiHostFixture {
@@ -34,6 +35,7 @@ export function installKimiHostFixture(composerText = "Original question"): Kimi
   const composer = requiredElement<HTMLElement>('[data-lexical-editor="true"]');
   const sendControl = requiredElement<HTMLElement>(".send-button-container");
   const surface = requiredElement<HTMLElement>(".chat-editor-content");
+  const userMessage = requiredElement<HTMLElement>(".chat-content-item-user .user-content");
 
   Object.defineProperty(composer, "innerText", {
     configurable: true,
@@ -42,7 +44,7 @@ export function installKimiHostFixture(composerText = "Original question"): Kimi
   setElementRect(surface, new DOMRect(100, 662, 768, 130));
   setElementRect(sendControl, new DOMRect(822, 744, 36, 36));
 
-  return { assistantMessage, composer, sendControl, surface };
+  return { assistantMessage, composer, sendControl, surface, userMessage };
 }
 
 export function appendKimiUserMessage(messageId: string | undefined, text: string) {
@@ -58,6 +60,18 @@ export function appendKimiUserMessage(messageId: string | undefined, text: strin
   actions.className = "message-actions";
   actions.textContent = "Edit Copy Share";
   message.append(content, actions);
+  (document.querySelector("main") ?? document.body).append(message);
+  return message;
+}
+
+export function appendKimiAssistantMessage(messageId: string, text: string) {
+  const message = document.createElement("div");
+  message.className = "chat-content-item chat-content-item-assistant";
+  message.dataset.archerId = messageId;
+  const content = document.createElement("div");
+  content.className = "markdown-container";
+  content.textContent = text;
+  message.append(content);
   (document.querySelector("main") ?? document.body).append(message);
   return message;
 }

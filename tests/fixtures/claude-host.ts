@@ -4,6 +4,7 @@ export type ClaudeHostFixture = {
   assistantMessage: HTMLElement;
   composer: HTMLElement;
   surface: HTMLElement;
+  userMessage: HTMLElement;
   voiceButton: HTMLButtonElement;
 };
 
@@ -31,6 +32,7 @@ export function installClaudeHostFixture(composerText = "Original question"): Cl
   const assistantMessage = requiredElement<HTMLElement>('[data-rs-index="1"] [role="article"]');
   const composer = requiredElement<HTMLElement>('[data-testid="chat-input"]');
   const surface = requiredElement<HTMLElement>('[data-fixture="composer-surface"]');
+  const userMessage = requiredElement<HTMLElement>('[data-testid="user-message"]');
   const voiceButton = requiredElement<HTMLButtonElement>('button[aria-label="Use voice mode"]');
 
   Object.defineProperty(composer, "innerText", {
@@ -41,7 +43,7 @@ export function installClaudeHostFixture(composerText = "Original question"): Cl
   setButtonRect(voiceButton, 828);
   setButtonRect(requiredElement('button[aria-label="Press and hold to record"]'), 788);
 
-  return { assistantMessage, composer, surface, voiceButton };
+  return { assistantMessage, composer, surface, userMessage, voiceButton };
 }
 
 export function replaceVoiceWithSend(onSend: (text: string) => void) {
@@ -67,6 +69,17 @@ export function appendClaudeUserMessage(index: number, text: string) {
   content.dataset.testid = "user-message";
   content.textContent = text;
   message.append(content);
+  wrapper.append(message);
+  (document.querySelector("main") ?? document.body).append(wrapper);
+  return message;
+}
+
+export function appendClaudeAssistantMessage(index: number, text: string) {
+  const wrapper = document.createElement("div");
+  wrapper.dataset.rsIndex = String(index);
+  const message = document.createElement("article");
+  message.setAttribute("role", "article");
+  message.textContent = text;
   wrapper.append(message);
   (document.querySelector("main") ?? document.body).append(wrapper);
   return message;

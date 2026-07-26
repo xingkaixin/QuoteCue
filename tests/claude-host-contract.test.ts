@@ -1,8 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { DraftAnnotation } from "@/features/annotations/annotation";
-import { claudeHost, createClaudeHost } from "@/features/claude/claude-host";
-import { hostForHostname } from "@/features/host/active-host";
+import { createClaudeHost } from "@/features/claude/claude-host";
 import { registerSendInterceptor } from "@/features/host/register-send-interceptor";
 
 import {
@@ -27,38 +26,6 @@ afterEach(() => {
 });
 
 describe("Claude host contract", () => {
-  it("registers Claude and isolates drafts by conversation path", () => {
-    const host = createClaudeHost({ document, window });
-    window.history.replaceState({}, "", "/chat/conversation-one");
-
-    expect(hostForHostname("claude.ai")).toBe(claudeHost);
-    expect(host.conversation.key("new-chat:tab-a")).toBe("conversation-one");
-
-    window.history.replaceState({}, "", "/new");
-    expect(host.conversation.key("new-chat:tab-a")).toBe("new-chat:tab-a");
-  });
-
-  it("anchors only assistant selections to the virtual message index", () => {
-    const fixture = installClaudeHostFixture();
-    selectNodeContents(fixture.assistantMessage.querySelector("strong")?.firstChild);
-    const host = createClaudeHost({ document, window });
-    const result = host.selection.capture();
-
-    expect(result.status).toBe("available");
-    if (result.status === "available") {
-      expect(result.value.anchor).toMatchObject({
-        messageId: "1",
-        quote: "focused answer",
-      });
-    }
-
-    selectNodeContents(document.querySelector('[data-testid="user-message"]')?.firstChild);
-    expect(host.selection.capture()).toEqual({
-      reason: "assistant-message-unavailable",
-      status: "unavailable",
-    });
-  });
-
   it("prepends QuoteCue to the native Reply action row", async () => {
     const onActivate = vi.fn();
     const stop = createClaudeHost({ document, window }).selection.mountAction({
@@ -112,16 +79,6 @@ describe("Claude host contract", () => {
     interceptor.dispose();
   });
 });
-
-function selectNodeContents(node: ChildNode | null | undefined) {
-  if (!node) {
-    throw new Error("Expected a text node");
-  }
-  const range = document.createRange();
-  range.selectNodeContents(node);
-  window.getSelection()?.removeAllRanges();
-  window.getSelection()?.addRange(range);
-}
 
 function annotation(): DraftAnnotation {
   return {
