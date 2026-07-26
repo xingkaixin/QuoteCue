@@ -1,8 +1,8 @@
 import type { TextAnchor } from "@/features/host-port/host-port";
 
 export type {
+  AnchoredSelection,
   SelectionCapture,
-  SelectionDraft,
   SelectionRect,
   TextAnchor,
 } from "@/features/host-port/host-port";

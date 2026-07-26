@@ -13,7 +13,7 @@ export type AnnotatedSendFailureReason =
   | "send-unavailable";
 
 export type AnnotatedSendResult =
-  | { status: "accepted"; annotationIds: string[] }
+  | { status: "confirmed"; annotationIds: string[] }
   | { status: "failed"; reason: AnnotatedSendFailureReason };
 
 export type AnnotatedSendState =
@@ -32,7 +32,7 @@ type SendInterceptorOptions = {
   ) => string;
   host: Host;
   locale: () => SupportedLocale;
-  onSendAccepted: (annotations: readonly DraftAnnotation[]) => void;
+  onSendConfirmed: (annotations: readonly DraftAnnotation[]) => void;
   onStateChange?: (state: AnnotatedSendState) => void;
 };
 
@@ -66,7 +66,7 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
     }
   };
 
-  const finishAccepted = (attempt: SendAttempt) => {
+  const finishConfirmed = (attempt: SendAttempt) => {
     if (activeAttempt !== attempt) {
       return;
     }
@@ -74,10 +74,10 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
     activeAttempt = null;
     lastFailedAttempt = null;
     const sentAnnotations = attempt.annotations.map(({ annotation }) => annotation);
-    options.onSendAccepted(sentAnnotations);
+    options.onSendConfirmed(sentAnnotations);
     setState({ status: "idle" });
     attempt.resolve({
-      status: "accepted",
+      status: "confirmed",
       annotationIds: sentAnnotations.map(({ id }) => id),
     });
   };
@@ -110,10 +110,10 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
         }
         const sendButton = sendButtonResult.value;
 
-        host.composer.watchAcceptedSend({
+        host.composer.watchConfirmedSend({
           expectedText: attempt.compiledText,
           signal: attempt.controller.signal,
-          onAccepted: () => finishAccepted(attempt),
+          onConfirmed: () => finishConfirmed(attempt),
           onTimeout: () => finishFailed(attempt, "confirmation-timeout"),
         });
         setState({ status: "awaiting-confirmation", attemptId: attempt.id });

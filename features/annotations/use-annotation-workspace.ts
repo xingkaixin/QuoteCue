@@ -3,9 +3,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useHost } from "@/features/host-port/HostProvider";
 import { useI18n } from "@/features/i18n/I18nProvider";
 
-import type { AnnotationEditorState, DraftAnnotation, SelectionDraft } from "./annotation";
+import type { AnchoredSelection, AnnotationEditorState, DraftAnnotation } from "./annotation";
 import type { ProjectedAnnotation } from "./annotation-projection";
-import { conversationScopeKey } from "./conversation-identity";
 import { compileAnnotatedPrompt } from "./prompt-compiler";
 import { registerSendInterceptor, type AnnotatedSendState } from "./register-send-interceptor";
 import { useAnnotationProjection } from "./use-annotation-projection";
@@ -19,7 +18,6 @@ export function useAnnotationWorkspace() {
   const host = useHost();
   const { locale } = useI18n();
   const conversationIdentity = useConversationIdentity();
-  const conversationScope = conversationScopeKey(conversationIdentity);
   const {
     annotations,
     status,
@@ -40,7 +38,7 @@ export function useAnnotationWorkspace() {
     pendingDeletionExpiresAt,
     requestDeletion,
     visibleAnnotations,
-  } = useDeferredAnnotationDeletion(annotations, conversationScope, removeAnnotations);
+  } = useDeferredAnnotationDeletion(annotations, conversationIdentity, removeAnnotations);
   const activeAnnotationId = editorState.status === "hidden" ? null : editorState.annotationId;
   const projectedAnnotations = useAnnotationProjection(visibleAnnotations, activeAnnotationId);
   const activeProjection = projectedAnnotations.find(
@@ -61,7 +59,7 @@ export function useAnnotationWorkspace() {
       compilePrompt: compileAnnotatedPrompt,
       host,
       locale: () => localeRef.current,
-      onSendAccepted: (sentAnnotations) => {
+      onSendConfirmed: (sentAnnotations) => {
         removeSentAnnotations(sentAnnotations);
         closeEditor();
       },
@@ -77,13 +75,13 @@ export function useAnnotationWorkspace() {
     };
   }, [closeEditor, host, removeSentAnnotations]);
 
-  useEffect(closeEditor, [closeEditor, conversationScope]);
+  useEffect(closeEditor, [closeEditor, conversationIdentity]);
 
   const startAnnotation = useCallback(
-    (draft: SelectionDraft) => {
+    (selection: AnchoredSelection) => {
       const annotation: DraftAnnotation = {
         id: crypto.randomUUID(),
-        anchor: draft.anchor,
+        anchor: selection.anchor,
         comment: "",
       };
       if (!addAnnotation(annotation)) {
@@ -171,9 +169,9 @@ export function useAnnotationWorkspace() {
       status: editorState.status,
     },
     selection: {
+      conversationIdentity,
       isEnabled: isHydrated,
       onActivate: startAnnotation,
-      resetKey: conversationScope,
     },
     summary: {
       annotations: projectedAnnotations,

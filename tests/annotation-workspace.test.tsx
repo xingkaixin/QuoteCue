@@ -2,7 +2,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { DraftAnnotation, SelectionDraft } from "@/features/annotations/annotation";
+import type { DraftAnnotation, AnchoredSelection } from "@/features/annotations/annotation";
 import { useAnnotationWorkspace } from "@/features/annotations/use-annotation-workspace";
 import { createChatGptHost } from "@/features/chatgpt/chatgpt-host";
 import { HostProvider } from "@/features/host-port/HostProvider";
@@ -37,7 +37,7 @@ vi.mock("@/features/annotations/use-annotation-projection", async () => {
   };
 });
 
-const selectionDraft: SelectionDraft = {
+const anchoredSelection: AnchoredSelection = {
   anchor: {
     end: 16,
     format: "exact",
@@ -80,13 +80,13 @@ describe("annotation workspace", () => {
     const mounted = await mountWorkspace();
     const clearSelection = vi.spyOn(mounted.host.selection, "clear");
 
-    await act(async () => workspace.selection.onActivate(selectionDraft));
+    await act(async () => workspace.selection.onActivate(anchoredSelection));
     expect(workspace.editor.status).toBe("hidden");
     expect(clearSelection).not.toHaveBeenCalled();
     expect(draftStorage.save).not.toHaveBeenCalled();
 
     await act(async () => resolveLoad([]));
-    await act(async () => workspace.selection.onActivate(selectionDraft));
+    await act(async () => workspace.selection.onActivate(anchoredSelection));
     expect(workspace.editor.status).toBe("quick");
     expect(clearSelection).toHaveBeenCalledOnce();
     expect(draftStorage.save).toHaveBeenCalledOnce();

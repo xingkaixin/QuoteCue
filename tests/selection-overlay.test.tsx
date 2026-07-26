@@ -2,8 +2,9 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { SelectionDraft } from "@/features/annotations/annotation";
+import type { AnchoredSelection } from "@/features/annotations/annotation";
 import { SelectionPresentation } from "@/features/annotations/SelectionPresentation";
+import type { ConversationIdentity } from "@/features/host-port/host-port";
 import { QUOTECUE_HOST_ATTR, QUOTECUE_NATIVE_ACTION_SELECTOR } from "@/lib/dom-identity";
 
 import { appendAssistantMessage, appendSelectionToolbar } from "./fixtures/chatgpt-host";
@@ -79,6 +80,42 @@ describe("selection overlay", () => {
     await act(async () => root.unmount());
   });
 
+  it("dismisses the action when the conversation identity changes", async () => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    const message = appendAssistantMessage("assistant-one", "changing conversation");
+    const { actionRow } = appendSelectionToolbar();
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    await act(async () =>
+      root.render(
+        <SelectionHarness
+          conversationIdentity={{ kind: "identified", id: "conversation-a" }}
+          onActivate={vi.fn()}
+        />,
+      ),
+    );
+    selectText(message.firstChild);
+    await act(async () => {
+      document.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+      await nextFrame();
+    });
+    expect(actionRow.querySelector(QUOTECUE_NATIVE_ACTION_SELECTOR)).not.toBeNull();
+
+    await act(async () =>
+      root.render(
+        <SelectionHarness
+          conversationIdentity={{ kind: "identified", id: "conversation-b" }}
+          onActivate={vi.fn()}
+        />,
+      ),
+    );
+    expect(actionRow.querySelector(QUOTECUE_NATIVE_ACTION_SELECTOR)).toBeNull();
+
+    await act(async () => root.unmount());
+  });
+
   it("ignores events retargeted from the closed QuoteCue shadow", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     const message = appendAssistantMessage("assistant-one", "private selection");
@@ -112,10 +149,20 @@ describe("selection overlay", () => {
   });
 });
 
-function SelectionHarness({ onActivate }: { onActivate: (draft: SelectionDraft) => void }) {
+function SelectionHarness({
+  conversationIdentity = { kind: "identified", id: "conversation-a" },
+  onActivate,
+}: {
+  conversationIdentity?: ConversationIdentity;
+  onActivate: (selection: AnchoredSelection) => void;
+}) {
   return (
     <HostTestProvider>
-      <SelectionPresentation isEnabled onActivate={onActivate} resetKey="conversation-a" />
+      <SelectionPresentation
+        conversationIdentity={conversationIdentity}
+        isEnabled
+        onActivate={onActivate}
+      />
     </HostTestProvider>
   );
 }

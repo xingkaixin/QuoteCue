@@ -3,6 +3,8 @@
 本文件适用于整个仓库。QuoteCue 是运行在 ChatGPT、Claude、DeepSeek、Kimi 页面上的 Chrome
 MV3 扩展，用于给助手回复添加批注，并将批注编译为一次聚焦的追问。
 
+领域术语与命名以 [`CONTEXT.md`](CONTEXT.md) 的词汇表为准。
+
 ## 技术与命令
 
 - Node.js 24.18.0（最低 22.12.0），pnpm 11.15.1。

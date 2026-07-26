@@ -8,7 +8,7 @@ import { compileAnnotatedPrompt } from "@/features/annotations/prompt-compiler";
 import { SelectionPresentation } from "@/features/annotations/SelectionPresentation";
 import { createDeepSeekHost } from "@/features/deepseek/deepseek-host";
 import { registerSendInterceptor } from "@/features/annotations/register-send-interceptor";
-import type { SelectionDraft } from "@/features/annotations/annotation";
+import type { AnchoredSelection } from "@/features/annotations/annotation";
 
 import {
   appendAssistantMessageItem,
@@ -52,7 +52,8 @@ describe("DeepSeek host contract", () => {
     const host = createDeepSeekHost({ document, window });
     selectNodeContents(fixture.assistantContent.querySelector("strong")?.firstChild);
     const selection = host.selection.capture();
-    const draft = selection.status === "available" ? selection.value : missingSelection();
+    const capturedSelection =
+      selection.status === "available" ? selection.value : missingSelection();
 
     const layout = host.layout.current();
     expect(layout.status).toBe("available");
@@ -63,11 +64,11 @@ describe("DeepSeek host contract", () => {
 
     const annotation: DraftAnnotation = {
       id: "annotation-one",
-      anchor: draft.anchor,
+      anchor: capturedSelection.anchor,
       comment: "Explain the tradeoff",
     };
     let annotations = [annotation];
-    const onSendAccepted = vi.fn(() => {
+    const onSendConfirmed = vi.fn(() => {
       annotations = [];
     });
     fixture.sendButton.addEventListener("click", () => {
@@ -78,14 +79,14 @@ describe("DeepSeek host contract", () => {
       compilePrompt: compileAnnotatedPrompt,
       host,
       locale: () => "en",
-      onSendAccepted,
+      onSendConfirmed,
     });
 
     await expect(interceptor.submit(fixture.sendButton)).resolves.toEqual({
-      status: "accepted",
+      status: "confirmed",
       annotationIds: ["annotation-one"],
     });
-    expect(onSendAccepted).toHaveBeenCalledWith([annotation]);
+    expect(onSendConfirmed).toHaveBeenCalledWith([annotation]);
     expect(annotations).toEqual([]);
 
     interceptor.dispose();
@@ -109,7 +110,7 @@ describe("DeepSeek host contract", () => {
         appendUserMessageItem("user-two", sentText);
       }
     });
-    const onSendAccepted = vi.fn();
+    const onSendConfirmed = vi.fn();
     const interceptor = registerSendInterceptor({
       annotations: () =>
         numberAnnotations([
@@ -118,7 +119,7 @@ describe("DeepSeek host contract", () => {
       compilePrompt: compileAnnotatedPrompt,
       host,
       locale: () => "en",
-      onSendAccepted,
+      onSendConfirmed,
     });
 
     const click = new MouseEvent("click", { bubbles: true, cancelable: true });
@@ -126,7 +127,7 @@ describe("DeepSeek host contract", () => {
 
     expect(click.defaultPrevented).toBe(true);
     await vi.waitFor(() =>
-      expect(onSendAccepted).toHaveBeenCalledWith([
+      expect(onSendConfirmed).toHaveBeenCalledWith([
         expect.objectContaining({ id: "annotation-one" }),
       ]),
     );
@@ -159,7 +160,7 @@ describe("DeepSeek host contract", () => {
       compilePrompt: compileAnnotatedPrompt,
       host,
       locale: () => "en",
-      onSendAccepted: vi.fn(),
+      onSendConfirmed: vi.fn(),
     });
 
     const result = interceptor.submit(fixture.sendButton);
@@ -210,8 +211,14 @@ describe("DeepSeek host contract", () => {
   });
 });
 
-function OverlayHarness({ onActivate }: { onActivate: (draft: SelectionDraft) => void }) {
-  return <SelectionPresentation isEnabled onActivate={onActivate} resetKey="conversation-a" />;
+function OverlayHarness({ onActivate }: { onActivate: (selection: AnchoredSelection) => void }) {
+  return (
+    <SelectionPresentation
+      conversationIdentity={{ kind: "identified", id: "conversation-a" }}
+      isEnabled
+      onActivate={onActivate}
+    />
+  );
 }
 
 function selectNodeContents(node: ChildNode | null | undefined) {

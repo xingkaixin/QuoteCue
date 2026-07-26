@@ -1,17 +1,22 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { useHost } from "@/features/host-port/HostProvider";
+import type { ConversationIdentity } from "@/features/host-port/host-port";
 
-import type { SelectionCapture, SelectionDraft } from "./annotation";
+import type { AnchoredSelection, SelectionCapture } from "./annotation";
 import { isQuoteCueEvent } from "./is-quotecue-event";
 
 export type SelectionCaptureOptions = {
+  conversationIdentity: ConversationIdentity;
   isEnabled: boolean;
-  onActivate: (draft: SelectionDraft) => void;
-  resetKey: string;
+  onActivate: (selection: AnchoredSelection) => void;
 };
 
-export function useSelectionCapture({ isEnabled, onActivate, resetKey }: SelectionCaptureOptions) {
+export function useSelectionCapture({
+  conversationIdentity,
+  isEnabled,
+  onActivate,
+}: SelectionCaptureOptions) {
   const host = useHost();
   const [selection, setSelection] = useState<SelectionCapture | null>(null);
   const dismiss = useCallback(() => setSelection(null), []);
@@ -23,7 +28,7 @@ export function useSelectionCapture({ isEnabled, onActivate, resetKey }: Selecti
     dismiss();
   }, [dismiss, onActivate, selection]);
 
-  useEffect(dismiss, [dismiss, resetKey]);
+  useEffect(dismiss, [conversationIdentity, dismiss]);
 
   useEffect(() => {
     if (!isEnabled) {
