@@ -134,7 +134,7 @@ describe("DeepSeek host contract", () => {
       appendUserMessageItem("user-two", fixture.composer.value);
     });
     const interceptor = registerSendInterceptor({
-      draft: () => ({ annotations, revision: 1 }),
+      annotations: () => annotations,
       host,
       locale: () => "en",
       onSendAccepted,
@@ -142,9 +142,9 @@ describe("DeepSeek host contract", () => {
 
     await expect(interceptor.submit(fixture.sendButton)).resolves.toEqual({
       status: "accepted",
-      revision: 1,
+      annotationIds: ["annotation-one"],
     });
-    expect(onSendAccepted).toHaveBeenCalledWith(1);
+    expect(onSendAccepted).toHaveBeenCalledWith([annotation]);
     expect(annotations).toEqual([]);
 
     interceptor.dispose();
@@ -180,12 +180,9 @@ describe("DeepSeek host contract", () => {
     });
     const onSendAccepted = vi.fn();
     const interceptor = registerSendInterceptor({
-      draft: () => ({
-        annotations: [
-          { id: "annotation-one", anchor: emptyAnchor(), comment: "Explain the tradeoff" },
-        ],
-        revision: 1,
-      }),
+      annotations: () => [
+        { id: "annotation-one", anchor: emptyAnchor(), comment: "Explain the tradeoff" },
+      ],
       host,
       locale: () => "en",
       onSendAccepted,
@@ -195,7 +192,11 @@ describe("DeepSeek host contract", () => {
     fixture.sendButton.dispatchEvent(click);
 
     expect(click.defaultPrevented).toBe(true);
-    await vi.waitFor(() => expect(onSendAccepted).toHaveBeenCalledWith(1));
+    await vi.waitFor(() =>
+      expect(onSendAccepted).toHaveBeenCalledWith([
+        expect.objectContaining({ id: "annotation-one" }),
+      ]),
+    );
     expect(sentText).toContain("[Annotation 1]");
     expect(sentText).not.toContain("[Supplemental question]");
     interceptor.dispose();

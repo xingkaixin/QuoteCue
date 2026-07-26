@@ -48,12 +48,39 @@ describe("registerSendInterceptor", () => {
     });
     installSendButton(onNativeSend);
 
-    await expect(result).resolves.toEqual({ status: "accepted", revision: 1 });
+    await expect(result).resolves.toEqual({
+      status: "accepted",
+      annotationIds: ["annotation-1"],
+    });
 
     expect(replayedText).toContain("[Annotation 1]");
     expect(replayedText).not.toContain("[Supplemental question]");
     expect(onNativeSend).toHaveBeenCalledOnce();
     expect(onSendAccepted).toHaveBeenCalledOnce();
+    interceptor.dispose();
+  });
+
+  it("confirms the annotation snapshot compiled before later draft changes", async () => {
+    const composer = installComposer("original question");
+    const onSendAccepted = vi.fn();
+    let currentAnnotations = [annotation];
+    const interceptor = registerSendInterceptor({
+      annotations: () => currentAnnotations,
+      locale: () => "en",
+      onSendAccepted,
+    });
+    const sendButton = installSendButton(() => {
+      const compiledText = composer.textContent ?? "";
+      currentAnnotations = [{ ...annotation, comment: "edited while awaiting confirmation" }];
+      composer.replaceChildren();
+      installUserMessage("user-message-1", compiledText);
+    });
+
+    await expect(interceptor.submit(sendButton)).resolves.toEqual({
+      status: "accepted",
+      annotationIds: ["annotation-1"],
+    });
+    expect(onSendAccepted).toHaveBeenCalledWith([annotation]);
     interceptor.dispose();
   });
 
@@ -234,10 +261,13 @@ describe("registerSendInterceptor", () => {
       reason: "confirmation-timeout",
     });
 
-    await expect(interceptor.retry()).resolves.toEqual({ status: "accepted", revision: 1 });
+    await expect(interceptor.retry()).resolves.toEqual({
+      status: "accepted",
+      annotationIds: ["annotation-1"],
+    });
     expect(retriedText).toContain("[Supplemental question]\noriginal question");
     expect(retriedText.match(/\[Annotation 1\]/g)).toHaveLength(1);
-    expect(onSendAccepted).toHaveBeenCalledWith(1);
+    expect(onSendAccepted).toHaveBeenCalledWith([annotation]);
     interceptor.dispose();
   });
 
@@ -254,9 +284,9 @@ describe("registerSendInterceptor", () => {
 
     await expect(interceptor.submit(sendButton)).resolves.toEqual({
       status: "accepted",
-      revision: 1,
+      annotationIds: ["annotation-1"],
     });
-    expect(onSendAccepted).toHaveBeenCalledWith(1);
+    expect(onSendAccepted).toHaveBeenCalledWith([annotation]);
     interceptor.dispose();
   });
 
@@ -270,8 +300,11 @@ describe("registerSendInterceptor", () => {
       installUserMessage("reflowed-user-message", reflowedText);
     });
 
-    await expect(interceptor.submit()).resolves.toEqual({ status: "accepted", revision: 1 });
-    expect(onSendAccepted).toHaveBeenCalledWith(1);
+    await expect(interceptor.submit()).resolves.toEqual({
+      status: "accepted",
+      annotationIds: ["annotation-1"],
+    });
+    expect(onSendAccepted).toHaveBeenCalledWith([annotation]);
     interceptor.dispose();
   });
 
@@ -301,7 +334,7 @@ describe("registerSendInterceptor", () => {
 
 function createInterceptor(onSendAccepted = vi.fn()) {
   return registerSendInterceptor({
-    draft: () => ({ annotations: [annotation], revision: 1 }),
+    annotations: () => [annotation],
     locale: () => "en",
     onSendAccepted,
   });

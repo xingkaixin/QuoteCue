@@ -125,7 +125,7 @@ describe("ChatGPT host contract", () => {
       appendUserMessage("user-one", sentText);
     });
     const interceptor = registerSendInterceptor({
-      draft: () => ({ annotations, revision: 1 }),
+      annotations: () => annotations,
       host,
       locale: () => "en",
       onSendAccepted,
@@ -133,9 +133,9 @@ describe("ChatGPT host contract", () => {
 
     await expect(interceptor.submit(fixture.action)).resolves.toEqual({
       status: "accepted",
-      revision: 1,
+      annotationIds: ["annotation-one"],
     });
-    expect(onSendAccepted).toHaveBeenCalledWith(1);
+    expect(onSendAccepted).toHaveBeenCalledWith([annotation]);
     expect(annotations).toEqual([]);
 
     interceptor.dispose();
@@ -331,7 +331,7 @@ describe("ChatGPT host contract", () => {
       comment: "private comment",
     };
     const interceptor = registerSendInterceptor({
-      draft: () => ({ annotations: [privateAnnotation], revision: 1 }),
+      annotations: () => [privateAnnotation],
       host,
       locale: () => "en",
       onSendAccepted: vi.fn(),

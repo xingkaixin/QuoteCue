@@ -81,14 +81,17 @@ describe("Kimi host contract", () => {
     });
     const onSendAccepted = vi.fn();
     const interceptor = registerSendInterceptor({
-      draft: () => ({ annotations: [annotation()], revision: 1 }),
+      annotations: () => [annotation()],
       host,
       locale: () => "zh-CN",
       onSendAccepted,
     });
 
-    await expect(interceptor.submit()).resolves.toEqual({ status: "accepted", revision: 1 });
-    expect(onSendAccepted).toHaveBeenCalledWith(1);
+    await expect(interceptor.submit()).resolves.toEqual({
+      status: "accepted",
+      annotationIds: ["annotation-one"],
+    });
+    expect(onSendAccepted).toHaveBeenCalledWith([annotation()]);
     expect(fixture.composer.innerText).toContain("[批注 1]");
     interceptor.dispose();
   });
@@ -108,13 +111,16 @@ describe("Kimi host contract", () => {
       appendKimiUserMessage("user-two", fixture.composer.innerText);
     });
     const interceptor = registerSendInterceptor({
-      draft: () => ({ annotations: [annotation()], revision: 1 }),
+      annotations: () => [annotation()],
       host: createKimiHost({ document, window }),
       locale: () => "zh-CN",
       onSendAccepted: vi.fn(),
     });
 
-    await expect(interceptor.submit()).resolves.toEqual({ status: "accepted", revision: 1 });
+    await expect(interceptor.submit()).resolves.toEqual({
+      status: "accepted",
+      annotationIds: ["annotation-one"],
+    });
     expect(document.execCommand).not.toHaveBeenCalled();
     expect(fixture.composer.innerText).toContain("[批注 1]");
     interceptor.dispose();
@@ -133,13 +139,16 @@ describe("Kimi host contract", () => {
       appendKimiUserMessage("user-two", fixture.composer.innerText);
     });
     const interceptor = registerSendInterceptor({
-      draft: () => ({ annotations: [annotation()], revision: 1 }),
+      annotations: () => [annotation()],
       host: createKimiHost({ document, window }),
       locale: () => "zh-CN",
       onSendAccepted: vi.fn(),
     });
 
-    await expect(interceptor.submit()).resolves.toEqual({ status: "accepted", revision: 1 });
+    await expect(interceptor.submit()).resolves.toEqual({
+      status: "accepted",
+      annotationIds: ["annotation-one"],
+    });
     expect(fixture.composer.innerText).toContain("回答：[批注 1]选中文本：");
     interceptor.dispose();
   });
@@ -155,13 +164,16 @@ describe("Kimi host contract", () => {
       appendKimiUserMessage(undefined, fixture.composer.innerText);
     });
     const interceptor = registerSendInterceptor({
-      draft: () => ({ annotations: [annotation()], revision: 1 }),
+      annotations: () => [annotation()],
       host,
       locale: () => "zh-CN",
       onSendAccepted: vi.fn(),
     });
 
-    await expect(interceptor.submit()).resolves.toEqual({ status: "accepted", revision: 1 });
+    await expect(interceptor.submit()).resolves.toEqual({
+      status: "accepted",
+      annotationIds: ["annotation-one"],
+    });
     interceptor.dispose();
   });
 });

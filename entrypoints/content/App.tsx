@@ -30,13 +30,13 @@ export default function App() {
   const conversationKey = useConversationKey();
   const {
     annotations,
-    revision: draftRevision,
     status: draftStatus,
     errorOperation,
     isHydrated,
     addAnnotation,
     updateAnnotation,
     removeAnnotations,
+    removeSentAnnotations,
     clearAnnotations,
     retry,
   } = useDraftAnnotations(conversationKey);
@@ -76,23 +76,21 @@ export default function App() {
     [visibleAnnotations],
   );
   const composerLayout = useAnnotatedComposerLayout(isHydrated && annotations.length > 0);
-  const draftRef = useRef({ annotations: visibleAnnotations, revision: draftRevision ?? 0 });
+  const annotationsRef = useRef(visibleAnnotations);
   const sendActionsRef = useRef<SendActions>({
     submit: () => undefined,
     retry: () => undefined,
   });
 
-  draftRef.current = { annotations: visibleAnnotations, revision: draftRevision ?? 0 };
+  annotationsRef.current = visibleAnnotations;
 
   useEffect(() => {
     const interceptor = registerSendInterceptor({
-      draft: () => draftRef.current,
+      annotations: () => annotationsRef.current,
       locale: () => locale,
-      onSendAccepted: (revision) => {
-        if (clearAnnotations(revision)) {
-          setEditor({ status: "hidden" });
-          discardPendingDeletions();
-        }
+      onSendAccepted: (sentAnnotations) => {
+        removeSentAnnotations(sentAnnotations);
+        setEditor({ status: "hidden" });
       },
       onStateChange: setSendState,
     });
@@ -109,7 +107,7 @@ export default function App() {
       sendActionsRef.current = { submit: () => undefined, retry: () => undefined };
       interceptor.dispose();
     };
-  }, [clearAnnotations, discardPendingDeletions, locale]);
+  }, [locale, removeSentAnnotations]);
 
   useEffect(() => {
     setEditor({ status: "hidden" });

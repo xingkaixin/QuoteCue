@@ -146,6 +146,18 @@ export function useDraftAnnotations(conversationKey: string) {
       },
       [mutateAnnotations],
     ),
+    removeSentAnnotations: useCallback(
+      (sentAnnotations: readonly DraftAnnotation[]) => {
+        const sentById = new Map(sentAnnotations.map((sent) => [sent.id, sent]));
+        return mutateAnnotations((current) =>
+          current.filter((annotation) => {
+            const sent = sentById.get(annotation.id);
+            return !sent || !annotationsMatch(annotation, sent);
+          }),
+        );
+      },
+      [mutateAnnotations],
+    ),
     clearAnnotations: useCallback(
       (expectedRevision?: number) => mutateAnnotations(() => [], expectedRevision),
       [mutateAnnotations],
@@ -191,5 +203,19 @@ function isCurrentRevision(
     current.status !== "loading" &&
     current.conversationKey === saved.conversationKey &&
     current.revision === saved.revision
+  );
+}
+
+function annotationsMatch(current: DraftAnnotation, sent: DraftAnnotation) {
+  return (
+    current.id === sent.id &&
+    current.comment === sent.comment &&
+    current.anchor.messageId === sent.anchor.messageId &&
+    current.anchor.quote === sent.anchor.quote &&
+    current.anchor.displayQuote === sent.anchor.displayQuote &&
+    current.anchor.prefix === sent.anchor.prefix &&
+    current.anchor.suffix === sent.anchor.suffix &&
+    current.anchor.start === sent.anchor.start &&
+    current.anchor.end === sent.anchor.end
   );
 }

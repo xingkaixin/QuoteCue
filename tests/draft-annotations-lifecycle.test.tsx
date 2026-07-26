@@ -174,7 +174,7 @@ describe("draft annotation lifecycle", () => {
     await act(async () => root.unmount());
   });
 
-  it("clears only the draft revision that was confirmed", async () => {
+  it("preserves newer edits while removing annotations that were sent unchanged", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     draftStorage.load.mockResolvedValue([]);
     const container = document.createElement("div");
@@ -183,21 +183,40 @@ describe("draft annotation lifecycle", () => {
 
     await act(async () => root.render(<DraftHarness conversationKey="A" />));
     await act(async () => latestDrafts.addAnnotation(annotation));
-    const submittedRevision = latestDrafts.revision;
+    await act(async () =>
+      latestDrafts.addAnnotation({
+        ...annotation,
+        id: "annotation-b",
+        comment: "sent unchanged",
+      }),
+    );
+    await act(async () =>
+      latestDrafts.addAnnotation({
+        ...annotation,
+        id: "annotation-pending",
+        comment: "pending deletion",
+      }),
+    );
+    const sentAnnotations = latestDrafts.annotations.filter(
+      ({ id }) => id !== "annotation-pending",
+    );
     await act(async () => latestDrafts.updateAnnotation(annotation.id, "newer edit"));
+    await act(async () =>
+      latestDrafts.addAnnotation({
+        ...annotation,
+        id: "annotation-c",
+        comment: "created after send",
+      }),
+    );
 
-    let didClear = false;
     await act(async () => {
-      didClear = latestDrafts.clearAnnotations(submittedRevision ?? undefined);
+      latestDrafts.removeSentAnnotations(sentAnnotations);
     });
-    expect(didClear).toBe(false);
-    expect(latestDrafts.annotations[0]?.comment).toBe("newer edit");
-
-    await act(async () => {
-      didClear = latestDrafts.clearAnnotations(latestDrafts.revision ?? undefined);
-    });
-    expect(didClear).toBe(true);
-    expect(latestDrafts.annotations).toEqual([]);
+    expect(latestDrafts.annotations).toEqual([
+      { ...annotation, comment: "newer edit" },
+      { ...annotation, id: "annotation-pending", comment: "pending deletion" },
+      { ...annotation, id: "annotation-c", comment: "created after send" },
+    ]);
 
     await act(async () => root.unmount());
   });
