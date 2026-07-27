@@ -12,12 +12,6 @@ export type ComposerAccess = {
 export type ComposerLayoutAccess = {
   actionSelector: string;
   boundarySelector?: string;
-  fallbackAction: {
-    bottomInset: number;
-    height: number;
-    rightInset: number;
-    width: number;
-  };
   surfaceSelector?: string;
 };
 
@@ -57,9 +51,7 @@ export type SiteAdapter = {
 export type ComposerLayoutOptions = Pick<
   ComposerLayoutAccess,
   "boundarySelector" | "surfaceSelector"
-> & {
-  fallbackAction?: ComposerLayoutAccess["fallbackAction"];
-};
+>;
 
 type MessageAccessOptions = Omit<MessageAccess, "isAssistant"> & {
   isAssistant?: MessageAccess["isAssistant"];
@@ -71,12 +63,6 @@ export function composerLayout(
 ): ComposerLayoutAccess {
   return {
     actionSelector,
-    fallbackAction: options.fallbackAction ?? {
-      bottomInset: 8,
-      height: 36,
-      rightInset: 8,
-      width: 36,
-    },
     ...(options.boundarySelector ? { boundarySelector: options.boundarySelector } : {}),
     ...(options.surfaceSelector ? { surfaceSelector: options.surfaceSelector } : {}),
   };

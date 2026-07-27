@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useHost } from "@/features/host-port/HostProvider";
 import type { Host, SelectionInvalidation, SelectionRect } from "@/features/host-port/host-port";
 import { rangeEndpointRect } from "@/features/host-port/range-geometry";
+import { toSelectionRect } from "@/features/host-port/selection-rect";
 import { clampPositionToViewport } from "@/features/layout/floating-position";
 import { currentVisualViewportBounds } from "@/features/layout/use-visual-viewport";
 
@@ -195,7 +196,7 @@ function projectAnnotationResolutions(
       previousRange && sameRangeBoundaries(previousRange, resolvedRange)
         ? previousRange
         : resolvedRange;
-    const rect = selectionRect(rangeEndpointRect(range));
+    const rect = toSelectionRect(rangeEndpointRect(range));
     resolutions.set(annotation.id, {
       resolution: "resolved",
       geometry: {
@@ -282,15 +283,4 @@ function samePosition(
   right: Pick<SelectionRect, "left" | "top">,
 ) {
   return left.left === right.left && left.top === right.top;
-}
-
-function selectionRect(rect: SelectionRect): SelectionRect {
-  return {
-    bottom: rect.bottom,
-    height: rect.height,
-    left: rect.left,
-    right: rect.right,
-    top: rect.top,
-    width: rect.width,
-  };
 }

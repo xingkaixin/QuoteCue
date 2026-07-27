@@ -1,6 +1,8 @@
+import { DEEPSEEK_SEND_ICON_PATH_PREFIX } from "@/features/deepseek/deepseek-host";
+
 import { requiredElement, setElementRect } from "./fixture-utils";
 
-export const DEEPSEEK_SEND_ICON_PATH = "M8.3125 0.981587C8.66767 1.0545";
+const DEEPSEEK_SEND_ICON_PATH = `${DEEPSEEK_SEND_ICON_PATH_PREFIX}C8.66767 1.0545`;
 
 export type DeepSeekHostFixture = {
   assistantContent: HTMLElement;

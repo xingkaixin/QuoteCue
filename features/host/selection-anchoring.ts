@@ -1,9 +1,9 @@
 import type {
   SelectionCapture,
   SelectionCaptureFailureReason,
-  SelectionRect,
 } from "@/features/host-port/host-port";
 import { rangeEndpointRect } from "@/features/host-port/range-geometry";
+import { toSelectionRect } from "@/features/host-port/selection-rect";
 import { parseTextAnchor } from "@/features/host-port/text-anchor";
 
 import {
@@ -204,7 +204,7 @@ export function createSelectionAnchoring(context: HostContext) {
     return available({
       actionRect,
       anchor,
-      rect: rectangleSnapshot(rangeEndpointRect(range)),
+      rect: toSelectionRect(rangeEndpointRect(range)),
     });
   }
 
@@ -245,16 +245,5 @@ function rangeRect(range: Range) {
     typeof range.getBoundingClientRect === "function"
       ? range.getBoundingClientRect()
       : new DOMRect();
-  return rectangleSnapshot(rect);
-}
-
-function rectangleSnapshot(rect: SelectionRect): SelectionRect {
-  return {
-    bottom: rect.bottom,
-    height: rect.height,
-    left: rect.left,
-    right: rect.right,
-    top: rect.top,
-    width: rect.width,
-  };
+  return toSelectionRect(rect);
 }

@@ -64,7 +64,6 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
   let activeAttempt: SendAttempt | null = null;
   let lastFailedAttempt: SendAttempt | null = null;
   let isDisposed = false;
-  let state: AnnotatedSendState = { status: "idle" };
 
   const reportError = (message: string) => {
     console.error(`[QuoteCue] ${message}`);
@@ -78,9 +77,8 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
   };
 
   const setState = (nextState: AnnotatedSendState) => {
-    state = nextState;
     if (!isDisposed) {
-      runSafely("Failed to report annotated send state", () => options.onStateChange?.(state));
+      runSafely("Failed to report annotated send state", () => options.onStateChange?.(nextState));
     }
   };
 
@@ -211,10 +209,9 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
   };
 
   const stopListening = host.composer.subscribeToSubmit(prepareNativeSend);
-  setState(state);
+  setState({ status: "idle" });
 
   return {
-    getState: () => state,
     submit: () => beginSend(undefined, "custom").result,
     retry: () => beginSend(undefined, "custom", lastFailedAttempt?.snapshot.text).result,
     dispose() {

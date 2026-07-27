@@ -1,3 +1,5 @@
+import { readRenderedText } from "@/lib/rendered-text";
+
 import type { ComposerAccess } from "./site-adapter";
 
 export function createTextNormalizer(composer: ComposerAccess) {
@@ -9,14 +11,10 @@ export function createTextNormalizer(composer: ComposerAccess) {
     },
     // 宿主会重排段落间换行；折叠后仍做全文强匹配，避免放松发送确认语义
     normalizedRenderedText(value: HTMLElement | string) {
-      const text = typeof value === "string" ? value : renderedText(value);
+      const text = typeof value === "string" ? value : readRenderedText(value);
       return composer.normalize(text);
     },
   };
 }
 
 export type TextNormalizer = ReturnType<typeof createTextNormalizer>;
-
-function renderedText(element: HTMLElement) {
-  return typeof element.innerText === "string" ? element.innerText : (element.textContent ?? "");
-}

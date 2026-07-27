@@ -1,3 +1,5 @@
+import { isRecord } from "@/lib/is-record";
+
 export const SECURE_FIELD_INIT = "quotecue:secure-field:init";
 
 export type SecureFieldConfig = {
@@ -85,8 +87,4 @@ function decodeConfig(value: unknown): SecureFieldConfig | null {
     theme: value.theme,
     value: value.value,
   };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
 }

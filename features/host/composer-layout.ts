@@ -1,13 +1,20 @@
 import type { HostLayout, SelectionRect } from "@/features/host-port/host-port";
+import { toSelectionRect } from "@/features/host-port/selection-rect";
 
 import { available, once, unavailable, type HostContext, type HostResult } from "./host-context";
-import type { ComposerLayoutAccess } from "./site-adapter";
 
 type ComposerLayoutElements = {
   action: HTMLElement | null;
   send: SelectionRect;
   summary: HostLayout["summary"];
   surface: HTMLElement;
+};
+
+const FALLBACK_ACTION = {
+  bottomInset: 8,
+  height: 36,
+  rightInset: 8,
+  width: 36,
 };
 
 export function createComposerLayout(
@@ -55,9 +62,7 @@ export function createComposerLayout(
     const rect = surface.getBoundingClientRect();
     const action = findComposerAction(boundary ?? surface, rect);
     const actionRect = action?.getBoundingClientRect();
-    const send = actionRect
-      ? rectangleSnapshot(actionRect)
-      : fallbackRectangle(rect, adapter.layout.fallbackAction);
+    const send = actionRect ? toSelectionRect(actionRect) : fallbackRectangle(rect);
     return available({
       action,
       send,
@@ -249,29 +254,15 @@ export function createComposerLayout(
   return { current, reserveAnnotationRow, subscribe };
 }
 
-function fallbackRectangle(
-  surface: DOMRect,
-  fallback: ComposerLayoutAccess["fallbackAction"],
-): SelectionRect {
-  const left = surface.right - fallback.width - fallback.rightInset;
-  const top = surface.bottom - fallback.height - fallback.bottomInset;
+function fallbackRectangle(surface: DOMRect): SelectionRect {
+  const left = surface.right - FALLBACK_ACTION.width - FALLBACK_ACTION.rightInset;
+  const top = surface.bottom - FALLBACK_ACTION.height - FALLBACK_ACTION.bottomInset;
   return {
-    bottom: top + fallback.height,
-    height: fallback.height,
+    bottom: top + FALLBACK_ACTION.height,
+    height: FALLBACK_ACTION.height,
     left,
-    right: left + fallback.width,
+    right: left + FALLBACK_ACTION.width,
     top,
-    width: fallback.width,
-  };
-}
-
-function rectangleSnapshot(rect: DOMRect): SelectionRect {
-  return {
-    bottom: rect.bottom,
-    height: rect.height,
-    left: rect.left,
-    right: rect.right,
-    top: rect.top,
-    width: rect.width,
+    width: FALLBACK_ACTION.width,
   };
 }
