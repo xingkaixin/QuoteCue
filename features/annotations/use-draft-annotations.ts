@@ -4,7 +4,7 @@ import type { ConversationIdentity, IdentifiedConversation } from "@/features/ho
 
 import { sameAnnotationSnapshot, type DraftAnnotation } from "./annotation";
 import { sameConversationIdentity } from "./conversation-identity";
-import { loadDraftAnnotations, saveDraftAnnotations } from "./draft-storage";
+import { useDraftStore } from "./DraftStoreProvider";
 
 type DraftScopeState =
   | { status: "loading"; conversationIdentity: ConversationIdentity }
@@ -25,6 +25,7 @@ type DraftScopeState =
 type AvailableDraftScopeState = Extract<DraftScopeState, { status: "ready" | "error" }>;
 
 export function useDraftAnnotations(conversationIdentity: ConversationIdentity) {
+  const draftStore = useDraftStore();
   const [scope, setScope] = useState<DraftScopeState>(() => initialScope(conversationIdentity));
   const scopeRef = useRef(scope);
   const loadGeneration = useRef(0);
@@ -46,7 +47,7 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
       commitScope(loadingScope(identity));
 
       void saveQueue.current
-        .then(() => loadDraftAnnotations(identity))
+        .then(() => draftStore.load(identity))
         .then((annotations) => {
           if (generation !== loadGeneration.current) {
             return;
@@ -72,7 +73,7 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
           });
         });
     },
-    [commitScope],
+    [commitScope, draftStore],
   );
 
   const enqueueSave = useCallback(
@@ -82,7 +83,7 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
         return;
       }
 
-      const save = () => saveDraftAnnotations(conversation, snapshot.annotations);
+      const save = () => draftStore.save(conversation, snapshot.annotations);
       const pendingSave = saveQueue.current.then(save, save);
       saveQueue.current = pendingSave.catch(() => undefined);
 
@@ -110,7 +111,7 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
           }
         });
     },
-    [commitScope],
+    [commitScope, draftStore],
   );
 
   useEffect(() => {

@@ -4,6 +4,7 @@ import type { IdentifiedConversation } from "@/features/host-port/host-port";
 import { parseTextAnchor } from "@/features/host-port/text-anchor";
 
 import type { DraftAnnotation } from "./annotation";
+import type { DraftStore } from "./draft-store";
 
 const DRAFT_KEY_PREFIX = "quotecue:draft:";
 const LEGACY_DRAFT_KEY_PREFIX = "askgpt:draft:";
@@ -15,8 +16,6 @@ const RENDERED_QUOTE_DRAFT_STORAGE_VERSION = 1;
 const UNMARKED_ANCHOR_DRAFT_STORAGE_VERSION = 2;
 const DRAFT_STORAGE_VERSION = 3;
 const DRAFT_RETENTION_MS = 30 * 24 * 60 * 60 * 1_000;
-const draftKeyUseCounts = new Map<string, number>();
-let draftCleanup: Promise<void> | null = null;
 
 type DraftStorageVersion =
   | typeof RENDERED_QUOTE_DRAFT_STORAGE_VERSION
@@ -41,6 +40,11 @@ type DecodedAnnotations = {
   hasUnreadableAnnotations: boolean;
 };
 
+type BrowserDraftStoreState = {
+  cleanup: Promise<void> | null;
+  keyUseCounts: Map<string, number>;
+};
+
 class DraftStorageFormatError extends Error {
   constructor(message: string) {
     super(message);
@@ -52,10 +56,24 @@ function draftStorageKey(prefix: string, conversationId: string) {
   return `${prefix}${conversationId}`;
 }
 
-export async function loadDraftAnnotations(conversation: IdentifiedConversation) {
+export function createBrowserDraftStore(): DraftStore {
+  const state: BrowserDraftStoreState = {
+    cleanup: null,
+    keyUseCounts: new Map(),
+  };
+  return {
+    load: (conversation) => loadDraftAnnotations(state, conversation),
+    save: (conversation, annotations) => saveDraftAnnotations(state, conversation, annotations),
+  };
+}
+
+async function loadDraftAnnotations(
+  state: BrowserDraftStoreState,
+  conversation: IdentifiedConversation,
+) {
   const key = draftStorageKey(DRAFT_KEY_PREFIX, conversation.id);
   const legacyKey = draftStorageKey(LEGACY_DRAFT_KEY_PREFIX, conversation.id);
-  scheduleDraftCleanup(key);
+  scheduleDraftCleanup(state, key);
   const result = await browser.storage.local.get([key, legacyKey]);
   const storedDraft = result[key];
 
@@ -84,13 +102,14 @@ export async function loadDraftAnnotations(conversation: IdentifiedConversation)
   return decoded.annotations;
 }
 
-export async function saveDraftAnnotations(
+async function saveDraftAnnotations(
+  state: BrowserDraftStoreState,
   conversation: IdentifiedConversation,
   annotations: DraftAnnotation[],
 ) {
   const key = draftStorageKey(DRAFT_KEY_PREFIX, conversation.id);
   const legacyKey = draftStorageKey(LEGACY_DRAFT_KEY_PREFIX, conversation.id);
-  const releaseDraftKey = retainDraftKey(key);
+  const releaseDraftKey = retainDraftKey(state, key);
 
   try {
     if (annotations.length === 0) {
@@ -101,8 +120,8 @@ export async function saveDraftAnnotations(
     await browser.storage.local.set({ [key]: draftEnvelope(annotations) });
     await browser.storage.local.remove(legacyKey);
   } finally {
-    if (draftCleanup) {
-      void draftCleanup.then(releaseDraftKey);
+    if (state.cleanup) {
+      void state.cleanup.then(releaseDraftKey);
     } else {
       releaseDraftKey();
     }
@@ -199,20 +218,20 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-function scheduleDraftCleanup(currentDraftKey: string) {
-  const releaseDraftKey = retainDraftKey(currentDraftKey);
-  void removeStoredDraftsOnce().then(releaseDraftKey);
+function scheduleDraftCleanup(state: BrowserDraftStoreState, currentDraftKey: string) {
+  const releaseDraftKey = retainDraftKey(state, currentDraftKey);
+  void removeStoredDraftsOnce(state).then(releaseDraftKey);
 }
 
-function removeStoredDraftsOnce() {
-  draftCleanup ??= removeStoredDrafts().catch((error: unknown) => {
-    draftCleanup = null;
+function removeStoredDraftsOnce(state: BrowserDraftStoreState) {
+  state.cleanup ??= removeStoredDrafts(state).catch((error: unknown) => {
+    state.cleanup = null;
     console.error("[QuoteCue] Failed to clean stored drafts", error);
   });
-  return draftCleanup;
+  return state.cleanup;
 }
 
-async function removeStoredDrafts() {
+async function removeStoredDrafts(state: BrowserDraftStoreState) {
   const storedKeys = await getStoredKeys();
   const orphanedKeys = storedKeys.filter((key) =>
     ORPHANED_DRAFT_KEY_PREFIXES.some((prefix) => key.startsWith(prefix)),
@@ -225,7 +244,7 @@ async function removeStoredDrafts() {
   const expiresBefore = Date.now() - DRAFT_RETENTION_MS;
   const expiredKeys = draftKeys.filter(
     (key) =>
-      !draftKeyUseCounts.has(key) && isExpiredDraftEnvelope(storedDrafts[key], expiresBefore),
+      !state.keyUseCounts.has(key) && isExpiredDraftEnvelope(storedDrafts[key], expiresBefore),
   );
   const keysToRemove = [...orphanedKeys, ...expiredKeys];
 
@@ -259,15 +278,15 @@ function isExpiredDraftEnvelope(value: unknown, expiresBefore: number) {
   );
 }
 
-function retainDraftKey(key: string) {
-  draftKeyUseCounts.set(key, (draftKeyUseCounts.get(key) ?? 0) + 1);
+function retainDraftKey(state: BrowserDraftStoreState, key: string) {
+  state.keyUseCounts.set(key, (state.keyUseCounts.get(key) ?? 0) + 1);
   return () => {
-    const nextUseCount = (draftKeyUseCounts.get(key) ?? 1) - 1;
+    const nextUseCount = (state.keyUseCounts.get(key) ?? 1) - 1;
     if (nextUseCount === 0) {
-      draftKeyUseCounts.delete(key);
+      state.keyUseCounts.delete(key);
       return;
     }
-    draftKeyUseCounts.set(key, nextUseCount);
+    state.keyUseCounts.set(key, nextUseCount);
   };
 }
 

@@ -3,24 +3,13 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { DraftAnnotation, AnchoredSelection } from "@/features/annotations/annotation";
+import { DraftStoreProvider } from "@/features/annotations/DraftStoreProvider";
 import { useAnnotationWorkspace } from "@/features/annotations/use-annotation-workspace";
 import { HostProvider } from "@/features/host-port/HostProvider";
-import type { IdentifiedConversation } from "@/features/host-port/host-port";
 import { I18nProvider } from "@/features/i18n/I18nProvider";
 
 import { createFakeHost, type FakeHost } from "./fixtures/fake-host";
-
-const draftStorage = vi.hoisted(() => ({
-  load: vi.fn<(conversation: IdentifiedConversation) => Promise<DraftAnnotation[]>>(),
-  save: vi.fn<
-    (conversation: IdentifiedConversation, annotations: DraftAnnotation[]) => Promise<void>
-  >(),
-}));
-
-vi.mock("@/features/annotations/draft-storage", () => ({
-  loadDraftAnnotations: draftStorage.load,
-  saveDraftAnnotations: draftStorage.save,
-}));
+import { createDraftStoreDouble } from "./fixtures/memory-draft-store";
 
 const anchoredSelection: AnchoredSelection = {
   anchor: {
@@ -36,13 +25,12 @@ const anchoredSelection: AnchoredSelection = {
 };
 
 let workspace: ReturnType<typeof useAnnotationWorkspace>;
+let draftStoreFixture = createDraftStoreDouble();
 
 beforeEach(() => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   window.history.replaceState({}, "", "/c/conversation-a");
-  draftStorage.load.mockReset();
-  draftStorage.save.mockReset();
-  draftStorage.save.mockResolvedValue();
+  draftStoreFixture = createDraftStoreDouble();
   Object.defineProperty(document, "execCommand", {
     configurable: true,
     value: vi.fn(() => false),
@@ -61,7 +49,7 @@ afterEach(() => {
 describe("annotation workspace", () => {
   it("opens an editor and clears selection only after the annotation write succeeds", async () => {
     let resolveLoad: (annotations: DraftAnnotation[]) => void = () => undefined;
-    draftStorage.load.mockImplementation(
+    draftStoreFixture.store.load.mockImplementation(
       () => new Promise<DraftAnnotation[]>((resolve) => (resolveLoad = resolve)),
     );
     const mounted = await mountWorkspace();
@@ -70,19 +58,19 @@ describe("annotation workspace", () => {
     await act(async () => workspace.selection.onActivate(anchoredSelection));
     expect(workspace.editor.status).toBe("hidden");
     expect(clearSelection).not.toHaveBeenCalled();
-    expect(draftStorage.save).not.toHaveBeenCalled();
+    expect(draftStoreFixture.store.save).not.toHaveBeenCalled();
 
     await act(async () => resolveLoad([]));
     await act(async () => workspace.selection.onActivate(anchoredSelection));
     expect(workspace.editor.status).toBe("quick");
     expect(clearSelection).toHaveBeenCalledOnce();
-    expect(draftStorage.save).toHaveBeenCalledOnce();
+    expect(draftStoreFixture.store.save).toHaveBeenCalledOnce();
 
     await act(async () => mounted.root.unmount());
   });
 
   it("reads locale changes without reinstalling the send interceptor", async () => {
-    draftStorage.load.mockResolvedValue([]);
+    draftStoreFixture.store.load.mockResolvedValue([]);
     const host = createWorkspaceHost();
     const subscribeToSubmit = vi.spyOn(host.composer, "subscribeToSubmit");
     const mounted = await mountWorkspace(host);
@@ -108,11 +96,13 @@ async function mountWorkspace(
   const root = createRoot(container);
   await act(async () =>
     root.render(
-      <HostProvider host={providedHost}>
-        <I18nProvider>
-          <WorkspaceProbe />
-        </I18nProvider>
-      </HostProvider>,
+      <DraftStoreProvider store={draftStoreFixture.store}>
+        <HostProvider host={providedHost}>
+          <I18nProvider>
+            <WorkspaceProbe />
+          </I18nProvider>
+        </HostProvider>
+      </DraftStoreProvider>,
     ),
   );
   return { host: providedHost, root };
