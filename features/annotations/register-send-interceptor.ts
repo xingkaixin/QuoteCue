@@ -59,39 +59,58 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
   let isDisposed = false;
   let state: AnnotatedSendState = { status: "idle" };
 
+  const reportError = (message: string) => {
+    console.error(`[QuoteCue] ${message}`);
+  };
+  const runSafely = (failureMessage: string, operation: () => void) => {
+    try {
+      operation();
+    } catch {
+      reportError(failureMessage);
+    }
+  };
+
   const setState = (nextState: AnnotatedSendState) => {
     state = nextState;
     if (!isDisposed) {
-      options.onStateChange?.(state);
+      runSafely("Failed to report annotated send state", () => options.onStateChange?.(state));
     }
+  };
+
+  const abortAttempt = (attempt: SendAttempt) => {
+    runSafely("Failed to stop annotated send work", () => attempt.controller.abort());
   };
 
   const finishConfirmed = (attempt: SendAttempt) => {
     if (activeAttempt !== attempt) {
       return;
     }
-    attempt.controller.abort();
     activeAttempt = null;
     lastFailedAttempt = null;
     const sentAnnotations = attempt.annotations.map(({ annotation }) => annotation);
-    options.onSendConfirmed(sentAnnotations);
+    abortAttempt(attempt);
     setState({ status: "idle" });
     attempt.resolve({
       status: "confirmed",
       annotationIds: sentAnnotations.map(({ id }) => id),
     });
+    runSafely("Failed to apply confirmed annotations", () =>
+      options.onSendConfirmed(sentAnnotations),
+    );
   };
 
   const finishFailed = (attempt: SendAttempt, reason: AnnotatedSendFailureReason) => {
     if (activeAttempt !== attempt) {
       return;
     }
-    attempt.controller.abort();
-    host.composer.restoreText(attempt.snapshot, attempt.compiledText);
     activeAttempt = null;
     lastFailedAttempt = attempt;
+    abortAttempt(attempt);
     setState({ status: "failed", attemptId: attempt.id, reason });
     attempt.resolve({ status: "failed", reason });
+    runSafely("Failed to restore composer text", () =>
+      host.composer.restoreText(attempt.snapshot, attempt.compiledText),
+    );
   };
 
   const replaySend = (attempt: SendAttempt, initialButton: HTMLElement | null) => {
@@ -125,7 +144,10 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
         } finally {
           isDispatchingReplay = false;
         }
-      })();
+      })().catch(() => {
+        reportError("Failed to replay annotated send");
+        finishFailed(attempt, "send-unavailable");
+      });
     });
   };
 
@@ -212,7 +234,7 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
     }
     prepareNativeSend(event, button);
   });
-  options.onStateChange?.(state);
+  setState(state);
 
   return {
     getState: () => state,
