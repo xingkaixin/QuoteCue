@@ -81,11 +81,12 @@ describe("annotation badge scrolling", () => {
     const root = createRoot(container);
 
     await act(async () => root.render(<HighlightHarness host={projectionHost} />));
+    expect(container.querySelector("output")?.dataset.resolution).toBe("pending");
     await act(async () => vi.advanceTimersByTimeAsync(17));
 
     const output = container.querySelector("output");
     expect(output?.dataset.top).toBeUndefined();
-    expect(output?.dataset.unresolved).toBe("true");
+    expect(output?.dataset.resolution).toBe("unresolved");
 
     await act(async () => root.unmount());
   });
@@ -112,7 +113,7 @@ describe("annotation badge scrolling", () => {
     });
 
     expect(messageIndex).toHaveBeenCalledOnce();
-    expect(container.querySelector("output")?.dataset.unresolved).toBe("true");
+    expect(container.querySelector("output")?.dataset.resolution).toBe("unresolved");
     await act(async () => root.unmount());
   });
 
@@ -130,7 +131,7 @@ describe("annotation badge scrolling", () => {
     await act(async () => vi.advanceTimersByTimeAsync(17));
     const output = container.querySelector("output");
     expect(output?.dataset.top).toBeUndefined();
-    expect(output?.dataset.unresolved).toBe("false");
+    expect(output?.dataset.resolution).toBe("resolved");
 
     covering = false;
     projectionHost.controls.emitSelectionInvalidation({ reason: "layout" });
@@ -253,8 +254,8 @@ function HighlightProbe({ activeAnnotationId }: { activeAnnotationId: string | n
   return (
     <output
       data-ordinal={projection?.ordinal}
-      data-top={projection?.badge?.top}
-      data-unresolved={projection?.range === null}
+      data-resolution={projection?.resolution}
+      data-top={projection?.resolution === "resolved" ? projection.geometry.badge?.top : undefined}
     />
   );
 }

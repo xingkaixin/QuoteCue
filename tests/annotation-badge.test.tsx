@@ -71,17 +71,20 @@ async function mountBadge(comment = "", ordinal = 1) {
           <AnnotationBadge
             entry={{
               annotation: { ...annotation, comment },
-              badge: { left: 10, top: 10 },
-              ordinal,
-              range: document.createRange(),
-              rect: {
-                bottom: 30,
-                height: 20,
-                left: 10,
-                right: 30,
-                top: 10,
-                width: 20,
+              geometry: {
+                badge: { left: 10, top: 10 },
+                range: document.createRange(),
+                rect: {
+                  bottom: 30,
+                  height: 20,
+                  left: 10,
+                  right: 30,
+                  top: 10,
+                  width: 20,
+                },
               },
+              ordinal,
+              resolution: "resolved",
             }}
             left={10}
             onEdit={onEdit}

@@ -45,7 +45,15 @@ export function useAnnotationWorkspace() {
   const activeProjection = projectedAnnotations.find(
     ({ annotation }) => annotation.id === activeAnnotationId,
   );
+  const activeResolution = activeProjection?.resolution;
   const closeEditor = useCallback(() => setEditorState({ status: "hidden" }), []);
+
+  useEffect(() => {
+    if (activeResolution === "unresolved") {
+      closeEditor();
+    }
+  }, [activeResolution, closeEditor]);
+
   const annotationsRef = useRef<readonly ProjectedAnnotation[]>(projectedAnnotations);
   const conversationIdentityRef = useRef(conversationIdentity);
   const localeRef = useRef(locale);
@@ -120,10 +128,10 @@ export function useAnnotationWorkspace() {
 
   const openEditor = useCallback(
     (projection: ProjectedAnnotation) => {
-      if (!projection.range) {
+      if (projection.resolution !== "resolved") {
         return;
       }
-      const reveal = host.selection.reveal(projection.range);
+      const reveal = host.selection.reveal(projection.geometry.range);
       if (reveal.status === "unavailable") {
         return;
       }

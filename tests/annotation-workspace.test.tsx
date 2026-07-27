@@ -47,6 +47,21 @@ afterEach(() => {
 });
 
 describe("annotation workspace", () => {
+  it("closes an active editor after annotation resolution fails", async () => {
+    draftStoreFixture.store.load.mockResolvedValue([]);
+    const mounted = await mountWorkspace();
+    mounted.host.controls.setMessageIndex(new Map());
+
+    await act(async () => workspace.selection.onActivate(anchoredSelection));
+    expect(workspace.editor.status).toBe("quick");
+    expect(workspace.editor.projection?.resolution).toBe("pending");
+
+    await act(async () => new Promise(requestAnimationFrame));
+    expect(workspace.editor.status).toBe("hidden");
+
+    await act(async () => mounted.root.unmount());
+  });
+
   it("opens an editor and clears selection only after the annotation write succeeds", async () => {
     let resolveLoad: (annotations: DraftAnnotation[]) => void = () => undefined;
     draftStoreFixture.store.load.mockImplementation(
@@ -65,6 +80,10 @@ describe("annotation workspace", () => {
     expect(workspace.editor.status).toBe("quick");
     expect(clearSelection).toHaveBeenCalledOnce();
     expect(draftStoreFixture.store.save).toHaveBeenCalledOnce();
+
+    await act(async () => new Promise(requestAnimationFrame));
+    expect(workspace.editor.status).toBe("quick");
+    expect(workspace.editor.projection?.resolution).toBe("resolved");
 
     await act(async () => mounted.root.unmount());
   });

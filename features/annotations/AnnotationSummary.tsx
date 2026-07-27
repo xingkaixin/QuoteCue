@@ -129,8 +129,9 @@ export function AnnotationSummary({
           >
             <div className="qc-divide max-h-80 divide-y overscroll-contain overflow-y-auto">
               {annotations.map((projection) => {
-                const { annotation, ordinal, range } = projection;
-                const isUnresolved = range === null;
+                const { annotation, ordinal } = projection;
+                const isResolved = projection.resolution === "resolved";
+                const isUnresolved = projection.resolution === "unresolved";
                 const comment = annotation.comment.trim();
                 return (
                   <div className="group/row relative flex gap-2.5 px-3 py-3" key={annotation.id}>
@@ -162,7 +163,7 @@ export function AnnotationSummary({
                       <button
                         aria-label={messages.editNumberedAnnotation(ordinal)}
                         className="qc-muted qc-hover qc-focus flex size-8 cursor-pointer items-center justify-center disabled:cursor-default disabled:opacity-40"
-                        disabled={isUnresolved}
+                        disabled={!isResolved}
                         onClick={() => onEdit(projection)}
                         type="button"
                       >

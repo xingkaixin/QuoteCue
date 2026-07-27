@@ -29,26 +29,29 @@ export default function App() {
 
         <SelectionPresentation {...selection} />
 
-        {editor.status === "quick" && activeProjection?.rect && (
+        {editor.status === "quick" && activeProjection?.resolution === "resolved" && (
           <AnnotationQuickInput
             onClose={editor.close}
             onSave={editor.save}
-            rect={activeProjection.rect}
+            rect={activeProjection.geometry.rect}
           />
         )}
 
-        {editor.status === "expanded" && activeProjection?.rect && (
+        {editor.status === "expanded" && activeProjection?.resolution === "resolved" && (
           <AnnotationEditor
             annotation={activeProjection.annotation}
             onCancel={editor.close}
             onDelete={() => summary.remove(activeProjection.annotation.id)}
             onSave={editor.save}
-            rect={activeProjection.rect}
+            rect={activeProjection.geometry.rect}
           />
         )}
 
         {summary.annotations.map((projection) => {
-          const position = projection.badge;
+          if (projection.resolution !== "resolved") {
+            return null;
+          }
+          const position = projection.geometry.badge;
           return position ? (
             <AnnotationBadge
               entry={projection}
