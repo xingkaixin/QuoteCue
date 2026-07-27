@@ -21,14 +21,10 @@ export default function App() {
   return (
     <TooltipProvider delay={180}>
       <div {...{ [QUOTECUE_ROOT_ATTR]: "" }}>
-        {draft.status === "loading" && <DraftPersistenceStatus status="loading" />}
+        {draft.state.status === "loading" && <DraftPersistenceStatus {...draft.state} />}
 
-        {draft.status === "error" && draft.errorOperation && (
-          <DraftPersistenceStatus
-            operation={draft.errorOperation}
-            onRetry={draft.retry}
-            status="error"
-          />
+        {draft.state.status === "error" && (
+          <DraftPersistenceStatus {...draft.state} onRetry={draft.retry} />
         )}
 
         <SelectionPresentation {...selection} />

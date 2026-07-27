@@ -3,9 +3,11 @@ import { AlertTriangle, LoaderCircle, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/features/i18n/I18nProvider";
 
+import type { DraftState } from "./use-draft-annotations";
+
 type DraftPersistenceStatusProps =
-  | { status: "loading" }
-  | { status: "error"; operation: "load" | "save"; onRetry: () => void };
+  | Extract<DraftState, { status: "loading" }>
+  | (Extract<DraftState, { status: "error" }> & { onRetry: () => void });
 
 export function DraftPersistenceStatus(props: DraftPersistenceStatusProps) {
   const { messages } = useI18n();

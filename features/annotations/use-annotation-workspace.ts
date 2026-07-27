@@ -12,7 +12,7 @@ import { registerSendInterceptor, type AnnotatedSendState } from "./register-sen
 import { useAnnotationProjection } from "./use-annotation-projection";
 import { useConversationIdentity } from "./use-conversation-identity";
 import { useDeferredAnnotationDeletion } from "./use-deferred-annotation-deletion";
-import { useDraftAnnotations } from "./use-draft-annotations";
+import { canMutateDraft, useDraftAnnotations } from "./use-draft-annotations";
 
 type SendController = ReturnType<typeof registerSendInterceptor>;
 
@@ -21,10 +21,7 @@ export function useAnnotationWorkspace() {
   const { locale } = useI18n();
   const conversationIdentity = useConversationIdentity();
   const {
-    annotations,
-    status,
-    errorOperation,
-    isHydrated,
+    draft,
     addAnnotation,
     updateAnnotation,
     removeAnnotations,
@@ -32,6 +29,8 @@ export function useAnnotationWorkspace() {
     clearAnnotations,
     retry,
   } = useDraftAnnotations(conversationIdentity);
+  const annotations = draft.status === "loading" ? [] : draft.annotations;
+  const isDraftMutable = canMutateDraft(draft);
   const [sendState, setSendState] = useState<AnnotatedSendState>({ status: "idle" });
   const [editorState, setEditorState] = useState<AnnotationEditorState>({ status: "hidden" });
   const {
@@ -174,10 +173,8 @@ export function useAnnotationWorkspace() {
 
   return {
     draft: {
-      errorOperation,
-      isHydrated,
       retry,
-      status,
+      state: draft,
     },
     editor: {
       close: closeEditor,
@@ -187,13 +184,13 @@ export function useAnnotationWorkspace() {
     },
     selection: {
       conversationIdentity,
-      isEnabled: isHydrated,
+      isEnabled: isDraftMutable,
       onActivate: startAnnotation,
     },
     summary: {
       annotations: projectedAnnotations,
       clear: clearAll,
-      isVisible: isHydrated && annotations.length > 0,
+      isVisible: isDraftMutable && annotations.length > 0,
       open: openEditor,
       pendingDeletionCount,
       pendingDeletionExpiresAt,

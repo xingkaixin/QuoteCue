@@ -14,7 +14,7 @@ type PendingDeletionBatch = {
 };
 
 export function useDeferredAnnotationDeletion(
-  annotations: DraftAnnotation[],
+  annotations: readonly DraftAnnotation[],
   conversationIdentity: ConversationIdentity,
   commitDeletions: (annotationIds: readonly string[]) => void,
 ) {

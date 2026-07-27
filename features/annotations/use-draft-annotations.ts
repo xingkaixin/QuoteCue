@@ -24,6 +24,23 @@ type DraftScopeState =
 
 type AvailableDraftScopeState = Extract<DraftScopeState, { status: "ready" | "error" }>;
 
+export type DraftState =
+  | { readonly status: "loading" }
+  | { readonly status: "ready"; readonly annotations: readonly DraftAnnotation[] }
+  | {
+      readonly status: "error";
+      readonly annotations: readonly DraftAnnotation[];
+      readonly operation: "load" | "save";
+    };
+
+type MutableDraftState =
+  | Extract<DraftState, { status: "ready" }>
+  | (Extract<DraftState, { status: "error" }> & { operation: "save" });
+
+export function canMutateDraft(draft: DraftState): draft is MutableDraftState {
+  return draft.status === "ready" || (draft.status === "error" && draft.operation === "save");
+}
+
 export function useDraftAnnotations(conversationIdentity: ConversationIdentity) {
   const draftStore = useDraftStore();
   const [scope, setScope] = useState<DraftScopeState>(() => initialScope(conversationIdentity));
@@ -122,15 +139,9 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
   }, [conversationIdentity, loadScope]);
 
   const mutateAnnotations = useCallback(
-    (
-      mutate: (annotations: DraftAnnotation[]) => DraftAnnotation[] | null,
-      expectedRevision?: number,
-    ) => {
+    (mutate: (annotations: DraftAnnotation[]) => DraftAnnotation[] | null) => {
       const current = scopeRef.current;
-      if (
-        !canMutateScope(current, conversationIdentity) ||
-        (expectedRevision !== undefined && current.revision !== expectedRevision)
-      ) {
+      if (!canMutateScope(current, conversationIdentity)) {
         return false;
       }
       const annotations = mutate(current.annotations);
@@ -155,17 +166,9 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
   const visibleScope = sameConversationIdentity(scope.conversationIdentity, conversationIdentity)
     ? scope
     : loadingScope(conversationIdentity);
-  const annotations = visibleScope.status === "loading" ? [] : visibleScope.annotations;
-  const isHydrated =
-    visibleScope.status === "ready" ||
-    (visibleScope.status === "error" && visibleScope.operation === "save");
 
   return {
-    annotations,
-    revision: visibleScope.status === "loading" ? null : visibleScope.revision,
-    status: visibleScope.status,
-    errorOperation: visibleScope.status === "error" ? visibleScope.operation : null,
-    isHydrated,
+    draft: publicDraftState(visibleScope),
     addAnnotation: useCallback(
       (annotation: DraftAnnotation) => mutateAnnotations((current) => [...current, annotation]),
       [mutateAnnotations],
@@ -205,10 +208,7 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
       },
       [mutateAnnotations],
     ),
-    clearAnnotations: useCallback(
-      (expectedRevision?: number) => mutateAnnotations(() => [], expectedRevision),
-      [mutateAnnotations],
-    ),
+    clearAnnotations: useCallback(() => mutateAnnotations(() => []), [mutateAnnotations]),
     retry: useCallback(() => {
       if (visibleScope.status !== "error") {
         return;
@@ -226,6 +226,21 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
       enqueueSave(visibleScope);
     }, [commitScope, conversationIdentity, enqueueSave, loadScope, visibleScope]),
   };
+}
+
+function publicDraftState(scope: DraftScopeState): DraftState {
+  switch (scope.status) {
+    case "loading":
+      return { status: "loading" };
+    case "ready":
+      return { status: "ready", annotations: scope.annotations };
+    case "error":
+      return {
+        status: "error",
+        annotations: scope.annotations,
+        operation: scope.operation,
+      };
+  }
 }
 
 function initialScope(conversationIdentity: ConversationIdentity): DraftScopeState {

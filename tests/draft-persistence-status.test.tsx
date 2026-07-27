@@ -31,7 +31,14 @@ describe("DraftPersistenceStatus", () => {
     const root = createRoot(container);
 
     await act(async () =>
-      root.render(<DraftPersistenceStatus operation="save" onRetry={onRetry} status="error" />),
+      root.render(
+        <DraftPersistenceStatus
+          annotations={[]}
+          operation="save"
+          onRetry={onRetry}
+          status="error"
+        />,
+      ),
     );
     expect(container.textContent).toContain("couldn't save these annotations");
 
