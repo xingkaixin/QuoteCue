@@ -4,6 +4,7 @@ import type {
   HostLayout,
   HostResult,
   SelectionCapture,
+  SelectionCaptureIntent,
   SelectionInvalidation,
 } from "@/features/host-port/host-port";
 
@@ -18,6 +19,7 @@ type FakeHostOverrides = {
 export type FakeHost = Host & {
   controls: {
     emitLayoutChange(): void;
+    emitSelectionCaptureIntent(intent: SelectionCaptureIntent): void;
     emitSelectionInvalidation(invalidation: SelectionInvalidation): void;
     setConversationIdentity(identity: ConversationIdentity | null): void;
     setLayout(layout: HostResult<HostLayout>): void;
@@ -60,6 +62,7 @@ export function createFakeHost(overrides: FakeHostOverrides = {}): FakeHost {
     | undefined;
   const conversationSubscribers = new Set<() => void>();
   const layoutSubscribers = new Set<() => void>();
+  const selectionCaptureSubscribers = new Set<(intent: SelectionCaptureIntent) => void>();
   const selectionSubscribers = new Set<(invalidation: SelectionInvalidation) => void>();
   const submitSubscribers = new Set<(event: Event, button: HTMLElement | null) => void>();
 
@@ -134,6 +137,10 @@ export function createFakeHost(overrides: FakeHostOverrides = {}): FakeHost {
       clear: () => undefined,
       messageIndex: () => new Map(messageIndex),
       mountAction: () => () => undefined,
+      observeCaptureIntent(callback) {
+        selectionCaptureSubscribers.add(callback);
+        return () => selectionCaptureSubscribers.delete(callback);
+      },
       observeInvalidation(callback) {
         selectionSubscribers.add(callback);
         return () => selectionSubscribers.delete(callback);
@@ -151,6 +158,11 @@ export function createFakeHost(overrides: FakeHostOverrides = {}): FakeHost {
       emitLayoutChange() {
         for (const subscriber of layoutSubscribers) {
           subscriber();
+        }
+      },
+      emitSelectionCaptureIntent(intent) {
+        for (const subscriber of selectionCaptureSubscribers) {
+          subscriber(intent);
         }
       },
       emitSelectionInvalidation(invalidation) {

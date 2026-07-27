@@ -293,6 +293,33 @@ export function runHostContractSuite(definition: HostContractDefinition) {
       });
     });
 
+    it("emits semantic selection capture intents", async () => {
+      definition.installFixture();
+      const onIntent = vi.fn();
+      const stop = host().selection.observeCaptureIntent(onIntent);
+
+      document.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+      document.dispatchEvent(new KeyboardEvent("keyup", { bubbles: true, key: "ArrowRight" }));
+      await nextFrame();
+      expect(onIntent).toHaveBeenCalledOnce();
+      expect(onIntent).toHaveBeenLastCalledWith("capture");
+
+      document.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Escape" }));
+      document.dispatchEvent(new KeyboardEvent("keyup", { bubbles: true, key: "Escape" }));
+      await nextFrame();
+      expect(onIntent).toHaveBeenCalledTimes(2);
+      expect(onIntent).toHaveBeenLastCalledWith("dismiss");
+
+      window.dispatchEvent(new Event("scroll"));
+      expect(onIntent).toHaveBeenLastCalledWith("dismiss");
+      expect(onIntent).toHaveBeenCalledTimes(3);
+
+      stop();
+      document.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+      await nextFrame();
+      expect(onIntent).toHaveBeenCalledTimes(3);
+    });
+
     it("classifies viewport and message content invalidations", async () => {
       const fixture = definition.installFixture();
       const onInvalidation = vi.fn();
