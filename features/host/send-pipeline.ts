@@ -1,4 +1,7 @@
+import type { ComposerSubmitOptions, ComposerSubmitResult } from "@/features/host-port/host-port";
+
 import { available, once, unavailable, type HostContext, type HostResult } from "./host-context";
+import type { ComposerDriver } from "./composer-driver";
 import type { TextNormalizer } from "./text-normalizer";
 
 const SEND_CONFIRM_TIMEOUT_MS = 15_000;
@@ -14,13 +17,14 @@ type ConfirmedSendWatcherOptions = {
 export function createSendPipeline(
   context: HostContext,
   textNormalizer: TextNormalizer,
-  currentComposer: () => HTMLElement | null,
+  composerDriver: ComposerDriver,
 ) {
   const { adapter, document: hostDocument, logger, signals, window: hostWindow } = context;
   const { normalizedRenderedText } = textNormalizer;
 
   const currentSendButton = () =>
     hostDocument.querySelector<HTMLElement>(adapter.sendControl.selector);
+  let isDispatchingReplay = false;
 
   function isButtonAvailable(button: HTMLElement | null): button is HTMLElement {
     return (
@@ -170,8 +174,101 @@ export function createSendPipeline(
     return cleanup;
   }
 
+  async function submit(options: ComposerSubmitOptions): Promise<ComposerSubmitResult> {
+    const replaceResult = replaceComposer(options);
+    if (replaceResult.status === "unavailable") {
+      restoreComposer(options);
+      return replaceResult;
+    }
+
+    let result: ComposerSubmitResult;
+    try {
+      const sendButtonResult = await waitForButton(options.signal);
+      result =
+        sendButtonResult.status === "available" && !options.signal.aborted
+          ? await dispatchAndConfirm(sendButtonResult.value, options)
+          : unavailable("send-unavailable");
+    } catch {
+      result = unavailable("send-unavailable");
+    }
+
+    if (result.status === "unavailable") {
+      restoreComposer(options);
+    }
+    return result;
+  }
+
+  function replaceComposer(options: ComposerSubmitOptions) {
+    try {
+      return composerDriver.replaceText(options.restoreTo.element, options.text)
+        ? available("replaced" as const)
+        : unavailable("replace-failed" as const);
+    } catch {
+      return unavailable("replace-failed" as const);
+    }
+  }
+
+  function restoreComposer(options: ComposerSubmitOptions) {
+    try {
+      composerDriver.restoreText(options.restoreTo, options.text);
+    } catch {
+      logger?.("[QuoteCue host] composer restore failed");
+    }
+  }
+
+  async function dispatchAndConfirm(
+    sendButton: HTMLElement,
+    options: ComposerSubmitOptions,
+  ): Promise<ComposerSubmitResult> {
+    const confirmation = createConfirmation(options.text, options.signal);
+    isDispatchingReplay = true;
+    try {
+      sendButton.click();
+    } catch {
+      confirmation.cancel();
+    } finally {
+      isDispatchingReplay = false;
+    }
+    return confirmation.result;
+  }
+
+  function createConfirmation(expectedText: string, signal: AbortSignal) {
+    let isFinished = false;
+    let stopWatching: () => void = () => undefined;
+    let resolveResult: (result: ComposerSubmitResult) => void = () => undefined;
+    const result = new Promise<ComposerSubmitResult>((resolve) => {
+      resolveResult = resolve;
+    });
+    const finish = (nextResult: ComposerSubmitResult) => {
+      if (isFinished) {
+        return;
+      }
+      isFinished = true;
+      stopWatching();
+      signal.removeEventListener("abort", onAbort);
+      resolveResult(nextResult);
+    };
+    const onAbort = () => finish(unavailable("send-unavailable"));
+    stopWatching = watchConfirmedSend({
+      expectedText,
+      onConfirmed: () => finish(available("confirmed")),
+      onTimeout: () => finish(unavailable("confirmation-timeout")),
+      signal,
+    });
+    if (signal.aborted) {
+      onAbort();
+    } else {
+      signal.addEventListener("abort", onAbort, { once: true });
+    }
+
+    return { cancel: onAbort, result };
+  }
+
   function subscribeToSubmit(callback: (event: Event, button: HTMLElement | null) => void) {
     const onClick = (event: MouseEvent) => {
+      if (isDispatchingReplay) {
+        return;
+      }
       const target = event.target;
       const button =
         target instanceof Element
@@ -182,6 +279,9 @@ export function createSendPipeline(
       }
     };
     const onKeyDown = (event: KeyboardEvent) => {
+      if (isDispatchingReplay) {
+        return;
+      }
       const target = event.target;
       const isSubmitKey =
         target instanceof Element &&
@@ -210,7 +310,7 @@ export function createSendPipeline(
   }
 
   function sendControlObservationRoot(button: HTMLElement | null) {
-    const composer = currentComposer();
+    const composer = composerDriver.current();
     if (!composer) {
       return hostDocument.body;
     }
@@ -231,5 +331,5 @@ export function createSendPipeline(
     return boundary ?? composer.parentElement ?? hostDocument.body;
   }
 
-  return { isButtonAvailable, subscribeToSubmit, waitForButton, watchConfirmedSend };
+  return { isButtonAvailable, submit, subscribeToSubmit, waitForButton, watchConfirmedSend };
 }

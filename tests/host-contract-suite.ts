@@ -186,6 +186,54 @@ export function runHostContractSuite(definition: HostContractDefinition) {
       expect(siteHost.composer.isButtonAvailable(fixture.sendControl)).toBe(false);
     });
 
+    it("owns composer replacement, dispatch, confirmation, and replay suppression", async () => {
+      const fixture = definition.installFixture();
+      const siteHost = host();
+      definition.setSendDisabled(fixture.sendControl, false);
+      const onNativeSubmit = vi.fn();
+      const stopListening = siteHost.composer.subscribeToSubmit(onNativeSubmit);
+      fixture.sendControl.addEventListener("click", () => {
+        const sentText = availableValue(siteHost.composer.snapshot()).text;
+        definition.appendUserMessage(sentText);
+      });
+      const restoreTo = availableValue(siteHost.composer.snapshot());
+
+      await expect(
+        siteHost.composer.submit({
+          restoreTo,
+          signal: new AbortController().signal,
+          text: "Replacement question",
+        }),
+      ).resolves.toEqual({ status: "available", value: "confirmed" });
+      expect(availableValue(siteHost.composer.snapshot()).text).toBe("Replacement question");
+      expect(onNativeSubmit).not.toHaveBeenCalled();
+      stopListening();
+    });
+
+    it("restores the composer when submission is aborted before dispatch", async () => {
+      const fixture = definition.installFixture();
+      const siteHost = host();
+      definition.setSendDisabled(fixture.sendControl, false);
+      const send = vi.fn();
+      fixture.sendControl.addEventListener("click", send);
+      const restoreTo = availableValue(siteHost.composer.snapshot());
+      const controller = new AbortController();
+
+      const result = siteHost.composer.submit({
+        restoreTo,
+        signal: controller.signal,
+        text: "Replacement question",
+      });
+      controller.abort();
+
+      await expect(result).resolves.toEqual({
+        reason: "send-unavailable",
+        status: "unavailable",
+      });
+      expect(availableValue(siteHost.composer.snapshot()).text).toBe("Original question");
+      expect(send).not.toHaveBeenCalled();
+    });
+
     it("confirms only normalized user messages", async () => {
       definition.installFixture();
       const siteHost = host();

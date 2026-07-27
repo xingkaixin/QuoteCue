@@ -5,14 +5,27 @@ export type HostUnavailableReason =
   | "selection-unavailable"
   | "send-control-unavailable";
 
-export type HostResult<T> =
+export type HostResult<T, R extends string = HostUnavailableReason> =
   | { status: "available"; value: T }
-  | { status: "unavailable"; reason: HostUnavailableReason };
+  | { status: "unavailable"; reason: R };
 
 export type ComposerSnapshot = {
   element: HTMLElement;
   text: string;
 };
+
+export type ComposerSubmitFailureReason =
+  | "confirmation-timeout"
+  | "replace-failed"
+  | "send-unavailable";
+
+export type ComposerSubmitOptions = {
+  restoreTo: ComposerSnapshot;
+  signal: AbortSignal;
+  text: string;
+};
+
+export type ComposerSubmitResult = HostResult<"confirmed", ComposerSubmitFailureReason>;
 
 export type IdentifiedConversation = {
   kind: "identified";
@@ -102,6 +115,7 @@ export type Host = {
     replaceText(composer: HTMLElement, text: string): boolean;
     restoreText(snapshot: ComposerSnapshot, expectedText: string): boolean;
     snapshot(): HostResult<ComposerSnapshot>;
+    submit(options: ComposerSubmitOptions): Promise<ComposerSubmitResult>;
     subscribeToSubmit(callback: (event: Event, button: HTMLElement | null) => void): () => void;
     waitForButton(signal: AbortSignal): Promise<HostResult<HTMLElement>>;
     watchConfirmedSend(options: ConfirmedSendWatcherOptions): () => void;

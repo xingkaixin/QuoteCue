@@ -1,5 +1,3 @@
-import type { HostResult, HostUnavailableReason } from "@/features/host-port/host-port";
-
 import type { MessageAccess, SiteAdapter } from "./site-adapter";
 
 const HISTORY_CHANGE_EVENT = "quotecue:history-change";
@@ -69,11 +67,11 @@ export function createHostContext(environment: HostEnvironment, adapter: SiteAda
   };
 }
 
-export function available<T>(value: T): HostResult<T> {
+export function available<T>(value: T): { status: "available"; value: T } {
   return { status: "available", value };
 }
 
-export function unavailable(reason: HostUnavailableReason): HostResult<never> {
+export function unavailable<R extends string>(reason: R): { reason: R; status: "unavailable" } {
   return { reason, status: "unavailable" };
 }
 

@@ -31,7 +31,7 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
   const context = createHostContext(environment, adapter);
   const textNormalizer = createTextNormalizer(adapter.composer);
   const composerDriver = createComposerDriver(context, textNormalizer);
-  const sendPipeline = createSendPipeline(context, textNormalizer, composerDriver.current);
+  const sendPipeline = createSendPipeline(context, textNormalizer, composerDriver);
   const layout = createComposerLayout(context, composerDriver.current);
   const anchoring = createSelectionAnchoring(context);
   const reveal = createSelectionReveal(context);
@@ -60,6 +60,7 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
       replaceText: composerDriver.replaceText,
       restoreText: composerDriver.restoreText,
       snapshot: composerDriver.snapshot,
+      submit: sendPipeline.submit,
       subscribeToSubmit: sendPipeline.subscribeToSubmit,
       waitForButton: sendPipeline.waitForButton,
       watchConfirmedSend: sendPipeline.watchConfirmedSend,

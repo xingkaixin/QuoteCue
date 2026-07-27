@@ -95,6 +95,20 @@ export function createFakeHost(overrides: FakeHostOverrides = {}): FakeHost {
         status: "available",
         value: { element: composer, text: composerText },
       }),
+      async submit({ restoreTo, signal, text }) {
+        if (signal.aborted) {
+          return { reason: "send-unavailable", status: "unavailable" };
+        }
+        composerText = text;
+        composer.textContent = text;
+        await Promise.resolve();
+        if (signal.aborted) {
+          composerText = restoreTo.text;
+          composer.textContent = restoreTo.text;
+          return { reason: "send-unavailable", status: "unavailable" };
+        }
+        return { status: "available", value: "confirmed" };
+      },
       subscribeToSubmit(callback) {
         submitSubscribers.add(callback);
         return () => submitSubscribers.delete(callback);
