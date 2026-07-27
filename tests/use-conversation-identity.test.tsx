@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { useConversationIdentity } from "@/features/annotations/use-conversation-identity";
 
+import { createFakeHost, type FakeHost } from "./fixtures/fake-host";
 import { HostTestProvider } from "./fixtures/host-provider";
 
 afterEach(() => {
@@ -20,10 +21,12 @@ describe("useConversationIdentity", () => {
     document.body.append(firstContainer, secondContainer);
     const firstRoot = createRoot(firstContainer);
     const secondRoot = createRoot(secondContainer);
+    const firstHost = createFakeHost();
+    const secondHost = createFakeHost();
 
     await act(async () => {
-      firstRoot.render(<ConversationIdentityProbe />);
-      secondRoot.render(<ConversationIdentityProbe />);
+      firstRoot.render(<ConversationIdentityProbe host={firstHost} />);
+      secondRoot.render(<ConversationIdentityProbe host={secondHost} />);
     });
     const firstIdentity = readIdentity(firstContainer);
     const secondIdentity = readIdentity(secondContainer);
@@ -32,7 +35,8 @@ describe("useConversationIdentity", () => {
     expect(firstIdentity.value).not.toBe(secondIdentity.value);
 
     await act(async () => {
-      window.history.replaceState({}, "", "/c/conversation-a");
+      firstHost.controls.setConversationIdentity({ kind: "identified", id: "conversation-a" });
+      secondHost.controls.setConversationIdentity({ kind: "identified", id: "conversation-a" });
     });
     expect(readIdentity(firstContainer)).toEqual({
       kind: "identified",
@@ -50,9 +54,9 @@ describe("useConversationIdentity", () => {
   });
 });
 
-function ConversationIdentityProbe() {
+function ConversationIdentityProbe({ host }: { host: FakeHost }) {
   return (
-    <HostTestProvider>
+    <HostTestProvider host={host}>
       <ConversationIdentityValue />
     </HostTestProvider>
   );

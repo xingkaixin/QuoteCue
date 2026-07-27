@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { AnchoredSelection } from "@/features/annotations/annotation";
 import { SelectionPresentation } from "@/features/annotations/SelectionPresentation";
+import { createChatGptHost } from "@/features/chatgpt/chatgpt-host";
 import type { ConversationIdentity } from "@/features/host-port/host-port";
 import { QUOTECUE_HOST_ATTR, QUOTECUE_NATIVE_ACTION_SELECTOR } from "@/lib/dom-identity";
 
@@ -157,7 +158,7 @@ function SelectionHarness({
   onActivate: (selection: AnchoredSelection) => void;
 }) {
   return (
-    <HostTestProvider>
+    <HostTestProvider host={createChatGptHost({ document, window })}>
       <SelectionPresentation
         conversationIdentity={conversationIdentity}
         isEnabled

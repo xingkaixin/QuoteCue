@@ -2,6 +2,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { createChatGptHost } from "@/features/chatgpt/chatgpt-host";
 import { useAnnotatedComposerLayout } from "@/features/host/use-annotated-composer-layout";
 
 import { installChatGptHostFixture } from "./fixtures/chatgpt-host";
@@ -35,13 +36,14 @@ describe("useAnnotatedComposerLayout", () => {
     );
 
     const { action, surface } = installChatGptHostFixture();
+    const host = createChatGptHost({ document, window });
 
     const container = document.createElement("div");
     document.body.append(container);
     const root = createRoot(container);
     await act(async () =>
       root.render(
-        <HostTestProvider>
+        <HostTestProvider host={host}>
           <LayoutProbe />
         </HostTestProvider>,
       ),

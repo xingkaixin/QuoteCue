@@ -1,8 +1,9 @@
 import { type ReactNode, useState } from "react";
 
-import { createChatGptHost } from "@/features/chatgpt/chatgpt-host";
 import { HostProvider } from "@/features/host-port/HostProvider";
 import type { Host } from "@/features/host-port/host-port";
+
+import { createFakeHost } from "./fake-host";
 
 type HostTestProviderProps = {
   children: ReactNode;
@@ -10,6 +11,6 @@ type HostTestProviderProps = {
 };
 
 export function HostTestProvider({ children, host: providedHost }: HostTestProviderProps) {
-  const [host] = useState(() => providedHost ?? createChatGptHost({ document, window }));
+  const [host] = useState(() => providedHost ?? createFakeHost());
   return <HostProvider host={host}>{children}</HostProvider>;
 }

@@ -5,29 +5,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { DraftAnnotation } from "@/features/annotations/annotation";
 import { useAnnotationProjection } from "@/features/annotations/use-annotation-projection";
 
+import { createFakeHost, type FakeHost } from "./fixtures/fake-host";
 import { HostTestProvider } from "./fixtures/host-provider";
 
 const geometry = vi.hoisted(() => ({
-  anchorNode: null as Node | null,
-  isResolved: true,
-  restoreCount: 0,
   top: 200,
 }));
 let renderCount = 0;
-
-vi.mock("@/features/annotations/selection-anchor", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/features/annotations/selection-anchor")>()),
-  restoreTextAnchorFromIndex: () => {
-    geometry.restoreCount += 1;
-    return geometry.isResolved
-      ? {
-          endContainer: geometry.anchorNode,
-          getBoundingClientRect: () => annotationRect(),
-          getClientRects: () => [annotationRect()],
-        }
-      : null;
-  },
-}));
+const rangeRectsDescriptor = Object.getOwnPropertyDescriptor(Range.prototype, "getClientRects");
 
 const annotation: DraftAnnotation = {
   id: "annotation-1",
@@ -45,12 +30,14 @@ const annotation: DraftAnnotation = {
 const annotationList = [annotation];
 
 afterEach(() => {
-  geometry.anchorNode = null;
-  geometry.isResolved = true;
-  geometry.restoreCount = 0;
   geometry.top = 200;
   renderCount = 0;
   Reflect.deleteProperty(document, "elementsFromPoint");
+  if (rangeRectsDescriptor) {
+    Object.defineProperty(Range.prototype, "getClientRects", rangeRectsDescriptor);
+  } else {
+    Reflect.deleteProperty(Range.prototype, "getClientRects");
+  }
   vi.useRealTimers();
   vi.restoreAllMocks();
   document.body.replaceChildren();
@@ -61,25 +48,27 @@ describe("annotation badge scrolling", () => {
     vi.useFakeTimers();
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     Object.defineProperty(globalThis, "CSS", { configurable: true, value: {} });
-    const host = document.createElement("div");
-    const shadowRoot = host.attachShadow({ mode: "open" });
+    const projectionHost = createProjectionHost();
+    const messageIndex = vi.spyOn(projectionHost.selection, "messageIndex");
+    const shadowHost = document.createElement("div");
+    const shadowRoot = shadowHost.attachShadow({ mode: "open" });
     const container = document.createElement("div");
     shadowRoot.append(container);
-    document.body.append(host);
+    document.body.append(shadowHost);
     const root = createRoot(container);
 
-    await act(async () => root.render(<HighlightHarness />));
+    await act(async () => root.render(<HighlightHarness host={projectionHost} />));
     await act(async () => vi.advanceTimersByTimeAsync(17));
     expect(container.querySelector("output")?.dataset.top).toBe("190");
     expect(container.querySelector("output")?.dataset.ordinal).toBe("1");
 
     geometry.top = 100;
-    geometry.restoreCount = 0;
-    window.dispatchEvent(new Event("scroll"));
+    messageIndex.mockClear();
+    projectionHost.controls.emitSelectionInvalidation("layout");
     await act(async () => vi.advanceTimersByTimeAsync(17));
 
     expect(container.querySelector("output")?.dataset.top).toBe("90");
-    expect(geometry.restoreCount).toBe(0);
+    expect(messageIndex).not.toHaveBeenCalled();
 
     await act(async () => root.unmount());
   });
@@ -88,12 +77,12 @@ describe("annotation badge scrolling", () => {
     vi.useFakeTimers();
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     Object.defineProperty(globalThis, "CSS", { configurable: true, value: {} });
-    geometry.isResolved = false;
+    const projectionHost = createProjectionHost(false);
     const container = document.createElement("div");
     document.body.append(container);
     const root = createRoot(container);
 
-    await act(async () => root.render(<HighlightHarness />));
+    await act(async () => root.render(<HighlightHarness host={projectionHost} />));
     await act(async () => vi.advanceTimersByTimeAsync(17));
 
     const output = container.querySelector("output");
@@ -107,21 +96,22 @@ describe("annotation badge scrolling", () => {
     vi.useFakeTimers();
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     Object.defineProperty(globalThis, "CSS", { configurable: true, value: {} });
+    const projectionHost = createProjectionHost();
+    const messageIndex = vi.spyOn(projectionHost.selection, "messageIndex");
     const container = document.createElement("div");
     document.body.append(container);
     const root = createRoot(container);
 
-    await act(async () => root.render(<HighlightHarness />));
+    await act(async () => root.render(<HighlightHarness host={projectionHost} />));
     await act(async () => vi.advanceTimersByTimeAsync(17));
-    geometry.restoreCount = 0;
-    geometry.isResolved = false;
-    document.body.append(document.createElement("span"));
+    messageIndex.mockClear();
+    projectionHost.controls.setMessageIndex(new Map());
+    projectionHost.controls.emitSelectionInvalidation("content");
     await act(async () => {
-      await Promise.resolve();
       await vi.advanceTimersByTimeAsync(17);
     });
 
-    expect(geometry.restoreCount).toBe(1);
+    expect(messageIndex).toHaveBeenCalledOnce();
     expect(container.querySelector("output")?.dataset.unresolved).toBe("true");
     await act(async () => root.unmount());
   });
@@ -130,10 +120,10 @@ describe("annotation badge scrolling", () => {
     vi.useFakeTimers();
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     Object.defineProperty(globalThis, "CSS", { configurable: true, value: {} });
-    const anchorParagraph = document.createElement("p");
+    const projectionHost = createProjectionHost();
+    const anchorParagraph = projectionHost.selection.messageIndex().get("message-1");
     const overlay = document.createElement("div");
-    document.body.append(anchorParagraph, overlay);
-    geometry.anchorNode = anchorParagraph;
+    document.body.append(overlay);
     let covering = true;
     Object.defineProperty(document, "elementsFromPoint", {
       configurable: true,
@@ -143,14 +133,14 @@ describe("annotation badge scrolling", () => {
     document.body.append(container);
     const root = createRoot(container);
 
-    await act(async () => root.render(<HighlightHarness />));
+    await act(async () => root.render(<HighlightHarness host={projectionHost} />));
     await act(async () => vi.advanceTimersByTimeAsync(17));
     const output = container.querySelector("output");
     expect(output?.dataset.top).toBeUndefined();
     expect(output?.dataset.unresolved).toBe("false");
 
     covering = false;
-    window.dispatchEvent(new Event("scroll"));
+    projectionHost.controls.emitSelectionInvalidation("layout");
     await act(async () => vi.advanceTimersByTimeAsync(17));
     expect(output?.dataset.top).toBe("190");
 
@@ -161,17 +151,18 @@ describe("annotation badge scrolling", () => {
     vi.useFakeTimers();
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     Object.defineProperty(globalThis, "CSS", { configurable: true, value: {} });
-    const host = document.createElement("div");
-    const shadowRoot = host.attachShadow({ mode: "open" });
+    const projectionHost = createProjectionHost();
+    const shadowHost = document.createElement("div");
+    const shadowRoot = shadowHost.attachShadow({ mode: "open" });
     const container = document.createElement("div");
     shadowRoot.append(container);
-    document.body.append(host);
+    document.body.append(shadowHost);
     const root = createRoot(container);
 
-    await act(async () => root.render(<HighlightHarness />));
+    await act(async () => root.render(<HighlightHarness host={projectionHost} />));
     await act(async () => vi.advanceTimersByTimeAsync(17));
     const rendersAfterInitialProjection = renderCount;
-    window.dispatchEvent(new Event("scroll"));
+    projectionHost.controls.emitSelectionInvalidation("layout");
     await act(async () => vi.advanceTimersByTimeAsync(17));
 
     expect(renderCount).toBe(rendersAfterInitialProjection);
@@ -182,25 +173,35 @@ describe("annotation badge scrolling", () => {
     vi.useFakeTimers();
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     Object.defineProperty(globalThis, "CSS", { configurable: true, value: {} });
+    const projectionHost = createProjectionHost();
+    const messageIndex = vi.spyOn(projectionHost.selection, "messageIndex");
     const container = document.createElement("div");
     document.body.append(container);
     const root = createRoot(container);
 
-    await act(async () => root.render(<HighlightHarness />));
+    await act(async () => root.render(<HighlightHarness host={projectionHost} />));
     await act(async () => vi.advanceTimersByTimeAsync(17));
-    expect(geometry.restoreCount).toBe(1);
+    expect(messageIndex).toHaveBeenCalledOnce();
 
-    geometry.restoreCount = 0;
-    await act(async () => root.render(<HighlightHarness activeAnnotationId={annotation.id} />));
-    expect(geometry.restoreCount).toBe(0);
+    messageIndex.mockClear();
+    await act(async () =>
+      root.render(<HighlightHarness activeAnnotationId={annotation.id} host={projectionHost} />),
+    );
+    expect(messageIndex).not.toHaveBeenCalled();
 
     await act(async () => root.unmount());
   });
 });
 
-function HighlightHarness({ activeAnnotationId = null }: { activeAnnotationId?: string | null }) {
+function HighlightHarness({
+  activeAnnotationId = null,
+  host,
+}: {
+  activeAnnotationId?: string | null;
+  host: FakeHost;
+}) {
   return (
-    <HostTestProvider>
+    <HostTestProvider host={host}>
       <HighlightProbe activeAnnotationId={activeAnnotationId} />
     </HostTestProvider>
   );
@@ -230,4 +231,20 @@ function annotationRect() {
     y: geometry.top,
     toJSON: () => ({}),
   };
+}
+
+function createProjectionHost(isResolved = true) {
+  Object.defineProperty(Range.prototype, "getClientRects", {
+    configurable: true,
+    value: () => [annotationRect()],
+  });
+  const host = createFakeHost();
+  if (!isResolved) {
+    return host;
+  }
+  const message = document.createElement("p");
+  message.textContent = "selected text";
+  document.body.append(message);
+  host.controls.setMessageIndex(new Map([["message-1", message]]));
+  return host;
 }
