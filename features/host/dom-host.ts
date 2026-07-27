@@ -6,6 +6,7 @@ import { createHostContext, type HostEnvironment } from "./host-context";
 import { createNativeActionMount } from "./native-action-mount";
 import { createSelectionAnchoring } from "./selection-anchoring";
 import { createSelectionReveal } from "./selection-reveal";
+import { createSelectionVisuals } from "./selection-visuals";
 import type { SiteAdapter } from "./site-adapter";
 import { createSendPipeline } from "./send-pipeline";
 import { createTextNormalizer } from "./text-normalizer";
@@ -34,10 +35,12 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
   const layout = createComposerLayout(context, composerDriver.current);
   const anchoring = createSelectionAnchoring(context);
   const reveal = createSelectionReveal(context);
+  const visuals = createSelectionVisuals(context);
   const selection: Host["selection"] =
     adapter.selectionPresentation.mode === "native-toolbar"
       ? {
           ...anchoring,
+          ...visuals,
           nativeAction: {
             mount: createNativeActionMount(context, adapter.selectionPresentation.toolbarBounds),
           },
@@ -46,6 +49,7 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
         }
       : {
           ...anchoring,
+          ...visuals,
           presentation: "overlay",
           reveal,
         };

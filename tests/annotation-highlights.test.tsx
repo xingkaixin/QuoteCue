@@ -32,7 +32,6 @@ const annotationList = [annotation];
 afterEach(() => {
   geometry.top = 200;
   renderCount = 0;
-  Reflect.deleteProperty(document, "elementsFromPoint");
   if (rangeRectsDescriptor) {
     Object.defineProperty(Range.prototype, "getClientRects", rangeRectsDescriptor);
   } else {
@@ -48,7 +47,6 @@ describe("annotation badge scrolling", () => {
   it("updates the badge on the next animation frame during scrolling", async () => {
     vi.useFakeTimers();
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-    Object.defineProperty(globalThis, "CSS", { configurable: true, value: {} });
     const projectionHost = createProjectionHost();
     const messageIndex = vi.spyOn(projectionHost.selection, "messageIndex");
     const shadowHost = document.createElement("div");
@@ -77,7 +75,6 @@ describe("annotation badge scrolling", () => {
   it("reports unresolved annotations without positioning a badge", async () => {
     vi.useFakeTimers();
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-    Object.defineProperty(globalThis, "CSS", { configurable: true, value: {} });
     const projectionHost = createProjectionHost(false);
     const container = document.createElement("div");
     document.body.append(container);
@@ -96,7 +93,6 @@ describe("annotation badge scrolling", () => {
   it("re-resolves and fails closed after a content mutation", async () => {
     vi.useFakeTimers();
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-    Object.defineProperty(globalThis, "CSS", { configurable: true, value: {} });
     const projectionHost = createProjectionHost();
     const messageIndex = vi.spyOn(projectionHost.selection, "messageIndex");
     const container = document.createElement("div");
@@ -123,16 +119,9 @@ describe("annotation badge scrolling", () => {
   it("hides the badge while a host overlay covers the anchor", async () => {
     vi.useFakeTimers();
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-    Object.defineProperty(globalThis, "CSS", { configurable: true, value: {} });
     const projectionHost = createProjectionHost();
-    const anchorParagraph = projectionHost.selection.messageIndex().get("message-1");
-    const overlay = document.createElement("div");
-    document.body.append(overlay);
     let covering = true;
-    Object.defineProperty(document, "elementsFromPoint", {
-      configurable: true,
-      value: () => [covering ? overlay : anchorParagraph],
-    });
+    vi.spyOn(projectionHost.selection, "isObscured").mockImplementation(() => covering);
     const container = document.createElement("div");
     document.body.append(container);
     const root = createRoot(container);
@@ -154,7 +143,6 @@ describe("annotation badge scrolling", () => {
   it("preserves layout identity when projected geometry is unchanged", async () => {
     vi.useFakeTimers();
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-    Object.defineProperty(globalThis, "CSS", { configurable: true, value: {} });
     const projectionHost = createProjectionHost();
     const shadowHost = document.createElement("div");
     const shadowRoot = shadowHost.attachShadow({ mode: "open" });
@@ -176,7 +164,6 @@ describe("annotation badge scrolling", () => {
   it("preserves projection identity when content invalidation keeps the same geometry", async () => {
     vi.useFakeTimers();
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-    Object.defineProperty(globalThis, "CSS", { configurable: true, value: {} });
     const projectionHost = createProjectionHost();
     const container = document.createElement("div");
     document.body.append(container);
@@ -198,13 +185,8 @@ describe("annotation badge scrolling", () => {
   it("keeps the active highlight when content invalidation only changes geometry", async () => {
     vi.useFakeTimers();
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-    const setHighlight = vi.fn();
-    Object.defineProperty(globalThis, "CSS", {
-      configurable: true,
-      value: { highlights: { delete: vi.fn(), set: setHighlight } },
-    });
-    vi.stubGlobal("Highlight", vi.fn());
     const projectionHost = createProjectionHost();
+    const highlight = vi.spyOn(projectionHost.selection, "highlight");
     const container = document.createElement("div");
     document.body.append(container);
     const root = createRoot(container);
@@ -213,7 +195,8 @@ describe("annotation badge scrolling", () => {
       root.render(<HighlightHarness activeAnnotationId={annotation.id} host={projectionHost} />),
     );
     await act(async () => vi.advanceTimersByTimeAsync(17));
-    expect(setHighlight).toHaveBeenCalledOnce();
+    expect(highlight).toHaveBeenLastCalledWith(expect.any(Range));
+    const highlightCallsAfterInitialProjection = highlight.mock.calls.length;
 
     geometry.top = 100;
     projectionHost.controls.emitSelectionInvalidation({
@@ -223,14 +206,13 @@ describe("annotation badge scrolling", () => {
     await act(async () => vi.advanceTimersByTimeAsync(17));
 
     expect(container.querySelector("output")?.dataset.top).toBe("90");
-    expect(setHighlight).toHaveBeenCalledOnce();
+    expect(highlight).toHaveBeenCalledTimes(highlightCallsAfterInitialProjection);
     await act(async () => root.unmount());
   });
 
   it("reuses the projected range when an annotation becomes active", async () => {
     vi.useFakeTimers();
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-    Object.defineProperty(globalThis, "CSS", { configurable: true, value: {} });
     const projectionHost = createProjectionHost();
     const messageIndex = vi.spyOn(projectionHost.selection, "messageIndex");
     const container = document.createElement("div");
