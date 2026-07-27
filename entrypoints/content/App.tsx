@@ -2,6 +2,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AnnotationBadge } from "@/features/annotations/AnnotationBadge";
 import { AnnotationEditor } from "@/features/annotations/AnnotationEditor";
 import { AnnotationQuickInput } from "@/features/annotations/AnnotationQuickInput";
+import { AnnotationSendControl } from "@/features/annotations/AnnotationSendControl";
 import { AnnotationSummary } from "@/features/annotations/AnnotationSummary";
 import { DraftPersistenceStatus } from "@/features/annotations/DraftPersistenceStatus";
 import { SelectionPresentation } from "@/features/annotations/SelectionPresentation";
@@ -11,7 +12,8 @@ import { QUOTECUE_ROOT_ATTR } from "@/lib/dom-identity";
 
 export default function App() {
   const { draft, editor, selection, summary } = useAnnotationWorkspace();
-  const composerLayout = useAnnotatedComposerLayout(summary.isVisible);
+  const isSendControlVisible = summary.isVisible || summary.sendStatus !== "idle";
+  const composerLayout = useAnnotatedComposerLayout(isSendControlVisible);
   const activeProjection = editor.projection;
 
   return (
@@ -68,11 +70,16 @@ export default function App() {
             onClear={summary.clear}
             onEdit={summary.open}
             onRemove={summary.remove}
-            onSend={summary.send}
             onUndo={summary.undoDeletion}
             position={composerLayout.summary}
-            sendStatus={summary.sendStatus}
-            sendPosition={composerLayout.send}
+          />
+        )}
+
+        {isSendControlVisible && composerLayout && (
+          <AnnotationSendControl
+            onSend={summary.send}
+            position={composerLayout.send}
+            status={summary.sendStatus}
           />
         )}
       </div>

@@ -1,12 +1,4 @@
-import {
-  ArrowUp,
-  LoaderCircle,
-  MessageSquareText,
-  Pencil,
-  RotateCcw,
-  Trash2,
-  X,
-} from "lucide-react";
+import { MessageSquareText, Pencil, Trash2, X } from "lucide-react";
 import { Fragment, useEffect, useRef, useState } from "react";
 
 import type { HostLayout } from "@/features/host-port/host-port";
@@ -22,13 +14,10 @@ type AnnotationSummaryProps = {
   onClear: () => void;
   onEdit: (annotation: ProjectedAnnotation) => void;
   onRemove: (annotationId: string) => void;
-  onSend: () => void;
   onUndo: () => void;
   pendingDeletionCount: number;
   pendingDeletionExpiresAt: number | null;
   position: HostLayout["summary"];
-  sendStatus: "idle" | "pending" | "failed";
-  sendPosition: HostLayout["send"];
 };
 
 export function AnnotationSummary({
@@ -36,13 +25,10 @@ export function AnnotationSummary({
   onClear,
   onEdit,
   onRemove,
-  onSend,
   onUndo,
   pendingDeletionCount,
   pendingDeletionExpiresAt,
   position,
-  sendStatus,
-  sendPosition,
 }: AnnotationSummaryProps) {
   const { messages } = useI18n();
   const countButtonRef = useRef<HTMLButtonElement>(null);
@@ -78,195 +64,156 @@ export function AnnotationSummary({
   const isStatusExiting = renderedStatus !== null && statusKind === null;
 
   return (
-    <Fragment>
-      <div
-        className="quotecue-interactive group/summary fixed flex items-center gap-2"
-        onBlur={(event) => {
-          if (!event.currentTarget.contains(event.relatedTarget)) {
-            setIsOpen(false);
-          }
-        }}
-        onFocus={() => setIsOpen(true)}
-        onKeyDown={(event) => {
-          if (event.key !== "Escape" || !isOpen) {
-            return;
-          }
-          event.preventDefault();
-          event.stopPropagation();
-          countButtonRef.current?.focus();
+    <div
+      className="quotecue-interactive group/summary fixed flex items-center gap-2"
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) {
           setIsOpen(false);
-        }}
-        onMouseEnter={() => setIsOpen(true)}
-        onMouseLeave={() => setIsOpen(false)}
-        style={position}
-      >
-        <div className="qc-surface qc-divider flex items-center rounded-lg border shadow-sm">
-          <button
-            aria-expanded={isOpen}
-            aria-haspopup="dialog"
-            className="qc-hover qc-focus qc-pressable flex h-8 cursor-pointer items-center gap-1.5 rounded-l-lg px-2.5 text-xs font-medium"
-            onClick={() => setIsOpen(true)}
-            ref={countButtonRef}
-            type="button"
-          >
-            <MessageSquareText aria-hidden="true" className="qc-accent-text size-4" />
-            <span aria-live="polite">{messages.annotationCount(annotations.length)}</span>
-          </button>
-          <button
-            aria-label={
-              isConfirmingClear ? messages.confirmClearAnnotations : messages.clearAnnotations
+        }
+      }}
+      onFocus={() => setIsOpen(true)}
+      onKeyDown={(event) => {
+        if (event.key !== "Escape" || !isOpen) {
+          return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        countButtonRef.current?.focus();
+        setIsOpen(false);
+      }}
+      onMouseEnter={() => setIsOpen(true)}
+      onMouseLeave={() => setIsOpen(false)}
+      style={position}
+    >
+      <div className="qc-surface qc-divider flex items-center rounded-lg border shadow-sm">
+        <button
+          aria-expanded={isOpen}
+          aria-haspopup="dialog"
+          className="qc-hover qc-focus qc-pressable flex h-8 cursor-pointer items-center gap-1.5 rounded-l-lg px-2.5 text-xs font-medium"
+          onClick={() => setIsOpen(true)}
+          ref={countButtonRef}
+          type="button"
+        >
+          <MessageSquareText aria-hidden="true" className="qc-accent-text size-4" />
+          <span aria-live="polite">{messages.annotationCount(annotations.length)}</span>
+        </button>
+        <button
+          aria-label={
+            isConfirmingClear ? messages.confirmClearAnnotations : messages.clearAnnotations
+          }
+          className="qc-muted qc-divider qc-hover qc-focus qc-pressable flex size-8 cursor-pointer items-center justify-center rounded-r-lg border-l opacity-0 transition-opacity group-hover/summary:opacity-100 focus-visible:opacity-100 disabled:cursor-default disabled:opacity-40"
+          disabled={annotations.length === 0}
+          onClick={() => {
+            if (isConfirmingClear) {
+              setIsConfirmingClear(false);
+              onClear();
+              return;
             }
-            className="qc-muted qc-divider qc-hover qc-focus qc-pressable flex size-8 cursor-pointer items-center justify-center rounded-r-lg border-l opacity-0 transition-opacity group-hover/summary:opacity-100 focus-visible:opacity-100 disabled:cursor-default disabled:opacity-40"
-            disabled={annotations.length === 0}
-            onClick={() => {
-              if (isConfirmingClear) {
-                setIsConfirmingClear(false);
-                onClear();
-                return;
-              }
-              setIsConfirmingClear(true);
-            }}
-            type="button"
-          >
-            <X aria-hidden="true" className="size-3.5" />
-          </button>
-        </div>
+            setIsConfirmingClear(true);
+          }}
+          type="button"
+        >
+          <X aria-hidden="true" className="size-3.5" />
+        </button>
+      </div>
 
-        {isOpen && (
+      {isOpen && (
+        <div
+          className="absolute bottom-full left-0 w-[min(24rem,calc(100dvw-1.5rem))] pb-1"
+          style={{ zIndex: Z_LAYER.tooltip }}
+        >
           <div
-            className="absolute bottom-full left-0 w-[min(24rem,calc(100dvw-1.5rem))] pb-1"
-            style={{ zIndex: Z_LAYER.tooltip }}
+            aria-label={messages.annotationCount(annotations.length)}
+            className="qc-surface qc-elevated overflow-hidden rounded-2xl"
+            role="dialog"
           >
-            <div
-              aria-label={messages.annotationCount(annotations.length)}
-              className="qc-surface qc-elevated overflow-hidden rounded-2xl"
-              role="dialog"
-            >
-              <div className="qc-divide max-h-80 divide-y overscroll-contain overflow-y-auto">
-                {annotations.map((projection) => {
-                  const { annotation, ordinal, range } = projection;
-                  const isUnresolved = range === null;
-                  const comment = annotation.comment.trim();
-                  return (
-                    <div className="group/row relative flex gap-2.5 px-3 py-3" key={annotation.id}>
-                      <span className="qc-accent-bg flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
-                        {ordinal}
-                      </span>
-                      <div className="min-w-0 flex-1 pr-20">
-                        <div className="flex flex-wrap items-center gap-x-2">
-                          <p className="qc-muted text-xs leading-4">{messages.selectedText}</p>
-                          {isUnresolved && (
-                            <span className="qc-danger text-xs font-medium leading-4">
-                              {messages.annotationSourceUnavailable}
-                            </span>
-                          )}
-                        </div>
-                        <p className="line-clamp-2 text-xs leading-5 [overflow-wrap:anywhere]">
-                          {selectedTextFor(annotation.anchor)}
-                        </p>
-                        {comment && (
-                          <Fragment>
-                            <p className="qc-muted mt-2 text-xs leading-4">
-                              {messages.userComment}
-                            </p>
-                            <p className="line-clamp-3 text-xs leading-5 [overflow-wrap:anywhere]">
-                              {comment}
-                            </p>
-                          </Fragment>
+            <div className="qc-divide max-h-80 divide-y overscroll-contain overflow-y-auto">
+              {annotations.map((projection) => {
+                const { annotation, ordinal, range } = projection;
+                const isUnresolved = range === null;
+                const comment = annotation.comment.trim();
+                return (
+                  <div className="group/row relative flex gap-2.5 px-3 py-3" key={annotation.id}>
+                    <span className="qc-accent-bg flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
+                      {ordinal}
+                    </span>
+                    <div className="min-w-0 flex-1 pr-20">
+                      <div className="flex flex-wrap items-center gap-x-2">
+                        <p className="qc-muted text-xs leading-4">{messages.selectedText}</p>
+                        {isUnresolved && (
+                          <span className="qc-danger text-xs font-medium leading-4">
+                            {messages.annotationSourceUnavailable}
+                          </span>
                         )}
                       </div>
-                      <div className="qc-surface qc-divider absolute right-2.5 top-2.5 flex rounded-lg border opacity-0 shadow-sm transition-opacity group-hover/row:opacity-100 group-focus-within/row:opacity-100">
-                        <button
-                          aria-label={messages.editNumberedAnnotation(ordinal)}
-                          className="qc-muted qc-hover qc-focus flex size-8 cursor-pointer items-center justify-center disabled:cursor-default disabled:opacity-40"
-                          disabled={isUnresolved}
-                          onClick={() => onEdit(projection)}
-                          type="button"
-                        >
-                          <Pencil aria-hidden="true" className="size-3.5" />
-                        </button>
-                        <button
-                          aria-label={messages.deleteNumberedAnnotation(ordinal)}
-                          className="qc-danger qc-divider qc-hover qc-focus flex size-8 cursor-pointer items-center justify-center border-l"
-                          onClick={() => onRemove(annotation.id)}
-                          type="button"
-                        >
-                          <Trash2 aria-hidden="true" className="size-3.5" />
-                        </button>
-                      </div>
+                      <p className="line-clamp-2 text-xs leading-5 [overflow-wrap:anywhere]">
+                        {selectedTextFor(annotation.anchor)}
+                      </p>
+                      {comment && (
+                        <Fragment>
+                          <p className="qc-muted mt-2 text-xs leading-4">{messages.userComment}</p>
+                          <p className="line-clamp-3 text-xs leading-5 [overflow-wrap:anywhere]">
+                            {comment}
+                          </p>
+                        </Fragment>
+                      )}
                     </div>
-                  );
-                })}
-              </div>
+                    <div className="qc-surface qc-divider absolute right-2.5 top-2.5 flex rounded-lg border opacity-0 shadow-sm transition-opacity group-hover/row:opacity-100 group-focus-within/row:opacity-100">
+                      <button
+                        aria-label={messages.editNumberedAnnotation(ordinal)}
+                        className="qc-muted qc-hover qc-focus flex size-8 cursor-pointer items-center justify-center disabled:cursor-default disabled:opacity-40"
+                        disabled={isUnresolved}
+                        onClick={() => onEdit(projection)}
+                        type="button"
+                      >
+                        <Pencil aria-hidden="true" className="size-3.5" />
+                      </button>
+                      <button
+                        aria-label={messages.deleteNumberedAnnotation(ordinal)}
+                        className="qc-danger qc-divider qc-hover qc-focus flex size-8 cursor-pointer items-center justify-center border-l"
+                        onClick={() => onRemove(annotation.id)}
+                        type="button"
+                      >
+                        <Trash2 aria-hidden="true" className="size-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
-        )}
-        {renderedStatus && (
-          <div
-            aria-hidden={isStatusExiting}
-            aria-live="polite"
-            className="qc-status-bubble qc-surface qc-divider relative flex max-w-72 items-center gap-2 overflow-hidden rounded-lg border px-2.5 py-1.5 text-xs shadow-sm"
-            data-exiting={isStatusExiting}
-            role="status"
-          >
-            <span>{renderedStatus.message}</span>
-            {renderedStatus.kind === "deletion" && (
-              <Fragment>
-                <button
-                  className="qc-accent-text qc-hover qc-focus shrink-0 cursor-pointer rounded px-1.5 py-1 font-semibold"
-                  disabled={isStatusExiting}
-                  onClick={onUndo}
-                  type="button"
-                >
-                  {messages.undo}
-                </button>
-                <span
-                  aria-hidden="true"
-                  className="qc-undo-progress absolute inset-x-0 bottom-0 h-0.5"
-                  key={renderedStatus.progressKey}
-                  style={{ animationDuration: `${DELETE_UNDO_WINDOW_MS}ms` }}
-                />
-              </Fragment>
-            )}
-          </div>
-        )}
-      </div>
-      {sendStatus !== "idle" && (
-        <div
-          aria-live="polite"
-          className="qc-surface qc-elevated fixed max-w-72 rounded-lg border px-2.5 py-1.5 text-xs"
-          role="status"
-          style={{
-            left: sendPosition.left - 8,
-            top: sendPosition.top + sendPosition.height / 2,
-            transform: "translate(-100%, -50%)",
-          }}
-        >
-          {sendStatus === "pending" ? messages.sendingAnnotations : messages.sendAnnotationsFailed}
         </div>
       )}
-      <button
-        aria-label={
-          sendStatus === "failed" ? messages.retrySendingAnnotations : messages.sendAnnotations
-        }
-        className="quotecue-interactive qc-primary qc-pressable qc-focus fixed flex cursor-pointer items-center justify-center rounded-full shadow-sm disabled:cursor-default disabled:opacity-50"
-        disabled={sendStatus === "pending"}
-        onClick={onSend}
-        style={sendPosition}
-        type="button"
-      >
-        {sendStatus === "pending" ? (
-          <LoaderCircle
-            aria-hidden="true"
-            className="size-5 animate-spin motion-reduce:animate-none"
-          />
-        ) : sendStatus === "failed" ? (
-          <RotateCcw aria-hidden="true" className="size-4.5" />
-        ) : (
-          <ArrowUp aria-hidden="true" className="size-5" />
-        )}
-      </button>
-    </Fragment>
+      {renderedStatus && (
+        <div
+          aria-hidden={isStatusExiting}
+          aria-live="polite"
+          className="qc-status-bubble qc-surface qc-divider relative flex max-w-72 items-center gap-2 overflow-hidden rounded-lg border px-2.5 py-1.5 text-xs shadow-sm"
+          data-exiting={isStatusExiting}
+          role="status"
+        >
+          <span>{renderedStatus.message}</span>
+          {renderedStatus.kind === "deletion" && (
+            <Fragment>
+              <button
+                className="qc-accent-text qc-hover qc-focus shrink-0 cursor-pointer rounded px-1.5 py-1 font-semibold"
+                disabled={isStatusExiting}
+                onClick={onUndo}
+                type="button"
+              >
+                {messages.undo}
+              </button>
+              <span
+                aria-hidden="true"
+                className="qc-undo-progress absolute inset-x-0 bottom-0 h-0.5"
+                key={renderedStatus.progressKey}
+                style={{ animationDuration: `${DELETE_UNDO_WINDOW_MS}ms` }}
+              />
+            </Fragment>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
