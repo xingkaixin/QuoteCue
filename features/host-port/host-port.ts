@@ -29,6 +29,7 @@ export type ConversationIdentity = IdentifiedConversation | UnidentifiedConversa
 export type SelectionInvalidation =
   | { reason: "layout" }
   | { dirtyMessageIds: ReadonlySet<string> | "all"; reason: "content" };
+export type SelectionCaptureIntent = "capture" | "dismiss";
 export type SelectionPresentationMode = "native-toolbar" | "overlay";
 
 type TextAnchorBase = {
@@ -99,6 +100,7 @@ export type Host = {
       onActivate: () => void;
       rect: SelectionRect;
     }): () => void;
+    observeCaptureIntent(callback: (intent: SelectionCaptureIntent) => void): () => void;
     observeInvalidation(callback: (invalidation: SelectionInvalidation) => void): () => void;
     presentation: SelectionPresentationMode;
     reveal(range: Range): HostResult<"scrolled" | "visible">;

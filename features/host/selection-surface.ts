@@ -9,8 +9,10 @@ import {
   unavailable,
   type HostContext,
   type HostResult,
+  type SelectionCaptureIntent,
   type SelectionInvalidation,
 } from "./host-context";
+import { isQuoteCueEvent } from "./is-quotecue-event";
 
 const CONTEXT_LENGTH = 48;
 const SCROLLABLE_OVERFLOW_PATTERN = /auto|overlay|scroll/;
@@ -25,6 +27,42 @@ type SelectionToolbarCandidate = {
 export function createSelectionSurface(context: HostContext) {
   const { adapter, document: hostDocument, logger, signals, window: hostWindow } = context;
   let messageById = new Map<string, HTMLElement>();
+
+  function observeCaptureIntent(callback: (intent: SelectionCaptureIntent) => void) {
+    let captureFrame: number | undefined;
+    const scheduleCapture = (event: Event) => {
+      if (isQuoteCueEvent(event) || (event instanceof KeyboardEvent && event.key === "Escape")) {
+        return;
+      }
+      if (captureFrame !== undefined) {
+        hostWindow.cancelAnimationFrame(captureFrame);
+      }
+      captureFrame = hostWindow.requestAnimationFrame(() => {
+        captureFrame = undefined;
+        callback("capture");
+      });
+    };
+    const dismissOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        callback("dismiss");
+      }
+    };
+    const stopViewportObservation = signals.observeViewport(() => callback("dismiss"));
+
+    hostDocument.addEventListener("mouseup", scheduleCapture, true);
+    hostDocument.addEventListener("keyup", scheduleCapture, true);
+    hostDocument.addEventListener("keydown", dismissOnEscape, true);
+
+    return () => {
+      if (captureFrame !== undefined) {
+        hostWindow.cancelAnimationFrame(captureFrame);
+      }
+      hostDocument.removeEventListener("mouseup", scheduleCapture, true);
+      hostDocument.removeEventListener("keyup", scheduleCapture, true);
+      hostDocument.removeEventListener("keydown", dismissOnEscape, true);
+      stopViewportObservation();
+    };
+  }
 
   function observeInvalidation(callback: (invalidation: SelectionInvalidation) => void) {
     const stopMutationObservation = signals.observeMutations(
@@ -357,6 +395,7 @@ export function createSelectionSurface(context: HostContext) {
     clear,
     messageIndex,
     mountAction,
+    observeCaptureIntent,
     observeInvalidation,
     reveal,
   };

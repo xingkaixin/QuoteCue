@@ -67,6 +67,8 @@ describe("selection overlay", () => {
 
     await act(async () => {
       document.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Escape" }));
+      document.dispatchEvent(new KeyboardEvent("keyup", { bubbles: true, key: "Escape" }));
+      await nextFrame();
     });
     expect(actionRow.querySelector(QUOTECUE_NATIVE_ACTION_SELECTOR)).toBeNull();
 
@@ -76,6 +78,14 @@ describe("selection overlay", () => {
     });
     expect(actionRow.querySelector(QUOTECUE_NATIVE_ACTION_SELECTOR)).not.toBeNull();
     await act(async () => window.dispatchEvent(new Event("scroll")));
+    expect(actionRow.querySelector(QUOTECUE_NATIVE_ACTION_SELECTOR)).toBeNull();
+
+    await act(async () => {
+      document.dispatchEvent(new KeyboardEvent("keyup", { bubbles: true, key: "ArrowRight" }));
+      await nextFrame();
+    });
+    expect(actionRow.querySelector(QUOTECUE_NATIVE_ACTION_SELECTOR)).not.toBeNull();
+    await act(async () => window.dispatchEvent(new Event("resize")));
     expect(actionRow.querySelector(QUOTECUE_NATIVE_ACTION_SELECTOR)).toBeNull();
 
     await act(async () => root.unmount());

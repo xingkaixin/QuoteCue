@@ -18,6 +18,7 @@ export type {
   ComposerSnapshot,
   HostResult,
   HostUnavailableReason,
+  SelectionCaptureIntent,
   SelectionInvalidation,
 } from "@/features/host-port/host-port";
 
