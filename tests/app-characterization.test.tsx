@@ -283,6 +283,41 @@ describe("App annotation workflow", () => {
 
     await act(async () => mounted.root.unmount());
   });
+
+  it("keeps an active send alive when the conversation changes", async () => {
+    const mounted = await mountApp();
+    const subscribeToSubmit = vi.spyOn(mounted.host.composer, "subscribeToSubmit");
+    let pendingConfirmation: Parameters<FakeHost["composer"]["watchConfirmedSend"]>[0] | undefined;
+    vi.spyOn(mounted.host.composer, "watchConfirmedSend").mockImplementation((options) => {
+      pendingConfirmation = options;
+      return () => undefined;
+    });
+
+    await click(mounted.container, "start-annotation");
+    const sentSnapshot = cloneAnnotations(storedDrafts.get("conversation-a") ?? []);
+    storedDrafts.set("conversation-b", cloneAnnotations(sentSnapshot));
+    await click(mounted.container, "send-annotations");
+    expect(summary(mounted.container).dataset.sendStatus).toBe("pending");
+
+    await act(async () =>
+      mounted.host.controls.setConversationIdentity({
+        kind: "identified",
+        id: "conversation-b",
+      }),
+    );
+    await vi.waitFor(() => expect(summary(mounted.container).dataset.count).toBe("1"));
+
+    expect(summary(mounted.container).dataset.sendStatus).toBe("pending");
+    expect(pendingConfirmation?.signal.aborted).toBe(false);
+    expect(subscribeToSubmit).not.toHaveBeenCalled();
+
+    await act(async () => pendingConfirmation?.onConfirmed());
+    await vi.waitFor(() => expect(summary(mounted.container).dataset.sendStatus).toBe("idle"));
+    expect(summary(mounted.container).dataset.count).toBe("1");
+    expect(storedDrafts.get("conversation-b")).toEqual(sentSnapshot);
+
+    await act(async () => mounted.root.unmount());
+  });
 });
 
 async function mountApp() {

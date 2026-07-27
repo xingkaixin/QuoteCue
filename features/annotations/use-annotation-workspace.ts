@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useHost } from "@/features/host-port/HostProvider";
+import type { ConversationIdentity } from "@/features/host-port/host-port";
 import { useI18n } from "@/features/i18n/I18nProvider";
 
 import type { AnchoredSelection, AnnotationEditorState, DraftAnnotation } from "./annotation";
 import type { ProjectedAnnotation } from "./annotation-projection";
+import { sameConversationIdentity } from "./conversation-identity";
 import { compileAnnotatedPrompt } from "./prompt-compiler";
 import { registerSendInterceptor, type AnnotatedSendState } from "./register-send-interceptor";
 import { useAnnotationProjection } from "./use-annotation-projection";
@@ -44,23 +46,38 @@ export function useAnnotationWorkspace() {
   const activeProjection = projectedAnnotations.find(
     ({ annotation }) => annotation.id === activeAnnotationId,
   );
+  const closeEditor = useCallback(() => setEditorState({ status: "hidden" }), []);
   const annotationsRef = useRef<readonly ProjectedAnnotation[]>(projectedAnnotations);
+  const conversationIdentityRef = useRef(conversationIdentity);
   const localeRef = useRef(locale);
+  const removeSentAnnotationsRef = useRef(removeSentAnnotations);
+  const sendConversationIdentityRef = useRef<ConversationIdentity | null>(null);
   const sendControllerRef = useRef<SendController | null>(null);
 
   annotationsRef.current = projectedAnnotations;
+  conversationIdentityRef.current = conversationIdentity;
   localeRef.current = locale;
-
-  const closeEditor = useCallback(() => setEditorState({ status: "hidden" }), []);
+  removeSentAnnotationsRef.current = removeSentAnnotations;
 
   useEffect(() => {
     const controller = registerSendInterceptor({
-      annotations: () => annotationsRef.current,
+      annotations: () => {
+        sendConversationIdentityRef.current = conversationIdentityRef.current;
+        return annotationsRef.current;
+      },
       compilePrompt: compileAnnotatedPrompt,
       host,
       locale: () => localeRef.current,
       onSendConfirmed: (sentAnnotations) => {
-        removeSentAnnotations(sentAnnotations);
+        const sentConversationIdentity = sendConversationIdentityRef.current;
+        sendConversationIdentityRef.current = null;
+        if (
+          !sentConversationIdentity ||
+          !sameConversationIdentity(conversationIdentityRef.current, sentConversationIdentity)
+        ) {
+          return;
+        }
+        removeSentAnnotationsRef.current(sentAnnotations);
         closeEditor();
       },
       onStateChange: setSendState,
@@ -73,7 +90,7 @@ export function useAnnotationWorkspace() {
       }
       controller.dispose();
     };
-  }, [closeEditor, host, removeSentAnnotations]);
+  }, [closeEditor, host]);
 
   useEffect(closeEditor, [closeEditor, conversationIdentity]);
 
