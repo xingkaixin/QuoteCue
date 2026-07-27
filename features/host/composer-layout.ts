@@ -43,8 +43,11 @@ export function createComposerLayout(
       return unavailable("composer-unavailable");
     }
 
-    const boundary = composer.closest<HTMLElement>("form");
-    const surface = findComposerSurface(composer, boundary ?? hostDocument.body);
+    const boundary = findComposerBoundary(composer);
+    if (!boundary) {
+      return unavailable("composer-surface-unavailable");
+    }
+    const surface = findComposerSurface(composer, boundary);
     if (!surface) {
       return unavailable("composer-surface-unavailable");
     }
@@ -176,6 +179,11 @@ export function createComposerLayout(
   }
 
   function findComposerSurface(composer: HTMLElement, boundary: HTMLElement) {
+    if (adapter.layout.surfaceSelector) {
+      const surface = composer.closest<HTMLElement>(adapter.layout.surfaceSelector);
+      return surface && boundary.contains(surface) ? surface : null;
+    }
+
     const cachedSurface = surfaceByComposer.get(composer);
     if (
       cachedSurface &&
@@ -197,6 +205,12 @@ export function createComposerLayout(
     }
     surfaceByComposer.delete(composer);
     return null;
+  }
+
+  function findComposerBoundary(composer: HTMLElement) {
+    return adapter.layout.boundarySelector
+      ? composer.closest<HTMLElement>(adapter.layout.boundarySelector)
+      : (composer.closest<HTMLElement>("form") ?? hostDocument.body);
   }
 
   function isComposerSurface(candidate: HTMLElement) {

@@ -13,9 +13,17 @@ import {
   type SelectionInvalidation,
 } from "./host-context";
 import { isQuoteCueEvent } from "./is-quotecue-event";
+import type { SelectionToolbarBounds } from "./site-adapter";
 
 const CONTEXT_LENGTH = 48;
 const SCROLLABLE_OVERFLOW_PATTERN = /auto|overlay|scroll/;
+const DEFAULT_SELECTION_TOOLBAR_BOUNDS: SelectionToolbarBounds = {
+  maxHeight: 80,
+  maxVerticalDistance: 24,
+  maxWidth: 480,
+  minHeight: 28,
+  minWidth: 80,
+};
 
 type SelectionRevealStatus = "scrolled" | "visible";
 
@@ -26,6 +34,10 @@ type SelectionToolbarCandidate = {
 
 export function createSelectionSurface(context: HostContext) {
   const { adapter, document: hostDocument, logger, signals, window: hostWindow } = context;
+  const toolbarBounds =
+    adapter.selectionPresentation.mode === "native-toolbar"
+      ? (adapter.selectionPresentation.toolbarBounds ?? DEFAULT_SELECTION_TOOLBAR_BOUNDS)
+      : DEFAULT_SELECTION_TOOLBAR_BOUNDS;
   let messageById = new Map<string, HTMLElement>();
 
   function observeCaptureIntent(callback: (intent: SelectionCaptureIntent) => void) {
@@ -243,12 +255,12 @@ export function createSelectionSurface(context: HostContext) {
     const isNearbyFixedToolbar =
       !candidate.matches(QUOTECUE_HOST_SELECTOR) &&
       hostWindow.getComputedStyle(candidate).position === "fixed" &&
-      rect.width >= 80 &&
-      rect.width <= 480 &&
-      rect.height >= 28 &&
-      rect.height <= 80 &&
+      rect.width >= toolbarBounds.minWidth &&
+      rect.width <= toolbarBounds.maxWidth &&
+      rect.height >= toolbarBounds.minHeight &&
+      rect.height <= toolbarBounds.maxHeight &&
       horizontalOverlap > 0 &&
-      verticalDistance <= 24;
+      verticalDistance <= toolbarBounds.maxVerticalDistance;
     if (!isNearbyFixedToolbar) {
       return null;
     }
