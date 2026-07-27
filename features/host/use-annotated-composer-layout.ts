@@ -24,6 +24,7 @@ export function useAnnotatedComposerLayout(isActive: boolean) {
     let originalPaddingTop = "";
     let originalPaddingTopPriority = "";
     let originalActionVisibility = "";
+    let lastRefreshAt = Number.NEGATIVE_INFINITY;
     const resizeObserver = new ResizeObserver(scheduleRefresh);
 
     function restoreSurface() {
@@ -76,6 +77,8 @@ export function useAnnotatedComposerLayout(isActive: boolean) {
     }
 
     function refresh() {
+      refreshTimer = undefined;
+      lastRefreshAt = Date.now();
       const result = host.layout.current();
       if (result.status === "unavailable") {
         restoreSurface();
@@ -96,8 +99,15 @@ export function useAnnotatedComposerLayout(isActive: boolean) {
     }
 
     function scheduleRefresh() {
-      window.clearTimeout(refreshTimer);
-      refreshTimer = window.setTimeout(refresh, POSITION_REFRESH_MS);
+      if (refreshTimer !== undefined) {
+        return;
+      }
+      const delay = POSITION_REFRESH_MS - (Date.now() - lastRefreshAt);
+      if (delay <= 0) {
+        refresh();
+        return;
+      }
+      refreshTimer = window.setTimeout(refresh, delay);
     }
 
     const stopObserving = host.layout.subscribe(scheduleRefresh);

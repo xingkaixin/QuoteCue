@@ -12,6 +12,7 @@ export function createComposerLayout(
   currentComposer: () => HTMLElement | null,
 ) {
   const { adapter, document: hostDocument, signals, window: hostWindow } = context;
+  const surfaceByComposer = new WeakMap<HTMLElement, HTMLElement>();
 
   function current(): HostResult<HostLayout> {
     const composer = currentComposer();
@@ -50,37 +51,60 @@ export function createComposerLayout(
   }
 
   function findComposerSurface(composer: HTMLElement, boundary: HTMLElement) {
+    const cachedSurface = surfaceByComposer.get(composer);
+    if (
+      cachedSurface &&
+      cachedSurface !== boundary &&
+      boundary.contains(cachedSurface) &&
+      cachedSurface.contains(composer) &&
+      isComposerSurface(cachedSurface)
+    ) {
+      return cachedSurface;
+    }
+
     let candidate = composer.parentElement;
     while (candidate && candidate !== boundary) {
-      const style = hostWindow.getComputedStyle(candidate);
-      const hasRoundedBackground =
-        Number.parseFloat(style.borderTopLeftRadius) > 0 &&
-        style.backgroundColor !== "rgba(0, 0, 0, 0)" &&
-        style.backgroundColor !== "transparent";
-      if (hasRoundedBackground) {
+      if (isComposerSurface(candidate)) {
+        surfaceByComposer.set(composer, candidate);
         return candidate;
       }
       candidate = candidate.parentElement;
     }
+    surfaceByComposer.delete(composer);
     return null;
   }
 
+  function isComposerSurface(candidate: HTMLElement) {
+    const style = hostWindow.getComputedStyle(candidate);
+    return (
+      Number.parseFloat(style.borderTopLeftRadius) > 0 &&
+      style.backgroundColor !== "rgba(0, 0, 0, 0)" &&
+      style.backgroundColor !== "transparent"
+    );
+  }
+
   function findComposerAction(root: HTMLElement, surfaceRect: DOMRect) {
-    return Array.from(root.querySelectorAll<HTMLElement>(adapter.layout.actionSelector))
-      .map((button) => ({ button, rect: button.getBoundingClientRect() }))
-      .filter(({ rect }) => {
-        const centerX = rect.left + rect.width / 2;
-        const centerY = rect.top + rect.height / 2;
-        return (
-          rect.width > 0 &&
-          rect.height > 0 &&
-          centerX >= surfaceRect.left &&
-          centerX <= surfaceRect.right &&
-          centerY >= surfaceRect.top &&
-          centerY <= surfaceRect.bottom
-        );
-      })
-      .sort((left, right) => right.rect.right - left.rect.right)[0]?.button;
+    let rightmostAction: HTMLElement | null = null;
+    let rightmostEdge = Number.NEGATIVE_INFINITY;
+    for (const action of root.querySelectorAll<HTMLElement>(adapter.layout.actionSelector)) {
+      const rect = action.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      if (
+        rect.width <= 0 ||
+        rect.height <= 0 ||
+        centerX < surfaceRect.left ||
+        centerX > surfaceRect.right ||
+        centerY < surfaceRect.top ||
+        centerY > surfaceRect.bottom ||
+        rect.right <= rightmostEdge
+      ) {
+        continue;
+      }
+      rightmostAction = action;
+      rightmostEdge = rect.right;
+    }
+    return rightmostAction;
   }
 
   return { current, subscribe };
