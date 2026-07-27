@@ -3,6 +3,7 @@ import { Plus } from "lucide-react";
 import type { SelectionRect } from "@/features/host-port/host-port";
 import { useI18n } from "@/features/i18n/I18nProvider";
 import { SecureTextField } from "@/features/secure-field/SecureTextField";
+import { QUOTECUE_INTERACTIVE_CLASS } from "@/lib/dom-identity";
 
 import { useAnnotationCommentSurface } from "./use-annotation-comment-surface";
 
@@ -27,7 +28,7 @@ export function AnnotationQuickInput({ onClose, onSave, rect }: AnnotationQuickI
 
   return (
     <div
-      className="quotecue-interactive qc-surface qc-divider fixed flex h-12 w-[320px] max-w-[calc(100dvw-1.5rem)] items-center gap-1.5 rounded-full border p-1 pl-4 shadow-sm"
+      className={`${QUOTECUE_INTERACTIVE_CLASS} qc-surface qc-divider fixed flex h-12 w-[320px] max-w-[calc(100dvw-1.5rem)] items-center gap-1.5 rounded-full border p-1 pl-4 shadow-sm`}
       onPointerDown={resetWarning}
       ref={rootRef}
       style={position}

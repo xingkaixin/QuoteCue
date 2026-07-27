@@ -2,6 +2,7 @@ import { AlertTriangle, LoaderCircle, RotateCcw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/features/i18n/I18nProvider";
+import { QUOTECUE_INTERACTIVE_CLASS } from "@/lib/dom-identity";
 
 import type { DraftState } from "./use-draft-annotations";
 
@@ -16,7 +17,7 @@ export function DraftPersistenceStatus(props: DraftPersistenceStatusProps) {
   return (
     <div
       aria-live="polite"
-      className="quotecue-interactive qc-surface qc-elevated fixed right-4 top-4 flex max-w-80 items-center gap-3 rounded-xl border px-3 py-2.5 text-sm"
+      className={`${QUOTECUE_INTERACTIVE_CLASS} qc-surface qc-elevated fixed right-4 top-4 flex max-w-80 items-center gap-3 rounded-xl border px-3 py-2.5 text-sm`}
       role="status"
     >
       {isLoading ? (
