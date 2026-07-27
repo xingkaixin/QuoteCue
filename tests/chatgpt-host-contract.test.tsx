@@ -273,11 +273,16 @@ describe("ChatGPT host contract", () => {
     );
 
     window.dispatchEvent(new Event("resize"));
-    expect(onInvalidation).toHaveBeenLastCalledWith("layout");
+    expect(onInvalidation).toHaveBeenLastCalledWith({ reason: "layout" });
 
     onInvalidation.mockClear();
     text.textContent = "updated answer";
-    await vi.waitFor(() => expect(onInvalidation).toHaveBeenCalledWith("content"));
+    await vi.waitFor(() =>
+      expect(onInvalidation).toHaveBeenCalledWith({
+        dirtyMessageIds: new Set(["assistant-one"]),
+        reason: "content",
+      }),
+    );
 
     stop();
     onInvalidation.mockClear();

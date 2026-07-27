@@ -100,6 +100,83 @@ describe("annotation projection complexity", () => {
     expect(messageIndex).toHaveBeenCalledOnce();
     await act(async () => root.unmount());
   });
+
+  it("reanchors only dirty-message annotations between full reconciliations", async () => {
+    vi.useFakeTimers();
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    Object.defineProperty(globalThis, "CSS", { configurable: true, value: {} });
+    Object.defineProperties(Range.prototype, {
+      getBoundingClientRect: { configurable: true, value: () => new DOMRect() },
+      getClientRects: { configurable: true, value: () => [] },
+    });
+    const messageA = appendAssistantMessage("message-a", "selected text A");
+    const messageB = appendAssistantMessage("message-b", "selected text B");
+    const textA = requiredTextNode(messageA);
+    const textB = requiredTextNode(messageB);
+    let messageATextReads = 0;
+    let messageBTextReads = 0;
+    Object.defineProperty(messageA, "textContent", {
+      configurable: true,
+      get: () => {
+        messageATextReads += 1;
+        return textA.data;
+      },
+    });
+    Object.defineProperty(messageB, "textContent", {
+      configurable: true,
+      get: () => {
+        messageBTextReads += 1;
+        return textB.data;
+      },
+    });
+    const host = createChatGptHost({ document, window });
+    const messageIndex = vi.spyOn(host.selection, "messageIndex");
+    const documentQuery = vi.spyOn(document, "querySelectorAll");
+    const annotations = [
+      annotationForMessage("annotation-a", "message-a", " A"),
+      annotationForMessage("annotation-b", "message-b", " B"),
+    ];
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    await act(async () => root.render(<ProjectionHarness annotations={annotations} host={host} />));
+    await act(async () => vi.advanceTimersByTimeAsync(17));
+    messageATextReads = 0;
+    messageBTextReads = 0;
+    messageIndex.mockClear();
+    documentQuery.mockClear();
+
+    textA.data = "selected text A updated";
+    await act(async () => {
+      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(17);
+    });
+
+    expect(messageATextReads).toBe(1);
+    expect(messageBTextReads).toBe(0);
+    expect(messageIndex).toHaveBeenCalledOnce();
+    expect([...(messageIndex.mock.calls[0]?.[0] ?? [])]).toEqual(["message-a"]);
+    expect(documentQuery).not.toHaveBeenCalled();
+
+    messageATextReads = 0;
+    messageBTextReads = 0;
+    messageIndex.mockClear();
+    documentQuery.mockClear();
+    await act(async () => vi.advanceTimersByTimeAsync(5_000));
+    textA.data = "selected text A reconciled";
+    await act(async () => {
+      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(17);
+    });
+
+    expect(messageATextReads).toBe(1);
+    expect(messageBTextReads).toBe(1);
+    expect(messageIndex).toHaveBeenCalledWith(undefined);
+    expect(documentQuery).toHaveBeenCalledOnce();
+
+    await act(async () => root.unmount());
+  });
 });
 
 function ProjectionHarness({ annotations, host }: { annotations: DraftAnnotation[]; host?: Host }) {
@@ -129,4 +206,28 @@ function annotation(index: number): DraftAnnotation {
     },
     comment: "",
   };
+}
+
+function annotationForMessage(id: string, messageId: string, suffix: string): DraftAnnotation {
+  return {
+    id,
+    anchor: {
+      end: 13,
+      format: "exact",
+      messageId,
+      prefix: "",
+      quote: "selected text",
+      start: 0,
+      suffix,
+    },
+    comment: "",
+  };
+}
+
+function requiredTextNode(element: Element) {
+  const node = element.firstChild;
+  if (!(node instanceof Text)) {
+    throw new Error("Expected message text node");
+  }
+  return node;
 }

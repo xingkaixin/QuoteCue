@@ -26,7 +26,9 @@ export type UnidentifiedConversation = {
 
 export type ConversationIdentity = IdentifiedConversation | UnidentifiedConversation;
 
-export type SelectionInvalidationReason = "content" | "layout";
+export type SelectionInvalidation =
+  | { reason: "layout" }
+  | { dirtyMessageIds: ReadonlySet<string> | "all"; reason: "content" };
 export type SelectionPresentationMode = "native-toolbar" | "overlay";
 
 type TextAnchorBase = {
@@ -91,13 +93,13 @@ export type Host = {
   selection: {
     capture(selection?: Selection | null): HostResult<SelectionCapture>;
     clear(): void;
-    messageIndex(root?: ParentNode): Map<string, HTMLElement>;
+    messageIndex(messageIds?: ReadonlySet<string>): Map<string, HTMLElement>;
     mountAction(options: {
       label: string;
       onActivate: () => void;
       rect: SelectionRect;
     }): () => void;
-    observeInvalidation(callback: (reason: SelectionInvalidationReason) => void): () => void;
+    observeInvalidation(callback: (invalidation: SelectionInvalidation) => void): () => void;
     presentation: SelectionPresentationMode;
     reveal(range: Range): HostResult<"scrolled" | "visible">;
   };

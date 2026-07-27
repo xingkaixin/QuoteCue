@@ -65,7 +65,7 @@ describe("annotation badge scrolling", () => {
 
     geometry.top = 100;
     messageIndex.mockClear();
-    projectionHost.controls.emitSelectionInvalidation("layout");
+    projectionHost.controls.emitSelectionInvalidation({ reason: "layout" });
     await act(async () => vi.advanceTimersByTimeAsync(17));
 
     expect(container.querySelector("output")?.dataset.top).toBe("90");
@@ -107,7 +107,10 @@ describe("annotation badge scrolling", () => {
     await act(async () => vi.advanceTimersByTimeAsync(17));
     messageIndex.mockClear();
     projectionHost.controls.setMessageIndex(new Map());
-    projectionHost.controls.emitSelectionInvalidation("content");
+    projectionHost.controls.emitSelectionInvalidation({
+      dirtyMessageIds: new Set(["message-1"]),
+      reason: "content",
+    });
     await act(async () => {
       await vi.advanceTimersByTimeAsync(17);
     });
@@ -141,7 +144,7 @@ describe("annotation badge scrolling", () => {
     expect(output?.dataset.unresolved).toBe("false");
 
     covering = false;
-    projectionHost.controls.emitSelectionInvalidation("layout");
+    projectionHost.controls.emitSelectionInvalidation({ reason: "layout" });
     await act(async () => vi.advanceTimersByTimeAsync(17));
     expect(output?.dataset.top).toBe("190");
 
@@ -163,7 +166,7 @@ describe("annotation badge scrolling", () => {
     await act(async () => root.render(<HighlightHarness host={projectionHost} />));
     await act(async () => vi.advanceTimersByTimeAsync(17));
     const rendersAfterInitialProjection = renderCount;
-    projectionHost.controls.emitSelectionInvalidation("layout");
+    projectionHost.controls.emitSelectionInvalidation({ reason: "layout" });
     await act(async () => vi.advanceTimersByTimeAsync(17));
 
     expect(renderCount).toBe(rendersAfterInitialProjection);
@@ -182,7 +185,10 @@ describe("annotation badge scrolling", () => {
     await act(async () => root.render(<HighlightHarness host={projectionHost} />));
     await act(async () => vi.advanceTimersByTimeAsync(17));
     const rendersAfterInitialProjection = renderCount;
-    projectionHost.controls.emitSelectionInvalidation("content");
+    projectionHost.controls.emitSelectionInvalidation({
+      dirtyMessageIds: new Set(["message-1"]),
+      reason: "content",
+    });
     await act(async () => vi.advanceTimersByTimeAsync(17));
 
     expect(renderCount).toBe(rendersAfterInitialProjection);
@@ -210,7 +216,10 @@ describe("annotation badge scrolling", () => {
     expect(setHighlight).toHaveBeenCalledOnce();
 
     geometry.top = 100;
-    projectionHost.controls.emitSelectionInvalidation("content");
+    projectionHost.controls.emitSelectionInvalidation({
+      dirtyMessageIds: new Set(["message-1"]),
+      reason: "content",
+    });
     await act(async () => vi.advanceTimersByTimeAsync(17));
 
     expect(container.querySelector("output")?.dataset.top).toBe("90");

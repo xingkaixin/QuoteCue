@@ -20,7 +20,7 @@ export type {
   ComposerSnapshot,
   HostResult,
   HostUnavailableReason,
-  SelectionInvalidationReason,
+  SelectionInvalidation,
 } from "@/features/host-port/host-port";
 
 export type ComposerAccess = {
@@ -79,7 +79,7 @@ type MutationInterest = {
 };
 
 type MutationSubscription = {
-  callback: () => void;
+  callback: (records: readonly MutationRecord[]) => void;
   interest: MutationInterest;
 };
 
@@ -146,7 +146,7 @@ function createHostSignals(
     const summary = summarizeMutations(records);
     for (const subscription of [...mutationSubscriptions]) {
       if (matchesMutationInterest(summary, subscription.interest)) {
-        subscription.callback();
+        subscription.callback(records);
       }
     }
     if (observesCharacterData && summary.hasRemovedElement) {
@@ -241,7 +241,10 @@ function createHostSignals(
   };
 
   return {
-    observeMutations(callback: () => void, interest: MutationInterest) {
+    observeMutations(
+      callback: (records: readonly MutationRecord[]) => void,
+      interest: MutationInterest,
+    ) {
       const subscription = { callback, interest };
       mutationSubscriptions.add(subscription);
       updateMutationObservation();

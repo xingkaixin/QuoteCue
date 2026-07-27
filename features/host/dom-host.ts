@@ -15,7 +15,7 @@ export type {
   HostResult,
   HostUnavailableReason,
   SelectionCapture,
-  SelectionInvalidationReason,
+  SelectionInvalidation,
   SelectionPresentationMode,
   SelectionRect,
   TextAnchor,
