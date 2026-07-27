@@ -119,7 +119,7 @@ export function runHostContractSuite(definition: HostContractDefinition) {
       selectNodeContents(requiredText(fixture.assistantMessage.querySelector("strong")));
 
       expect(host().selection.capture()).toEqual({
-        reason: "assistant-message-unavailable",
+        reason: "anchor-unavailable",
         status: "unavailable",
       });
     });
@@ -442,6 +442,18 @@ export function runHostContractSuite(definition: HostContractDefinition) {
         }),
       );
       stop();
+    });
+
+    it("distinguishes a detached selection from a missing assistant message", () => {
+      const detachedMessage = document.createElement("p");
+      detachedMessage.textContent = "Detached selection";
+      const range = document.createRange();
+      range.selectNodeContents(detachedMessage);
+
+      expect(host().selection.reveal(range)).toEqual({
+        reason: "selection-detached",
+        status: "unavailable",
+      });
     });
 
     it("centers an offscreen endpoint in the nearest scroll container", () => {

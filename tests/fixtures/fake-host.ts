@@ -3,7 +3,6 @@ import type {
   Host,
   HostLayout,
   HostResult,
-  SelectionCapture,
   SelectionCaptureIntent,
   SelectionInvalidation,
 } from "@/features/host-port/host-port";
@@ -23,7 +22,7 @@ export type FakeHost = Host & {
     setConversationIdentity(identity: ConversationIdentity | null): void;
     setLayout(layout: HostResult<HostLayout>): void;
     setMessageIndex(index: ReadonlyMap<string, HTMLElement>): void;
-    setSelectionCapture(capture: HostResult<SelectionCapture>): void;
+    setSelectionCapture(capture: ReturnType<Host["selection"]["capture"]>): void;
   };
   elements: {
     composer: HTMLElement;
@@ -39,7 +38,7 @@ export function createFakeHost(overrides: FakeHostOverrides = {}): FakeHost {
   let composerText = "";
   let conversationIdentity: ConversationIdentity | null = null;
   let messageIndex = new Map<string, HTMLElement>();
-  let selectionCapture: HostResult<SelectionCapture> = {
+  let selectionCapture: ReturnType<Host["selection"]["capture"]> = {
     reason: "selection-unavailable",
     status: "unavailable",
   };

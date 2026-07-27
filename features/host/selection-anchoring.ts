@@ -1,4 +1,8 @@
-import type { SelectionCapture, SelectionRect } from "@/features/host-port/host-port";
+import type {
+  SelectionCapture,
+  SelectionCaptureFailureReason,
+  SelectionRect,
+} from "@/features/host-port/host-port";
 import { rangeEndpointRect } from "@/features/host-port/range-geometry";
 import { parseTextAnchor } from "@/features/host-port/text-anchor";
 
@@ -158,7 +162,9 @@ export function createSelectionAnchoring(context: HostContext) {
     return messages;
   }
 
-  function capture(selection = hostWindow.getSelection()): HostResult<SelectionCapture> {
+  function capture(
+    selection = hostWindow.getSelection(),
+  ): HostResult<SelectionCapture, SelectionCaptureFailureReason> {
     if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
       return unavailable("selection-unavailable");
     }
@@ -191,7 +197,7 @@ export function createSelectionAnchoring(context: HostContext) {
       suffix: messageText.slice(end, end + CONTEXT_LENGTH),
     });
     if (!anchor) {
-      return unavailable("assistant-message-unavailable");
+      return unavailable("anchor-unavailable");
     }
     messageById.set(anchor.messageId, message);
 

@@ -23,6 +23,11 @@ const anchoredSelection: AnchoredSelection = {
   },
   rect: { bottom: 120, height: 20, left: 80, right: 180, top: 100, width: 100 },
 };
+const annotation: DraftAnnotation = {
+  anchor: anchoredSelection.anchor,
+  comment: "",
+  id: "annotation-one",
+};
 
 let workspace: ReturnType<typeof useAnnotationWorkspace>;
 let draftStoreFixture = createDraftStoreDouble();
@@ -47,6 +52,29 @@ afterEach(() => {
 });
 
 describe("annotation workspace", () => {
+  it("reports a detached selection when source navigation fails", async () => {
+    draftStoreFixture.store.load.mockResolvedValue([annotation]);
+    const host = createWorkspaceHost();
+    vi.spyOn(host.selection, "reveal").mockReturnValue({
+      reason: "selection-detached",
+      status: "unavailable",
+    });
+    const reportUnavailable = vi.spyOn(host, "reportUnavailable");
+    const mounted = await mountWorkspace(host);
+    await act(async () => new Promise(requestAnimationFrame));
+    const [projection] = workspace.summary.annotations;
+    expect(projection?.resolution).toBe("resolved");
+
+    if (projection) {
+      await act(async () => workspace.summary.open(projection));
+    }
+
+    expect(reportUnavailable).toHaveBeenCalledWith("selection-detached");
+    expect(workspace.editor.status).toBe("hidden");
+
+    await act(async () => mounted.root.unmount());
+  });
+
   it("closes an active editor after annotation resolution fails", async () => {
     draftStoreFixture.store.load.mockResolvedValue([]);
     const mounted = await mountWorkspace();

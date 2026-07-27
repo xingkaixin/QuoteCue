@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AnchoredSelection } from "@/features/annotations/annotation";
 import { SelectionPresentation } from "@/features/annotations/SelectionPresentation";
 import { createChatGptHost } from "@/features/chatgpt/chatgpt-host";
-import type { ConversationIdentity } from "@/features/host-port/host-port";
+import type { ConversationIdentity, Host } from "@/features/host-port/host-port";
 import { QUOTECUE_HOST_ATTR, QUOTECUE_NATIVE_ACTION_SELECTOR } from "@/lib/dom-identity";
 
 import { appendAssistantMessage, appendSelectionToolbar } from "./fixtures/chatgpt-host";
@@ -17,6 +17,31 @@ afterEach(() => {
 });
 
 describe("selection overlay", () => {
+  it("reports anchor validation failures without selection content", async () => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    const message = appendAssistantMessage("assistant-one", "private selection");
+    message.removeAttribute("data-message-id");
+    const { actionRow } = appendSelectionToolbar();
+    const logs: string[] = [];
+    const host = createChatGptHost({ document, logger: (entry) => logs.push(entry), window });
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    await act(async () => root.render(<SelectionHarness host={host} onActivate={vi.fn()} />));
+    selectText(message.firstChild);
+    await act(async () => {
+      document.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+      await nextFrame();
+    });
+
+    expect(logs).toEqual(["[QuoteCue host] unavailable: anchor-unavailable"]);
+    expect(logs.join(" ")).not.toContain("private selection");
+    expect(actionRow.querySelector(QUOTECUE_NATIVE_ACTION_SELECTOR)).toBeNull();
+
+    await act(async () => root.unmount());
+  });
+
   it("inserts the QuoteCue action first with native styling", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     const message = appendAssistantMessage("assistant-one", "selected answer");
@@ -162,13 +187,15 @@ describe("selection overlay", () => {
 
 function SelectionHarness({
   conversationIdentity = { kind: "identified", id: "conversation-a" },
+  host = createChatGptHost({ document, window }),
   onActivate,
 }: {
   conversationIdentity?: ConversationIdentity;
+  host?: Host;
   onActivate: (selection: AnchoredSelection) => void;
 }) {
   return (
-    <HostTestProvider host={createChatGptHost({ document, window })}>
+    <HostTestProvider host={host}>
       <SelectionPresentation
         conversationIdentity={conversationIdentity}
         isEnabled
