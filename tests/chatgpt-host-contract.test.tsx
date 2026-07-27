@@ -179,7 +179,7 @@ describe("ChatGPT host contract", () => {
       onSendConfirmed,
     });
 
-    await expect(interceptor.submit(fixture.action)).resolves.toEqual({
+    await expect(interceptor.submit()).resolves.toEqual({
       status: "confirmed",
       annotationIds: ["annotation-one"],
     });

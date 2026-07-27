@@ -78,7 +78,7 @@ describe("DeepSeek host contract", () => {
       onSendConfirmed,
     });
 
-    await expect(interceptor.submit(fixture.sendButton)).resolves.toEqual({
+    await expect(interceptor.submit()).resolves.toEqual({
       status: "confirmed",
       annotationIds: ["annotation-one"],
     });
@@ -159,7 +159,7 @@ describe("DeepSeek host contract", () => {
       onSendConfirmed: vi.fn(),
     });
 
-    const result = interceptor.submit(fixture.sendButton);
+    const result = interceptor.submit();
     await vi.waitFor(() =>
       expect(logger).toHaveBeenCalledWith(
         "[QuoteCue host] send confirmation observed: total=1, matched=false",

@@ -232,7 +232,10 @@ describe("App annotation workflow", () => {
 
   it("keeps drafts and routes the next send through retry after failure", async () => {
     const mounted = await mountApp();
-    const replaceText = vi.spyOn(mounted.host.composer, "replaceText").mockReturnValue(false);
+    const submit = vi.spyOn(mounted.host.composer, "submit").mockResolvedValue({
+      reason: "replace-failed",
+      status: "unavailable",
+    });
 
     await click(mounted.container, "start-annotation");
     await click(mounted.container, "send-annotations");
@@ -243,7 +246,7 @@ describe("App annotation workflow", () => {
     expect(storedDrafts.get("conversation-a")).toHaveLength(1);
 
     await click(mounted.container, "send-annotations");
-    expect(replaceText).toHaveBeenCalledTimes(2);
+    expect(submit).toHaveBeenCalledTimes(2);
     expect(summary(mounted.container).dataset.count).toBe("1");
 
     await act(async () => mounted.root.unmount());
@@ -287,10 +290,13 @@ describe("App annotation workflow", () => {
   it("keeps an active send alive when the conversation changes", async () => {
     const mounted = await mountApp();
     const subscribeToSubmit = vi.spyOn(mounted.host.composer, "subscribeToSubmit");
-    let pendingConfirmation: Parameters<FakeHost["composer"]["watchConfirmedSend"]>[0] | undefined;
-    vi.spyOn(mounted.host.composer, "watchConfirmedSend").mockImplementation((options) => {
-      pendingConfirmation = options;
-      return () => undefined;
+    let pendingSubmit: Parameters<FakeHost["composer"]["submit"]>[0] | undefined;
+    let confirmSubmit: (() => void) | undefined;
+    vi.spyOn(mounted.host.composer, "submit").mockImplementation((options) => {
+      pendingSubmit = options;
+      return new Promise((resolve) => {
+        confirmSubmit = () => resolve({ status: "available", value: "confirmed" });
+      });
     });
 
     await click(mounted.container, "start-annotation");
@@ -308,10 +314,10 @@ describe("App annotation workflow", () => {
     await vi.waitFor(() => expect(summary(mounted.container).dataset.count).toBe("1"));
 
     expect(summary(mounted.container).dataset.sendStatus).toBe("pending");
-    expect(pendingConfirmation?.signal.aborted).toBe(false);
+    expect(pendingSubmit?.signal.aborted).toBe(false);
     expect(subscribeToSubmit).not.toHaveBeenCalled();
 
-    await act(async () => pendingConfirmation?.onConfirmed());
+    await act(async () => confirmSubmit?.());
     await vi.waitFor(() => expect(summary(mounted.container).dataset.sendStatus).toBe("idle"));
     expect(summary(mounted.container).dataset.count).toBe("1");
     expect(storedDrafts.get("conversation-b")).toEqual(sentSnapshot);
