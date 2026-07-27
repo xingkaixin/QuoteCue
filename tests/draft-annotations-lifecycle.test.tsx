@@ -324,6 +324,34 @@ describe("draft annotation lifecycle", () => {
 
     await act(async () => root.unmount());
   });
+
+  it("preserves an annotation when its anchor format changed after sending", async () => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    draftStorage.load.mockResolvedValue([annotation]);
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    await act(async () => root.render(<DraftHarness conversationIdentity={conversationA} />));
+    const sentAnnotation: DraftAnnotation = {
+      ...annotation,
+      anchor: {
+        end: annotation.anchor.end,
+        format: "legacy-rendered",
+        messageId: annotation.anchor.messageId,
+        prefix: annotation.anchor.prefix,
+        quote: annotation.anchor.quote,
+        start: annotation.anchor.start,
+        suffix: annotation.anchor.suffix,
+      },
+    };
+
+    await act(async () => latestDrafts.removeSentAnnotations([sentAnnotation]));
+
+    expect(latestDrafts.annotations).toEqual([annotation]);
+
+    await act(async () => root.unmount());
+  });
 });
 
 function DraftHarness({ conversationIdentity }: { conversationIdentity: ConversationIdentity }) {
