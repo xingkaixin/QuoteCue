@@ -14,7 +14,9 @@ const ORPHANED_DRAFT_KEY_PREFIXES = [
 const RENDERED_QUOTE_DRAFT_STORAGE_VERSION = 1;
 const UNMARKED_ANCHOR_DRAFT_STORAGE_VERSION = 2;
 const DRAFT_STORAGE_VERSION = 3;
-let orphanedDraftCleanup: Promise<void> | null = null;
+const DRAFT_RETENTION_MS = 30 * 24 * 60 * 60 * 1_000;
+const draftKeyUseCounts = new Map<string, number>();
+let draftCleanup: Promise<void> | null = null;
 
 type DraftStorageVersion =
   | typeof RENDERED_QUOTE_DRAFT_STORAGE_VERSION
@@ -24,6 +26,7 @@ type DraftStorageVersion =
 type StoredDraftEnvelope = {
   version: typeof DRAFT_STORAGE_VERSION;
   annotations: DraftAnnotation[];
+  updatedAt?: number;
 };
 
 type DecodedDraft = {
@@ -50,9 +53,9 @@ function draftStorageKey(prefix: string, conversationId: string) {
 }
 
 export async function loadDraftAnnotations(conversation: IdentifiedConversation) {
-  await removeOrphanedDraftsOnce();
   const key = draftStorageKey(DRAFT_KEY_PREFIX, conversation.id);
   const legacyKey = draftStorageKey(LEGACY_DRAFT_KEY_PREFIX, conversation.id);
+  scheduleDraftCleanup(key);
   const result = await browser.storage.local.get([key, legacyKey]);
   const storedDraft = result[key];
 
@@ -87,18 +90,27 @@ export async function saveDraftAnnotations(
 ) {
   const key = draftStorageKey(DRAFT_KEY_PREFIX, conversation.id);
   const legacyKey = draftStorageKey(LEGACY_DRAFT_KEY_PREFIX, conversation.id);
+  const releaseDraftKey = retainDraftKey(key);
 
-  if (annotations.length === 0) {
-    await browser.storage.local.remove([key, legacyKey]);
-    return;
+  try {
+    if (annotations.length === 0) {
+      await browser.storage.local.remove([key, legacyKey]);
+      return;
+    }
+
+    await browser.storage.local.set({ [key]: draftEnvelope(annotations) });
+    await browser.storage.local.remove(legacyKey);
+  } finally {
+    if (draftCleanup) {
+      void draftCleanup.then(releaseDraftKey);
+    } else {
+      releaseDraftKey();
+    }
   }
-
-  await browser.storage.local.set({ [key]: draftEnvelope(annotations) });
-  await browser.storage.local.remove(legacyKey);
 }
 
 function draftEnvelope(annotations: DraftAnnotation[]): StoredDraftEnvelope {
-  return { version: DRAFT_STORAGE_VERSION, annotations };
+  return { version: DRAFT_STORAGE_VERSION, annotations, updatedAt: Date.now() };
 }
 
 function decodeStoredDraft(value: unknown): DecodedDraft {
@@ -187,22 +199,76 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-function removeOrphanedDraftsOnce() {
-  orphanedDraftCleanup ??= removeOrphanedDrafts().catch((error: unknown) => {
-    orphanedDraftCleanup = null;
-    throw error;
-  });
-  return orphanedDraftCleanup;
+function scheduleDraftCleanup(currentDraftKey: string) {
+  const releaseDraftKey = retainDraftKey(currentDraftKey);
+  void removeStoredDraftsOnce().then(releaseDraftKey);
 }
 
-async function removeOrphanedDrafts() {
-  const storedValues = await browser.storage.local.get(null);
-  const orphanedKeys = Object.keys(storedValues).filter((key) =>
+function removeStoredDraftsOnce() {
+  draftCleanup ??= removeStoredDrafts().catch((error: unknown) => {
+    draftCleanup = null;
+    console.error("[QuoteCue] Failed to clean stored drafts", error);
+  });
+  return draftCleanup;
+}
+
+async function removeStoredDrafts() {
+  const storedKeys = await getStoredKeys();
+  const orphanedKeys = storedKeys.filter((key) =>
     ORPHANED_DRAFT_KEY_PREFIXES.some((prefix) => key.startsWith(prefix)),
   );
-  if (orphanedKeys.length > 0) {
-    await browser.storage.local.remove(orphanedKeys);
+  const orphanedKeySet = new Set(orphanedKeys);
+  const draftKeys = storedKeys.filter(
+    (key) => key.startsWith(DRAFT_KEY_PREFIX) && !orphanedKeySet.has(key),
+  );
+  const storedDrafts = draftKeys.length > 0 ? await browser.storage.local.get(draftKeys) : {};
+  const expiresBefore = Date.now() - DRAFT_RETENTION_MS;
+  const expiredKeys = draftKeys.filter(
+    (key) =>
+      !draftKeyUseCounts.has(key) && isExpiredDraftEnvelope(storedDrafts[key], expiresBefore),
+  );
+  const keysToRemove = [...orphanedKeys, ...expiredKeys];
+
+  if (keysToRemove.length > 0) {
+    await browser.storage.local.remove(keysToRemove);
   }
+  if (expiredKeys.length > 0) {
+    console.info(
+      `[QuoteCue] Removed ${expiredKeys.length} expired annotation ${
+        expiredKeys.length === 1 ? "draft" : "drafts"
+      }`,
+    );
+  }
+}
+
+async function getStoredKeys() {
+  if (typeof browser.storage.local.getKeys === "function") {
+    return browser.storage.local.getKeys();
+  }
+  return Object.keys(await browser.storage.local.get(null));
+}
+
+function isExpiredDraftEnvelope(value: unknown, expiresBefore: number) {
+  return (
+    isRecord(value) &&
+    value.version === DRAFT_STORAGE_VERSION &&
+    Array.isArray(value.annotations) &&
+    typeof value.updatedAt === "number" &&
+    Number.isFinite(value.updatedAt) &&
+    value.updatedAt <= expiresBefore
+  );
+}
+
+function retainDraftKey(key: string) {
+  draftKeyUseCounts.set(key, (draftKeyUseCounts.get(key) ?? 0) + 1);
+  return () => {
+    const nextUseCount = (draftKeyUseCounts.get(key) ?? 1) - 1;
+    if (nextUseCount === 0) {
+      draftKeyUseCounts.delete(key);
+      return;
+    }
+    draftKeyUseCounts.set(key, nextUseCount);
+  };
 }
 
 async function removeMigratedLegacyDraft(legacyKey: string) {
