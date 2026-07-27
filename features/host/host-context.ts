@@ -5,7 +5,16 @@ import type {
 } from "@/features/host-port/host-port";
 
 const HISTORY_CHANGE_EVENT = "quotecue:history-change";
-const historyPatchedWindows = new WeakSet<Window>();
+const HISTORY_PATCH_STATE_PROPERTY = "quotecue:history-change:patch";
+
+type HistoryMethod = History["pushState"];
+type HistoryMethodName = "pushState" | "replaceState";
+
+type HistoryPatchState = {
+  original: Record<HistoryMethodName, HistoryMethod>;
+  subscriberCount: number;
+  wrapped: Record<HistoryMethodName, HistoryMethod>;
+};
 
 export type {
   ComposerSnapshot,
@@ -170,13 +179,14 @@ function createHostSignals(hostDocument: Document, hostWindow: Window) {
       });
     },
     subscribeNavigation(callback: () => void) {
-      patchHistoryOnce(hostWindow);
+      const releaseHistoryPatch = acquireHistoryPatch(hostWindow);
       hostWindow.addEventListener(HISTORY_CHANGE_EVENT, callback);
       hostWindow.addEventListener("popstate", callback);
 
       return once(() => {
         hostWindow.removeEventListener(HISTORY_CHANGE_EVENT, callback);
         hostWindow.removeEventListener("popstate", callback);
+        releaseHistoryPatch();
       });
     },
   };
@@ -197,19 +207,61 @@ function matchesMutationInterest(record: MutationRecord, interest: MutationInter
   }
 }
 
-function patchHistoryOnce(hostWindow: Window) {
-  if (historyPatchedWindows.has(hostWindow)) {
-    return;
-  }
+function acquireHistoryPatch(hostWindow: Window) {
+  const patch = currentHistoryPatch(hostWindow) ?? installHistoryPatch(hostWindow);
+  patch.subscriberCount += 1;
 
-  historyPatchedWindows.add(hostWindow);
-  wrapHistoryMethod(hostWindow, "pushState");
-  wrapHistoryMethod(hostWindow, "replaceState");
+  return once(() => {
+    patch.subscriberCount -= 1;
+    if (patch.subscriberCount > 0) {
+      return;
+    }
+
+    restoreHistoryMethod(hostWindow, patch, "pushState");
+    restoreHistoryMethod(hostWindow, patch, "replaceState");
+  });
 }
 
-function wrapHistoryMethod(hostWindow: Window, method: "pushState" | "replaceState") {
-  const original = hostWindow.history[method];
-  hostWindow.history[method] = function (data: unknown, unused: string, url?: string | URL | null) {
+function currentHistoryPatch(hostWindow: Window) {
+  const pushStatePatch = historyPatchFor(hostWindow.history.pushState);
+  const replaceStatePatch = historyPatchFor(hostWindow.history.replaceState);
+  return pushStatePatch === replaceStatePatch ? pushStatePatch : undefined;
+}
+
+function historyPatchFor(method: HistoryMethod) {
+  return Reflect.get(method, HISTORY_PATCH_STATE_PROPERTY) as HistoryPatchState | undefined;
+}
+
+function installHistoryPatch(hostWindow: Window): HistoryPatchState {
+  const original = {
+    pushState: hostWindow.history.pushState,
+    replaceState: hostWindow.history.replaceState,
+  };
+  const wrapped = {
+    pushState: wrapHistoryMethod(hostWindow, original.pushState),
+    replaceState: wrapHistoryMethod(hostWindow, original.replaceState),
+  };
+  const patch = { original, subscriberCount: 0, wrapped };
+
+  Object.defineProperty(wrapped.pushState, HISTORY_PATCH_STATE_PROPERTY, { value: patch });
+  Object.defineProperty(wrapped.replaceState, HISTORY_PATCH_STATE_PROPERTY, { value: patch });
+  hostWindow.history.pushState = wrapped.pushState;
+  hostWindow.history.replaceState = wrapped.replaceState;
+  return patch;
+}
+
+function restoreHistoryMethod(
+  hostWindow: Window,
+  patch: HistoryPatchState,
+  method: HistoryMethodName,
+) {
+  if (hostWindow.history[method] === patch.wrapped[method]) {
+    hostWindow.history[method] = patch.original[method];
+  }
+}
+
+function wrapHistoryMethod(hostWindow: Window, original: HistoryMethod): HistoryMethod {
+  return function (this: History, data: unknown, unused: string, url?: string | URL | null) {
     original.call(this, data, unused, url);
     hostWindow.dispatchEvent(new Event(HISTORY_CHANGE_EVENT));
   };
