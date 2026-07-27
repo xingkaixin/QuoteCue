@@ -83,6 +83,19 @@ type MutationSubscription = {
   interest: MutationInterest;
 };
 
+type MutationSummary = {
+  attributeNames: Set<string>;
+  hasCharacterData: boolean;
+  hasChildList: boolean;
+  hasRemovedElement: boolean;
+};
+
+type MutationObservationPlan = {
+  attributeFilter: Set<string>;
+  observesCharacterData: boolean;
+  observesChildList: boolean;
+};
+
 type ViewportSubscription = {
   callback: () => void;
 };
@@ -91,7 +104,7 @@ export function createHostContext(environment: HostEnvironment, adapter: SiteAda
   return {
     ...environment,
     adapter,
-    signals: createHostSignals(environment.document, environment.window),
+    signals: createHostSignals(environment.document, environment.window, adapter.messages),
   };
 }
 
@@ -114,36 +127,112 @@ export function once(callback: () => void) {
   };
 }
 
-function createHostSignals(hostDocument: Document, hostWindow: Window) {
+function createHostSignals(
+  hostDocument: Document,
+  hostWindow: Window,
+  messageAccess: MessageAccess,
+) {
   const mutationSubscriptions = new Set<MutationSubscription>();
   const viewportSubscriptions = new Set<ViewportSubscription>();
   let mutationObserver: MutationObserver | null = null;
+  let mutationObservationPlan: MutationObservationPlan | null = null;
+  let observedMessageRoots = new Set<HTMLElement>();
 
   const dispatchMutations = (records: MutationRecord[]) => {
+    const observesCharacterData = mutationObservationPlan?.observesCharacterData === true;
+    if (observesCharacterData) {
+      observeAddedMessageRoots(records);
+    }
+    const summary = summarizeMutations(records);
     for (const subscription of [...mutationSubscriptions]) {
-      if (records.some((record) => matchesMutationInterest(record, subscription.interest))) {
+      if (matchesMutationInterest(summary, subscription.interest)) {
         subscription.callback();
       }
     }
+    if (observesCharacterData && summary.hasRemovedElement) {
+      updateMutationObservation(true);
+    }
   };
-  const updateMutationObservation = () => {
+  const updateMutationObservation = (forceReset = false) => {
     if (mutationSubscriptions.size === 0) {
       mutationObserver?.disconnect();
       mutationObserver = null;
+      mutationObservationPlan = null;
+      observedMessageRoots = new Set();
+      return;
+    }
+
+    const nextPlan = createMutationObservationPlan(mutationSubscriptions);
+    if (
+      !forceReset &&
+      mutationObservationPlan &&
+      sameMutationObservationPlan(mutationObservationPlan, nextPlan)
+    ) {
       return;
     }
 
     mutationObserver ??= new MutationObserver(dispatchMutations);
-    const interests = [...mutationSubscriptions].map(({ interest }) => interest);
-    const attributeFilter = [
-      ...new Set(interests.flatMap(({ attributeFilter: attributes }) => attributes ?? [])),
-    ];
+    const removesMessageObservation =
+      mutationObservationPlan?.observesCharacterData === true && !nextPlan.observesCharacterData;
+    if (forceReset || removesMessageObservation) {
+      mutationObserver.disconnect();
+      observedMessageRoots = new Set();
+    }
+    mutationObservationPlan = nextPlan;
     mutationObserver.observe(hostDocument.body, {
-      ...(attributeFilter.length > 0 ? { attributeFilter, attributes: true } : {}),
-      characterData: interests.some(({ characterData }) => characterData),
-      childList: interests.some(({ childList }) => childList),
+      ...(nextPlan.attributeFilter.size > 0
+        ? { attributeFilter: [...nextPlan.attributeFilter], attributes: true }
+        : {}),
+      childList: nextPlan.observesChildList,
       subtree: true,
     });
+    if (nextPlan.observesCharacterData) {
+      observeMessageRootsWithin(hostDocument);
+    }
+  };
+  const observeAddedMessageRoots = (records: MutationRecord[]) => {
+    for (const record of records) {
+      if (record.type !== "childList") {
+        continue;
+      }
+      for (const node of record.addedNodes) {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          observeMessageRootsWithin(node as Element);
+        }
+      }
+    }
+  };
+  const observeMessageRootsWithin = (root: ParentNode) => {
+    for (const selector of [messageAccess.assistantSelector, messageAccess.userSelector]) {
+      if (root instanceof Element && root.matches(selector)) {
+        observeMessageRoot(root);
+      }
+      for (const message of root.querySelectorAll<HTMLElement>(selector)) {
+        observeMessageRoot(message);
+      }
+    }
+  };
+  const observeMessageRoot = (message: Element) => {
+    if (
+      !mutationObserver ||
+      !(message instanceof HTMLElement) ||
+      observedMessageRoots.has(message) ||
+      hasObservedMessageAncestor(message)
+    ) {
+      return;
+    }
+    observedMessageRoots.add(message);
+    mutationObserver.observe(message, { characterData: true, subtree: true });
+  };
+  const hasObservedMessageAncestor = (message: HTMLElement) => {
+    let ancestor = message.parentElement;
+    while (ancestor) {
+      if (observedMessageRoots.has(ancestor)) {
+        return true;
+      }
+      ancestor = ancestor.parentElement;
+    }
+    return false;
   };
   const onViewportChange = () => {
     for (const { callback } of [...viewportSubscriptions]) {
@@ -192,19 +281,66 @@ function createHostSignals(hostDocument: Document, hostWindow: Window) {
   };
 }
 
-function matchesMutationInterest(record: MutationRecord, interest: MutationInterest) {
-  switch (record.type) {
-    case "attributes":
-      return (
-        record.attributeName !== null && interest.attributeFilter?.includes(record.attributeName)
-      );
-    case "characterData":
-      return interest.characterData === true;
-    case "childList":
-      return interest.childList === true;
-    default:
-      return false;
+function createMutationObservationPlan(
+  subscriptions: ReadonlySet<MutationSubscription>,
+): MutationObservationPlan {
+  const attributeFilter = new Set<string>();
+  let observesCharacterData = false;
+  let observesChildList = false;
+  for (const { interest } of subscriptions) {
+    for (const attribute of interest.attributeFilter ?? []) {
+      attributeFilter.add(attribute);
+    }
+    observesCharacterData ||= interest.characterData === true;
+    observesChildList ||= interest.childList === true;
   }
+  return {
+    attributeFilter,
+    observesCharacterData,
+    observesChildList: observesCharacterData || observesChildList,
+  };
+}
+
+function sameMutationObservationPlan(
+  current: MutationObservationPlan,
+  next: MutationObservationPlan,
+) {
+  return (
+    current.observesCharacterData === next.observesCharacterData &&
+    current.observesChildList === next.observesChildList &&
+    current.attributeFilter.size === next.attributeFilter.size &&
+    [...current.attributeFilter].every((attribute) => next.attributeFilter.has(attribute))
+  );
+}
+
+function summarizeMutations(records: MutationRecord[]): MutationSummary {
+  const summary: MutationSummary = {
+    attributeNames: new Set(),
+    hasCharacterData: false,
+    hasChildList: false,
+    hasRemovedElement: false,
+  };
+  for (const record of records) {
+    if (record.type === "attributes" && record.attributeName !== null) {
+      summary.attributeNames.add(record.attributeName);
+    } else if (record.type === "characterData") {
+      summary.hasCharacterData = true;
+    } else if (record.type === "childList") {
+      summary.hasChildList = true;
+      summary.hasRemovedElement ||= [...record.removedNodes].some(
+        (node) => node.nodeType === Node.ELEMENT_NODE,
+      );
+    }
+  }
+  return summary;
+}
+
+function matchesMutationInterest(summary: MutationSummary, interest: MutationInterest) {
+  return (
+    (interest.childList === true && summary.hasChildList) ||
+    (interest.characterData === true && summary.hasCharacterData) ||
+    interest.attributeFilter?.some((attribute) => summary.attributeNames.has(attribute)) === true
+  );
 }
 
 function acquireHistoryPatch(hostWindow: Window) {
