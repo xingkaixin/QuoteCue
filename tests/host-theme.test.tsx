@@ -81,8 +81,17 @@ describe("host theme", () => {
     expect(themeContainer.style.getPropertyValue("--qc-accent-subtle")).toBe(
       KIMI_THEME_TOKENS.dark["accent-subtle"],
     );
+    expect(themeContainer.style.getPropertyValue("--qc-divider")).toBe(
+      KIMI_THEME_TOKENS.dark.divider,
+    );
+    expect(themeContainer.style.getPropertyValue("--qc-shadow")).toBe(
+      KIMI_THEME_TOKENS.dark.shadow,
+    );
 
     await act(async () => root.unmount());
+    expect(themeContainer.dataset.quotecueTheme).toBeUndefined();
+    expect(themeContainer.style.getPropertyValue("--qc-divider")).toBe("");
+    expect(themeContainer.style.getPropertyValue("--qc-shadow")).toBe("");
   });
 });
 

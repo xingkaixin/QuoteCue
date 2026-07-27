@@ -7,7 +7,7 @@ import {
   useState,
 } from "react";
 
-import type { SiteAccentTokens } from "@/features/host/site-registry";
+import type { SiteAccentTokens } from "./accent-tokens";
 
 export type HostTheme = "dark" | "light";
 
@@ -76,7 +76,9 @@ export function hostThemeTokens(accentTokens: SiteAccentTokens) {
       ...accentTokens,
       border: "#8a8a8a",
       danger: "#b91c1c",
+      divider: "#e8e8e8",
       muted: "#525252",
+      shadow: "0 18px 48px rgb(0 0 0 / 0.18)",
       surface: "#ffffff",
       text: "#171717",
     },
@@ -84,7 +86,9 @@ export function hostThemeTokens(accentTokens: SiteAccentTokens) {
       ...accentTokens,
       border: "#737373",
       danger: "#f87171",
+      divider: "#323232",
       muted: "#a3a3a3",
+      shadow: "0 18px 56px rgb(0 0 0 / 0.5)",
       surface: "#171717",
       text: "#fafafa",
     },
