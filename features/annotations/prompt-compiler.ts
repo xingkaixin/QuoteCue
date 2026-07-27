@@ -1,6 +1,6 @@
 import { messagesFor, type SupportedLocale } from "@/features/i18n/messages";
+import { selectedTextFor } from "@/features/host-port/text-anchor";
 
-import { selectedTextFor } from "./annotation";
 import type { NumberedAnnotation } from "./annotation-projection";
 
 export function compileAnnotatedPrompt(

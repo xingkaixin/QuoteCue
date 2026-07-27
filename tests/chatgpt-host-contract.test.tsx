@@ -5,7 +5,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DraftAnnotation } from "@/features/annotations/annotation";
 import { numberAnnotations } from "@/features/annotations/annotation-projection";
 import { compileAnnotatedPrompt } from "@/features/annotations/prompt-compiler";
-import { restoreTextAnchorFromIndex } from "@/features/annotations/selection-anchor";
 import { createChatGptHost } from "@/features/chatgpt/chatgpt-host";
 import { registerSendInterceptor } from "@/features/annotations/register-send-interceptor";
 import { useAnnotatedComposerLayout } from "@/features/host/use-annotated-composer-layout";
@@ -224,11 +223,13 @@ describe("ChatGPT host contract", () => {
 
     expect(captured.value.anchor).toMatchObject({
       displayQuote: renderedText,
+      end: 9,
       quote: "alphabeta",
+      start: 0,
     });
-    expect(
-      restoreTextAnchorFromIndex(captured.value.anchor, host.selection.messageIndex()),
-    ).not.toBeNull();
+    expect(host.selection.messageIndex().get(captured.value.anchor.messageId)).toBe(
+      fixture.assistantMessage,
+    );
   });
 
   it("keeps exact offsets when rendered selection text is trimmed", () => {
@@ -256,9 +257,9 @@ describe("ChatGPT host contract", () => {
       quote: "  alpha  ",
       start: 0,
     });
-    expect(
-      restoreTextAnchorFromIndex(captured.value.anchor, host.selection.messageIndex()),
-    ).not.toBeNull();
+    expect(host.selection.messageIndex().get(captured.value.anchor.messageId)).toBe(
+      fixture.assistantMessage,
+    );
   });
 
   it("classifies viewport and text changes for selection projections", async () => {

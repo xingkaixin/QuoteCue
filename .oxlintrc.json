@@ -8,5 +8,23 @@
   "rules": {
     "react/react-in-jsx-scope": "off"
   },
+  "overrides": [
+    {
+      "files": ["features/host/**/*.{ts,tsx}", "features/host-port/**/*.{ts,tsx}"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["@/features/annotations", "@/features/annotations/*"],
+                "message": "Host layers must not depend on the annotations feature."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
   "ignorePatterns": [".output/**", ".wxt/**"]
 }

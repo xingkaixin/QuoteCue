@@ -53,10 +53,6 @@ const contracts: HostContractDefinition[] = [
     },
     expectedMessageId: "assistant-one",
     installSelectionToolbar: appendSelectionToolbar,
-    invalidateCapturedIdentity(fixture) {
-      fixture.assistantMessage.remove();
-      appendAssistantMessage("assistant-one", "Changed assistant answer");
-    },
     removeMessageIdentity(fixture) {
       fixture.assistantMessage.removeAttribute("data-message-id");
     },
@@ -92,14 +88,6 @@ const contracts: HostContractDefinition[] = [
     },
     expectedMessageId: "1",
     installSelectionToolbar: appendClaudeSelectionToolbar,
-    invalidateCapturedIdentity(fixture) {
-      const wrapper = fixture.assistantMessage.closest<HTMLElement>("[data-rs-index]");
-      if (!wrapper) {
-        throw new Error("Expected Claude message index");
-      }
-      wrapper.dataset.rsIndex = "2";
-      appendClaudeAssistantMessage(1, "Changed assistant answer");
-    },
     removeMessageIdentity(fixture) {
       fixture.assistantMessage
         .closest<HTMLElement>("[data-rs-index]")
@@ -138,10 +126,6 @@ const contracts: HostContractDefinition[] = [
       unmatchedPath: "/",
     },
     expectedMessageId: "assistant-one",
-    invalidateCapturedIdentity(fixture) {
-      fixture.assistantMessage.remove();
-      appendAssistantMessageItem("assistant-one", "Changed assistant answer");
-    },
     removeMessageIdentity(fixture) {
       fixture.assistantMessage
         .closest<HTMLElement>("[data-virtual-list-item-key]")
@@ -177,10 +161,6 @@ const contracts: HostContractDefinition[] = [
       unmatchedPath: "/settings",
     },
     expectedMessageId: "assistant-one",
-    invalidateCapturedIdentity(fixture) {
-      fixture.assistantMessage.remove();
-      appendKimiAssistantMessage("assistant-one", "Changed assistant answer");
-    },
     removeMessageIdentity(fixture) {
       fixture.assistantMessage.removeAttribute("data-archer-id");
     },
