@@ -29,7 +29,7 @@ export type {
 } from "@/features/host-port/host-port";
 export type { HostEnvironment } from "./host-context";
 
-export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter): Host {
+export function createHostEngine(environment: HostEnvironment, adapter: SiteAdapter): Host {
   const context = createHostContext(environment, adapter);
   const textNormalizer = createTextNormalizer(adapter.composer);
   const composerDriver = createComposerDriver(context, textNormalizer);

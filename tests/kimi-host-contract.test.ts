@@ -115,7 +115,7 @@ describe("Kimi host contract", () => {
     interceptor.dispose();
   });
 
-  it("confirms an unidentified optimistic user message after an unidentified predecessor", async () => {
+  it("confirms an optimistic user message without a host id after another such message", async () => {
     const fixture = installKimiHostFixture("");
     appendKimiUserMessage(undefined, "Previous optimistic message");
     const host = createKimiHost({ document, window });

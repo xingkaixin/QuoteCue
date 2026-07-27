@@ -82,10 +82,10 @@ describe("registerSendInterceptor", () => {
       onSendConfirmed,
     });
     installSendButton(() => {
-      const compiledText = composer.textContent ?? "";
+      const compiledPrompt = composer.textContent ?? "";
       currentAnnotations = [{ ...annotation, comment: "edited while awaiting confirmation" }];
       composer.replaceChildren();
-      installUserMessage("user-message-1", compiledText);
+      installUserMessage("user-message-1", compiledPrompt);
     });
 
     await expect(interceptor.submit()).resolves.toEqual({
@@ -240,9 +240,9 @@ describe("registerSendInterceptor", () => {
     const onStateChange = vi.fn();
     const interceptor = createInterceptor(onSendConfirmed, { onStateChange });
     installSendButton(() => {
-      const compiledText = composer.textContent ?? "";
+      const compiledPrompt = composer.textContent ?? "";
       composer.replaceChildren();
-      installUserMessage("confirmed-user-message", compiledText);
+      installUserMessage("confirmed-user-message", compiledPrompt);
     });
 
     await expect(interceptor.submit()).resolves.toEqual({
@@ -607,11 +607,11 @@ describe("registerSendInterceptor", () => {
     let retriedText = "";
     installSendButton(() => {
       sendCount += 1;
-      const compiledText = composer.textContent ?? "";
+      const compiledPrompt = composer.textContent ?? "";
       composer.replaceChildren();
       if (sendCount === 2) {
-        retriedText = compiledText;
-        installUserMessage("retried-user-message", compiledText);
+        retriedText = compiledPrompt;
+        installUserMessage("retried-user-message", compiledPrompt);
       }
     });
 
@@ -639,10 +639,10 @@ describe("registerSendInterceptor", () => {
     const onSendConfirmed = vi.fn();
     const interceptor = createInterceptor(onSendConfirmed);
     installSendButton(() => {
-      const compiledText = composer.textContent ?? "";
+      const compiledPrompt = composer.textContent ?? "";
       composer.remove();
       installComposer();
-      installUserMessage("user-message-after-replacement", compiledText);
+      installUserMessage("user-message-after-replacement", compiledPrompt);
     });
 
     await expect(interceptor.submit()).resolves.toEqual({
@@ -678,9 +678,9 @@ describe("registerSendInterceptor", () => {
     const onSendConfirmed = vi.fn();
     const interceptor = createInterceptor(onSendConfirmed);
     installSendButton(() => {
-      const compiledText = composer.textContent ?? "";
+      const compiledPrompt = composer.textContent ?? "";
       composer.replaceChildren();
-      installUserMessage("new-message", `${compiledText} changed`);
+      installUserMessage("new-message", `${compiledPrompt} changed`);
     });
 
     const result = interceptor.submit();

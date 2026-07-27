@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, expectTypeOf, it } from "vitest";
 
-import { createDomHost } from "@/features/host/dom-host";
+import { createHostEngine } from "@/features/host/dom-host";
 import {
   composerLayout,
   richTextComposer,
@@ -31,7 +31,7 @@ describe("site adapter discovery", () => {
     const action = requiredElement<HTMLElement>("button");
     setElementRect(surface, new DOMRect(100, 700, 400, 92));
     setElementRect(action, new DOMRect(456, 748, 36, 36));
-    const host = createDomHost(
+    const host = createHostEngine(
       { document, window },
       adapter({
         layout: composerLayout("button", {
@@ -58,7 +58,7 @@ describe("site adapter discovery", () => {
     toolbar.append(actionRow);
     document.body.append(toolbar);
     setElementRect(toolbar, new DOMRect(100, 150, 600, 36));
-    const host = createDomHost(
+    const host = createHostEngine(
       { document, window },
       adapter({
         selectionPresentation: {
@@ -85,7 +85,7 @@ describe("site adapter discovery", () => {
   });
 
   it("omits native action mounting from overlay hosts", () => {
-    const host = createDomHost({ document, window }, adapter({}));
+    const host = createHostEngine({ document, window }, adapter({}));
 
     expect(host.selection.presentation).toBe("overlay");
     expect(host.selection).not.toHaveProperty("nativeAction");

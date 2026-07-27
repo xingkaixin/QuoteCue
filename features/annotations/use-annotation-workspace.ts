@@ -24,9 +24,9 @@ export function useAnnotationWorkspace() {
     draft,
     addAnnotation,
     updateAnnotation,
-    removeAnnotations,
-    removeSentAnnotations,
-    clearAnnotations,
+    discardAnnotations,
+    removeConfirmedAnnotations,
+    discardAllAnnotations,
     retry,
   } = useDraftAnnotations(conversationIdentity);
   const annotations = draft.status === "loading" ? [] : draft.annotations;
@@ -39,7 +39,7 @@ export function useAnnotationWorkspace() {
     pendingDeletionExpiresAt,
     requestDeletion,
     visibleAnnotations,
-  } = useDeferredAnnotationDeletion(annotations, conversationIdentity, removeAnnotations);
+  } = useDeferredAnnotationDeletion(annotations, conversationIdentity, discardAnnotations);
   const activeAnnotationId = editorState.status === "hidden" ? null : editorState.annotationId;
   const projectedAnnotations = useAnnotationProjection(visibleAnnotations, activeAnnotationId);
   const activeProjection = projectedAnnotations.find(
@@ -57,14 +57,14 @@ export function useAnnotationWorkspace() {
   const annotationsRef = useRef<readonly ProjectedAnnotation[]>(projectedAnnotations);
   const conversationIdentityRef = useRef(conversationIdentity);
   const localeRef = useRef(locale);
-  const removeSentAnnotationsRef = useRef(removeSentAnnotations);
+  const removeConfirmedAnnotationsRef = useRef(removeConfirmedAnnotations);
   const sendConversationIdentityRef = useRef<ConversationIdentity | null>(null);
   const sendControllerRef = useRef<SendController | null>(null);
 
   annotationsRef.current = projectedAnnotations;
   conversationIdentityRef.current = conversationIdentity;
   localeRef.current = locale;
-  removeSentAnnotationsRef.current = removeSentAnnotations;
+  removeConfirmedAnnotationsRef.current = removeConfirmedAnnotations;
 
   useEffect(() => {
     const controller = registerSendInterceptor({
@@ -84,7 +84,7 @@ export function useAnnotationWorkspace() {
         ) {
           return;
         }
-        removeSentAnnotationsRef.current(sentAnnotations);
+        removeConfirmedAnnotationsRef.current(sentAnnotations);
         closeEditor();
       },
       onStateChange: setSendState,
@@ -161,12 +161,12 @@ export function useAnnotationWorkspace() {
   );
 
   const clearAll = useCallback(() => {
-    if (!clearAnnotations()) {
+    if (!discardAllAnnotations()) {
       return;
     }
     discardPendingDeletions();
     closeEditor();
-  }, [clearAnnotations, closeEditor, discardPendingDeletions]);
+  }, [closeEditor, discardAllAnnotations, discardPendingDeletions]);
 
   const send = useCallback(() => {
     const controller = sendControllerRef.current;

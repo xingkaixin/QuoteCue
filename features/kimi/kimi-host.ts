@@ -1,4 +1,4 @@
-import { createDomHost, type HostEnvironment } from "@/features/host/dom-host";
+import { createHostEngine, type HostEnvironment } from "@/features/host/dom-host";
 import {
   composerLayout,
   messageAccess,
@@ -27,5 +27,5 @@ const KIMI_ADAPTER: SiteAdapter = {
 };
 
 export function createKimiHost(environment: HostEnvironment) {
-  return createDomHost(environment, KIMI_ADAPTER);
+  return createHostEngine(environment, KIMI_ADAPTER);
 }

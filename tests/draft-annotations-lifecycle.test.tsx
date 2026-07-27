@@ -324,7 +324,7 @@ describe("draft annotation lifecycle", () => {
     );
 
     await act(async () => {
-      latestDrafts.removeSentAnnotations(sentAnnotations);
+      latestDrafts.removeConfirmedAnnotations(sentAnnotations);
     });
     expect(currentAnnotations()).toEqual([
       { ...annotation, comment: "newer edit" },
@@ -356,7 +356,7 @@ describe("draft annotation lifecycle", () => {
       },
     };
 
-    await act(async () => latestDrafts.removeSentAnnotations([sentAnnotation]));
+    await act(async () => latestDrafts.removeConfirmedAnnotations([sentAnnotation]));
 
     expect(currentAnnotations()).toEqual([annotation]);
 

@@ -1,4 +1,4 @@
-import { createDomHost, type HostEnvironment } from "@/features/host/dom-host";
+import { createHostEngine, type HostEnvironment } from "@/features/host/dom-host";
 import {
   composerLayout,
   messageAccess,
@@ -26,5 +26,5 @@ const CLAUDE_ADAPTER: SiteAdapter = {
 };
 
 export function createClaudeHost(environment: HostEnvironment) {
-  return createDomHost(environment, CLAUDE_ADAPTER);
+  return createHostEngine(environment, CLAUDE_ADAPTER);
 }
