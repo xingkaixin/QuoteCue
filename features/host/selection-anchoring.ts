@@ -1,8 +1,6 @@
 import type { SelectionCapture, SelectionRect } from "@/features/host-port/host-port";
 import { rangeEndpointRect } from "@/features/host-port/range-geometry";
 import { parseTextAnchor } from "@/features/host-port/text-anchor";
-import { currentVisualViewportBounds } from "@/features/layout/use-visual-viewport";
-import { QUOTECUE_HOST_SELECTOR, QUOTECUE_NATIVE_ACTION_ATTR } from "@/lib/dom-identity";
 
 import {
   available,
@@ -13,31 +11,11 @@ import {
   type SelectionInvalidation,
 } from "./host-context";
 import { isQuoteCueEvent } from "./is-quotecue-event";
-import type { SelectionToolbarBounds } from "./site-adapter";
 
 const CONTEXT_LENGTH = 48;
-const SCROLLABLE_OVERFLOW_PATTERN = /auto|overlay|scroll/;
-const DEFAULT_SELECTION_TOOLBAR_BOUNDS: SelectionToolbarBounds = {
-  maxHeight: 80,
-  maxVerticalDistance: 24,
-  maxWidth: 480,
-  minHeight: 28,
-  minWidth: 80,
-};
 
-type SelectionRevealStatus = "scrolled" | "visible";
-
-type SelectionToolbarCandidate = {
-  actionRow: HTMLElement;
-  distance: number;
-};
-
-export function createSelectionSurface(context: HostContext) {
+export function createSelectionAnchoring(context: HostContext) {
   const { adapter, document: hostDocument, logger, signals, window: hostWindow } = context;
-  const toolbarBounds =
-    adapter.selectionPresentation.mode === "native-toolbar"
-      ? (adapter.selectionPresentation.toolbarBounds ?? DEFAULT_SELECTION_TOOLBAR_BOUNDS)
-      : DEFAULT_SELECTION_TOOLBAR_BOUNDS;
   let messageById = new Map<string, HTMLElement>();
 
   function observeCaptureIntent(callback: (intent: SelectionCaptureIntent) => void) {
@@ -228,160 +206,6 @@ export function createSelectionSurface(context: HostContext) {
     hostWindow.getSelection()?.removeAllRanges();
   }
 
-  function selectionToolbar(selectionRect: SelectionRect) {
-    let closest: SelectionToolbarCandidate | null = null;
-    for (const element of hostDocument.body.children) {
-      const candidate = selectionToolbarCandidate(element, selectionRect);
-      if (candidate && (!closest || candidate.distance < closest.distance)) {
-        closest = candidate;
-      }
-    }
-
-    return closest?.actionRow ?? null;
-  }
-
-  function selectionToolbarCandidate(
-    candidate: Element,
-    selectionRect: SelectionRect,
-  ): SelectionToolbarCandidate | null {
-    const rect = candidate.getBoundingClientRect();
-    const horizontalOverlap =
-      Math.min(selectionRect.right, rect.right) - Math.max(selectionRect.left, rect.left);
-    const verticalDistance = Math.max(
-      selectionRect.top - rect.bottom,
-      rect.top - selectionRect.bottom,
-      0,
-    );
-    const isNearbyFixedToolbar =
-      !candidate.matches(QUOTECUE_HOST_SELECTOR) &&
-      hostWindow.getComputedStyle(candidate).position === "fixed" &&
-      rect.width >= toolbarBounds.minWidth &&
-      rect.width <= toolbarBounds.maxWidth &&
-      rect.height >= toolbarBounds.minHeight &&
-      rect.height <= toolbarBounds.maxHeight &&
-      horizontalOverlap > 0 &&
-      verticalDistance <= toolbarBounds.maxVerticalDistance;
-    if (!isNearbyFixedToolbar) {
-      return null;
-    }
-
-    const actionRow = Array.from(candidate.querySelectorAll("button"))
-      .map((button) => button.parentElement)
-      .find(
-        (parent): parent is HTMLElement =>
-          parent !== null &&
-          parent.children.length > 0 &&
-          Array.from(parent.children).every((child) => child.tagName === "BUTTON"),
-      );
-    return actionRow ? { actionRow, distance: verticalDistance } : null;
-  }
-
-  function mountAction(options: { label: string; onActivate: () => void; rect: SelectionRect }) {
-    let action: HTMLButtonElement | null = null;
-    let insertFrame: number | null = null;
-
-    const preserveSelection = (event: Event) => {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-    };
-    const removeAction = () => {
-      action?.remove();
-      action = null;
-    };
-    const insertAction = () => {
-      if (action?.isConnected) {
-        return;
-      }
-
-      const toolbar = selectionToolbar(options.rect);
-      const sourceAction = toolbar?.querySelector<HTMLButtonElement>("button");
-      if (!toolbar || !sourceAction) {
-        return;
-      }
-
-      action = sourceAction.cloneNode(true) as HTMLButtonElement;
-      action.setAttribute(QUOTECUE_NATIVE_ACTION_ATTR, "");
-      action.setAttribute("aria-label", options.label);
-      action.removeAttribute("aria-describedby");
-      action.removeAttribute("id");
-      action.textContent = "QuoteCue";
-      action.addEventListener("mousedown", preserveSelection, true);
-      action.addEventListener("click", (event) => {
-        preserveSelection(event);
-        options.onActivate();
-        removeAction();
-      });
-      toolbar.prepend(action);
-    };
-    const scheduleInsert = () => {
-      if (action?.isConnected || insertFrame !== null) {
-        return;
-      }
-      insertFrame = hostWindow.requestAnimationFrame(() => {
-        insertFrame = null;
-        insertAction();
-      });
-    };
-    const stopObserving = signals.observeMutations(scheduleInsert, { childList: true });
-
-    insertAction();
-
-    return () => {
-      stopObserving();
-      if (insertFrame !== null) {
-        hostWindow.cancelAnimationFrame(insertFrame);
-      }
-      removeAction();
-    };
-  }
-
-  function reveal(range: Range): HostResult<SelectionRevealStatus> {
-    if (!range.endContainer.isConnected) {
-      return unavailable("assistant-message-unavailable");
-    }
-
-    const endpointRect = rangeEndpointRect(range);
-    const scrollContainer = nearestScrollContainer(range.endContainer);
-    const viewportRect = scrollContainer
-      ? scrollContainer.getBoundingClientRect()
-      : viewportRectangle();
-
-    if (endpointRect.bottom >= viewportRect.top && endpointRect.top <= viewportRect.bottom) {
-      return available("visible");
-    }
-
-    const offset =
-      endpointRect.top + endpointRect.height / 2 - (viewportRect.top + viewportRect.height / 2);
-    if (scrollContainer) {
-      scrollContainer.scrollTop = scrollContainer.scrollTop + offset;
-    } else {
-      hostWindow.scrollBy({ behavior: "instant", top: offset });
-    }
-    return available("scrolled");
-  }
-
-  function nearestScrollContainer(node: Node) {
-    let element = node instanceof HTMLElement ? node : node.parentElement;
-
-    while (element) {
-      const { overflowY } = hostWindow.getComputedStyle(element);
-      if (
-        SCROLLABLE_OVERFLOW_PATTERN.test(overflowY) &&
-        element.scrollHeight > element.clientHeight
-      ) {
-        return element;
-      }
-      element = element.parentElement;
-    }
-
-    return null;
-  }
-
-  function viewportRectangle() {
-    const viewport = currentVisualViewportBounds(hostWindow);
-    return { bottom: viewport.top + viewport.height, height: viewport.height, top: viewport.top };
-  }
-
   function assistantMessageForRange(range: Range) {
     const startMessage = closestAssistantMessage(range.startContainer);
     const endMessage = closestAssistantMessage(range.endContainer);
@@ -402,14 +226,11 @@ export function createSelectionSurface(context: HostContext) {
   }
 
   return {
-    presentation: adapter.selectionPresentation.mode,
     capture,
     clear,
     messageIndex,
-    mountAction,
     observeCaptureIntent,
     observeInvalidation,
-    reveal,
   };
 }
 

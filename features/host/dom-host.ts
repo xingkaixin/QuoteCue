@@ -1,9 +1,12 @@
+import type { Host, HostUnavailableReason } from "@/features/host-port/host-port";
+
 import { createComposerDriver } from "./composer-driver";
 import { createComposerLayout } from "./composer-layout";
-import type { Host, HostUnavailableReason } from "@/features/host-port/host-port";
 import { createHostContext, type HostEnvironment } from "./host-context";
+import { createNativeActionMount } from "./native-action-mount";
+import { createSelectionAnchoring } from "./selection-anchoring";
+import { createSelectionReveal } from "./selection-reveal";
 import type { SiteAdapter } from "./site-adapter";
-import { createSelectionSurface } from "./selection-surface";
 import { createSendPipeline } from "./send-pipeline";
 import { createTextNormalizer } from "./text-normalizer";
 
@@ -18,7 +21,6 @@ export type {
   SelectionCapture,
   SelectionCaptureIntent,
   SelectionInvalidation,
-  SelectionPresentationMode,
   SelectionRect,
   TextAnchor,
 } from "@/features/host-port/host-port";
@@ -30,7 +32,23 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
   const composerDriver = createComposerDriver(context, textNormalizer);
   const sendPipeline = createSendPipeline(context, textNormalizer);
   const layout = createComposerLayout(context, composerDriver.current);
-  const selection = createSelectionSurface(context);
+  const anchoring = createSelectionAnchoring(context);
+  const reveal = createSelectionReveal(context);
+  const selection: Host["selection"] =
+    adapter.selectionPresentation.mode === "native-toolbar"
+      ? {
+          ...anchoring,
+          nativeAction: {
+            mount: createNativeActionMount(context, adapter.selectionPresentation.toolbarBounds),
+          },
+          presentation: "native-toolbar",
+          reveal,
+        }
+      : {
+          ...anchoring,
+          presentation: "overlay",
+          reveal,
+        };
 
   return {
     composer: {

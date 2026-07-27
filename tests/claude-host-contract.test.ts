@@ -13,6 +13,7 @@ import {
   installClaudeHostFixture,
   replaceVoiceWithSend,
 } from "./fixtures/claude-host";
+import { requiredNativeAction } from "./fixtures/fixture-utils";
 
 beforeEach(() => {
   Object.defineProperty(document, "execCommand", {
@@ -31,7 +32,7 @@ afterEach(() => {
 describe("Claude host contract", () => {
   it("prepends QuoteCue to the native Reply action row", async () => {
     const onActivate = vi.fn();
-    const stop = createClaudeHost({ document, window }).selection.mountAction({
+    const stop = requiredNativeAction(createClaudeHost({ document, window })).mount({
       label: "Add QuoteCue annotation",
       onActivate,
       rect: { bottom: 220, height: 20, left: 100, right: 260, top: 200, width: 160 },

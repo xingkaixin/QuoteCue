@@ -1,0 +1,57 @@
+import { rangeEndpointRect } from "@/features/host-port/range-geometry";
+import { currentVisualViewportBounds } from "@/features/layout/use-visual-viewport";
+
+import { available, unavailable, type HostContext, type HostResult } from "./host-context";
+
+const SCROLLABLE_OVERFLOW_PATTERN = /auto|overlay|scroll/;
+
+export function createSelectionReveal(context: HostContext) {
+  const { window: hostWindow } = context;
+
+  return function reveal(range: Range): HostResult<"scrolled" | "visible"> {
+    if (!range.endContainer.isConnected) {
+      return unavailable("assistant-message-unavailable");
+    }
+
+    const endpointRect = rangeEndpointRect(range);
+    const scrollContainer = nearestScrollContainer(range.endContainer);
+    const viewportRect = scrollContainer
+      ? scrollContainer.getBoundingClientRect()
+      : viewportRectangle();
+
+    if (endpointRect.bottom >= viewportRect.top && endpointRect.top <= viewportRect.bottom) {
+      return available("visible");
+    }
+
+    const offset =
+      endpointRect.top + endpointRect.height / 2 - (viewportRect.top + viewportRect.height / 2);
+    if (scrollContainer) {
+      scrollContainer.scrollTop = scrollContainer.scrollTop + offset;
+    } else {
+      hostWindow.scrollBy({ behavior: "instant", top: offset });
+    }
+    return available("scrolled");
+  };
+
+  function nearestScrollContainer(node: Node) {
+    let element = node instanceof HTMLElement ? node : node.parentElement;
+
+    while (element) {
+      const { overflowY } = hostWindow.getComputedStyle(element);
+      if (
+        SCROLLABLE_OVERFLOW_PATTERN.test(overflowY) &&
+        element.scrollHeight > element.clientHeight
+      ) {
+        return element;
+      }
+      element = element.parentElement;
+    }
+
+    return null;
+  }
+
+  function viewportRectangle() {
+    const viewport = currentVisualViewportBounds(hostWindow);
+    return { bottom: viewport.top + viewport.height, height: viewport.height, top: viewport.top };
+  }
+}

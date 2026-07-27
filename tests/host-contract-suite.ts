@@ -7,6 +7,8 @@ import { registerSendInterceptor } from "@/features/annotations/register-send-in
 import type { Host, HostEnvironment, HostResult } from "@/features/host/dom-host";
 import { QUOTECUE_NATIVE_ACTION_SELECTOR } from "@/lib/dom-identity";
 
+import { requiredNativeAction } from "./fixtures/fixture-utils";
+
 export type CoreHostFixture = {
   assistantMessage: HTMLElement;
   composer: HTMLElement;
@@ -467,7 +469,7 @@ export function runHostContractSuite(definition: HostContractDefinition) {
       "mounts a delayed native selection action",
       async () => {
         const siteHost = host();
-        const stop = siteHost.selection.mountAction({
+        const stop = requiredNativeAction(siteHost).mount({
           label: "Add QuoteCue annotation",
           onActivate: vi.fn(),
           rect: selectionRectangle(),
@@ -486,7 +488,7 @@ export function runHostContractSuite(definition: HostContractDefinition) {
       async () => {
         const nativeRequestAnimationFrame = window.requestAnimationFrame.bind(window);
         const requestAnimationFrame = vi.spyOn(window, "requestAnimationFrame");
-        const stop = host().selection.mountAction({
+        const stop = requiredNativeAction(host()).mount({
           label: "Add QuoteCue annotation",
           onActivate: vi.fn(),
           rect: selectionRectangle(),
@@ -509,11 +511,38 @@ export function runHostContractSuite(definition: HostContractDefinition) {
     );
 
     it.skipIf(!definition.installSelectionToolbar)(
+      "stops native toolbar discovery after its time window",
+      async () => {
+        let now = 0;
+        vi.spyOn(window.performance, "now").mockImplementation(() => now);
+        const nativeRequestAnimationFrame = window.requestAnimationFrame.bind(window);
+        const requestAnimationFrame = vi.spyOn(window, "requestAnimationFrame");
+        const stop = requiredNativeAction(host()).mount({
+          label: "Add QuoteCue annotation",
+          onActivate: vi.fn(),
+          rect: selectionRectangle(),
+        });
+
+        document.body.append(document.createElement("span"));
+        await Promise.resolve();
+        expect(requestAnimationFrame).toHaveBeenCalledOnce();
+        await new Promise<void>((resolve) => nativeRequestAnimationFrame(() => resolve()));
+
+        requestAnimationFrame.mockClear();
+        now = 2_000;
+        document.body.append(document.createElement("span"));
+        await Promise.resolve();
+        expect(requestAnimationFrame).not.toHaveBeenCalled();
+        stop();
+      },
+    );
+
+    it.skipIf(!definition.installSelectionToolbar)(
       "finds a native toolbar from an endpoint fallback rectangle",
       () => {
         const { actionRow } =
           definition.installSelectionToolbar?.(new DOMRect(768, 49, 196, 36)) ?? missingToolbar();
-        const stop = host().selection.mountAction({
+        const stop = requiredNativeAction(host()).mount({
           label: "Add QuoteCue annotation",
           onActivate: vi.fn(),
           rect: {
