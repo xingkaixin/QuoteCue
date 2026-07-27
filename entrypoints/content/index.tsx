@@ -4,6 +4,8 @@ import ReactDOM from "react-dom/client";
 import { createShadowRootUi } from "wxt/utils/content-script-ui/shadow-root";
 
 import { PortalContainerProvider } from "@/components/ui/portal-container";
+import { createBrowserDraftStore } from "@/features/annotations/draft-storage";
+import { DraftStoreProvider } from "@/features/annotations/DraftStoreProvider";
 import { activeHost, activeSite } from "@/features/host/active-host";
 import { SITE_URL_PATTERNS } from "@/features/host/site-urls";
 import { HostProvider } from "@/features/host-port/HostProvider";
@@ -23,6 +25,7 @@ export default defineContentScript({
     if (!site || !host) {
       return;
     }
+    const draftStore = createBrowserDraftStore();
 
     const ui = await createShadowRootUi(context, {
       name: "quotecue-ui",
@@ -63,15 +66,17 @@ export default defineContentScript({
 
         const root = ReactDOM.createRoot(app);
         root.render(
-          <HostProvider host={host}>
-            <PortalContainerProvider container={container}>
-              <HostThemeProvider accentTokens={site.accentTokens} container={container}>
-                <I18nProvider>
-                  <App />
-                </I18nProvider>
-              </HostThemeProvider>
-            </PortalContainerProvider>
-          </HostProvider>,
+          <DraftStoreProvider store={draftStore}>
+            <HostProvider host={host}>
+              <PortalContainerProvider container={container}>
+                <HostThemeProvider accentTokens={site.accentTokens} container={container}>
+                  <I18nProvider>
+                    <App />
+                  </I18nProvider>
+                </HostThemeProvider>
+              </PortalContainerProvider>
+            </HostProvider>
+          </DraftStoreProvider>,
         );
         return root;
       },

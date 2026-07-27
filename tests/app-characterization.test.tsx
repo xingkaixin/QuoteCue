@@ -4,23 +4,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import App from "@/entrypoints/content/App";
 import type { DraftAnnotation, AnchoredSelection } from "@/features/annotations/annotation";
+import { DraftStoreProvider } from "@/features/annotations/DraftStoreProvider";
 import { HostProvider } from "@/features/host-port/HostProvider";
-import type { IdentifiedConversation } from "@/features/host-port/host-port";
 import { I18nProvider } from "@/features/i18n/I18nProvider";
 
 import { createFakeHost, type FakeHost } from "./fixtures/fake-host";
-
-const draftStorage = vi.hoisted(() => ({
-  load: vi.fn<(conversation: IdentifiedConversation) => Promise<DraftAnnotation[]>>(),
-  save: vi.fn<
-    (conversation: IdentifiedConversation, annotations: DraftAnnotation[]) => Promise<void>
-  >(),
-}));
-
-vi.mock("@/features/annotations/draft-storage", () => ({
-  loadDraftAnnotations: draftStorage.load,
-  saveDraftAnnotations: draftStorage.save,
-}));
+import { createMemoryDraftStore } from "./fixtures/memory-draft-store";
 
 type AnnotationBadgeProps = ComponentProps<
   (typeof import("@/features/annotations/AnnotationBadge"))["AnnotationBadge"]
@@ -173,23 +162,13 @@ const anchoredSelection: AnchoredSelection = {
   rect: { bottom: 120, height: 20, left: 80, right: 180, top: 100, width: 100 },
 };
 
-const storedDrafts = new Map<string, DraftAnnotation[]>();
+const { drafts: storedDrafts, store: draftStore } = createMemoryDraftStore();
 const rangeRectsDescriptor = Object.getOwnPropertyDescriptor(Range.prototype, "getClientRects");
 
 beforeEach(() => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   window.history.replaceState({}, "", "/c/conversation-a");
   storedDrafts.clear();
-  draftStorage.load.mockReset();
-  draftStorage.save.mockReset();
-  draftStorage.load.mockImplementation(async (conversation: IdentifiedConversation) =>
-    cloneAnnotations(storedDrafts.get(conversation.id) ?? []),
-  );
-  draftStorage.save.mockImplementation(
-    async (conversation: IdentifiedConversation, annotations: DraftAnnotation[]) => {
-      storedDrafts.set(conversation.id, cloneAnnotations(annotations));
-    },
-  );
   Object.defineProperty(document, "execCommand", {
     configurable: true,
     value: vi.fn(() => false),
@@ -359,11 +338,13 @@ async function mountApp() {
 
   await act(async () =>
     root.render(
-      <HostProvider host={host}>
-        <I18nProvider>
-          <App />
-        </I18nProvider>
-      </HostProvider>,
+      <DraftStoreProvider store={draftStore}>
+        <HostProvider host={host}>
+          <I18nProvider>
+            <App />
+          </I18nProvider>
+        </HostProvider>
+      </DraftStoreProvider>,
     ),
   );
   await vi.waitFor(() => {
