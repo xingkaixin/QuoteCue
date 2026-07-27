@@ -2,13 +2,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useHost } from "@/features/host-port/HostProvider";
 import type { Host, SelectionInvalidation, SelectionRect } from "@/features/host-port/host-port";
+import { rangeEndpointRect } from "@/features/host-port/range-geometry";
 import { clampPositionToViewport } from "@/features/layout/floating-position";
 import { currentVisualViewportBounds } from "@/features/layout/use-visual-viewport";
 import { QUOTECUE_HOST_SELECTOR } from "@/lib/dom-identity";
 
 import type { DraftAnnotation } from "./annotation";
 import { numberAnnotations, type ProjectedAnnotation } from "./annotation-projection";
-import { rangeEndpointRect, restoreTextAnchorFromIndex } from "./selection-anchor";
+import { restoreTextAnchorFromIndex } from "./selection-anchor";
 
 const HIGHLIGHT_NAME = "quotecue-annotations";
 const HIGHLIGHT_STYLE_ID = "quotecue-highlight-style";

@@ -1,6 +1,6 @@
-import { parseTextAnchor } from "@/features/annotations/annotation";
-import { rangeEndpointRect } from "@/features/annotations/selection-anchor";
 import type { SelectionCapture, SelectionRect } from "@/features/host-port/host-port";
+import { rangeEndpointRect } from "@/features/host-port/range-geometry";
+import { parseTextAnchor } from "@/features/host-port/text-anchor";
 import { currentVisualViewportBounds } from "@/features/layout/use-visual-viewport";
 import { QUOTECUE_HOST_SELECTOR, QUOTECUE_NATIVE_ACTION_ATTR } from "@/lib/dom-identity";
 

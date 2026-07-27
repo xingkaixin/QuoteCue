@@ -1,8 +1,9 @@
 import { browser } from "wxt/browser";
 
 import type { IdentifiedConversation } from "@/features/host-port/host-port";
+import { parseTextAnchor } from "@/features/host-port/text-anchor";
 
-import { parseTextAnchor, type DraftAnnotation } from "./annotation";
+import type { DraftAnnotation } from "./annotation";
 
 const DRAFT_KEY_PREFIX = "quotecue:draft:";
 const LEGACY_DRAFT_KEY_PREFIX = "askgpt:draft:";

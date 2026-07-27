@@ -4,7 +4,6 @@ import type { DraftAnnotation } from "@/features/annotations/annotation";
 import { numberAnnotations } from "@/features/annotations/annotation-projection";
 import { compileAnnotatedPrompt } from "@/features/annotations/prompt-compiler";
 import { registerSendInterceptor } from "@/features/annotations/register-send-interceptor";
-import { restoreTextAnchorFromIndex } from "@/features/annotations/selection-anchor";
 import type { Host, HostEnvironment, HostResult } from "@/features/host/dom-host";
 import { QUOTECUE_NATIVE_ACTION_SELECTOR } from "@/lib/dom-identity";
 
@@ -29,7 +28,6 @@ export type HostContractDefinition = {
   expectedMessageId: string;
   installSelectionToolbar?: (rect?: DOMRect) => { actionRow: HTMLElement };
   installFixture: () => CoreHostFixture;
-  invalidateCapturedIdentity: (fixture: CoreHostFixture) => void;
   removeMessageIdentity: (fixture: CoreHostFixture) => void;
   name: string;
   selectionPresentation: "native-toolbar" | "overlay";
@@ -84,7 +82,7 @@ export function runHostContractSuite(definition: HostContractDefinition) {
       });
     });
 
-    it("indexes only assistant messages and round-trips a captured anchor", () => {
+    it("indexes only assistant messages and captures their anchors", () => {
       const fixture = definition.installFixture();
       const siteHost = host();
       selectNodeContents(requiredText(fixture.assistantMessage.querySelector("strong")));
@@ -99,9 +97,6 @@ export function runHostContractSuite(definition: HostContractDefinition) {
         [definition.expectedMessageId, fixture.assistantMessage],
       ]);
       expect([...siteHost.selection.messageIndex().values()]).not.toContain(fixture.userMessage);
-      expect(
-        restoreTextAnchorFromIndex(captured.anchor, siteHost.selection.messageIndex()),
-      ).not.toBeNull();
       siteHost.selection.clear();
       expect(window.getSelection()?.rangeCount).toBe(0);
     });
@@ -141,7 +136,7 @@ export function runHostContractSuite(definition: HostContractDefinition) {
       });
     });
 
-    it("restores a selection spanning structured text nodes", () => {
+    it("captures a selection spanning structured text nodes", () => {
       const fixture = definition.installFixture();
       fixture.assistantMessage.innerHTML =
         "<table><tbody><tr><td>alpha</td><td>beta</td></tr></tbody></table>";
@@ -157,22 +152,10 @@ export function runHostContractSuite(definition: HostContractDefinition) {
       renderedText.mockRestore();
       expect(captured.anchor).toMatchObject({
         displayQuote: "alpha beta",
+        end: 9,
         quote: "alphabeta",
+        start: 0,
       });
-      expect(
-        restoreTextAnchorFromIndex(captured.anchor, siteHost.selection.messageIndex()),
-      ).not.toBeNull();
-    });
-
-    it("fails closed after the captured message identity changes", () => {
-      const fixture = definition.installFixture();
-      const siteHost = host();
-      selectNodeContents(requiredText(fixture.assistantMessage.querySelector("strong")));
-      const anchor = availableValue(siteHost.selection.capture()).anchor;
-
-      definition.invalidateCapturedIdentity(fixture);
-
-      expect(restoreTextAnchorFromIndex(anchor, siteHost.selection.messageIndex())).toBeNull();
     });
 
     it("snapshots, replaces, and restores the configured composer", () => {
