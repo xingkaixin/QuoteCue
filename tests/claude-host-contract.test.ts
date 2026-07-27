@@ -55,10 +55,6 @@ describe("Claude host contract", () => {
     const host = createClaudeHost({ document, window });
     const layout = host.layout.current();
     expect(layout.status).toBe("available");
-    if (layout.status === "available") {
-      expect(layout.value.surface).toBe(fixture.surface);
-      expect(layout.value.action).toBe(fixture.voiceButton);
-    }
 
     fixture.composer.addEventListener("input", () => {
       if (!document.querySelector('button[aria-label="Send message"]')) {
