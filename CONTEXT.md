@@ -38,6 +38,10 @@ Evidence that the host rendered a new user message matching the compiled send. O
 allows the matching annotation snapshot to leave the draft.
 _Avoid_: Accepted send
 
+**Send Attempt**:
+A single QuoteCue-owned submission of one annotation snapshot. It ends in either send confirmation
+or a failure that leaves the snapshot in the draft.
+
 **Host**:
 The site-neutral capabilities QuoteCue uses for conversation identity, composer access, layout,
 selection, and send confirmation.

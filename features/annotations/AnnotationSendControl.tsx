@@ -1,20 +1,35 @@
 import { ArrowUp, LoaderCircle, RotateCcw } from "lucide-react";
 
+import type {
+  AnnotatedSendFailureReason,
+  AnnotatedSendState,
+} from "@/features/annotations/register-send-interceptor";
 import type { HostLayout } from "@/features/host-port/host-port";
 import { useI18n } from "@/features/i18n/I18nProvider";
 
 type AnnotationSendControlProps = {
   onSend: () => void;
   position: HostLayout["send"];
-  status: "idle" | "pending" | "failed";
+  state: AnnotatedSendState;
 };
 
-export function AnnotationSendControl({ onSend, position, status }: AnnotationSendControlProps) {
+export function AnnotationSendControl({ onSend, position, state }: AnnotationSendControlProps) {
   const { messages } = useI18n();
+  const isPending =
+    state.status === "preparing" ||
+    state.status === "replaying" ||
+    state.status === "awaiting-confirmation";
+  const failureReason =
+    state.status === "failed" || state.status === "failed-before-attempt" ? state.reason : null;
+  const statusMessage = isPending
+    ? messages.sendingAnnotations
+    : failureReason
+      ? failureMessage(failureReason, messages)
+      : null;
 
   return (
     <>
-      {status !== "idle" && (
+      {statusMessage && (
         <div
           aria-live="polite"
           className="qc-surface qc-elevated fixed max-w-72 rounded-lg border px-2.5 py-1.5 text-xs"
@@ -25,25 +40,23 @@ export function AnnotationSendControl({ onSend, position, status }: AnnotationSe
             transform: "translate(-100%, -50%)",
           }}
         >
-          {status === "pending" ? messages.sendingAnnotations : messages.sendAnnotationsFailed}
+          {statusMessage}
         </div>
       )}
       <button
-        aria-label={
-          status === "failed" ? messages.retrySendingAnnotations : messages.sendAnnotations
-        }
+        aria-label={failureReason ? messages.retrySendingAnnotations : messages.sendAnnotations}
         className="quotecue-interactive qc-primary qc-pressable qc-focus fixed flex cursor-pointer items-center justify-center rounded-full shadow-sm disabled:cursor-default disabled:opacity-50"
-        disabled={status === "pending"}
+        disabled={isPending}
         onClick={onSend}
         style={position}
         type="button"
       >
-        {status === "pending" ? (
+        {isPending ? (
           <LoaderCircle
             aria-hidden="true"
             className="size-5 animate-spin motion-reduce:animate-none"
           />
-        ) : status === "failed" ? (
+        ) : failureReason ? (
           <RotateCcw aria-hidden="true" className="size-4.5" />
         ) : (
           <ArrowUp aria-hidden="true" className="size-5" />
@@ -51,4 +64,17 @@ export function AnnotationSendControl({ onSend, position, status }: AnnotationSe
       </button>
     </>
   );
+}
+
+function failureMessage(
+  reason: AnnotatedSendFailureReason,
+  messages: ReturnType<typeof useI18n>["messages"],
+) {
+  if (reason === "confirmation-timeout") {
+    return messages.sendAnnotationsConfirmationTimedOut;
+  }
+  if (reason === "composer-unavailable") {
+    return messages.sendAnnotationsComposerUnavailable;
+  }
+  return messages.sendAnnotationsFailed;
 }

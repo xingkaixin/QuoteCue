@@ -12,7 +12,10 @@ afterEach(() => {
 describe("AnnotationSendControl", () => {
   it("disables sending while pending and exposes retry after failure", async () => {
     const onSend = vi.fn();
-    const mounted = await mountSendControl({ onSend, status: "pending" });
+    const mounted = await mountSendControl({
+      onSend,
+      state: { status: "awaiting-confirmation", attemptId: "attempt-1" },
+    });
 
     expect(mounted.container.querySelector('[role="status"]')?.textContent).toContain(
       "Sending annotations",
@@ -22,7 +25,9 @@ describe("AnnotationSendControl", () => {
         ?.disabled,
     ).toBe(true);
 
-    await mounted.render({ status: "failed" });
+    await mounted.render({
+      state: { status: "failed", attemptId: "attempt-1", reason: "replace-failed" },
+    });
     expect(mounted.container.querySelector('[role="status"]')?.textContent).toContain(
       "annotation draft was kept",
     );
@@ -32,6 +37,25 @@ describe("AnnotationSendControl", () => {
     expect(retryButton?.disabled).toBe(false);
     await act(async () => retryButton?.click());
     expect(onSend).toHaveBeenCalledOnce();
+
+    await act(async () => mounted.root.unmount());
+  });
+
+  it("distinguishes confirmation timeout from an unavailable composer", async () => {
+    const mounted = await mountSendControl({
+      state: { status: "failed", attemptId: "attempt-1", reason: "confirmation-timeout" },
+    });
+
+    expect(mounted.container.querySelector('[role="status"]')?.textContent).toContain(
+      "wasn't confirmed in time",
+    );
+
+    await mounted.render({
+      state: { status: "failed-before-attempt", reason: "composer-unavailable" },
+    });
+    expect(mounted.container.querySelector('[role="status"]')?.textContent).toContain(
+      "couldn't access the message box",
+    );
 
     await act(async () => mounted.root.unmount());
   });
@@ -54,7 +78,7 @@ async function mountSendControl(overrides: Partial<SendControlProps> = {}) {
       top: 200,
       width: 36,
     },
-    status: "idle",
+    state: { status: "idle" },
     ...overrides,
   };
   let currentProps = baseProps;

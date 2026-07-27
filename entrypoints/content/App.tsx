@@ -12,7 +12,9 @@ import { QUOTECUE_ROOT_ATTR } from "@/lib/dom-identity";
 
 export default function App() {
   const { draft, editor, selection, summary } = useAnnotationWorkspace();
-  const isSendControlVisible = summary.isVisible || summary.sendStatus !== "idle";
+  const hasSendFeedback =
+    summary.sendState.status !== "idle" && summary.sendState.status !== "confirmed";
+  const isSendControlVisible = summary.isVisible || hasSendFeedback;
   const composerLayout = useAnnotatedComposerLayout(isSendControlVisible);
   const activeProjection = editor.projection;
 
@@ -79,7 +81,7 @@ export default function App() {
           <AnnotationSendControl
             onSend={summary.send}
             position={composerLayout.send}
-            status={summary.sendStatus}
+            state={summary.sendState}
           />
         )}
       </div>

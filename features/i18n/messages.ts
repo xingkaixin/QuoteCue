@@ -24,6 +24,8 @@ export type Messages = {
   sendAnnotations: string;
   retry: string;
   retrySendingAnnotations: string;
+  sendAnnotationsComposerUnavailable: string;
+  sendAnnotationsConfirmationTimedOut: string;
   sendAnnotationsFailed: string;
   sendingAnnotations: string;
   undo: string;
@@ -63,6 +65,10 @@ const ENGLISH: Messages = {
   sendAnnotations: "Send annotations",
   retry: "Retry",
   retrySendingAnnotations: "Retry sending annotations",
+  sendAnnotationsComposerUnavailable:
+    "QuoteCue couldn't access the message box. Your annotation draft was kept.",
+  sendAnnotationsConfirmationTimedOut:
+    "Sending wasn't confirmed in time. Your annotation draft was kept.",
   sendAnnotationsFailed: "Sending wasn't confirmed. Your annotation draft was kept.",
   sendingAnnotations: "Sending annotations…",
   undo: "Undo",
@@ -101,6 +107,8 @@ const SIMPLIFIED_CHINESE: Messages = {
   sendAnnotations: "发送批注",
   retry: "重试",
   retrySendingAnnotations: "重试发送批注",
+  sendAnnotationsComposerUnavailable: "QuoteCue 无法访问消息输入框，批注草稿仍已保留。",
+  sendAnnotationsConfirmationTimedOut: "未能及时确认发送，批注草稿仍已保留。",
   sendAnnotationsFailed: "未能确认发送，批注草稿仍已保留。",
   sendingAnnotations: "正在发送批注…",
   undo: "撤销",
@@ -139,6 +147,8 @@ const TRADITIONAL_CHINESE: Messages = {
   sendAnnotations: "傳送批註",
   retry: "重試",
   retrySendingAnnotations: "重試傳送批註",
+  sendAnnotationsComposerUnavailable: "QuoteCue 無法存取訊息輸入框，批註草稿仍已保留。",
+  sendAnnotationsConfirmationTimedOut: "未能及時確認傳送，批註草稿仍已保留。",
   sendAnnotationsFailed: "未能確認傳送，批註草稿仍已保留。",
   sendingAnnotations: "正在傳送批註…",
   undo: "復原",

@@ -12,16 +12,23 @@ export type AnnotatedSendFailureReason =
   | "replace-failed"
   | "send-unavailable";
 
+type AnnotatedSendFailure = {
+  status: "failed";
+  reason: AnnotatedSendFailureReason;
+};
+
 export type AnnotatedSendResult =
   | { status: "confirmed"; annotationIds: string[] }
-  | { status: "failed"; reason: AnnotatedSendFailureReason };
+  | AnnotatedSendFailure;
 
 export type AnnotatedSendState =
   | { status: "idle" }
   | { status: "preparing"; attemptId: string }
   | { status: "replaying"; attemptId: string }
   | { status: "awaiting-confirmation"; attemptId: string }
-  | { status: "failed"; attemptId: string | null; reason: AnnotatedSendFailureReason };
+  | { status: "confirmed"; attemptId: string }
+  | { status: "failed-before-attempt"; reason: AnnotatedSendFailureReason }
+  | (AnnotatedSendFailure & { attemptId: string });
 
 type SendInterceptorOptions = {
   annotations: () => readonly NumberedAnnotation[];
@@ -89,7 +96,7 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
     lastFailedAttempt = null;
     const sentAnnotations = attempt.annotations.map(({ annotation }) => annotation);
     abortAttempt(attempt);
-    setState({ status: "idle" });
+    setState({ status: "confirmed", attemptId: attempt.id });
     attempt.resolve({
       status: "confirmed",
       annotationIds: sentAnnotations.map(({ id }) => id),
@@ -152,7 +159,7 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
     retryOriginalText?: string,
   ): StartedSend => {
     if (isDisposed) {
-      return failedResult("disposed");
+      return failBeforeAttempt("disposed", source, setState);
     }
     if (activeAttempt) {
       return { isOwned: true, result: activeAttempt.result };
@@ -160,13 +167,13 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
 
     const annotations = snapshotAnnotations(options.annotations());
     if (annotations.length === 0) {
-      return failedResult("no-annotations");
+      return failBeforeAttempt("no-annotations", source, setState);
     }
 
     const snapshotResult = host.composer.snapshot();
     if (snapshotResult.status === "unavailable") {
       host.reportUnavailable(snapshotResult.reason);
-      return failBeforeOwnership("composer-unavailable", source, setState);
+      return failBeforeAttempt("composer-unavailable", source, setState);
     }
     const snapshot = snapshotResult.value;
     // 空 composer 时发送控件多半只是因缺少输入而不可用；批注文本补入后即可用,
@@ -258,13 +265,13 @@ function failedResult(reason: AnnotatedSendFailureReason): StartedSend {
   return { isOwned: false, result: Promise.resolve({ status: "failed", reason }) };
 }
 
-function failBeforeOwnership(
+function failBeforeAttempt(
   reason: AnnotatedSendFailureReason,
   source: "custom" | "native",
   setState: (state: AnnotatedSendState) => void,
 ) {
   if (source === "custom") {
-    setState({ status: "failed", attemptId: null, reason });
+    setState({ status: "failed-before-attempt", reason });
   }
   return failedResult(reason);
 }
