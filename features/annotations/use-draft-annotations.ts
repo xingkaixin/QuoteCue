@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ConversationIdentity, IdentifiedConversation } from "@/features/host-port/host-port";
 
-import type { DraftAnnotation } from "./annotation";
+import { sameAnnotationSnapshot, type DraftAnnotation } from "./annotation";
 import { sameConversationIdentity } from "./conversation-identity";
 import { loadDraftAnnotations, saveDraftAnnotations } from "./draft-storage";
 
@@ -198,7 +198,7 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
         return mutateAnnotations((current) =>
           current.filter((annotation) => {
             const sent = sentById.get(annotation.id);
-            return !sent || !annotationsMatch(annotation, sent);
+            return !sent || !sameAnnotationSnapshot(annotation, sent);
           }),
         );
       },
@@ -259,19 +259,5 @@ function isCurrentRevision(
     current.status !== "loading" &&
     sameConversationIdentity(current.conversationIdentity, saved.conversationIdentity) &&
     current.revision === saved.revision
-  );
-}
-
-function annotationsMatch(current: DraftAnnotation, sent: DraftAnnotation) {
-  return (
-    current.id === sent.id &&
-    current.comment === sent.comment &&
-    current.anchor.messageId === sent.anchor.messageId &&
-    current.anchor.quote === sent.anchor.quote &&
-    current.anchor.displayQuote === sent.anchor.displayQuote &&
-    current.anchor.prefix === sent.anchor.prefix &&
-    current.anchor.suffix === sent.anchor.suffix &&
-    current.anchor.start === sent.anchor.start &&
-    current.anchor.end === sent.anchor.end
   );
 }
