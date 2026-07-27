@@ -5,11 +5,13 @@ import { createKimiHost } from "@/features/kimi/kimi-host";
 
 import {
   appendAssistantMessage,
+  appendSelectionToolbar,
   appendUserMessage,
   installChatGptHostFixture,
 } from "./fixtures/chatgpt-host";
 import {
   appendClaudeAssistantMessage,
+  appendClaudeSelectionToolbar,
   appendClaudeUserMessage,
   installClaudeHostFixture,
   replaceVoiceWithSend,
@@ -52,6 +54,7 @@ const contracts: HostContractDefinition[] = [
       unmatchedPath: "/",
     },
     expectedMessageId: "assistant-one",
+    installSelectionToolbar: appendSelectionToolbar,
     invalidateCapturedIdentity(fixture) {
       fixture.assistantMessage.remove();
       appendAssistantMessage("assistant-one", "Changed assistant answer");
@@ -63,6 +66,7 @@ const contracts: HostContractDefinition[] = [
     setSendDisabled(control, isDisabled) {
       (control as HTMLButtonElement).disabled = isDisabled;
     },
+    supportsSyntheticPaste: true,
   },
   {
     name: "Claude",
@@ -88,6 +92,7 @@ const contracts: HostContractDefinition[] = [
       unmatchedPath: "/new",
     },
     expectedMessageId: "1",
+    installSelectionToolbar: appendClaudeSelectionToolbar,
     invalidateCapturedIdentity(fixture) {
       const wrapper = fixture.assistantMessage.closest<HTMLElement>("[data-rs-index]");
       if (!wrapper) {
@@ -105,6 +110,7 @@ const contracts: HostContractDefinition[] = [
     setSendDisabled(control, isDisabled) {
       (control as HTMLButtonElement).disabled = isDisabled;
     },
+    supportsSyntheticPaste: true,
   },
   {
     name: "DeepSeek",
@@ -145,6 +151,7 @@ const contracts: HostContractDefinition[] = [
     setSendDisabled(control, isDisabled) {
       control.classList.toggle("ds-button--disabled", isDisabled);
     },
+    supportsSyntheticPaste: false,
   },
   {
     name: "Kimi",
@@ -180,6 +187,7 @@ const contracts: HostContractDefinition[] = [
     setSendDisabled(control, isDisabled) {
       control.classList.toggle("disabled", isDisabled);
     },
+    supportsSyntheticPaste: true,
   },
 ];
 

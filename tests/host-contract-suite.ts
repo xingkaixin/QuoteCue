@@ -1,7 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { DraftAnnotation } from "@/features/annotations/annotation";
+import { numberAnnotations } from "@/features/annotations/annotation-projection";
+import { compileAnnotatedPrompt } from "@/features/annotations/prompt-compiler";
+import { registerSendInterceptor } from "@/features/annotations/register-send-interceptor";
 import { restoreTextAnchorFromIndex } from "@/features/annotations/selection-anchor";
 import type { Host, HostEnvironment, HostResult } from "@/features/host/dom-host";
+import { QUOTECUE_NATIVE_ACTION_SELECTOR } from "@/lib/dom-identity";
 
 export type CoreHostFixture = {
   assistantMessage: HTMLElement;
@@ -22,12 +27,14 @@ export type HostContractDefinition = {
   };
   createHost: (environment: HostEnvironment) => Host;
   expectedMessageId: string;
+  installSelectionToolbar?: (rect?: DOMRect) => { actionRow: HTMLElement };
   installFixture: () => CoreHostFixture;
   invalidateCapturedIdentity: (fixture: CoreHostFixture) => void;
   removeMessageIdentity: (fixture: CoreHostFixture) => void;
   name: string;
   selectionPresentation: "native-toolbar" | "overlay";
   setSendDisabled: (control: HTMLElement, isDisabled: boolean) => void;
+  supportsSyntheticPaste: boolean;
 };
 
 export function runHostContractSuite(definition: HostContractDefinition) {
@@ -244,6 +251,215 @@ export function runHostContractSuite(definition: HostContractDefinition) {
         status: "unavailable",
       });
     });
+
+    it("does not intercept Enter while an IME composition is active", () => {
+      const fixture = definition.installFixture();
+      const onSubmit = vi.fn();
+      const stop = host().composer.subscribeToSubmit(onSubmit);
+      const event = new KeyboardEvent("keydown", {
+        bubbles: true,
+        cancelable: true,
+        isComposing: true,
+        key: "Enter",
+      });
+
+      fixture.composer.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(false);
+      expect(onSubmit).not.toHaveBeenCalled();
+      stop();
+    });
+
+    it("uses the configured fallback send rectangle when no action is available", () => {
+      const fixture = definition.installFixture();
+      const surfaceRect = fixture.surface.getBoundingClientRect();
+      fixture.sendControl.remove();
+      for (const action of fixture.surface.querySelectorAll("button, [role='button']")) {
+        action.remove();
+      }
+
+      const layout = availableValue(host().layout.current());
+
+      expect(layout.action ?? null).toBeNull();
+      expect(layout.send).toEqual({
+        bottom: surfaceRect.bottom - 8,
+        height: 36,
+        left: surfaceRect.right - 44,
+        right: surfaceRect.right - 8,
+        top: surfaceRect.bottom - 44,
+        width: 36,
+      });
+    });
+
+    it("classifies viewport and message content invalidations", async () => {
+      const fixture = definition.installFixture();
+      const onInvalidation = vi.fn();
+      const stop = host().selection.observeInvalidation(onInvalidation);
+
+      window.dispatchEvent(new Event("resize"));
+      expect(onInvalidation).toHaveBeenLastCalledWith("layout");
+
+      onInvalidation.mockClear();
+      requiredText(fixture.assistantMessage.querySelector("strong")).textContent = "updated answer";
+      await vi.waitFor(() => expect(onInvalidation).toHaveBeenCalledWith("content"));
+
+      stop();
+      onInvalidation.mockClear();
+      requiredText(fixture.assistantMessage.querySelector("strong")).textContent =
+        "detached observer";
+      await Promise.resolve();
+      expect(onInvalidation).not.toHaveBeenCalled();
+    });
+
+    it("centers an offscreen endpoint in the nearest scroll container", () => {
+      const fixture = definition.installFixture();
+      const scrollContainer = document.createElement("div");
+      scrollContainer.style.overflowY = "auto";
+      Object.defineProperties(scrollContainer, {
+        clientHeight: { configurable: true, value: 400 },
+        scrollHeight: { configurable: true, value: 1_200 },
+        getBoundingClientRect: {
+          configurable: true,
+          value: () => new DOMRect(0, 100, 800, 400),
+        },
+      });
+      scrollContainer.scrollTop = 50;
+      fixture.assistantMessage.replaceWith(scrollContainer);
+      scrollContainer.append(fixture.assistantMessage);
+      const range = document.createRange();
+      range.selectNodeContents(fixture.assistantMessage);
+      Object.defineProperty(range, "getClientRects", {
+        configurable: true,
+        value: () => [new DOMRect(100, 900, 160, 20)],
+      });
+
+      expect(host().selection.reveal(range)).toEqual({
+        status: "available",
+        value: "scrolled",
+      });
+      expect(scrollContainer.scrollTop).toBe(660);
+    });
+
+    it.skipIf(!definition.supportsSyntheticPaste)(
+      "uses synthetic paste before the rich-text fallback",
+      () => {
+        const fixture = definition.installFixture();
+        installSyntheticPasteSupport();
+        fixture.composer.addEventListener("paste", (event) => {
+          event.preventDefault();
+          fixture.composer.textContent =
+            (event as ClipboardEvent).clipboardData?.getData("text/plain") ?? "";
+        });
+
+        expect(host().composer.replaceText(fixture.composer, "Replacement question")).toBe(true);
+        expect(document.execCommand).not.toHaveBeenCalled();
+        expect(availableValue(host().composer.snapshot()).text).toBe("Replacement question");
+      },
+    );
+
+    it("takes over a native send when the composer is empty", async () => {
+      const fixture = definition.installFixture();
+      const siteHost = host();
+      selectNodeContents(requiredText(fixture.assistantMessage.querySelector("strong")));
+      const anchor = availableValue(siteHost.selection.capture()).anchor;
+      clearComposer(fixture.composer);
+      definition.setSendDisabled(fixture.sendControl, true);
+      fixture.composer.addEventListener("input", () => {
+        definition.setSendDisabled(fixture.sendControl, false);
+      });
+      fixture.sendControl.addEventListener("click", () => {
+        const text = availableValue(siteHost.composer.snapshot()).text;
+        definition.appendUserMessage(text);
+      });
+      const annotation: DraftAnnotation = {
+        anchor,
+        comment: "Explain the tradeoff",
+        id: "annotation-contract",
+      };
+      const onSendConfirmed = vi.fn();
+      const interceptor = registerSendInterceptor({
+        annotations: () => numberAnnotations([annotation]),
+        compilePrompt: compileAnnotatedPrompt,
+        host: siteHost,
+        locale: () => "en",
+        onSendConfirmed,
+      });
+      const event = new MouseEvent("click", { bubbles: true, cancelable: true });
+
+      fixture.sendControl.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(true);
+      await vi.waitFor(() => expect(onSendConfirmed).toHaveBeenCalledWith([annotation]));
+      interceptor.dispose();
+    });
+
+    it.skipIf(!definition.installSelectionToolbar)(
+      "mounts a delayed native selection action",
+      async () => {
+        const siteHost = host();
+        const stop = siteHost.selection.mountAction({
+          label: "Add QuoteCue annotation",
+          onActivate: vi.fn(),
+          rect: selectionRectangle(),
+        });
+
+        const { actionRow } = definition.installSelectionToolbar?.() ?? missingToolbar();
+        await nextFrame();
+
+        expect(actionRow.querySelector(QUOTECUE_NATIVE_ACTION_SELECTOR)).not.toBeNull();
+        stop();
+      },
+    );
+
+    it.skipIf(!definition.installSelectionToolbar)(
+      "coalesces native toolbar discovery within a frame",
+      async () => {
+        const nativeRequestAnimationFrame = window.requestAnimationFrame.bind(window);
+        const requestAnimationFrame = vi.spyOn(window, "requestAnimationFrame");
+        const stop = host().selection.mountAction({
+          label: "Add QuoteCue annotation",
+          onActivate: vi.fn(),
+          rect: selectionRectangle(),
+        });
+
+        const { actionRow } = definition.installSelectionToolbar?.() ?? missingToolbar();
+        await Promise.resolve();
+        document.body.append(document.createElement("span"));
+        await Promise.resolve();
+        expect(requestAnimationFrame).toHaveBeenCalledOnce();
+
+        await new Promise<void>((resolve) => nativeRequestAnimationFrame(() => resolve()));
+        expect(actionRow.querySelector(QUOTECUE_NATIVE_ACTION_SELECTOR)).not.toBeNull();
+
+        document.body.append(document.createElement("span"));
+        await Promise.resolve();
+        expect(requestAnimationFrame).toHaveBeenCalledOnce();
+        stop();
+      },
+    );
+
+    it.skipIf(!definition.installSelectionToolbar)(
+      "finds a native toolbar from an endpoint fallback rectangle",
+      () => {
+        const { actionRow } =
+          definition.installSelectionToolbar?.(new DOMRect(768, 49, 196, 36)) ?? missingToolbar();
+        const stop = host().selection.mountAction({
+          label: "Add QuoteCue annotation",
+          onActivate: vi.fn(),
+          rect: {
+            bottom: 88,
+            height: 62,
+            left: 436,
+            right: 897,
+            top: 26,
+            width: 461,
+          },
+        });
+
+        expect(actionRow.querySelector(QUOTECUE_NATIVE_ACTION_SELECTOR)).not.toBeNull();
+        stop();
+      },
+    );
   });
 
   function host() {
@@ -283,4 +499,50 @@ function selectRange(range: Range) {
   selection.removeAllRanges();
   selection.addRange(range);
   return selection;
+}
+
+function clearComposer(composer: HTMLElement) {
+  if (composer instanceof HTMLTextAreaElement) {
+    composer.value = "";
+    return;
+  }
+  composer.replaceChildren();
+}
+
+function installSyntheticPasteSupport() {
+  class FakeDataTransfer {
+    private store = new Map<string, string>();
+
+    getData(type: string) {
+      return this.store.get(type) ?? "";
+    }
+
+    setData(type: string, value: string) {
+      this.store.set(type, value);
+    }
+  }
+
+  class FakeClipboardEvent extends Event {
+    clipboardData: FakeDataTransfer | null;
+
+    constructor(type: string, init?: EventInit & { clipboardData?: FakeDataTransfer }) {
+      super(type, init);
+      this.clipboardData = init?.clipboardData ?? null;
+    }
+  }
+
+  vi.stubGlobal("DataTransfer", FakeDataTransfer);
+  vi.stubGlobal("ClipboardEvent", FakeClipboardEvent);
+}
+
+function missingToolbar(): never {
+  throw new Error("Expected a native selection toolbar fixture");
+}
+
+function nextFrame() {
+  return new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+}
+
+function selectionRectangle() {
+  return { bottom: 220, height: 20, left: 100, right: 360, top: 200, width: 260 };
 }

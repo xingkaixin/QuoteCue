@@ -85,7 +85,7 @@ export function appendClaudeAssistantMessage(index: number, text: string) {
   return message;
 }
 
-export function appendClaudeSelectionToolbar() {
+export function appendClaudeSelectionToolbar(rect = new DOMRect(100, 150, 160, 36)) {
   const toolbar = document.createElement("div");
   toolbar.style.position = "fixed";
   const actionRow = document.createElement("div");
@@ -94,7 +94,7 @@ export function appendClaudeSelectionToolbar() {
   replyButton.textContent = "Reply";
   actionRow.append(replyButton);
   toolbar.append(actionRow);
-  setElementRect(toolbar, new DOMRect(100, 150, 160, 36));
+  setElementRect(toolbar, rect);
   document.body.append(toolbar);
   return { actionRow, replyButton };
 }
