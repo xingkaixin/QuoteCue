@@ -43,7 +43,7 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
-describe("annotation badge scrolling", () => {
+describe("annotation projection", () => {
   it("updates the badge on the next animation frame during scrolling", async () => {
     vi.useFakeTimers();
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
@@ -56,7 +56,7 @@ describe("annotation badge scrolling", () => {
     document.body.append(shadowHost);
     const root = createRoot(container);
 
-    await act(async () => root.render(<HighlightHarness host={projectionHost} />));
+    await act(async () => root.render(<ProjectionHarness host={projectionHost} />));
     await act(async () => vi.advanceTimersByTimeAsync(17));
     expect(container.querySelector("output")?.dataset.top).toBe("190");
     expect(container.querySelector("output")?.dataset.ordinal).toBe("1");
@@ -80,7 +80,7 @@ describe("annotation badge scrolling", () => {
     document.body.append(container);
     const root = createRoot(container);
 
-    await act(async () => root.render(<HighlightHarness host={projectionHost} />));
+    await act(async () => root.render(<ProjectionHarness host={projectionHost} />));
     expect(container.querySelector("output")?.dataset.resolution).toBe("pending");
     await act(async () => vi.advanceTimersByTimeAsync(17));
 
@@ -100,7 +100,7 @@ describe("annotation badge scrolling", () => {
     document.body.append(container);
     const root = createRoot(container);
 
-    await act(async () => root.render(<HighlightHarness host={projectionHost} />));
+    await act(async () => root.render(<ProjectionHarness host={projectionHost} />));
     await act(async () => vi.advanceTimersByTimeAsync(17));
     messageIndex.mockClear();
     projectionHost.controls.setMessageIndex(new Map());
@@ -127,7 +127,7 @@ describe("annotation badge scrolling", () => {
     document.body.append(container);
     const root = createRoot(container);
 
-    await act(async () => root.render(<HighlightHarness host={projectionHost} />));
+    await act(async () => root.render(<ProjectionHarness host={projectionHost} />));
     await act(async () => vi.advanceTimersByTimeAsync(17));
     const output = container.querySelector("output");
     expect(output?.dataset.top).toBeUndefined();
@@ -152,7 +152,7 @@ describe("annotation badge scrolling", () => {
     document.body.append(shadowHost);
     const root = createRoot(container);
 
-    await act(async () => root.render(<HighlightHarness host={projectionHost} />));
+    await act(async () => root.render(<ProjectionHarness host={projectionHost} />));
     await act(async () => vi.advanceTimersByTimeAsync(17));
     const rendersAfterInitialProjection = renderCount;
     projectionHost.controls.emitSelectionInvalidation({ reason: "layout" });
@@ -170,7 +170,7 @@ describe("annotation badge scrolling", () => {
     document.body.append(container);
     const root = createRoot(container);
 
-    await act(async () => root.render(<HighlightHarness host={projectionHost} />));
+    await act(async () => root.render(<ProjectionHarness host={projectionHost} />));
     await act(async () => vi.advanceTimersByTimeAsync(17));
     const rendersAfterInitialProjection = renderCount;
     projectionHost.controls.emitSelectionInvalidation({
@@ -193,7 +193,7 @@ describe("annotation badge scrolling", () => {
     const root = createRoot(container);
 
     await act(async () =>
-      root.render(<HighlightHarness activeAnnotationId={annotation.id} host={projectionHost} />),
+      root.render(<ProjectionHarness activeAnnotationId={annotation.id} host={projectionHost} />),
     );
     await act(async () => vi.advanceTimersByTimeAsync(17));
     expect(highlight).toHaveBeenLastCalledWith(expect.any(Range));
@@ -220,13 +220,13 @@ describe("annotation badge scrolling", () => {
     document.body.append(container);
     const root = createRoot(container);
 
-    await act(async () => root.render(<HighlightHarness host={projectionHost} />));
+    await act(async () => root.render(<ProjectionHarness host={projectionHost} />));
     await act(async () => vi.advanceTimersByTimeAsync(17));
     expect(messageIndex).toHaveBeenCalledOnce();
 
     messageIndex.mockClear();
     await act(async () =>
-      root.render(<HighlightHarness activeAnnotationId={annotation.id} host={projectionHost} />),
+      root.render(<ProjectionHarness activeAnnotationId={annotation.id} host={projectionHost} />),
     );
     expect(messageIndex).not.toHaveBeenCalled();
 
@@ -234,7 +234,7 @@ describe("annotation badge scrolling", () => {
   });
 });
 
-function HighlightHarness({
+function ProjectionHarness({
   activeAnnotationId = null,
   host,
 }: {
@@ -243,12 +243,12 @@ function HighlightHarness({
 }) {
   return (
     <HostTestProvider host={host}>
-      <HighlightProbe activeAnnotationId={activeAnnotationId} />
+      <ProjectionProbe activeAnnotationId={activeAnnotationId} />
     </HostTestProvider>
   );
 }
 
-function HighlightProbe({ activeAnnotationId }: { activeAnnotationId: string | null }) {
+function ProjectionProbe({ activeAnnotationId }: { activeAnnotationId: string | null }) {
   renderCount += 1;
   const [projection] = useAnnotationProjection(annotationList, activeAnnotationId);
   return (

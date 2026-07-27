@@ -15,8 +15,10 @@ export function compileAnnotatedPrompt(
     return `${messages.annotation(ordinal)}\n${messages.selectedText}${selectedTextFor(anchor)}${commentLine}`;
   });
   const trimmedPrompt = userPrompt.trim();
-  const promptSection =
+  const supplementalQuestionSection =
     trimmedPrompt.length > 0 ? `${messages.supplementalQuestion}\n${trimmedPrompt}` : "";
 
-  return [messages.introduction, ...annotationSections, promptSection].filter(Boolean).join("\n\n");
+  return [messages.introduction, ...annotationSections, supplementalQuestionSection]
+    .filter(Boolean)
+    .join("\n\n");
 }

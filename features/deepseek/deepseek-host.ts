@@ -1,4 +1,4 @@
-import { createDomHost, type HostEnvironment } from "@/features/host/dom-host";
+import { createHostEngine, type HostEnvironment } from "@/features/host/dom-host";
 import {
   composerLayout,
   messageAccess,
@@ -30,5 +30,5 @@ const DEEPSEEK_ADAPTER: SiteAdapter = {
 };
 
 export function createDeepSeekHost(environment: HostEnvironment) {
-  return createDomHost(environment, DEEPSEEK_ADAPTER);
+  return createHostEngine(environment, DEEPSEEK_ADAPTER);
 }

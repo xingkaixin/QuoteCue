@@ -1,4 +1,4 @@
-import { createDomHost, type HostEnvironment } from "@/features/host/dom-host";
+import { createHostEngine, type HostEnvironment } from "@/features/host/dom-host";
 import {
   composerLayout,
   messageAccess,
@@ -21,5 +21,5 @@ const CHATGPT_ADAPTER: SiteAdapter = {
 };
 
 export function createChatGptHost(environment: HostEnvironment) {
-  return createDomHost(environment, CHATGPT_ADAPTER);
+  return createHostEngine(environment, CHATGPT_ADAPTER);
 }

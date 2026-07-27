@@ -16,7 +16,7 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
-describe("selection overlay", () => {
+describe("native selection presentation", () => {
   it("reports anchor validation failures without selection content", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     const message = appendAssistantMessage("assistant-one", "private selection");

@@ -46,7 +46,7 @@ type SendInterceptorOptions = {
 type SendAttempt = {
   id: string;
   snapshot: ComposerSnapshot;
-  compiledText: string;
+  compiledPrompt: string;
   annotations: readonly NumberedAnnotation[];
   controller: AbortController;
   failureOverride?: AnnotatedSendFailureReason;
@@ -122,7 +122,7 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
       submission = host.composer.submit({
         restoreTo: attempt.snapshot,
         signal: attempt.controller.signal,
-        text: attempt.compiledText,
+        text: attempt.compiledPrompt,
       });
     } catch {
       reportError("Failed to replay annotated send");
@@ -183,8 +183,8 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
     const originalText =
       retryOriginalText && snapshot.text.trim().length === 0 ? retryOriginalText : snapshot.text;
     const ownedSnapshot = { ...snapshot, text: originalText };
-    const compiledText = options.compilePrompt(annotations, originalText, options.locale());
-    const attempt = createAttempt(ownedSnapshot, compiledText, annotations);
+    const compiledPrompt = options.compilePrompt(annotations, originalText, options.locale());
+    const attempt = createAttempt(ownedSnapshot, compiledPrompt, annotations);
     activeAttempt = attempt;
     lastFailedAttempt = null;
     setState({ status: "preparing", attemptId: attempt.id });
@@ -230,7 +230,7 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
 
 function createAttempt(
   snapshot: ComposerSnapshot,
-  compiledText: string,
+  compiledPrompt: string,
   annotations: readonly NumberedAnnotation[],
 ): SendAttempt {
   let resolve: (result: AnnotatedSendResult) => void = () => undefined;
@@ -240,7 +240,7 @@ function createAttempt(
   return {
     id: crypto.randomUUID(),
     snapshot,
-    compiledText,
+    compiledPrompt,
     annotations,
     controller: new AbortController(),
     result,
