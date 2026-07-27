@@ -1,4 +1,4 @@
-import type { ComposerAccess } from "./host-context";
+import type { ComposerAccess } from "./site-adapter";
 
 export function createTextNormalizer(composer: ComposerAccess) {
   return {

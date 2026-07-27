@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { richTextComposer, textareaComposer } from "@/features/host/composer-access";
+import { richTextComposer, textareaComposer } from "@/features/host/site-adapter";
 import { createTextNormalizer } from "@/features/host/text-normalizer";
 
 describe("host text normalization", () => {

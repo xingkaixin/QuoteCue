@@ -1,7 +1,11 @@
-import { createDomHost, type HostEnvironment, type SiteAdapter } from "@/features/host/dom-host";
-import { richTextComposer } from "@/features/host/composer-access";
-import { composerLayout } from "@/features/host/composer-layout";
-import { messageAccess, sendControlAccess } from "@/features/host/site-capabilities";
+import { createDomHost, type HostEnvironment } from "@/features/host/dom-host";
+import {
+  composerLayout,
+  messageAccess,
+  richTextComposer,
+  sendControlAccess,
+  type SiteAdapter,
+} from "@/features/host/site-adapter";
 
 const CHATGPT_ADAPTER: SiteAdapter = {
   composer: richTextComposer("#prompt-textarea[contenteditable='true']"),

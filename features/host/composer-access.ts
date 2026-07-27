@@ -1,4 +1,5 @@
-import type { ComposerAccess, HostEnvironment } from "./host-context";
+import type { HostEnvironment } from "./host-context";
+import type { ComposerAccess } from "./site-adapter";
 
 const normalizeWhitespace = (text: string) => text.replace(/\s+/g, " ").trim();
 

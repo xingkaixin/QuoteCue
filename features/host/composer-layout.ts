@@ -1,11 +1,7 @@
-import {
-  available,
-  unavailable,
-  type ComposerLayoutCapability,
-  type HostContext,
-  type HostResult,
-} from "./host-context";
 import type { HostLayout, SelectionRect } from "@/features/host-port/host-port";
+
+import { available, unavailable, type HostContext, type HostResult } from "./host-context";
+import type { ComposerLayoutAccess } from "./site-adapter";
 
 export function createComposerLayout(
   context: HostContext,
@@ -112,7 +108,7 @@ export function createComposerLayout(
 
 function fallbackRectangle(
   surface: DOMRect,
-  fallback: ComposerLayoutCapability["fallbackAction"],
+  fallback: ComposerLayoutAccess["fallbackAction"],
 ): SelectionRect {
   const left = surface.right - fallback.width - fallback.rightInset;
   const top = surface.bottom - fallback.height - fallback.bottomInset;
@@ -135,16 +131,4 @@ function rectangleSnapshot(rect: DOMRect): SelectionRect {
     top: rect.top,
     width: rect.width,
   };
-}
-
-export function composerLayout(
-  actionSelector: string,
-  fallbackAction: ComposerLayoutCapability["fallbackAction"] = {
-    bottomInset: 8,
-    height: 36,
-    rightInset: 8,
-    width: 36,
-  },
-): ComposerLayoutCapability {
-  return { actionSelector, fallbackAction };
 }

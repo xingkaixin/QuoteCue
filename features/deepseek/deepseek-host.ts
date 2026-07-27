@@ -1,7 +1,11 @@
-import { createDomHost, type HostEnvironment, type SiteAdapter } from "@/features/host/dom-host";
-import { textareaComposer } from "@/features/host/composer-access";
-import { composerLayout } from "@/features/host/composer-layout";
-import { messageAccess, sendControlAccess } from "@/features/host/site-capabilities";
+import { createDomHost, type HostEnvironment } from "@/features/host/dom-host";
+import {
+  composerLayout,
+  messageAccess,
+  sendControlAccess,
+  textareaComposer,
+  type SiteAdapter,
+} from "@/features/host/site-adapter";
 
 const MESSAGE_ITEM_SELECTOR = "[data-virtual-list-item-key]";
 const USER_MESSAGE_SELECTOR = `${MESSAGE_ITEM_SELECTOR}:has(> .ds-message.d29f3d7d)`;

@@ -1,8 +1,6 @@
-import type {
-  HostResult,
-  HostUnavailableReason,
-  SelectionPresentationMode,
-} from "@/features/host-port/host-port";
+import type { HostResult, HostUnavailableReason } from "@/features/host-port/host-port";
+
+import type { MessageAccess, SiteAdapter } from "./site-adapter";
 
 const HISTORY_CHANGE_EVENT = "quotecue:history-change";
 const HISTORY_PATCH_STATE_PROPERTY = "quotecue:history-change:patch";
@@ -22,44 +20,6 @@ export type {
   HostUnavailableReason,
   SelectionInvalidation,
 } from "@/features/host-port/host-port";
-
-export type ComposerAccess = {
-  normalize(text: string): string;
-  read(composer: HTMLElement): string;
-  selector: string;
-  write(composer: HTMLElement, text: string, environment: HostEnvironment): boolean;
-};
-
-export type ComposerLayoutCapability = {
-  actionSelector: string;
-  fallbackAction: {
-    bottomInset: number;
-    height: number;
-    rightInset: number;
-    width: number;
-  };
-};
-
-export type MessageAccess = {
-  assistantSelector: string;
-  id(message: HTMLElement): string | undefined;
-  isAssistant(message: HTMLElement): boolean;
-  userSelector: string;
-};
-
-export type SendControlAccess = {
-  isDisabled(button: HTMLElement): boolean;
-  selector: string;
-};
-
-export type SiteAdapter = {
-  composer: ComposerAccess;
-  conversationPathPattern: RegExp;
-  layout: ComposerLayoutCapability;
-  messages: MessageAccess;
-  selectionPresentation: { mode: SelectionPresentationMode };
-  sendControl: SendControlAccess;
-};
 
 export type HostEnvironment = {
   document: Document;
