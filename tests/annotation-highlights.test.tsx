@@ -40,6 +40,7 @@ afterEach(() => {
   }
   vi.useRealTimers();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
   document.body.replaceChildren();
 });
 
@@ -166,6 +167,54 @@ describe("annotation badge scrolling", () => {
     await act(async () => vi.advanceTimersByTimeAsync(17));
 
     expect(renderCount).toBe(rendersAfterInitialProjection);
+    await act(async () => root.unmount());
+  });
+
+  it("preserves projection identity when content invalidation keeps the same geometry", async () => {
+    vi.useFakeTimers();
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    Object.defineProperty(globalThis, "CSS", { configurable: true, value: {} });
+    const projectionHost = createProjectionHost();
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    await act(async () => root.render(<HighlightHarness host={projectionHost} />));
+    await act(async () => vi.advanceTimersByTimeAsync(17));
+    const rendersAfterInitialProjection = renderCount;
+    projectionHost.controls.emitSelectionInvalidation("content");
+    await act(async () => vi.advanceTimersByTimeAsync(17));
+
+    expect(renderCount).toBe(rendersAfterInitialProjection);
+    await act(async () => root.unmount());
+  });
+
+  it("keeps the active highlight when content invalidation only changes geometry", async () => {
+    vi.useFakeTimers();
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    const setHighlight = vi.fn();
+    Object.defineProperty(globalThis, "CSS", {
+      configurable: true,
+      value: { highlights: { delete: vi.fn(), set: setHighlight } },
+    });
+    vi.stubGlobal("Highlight", vi.fn());
+    const projectionHost = createProjectionHost();
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    await act(async () =>
+      root.render(<HighlightHarness activeAnnotationId={annotation.id} host={projectionHost} />),
+    );
+    await act(async () => vi.advanceTimersByTimeAsync(17));
+    expect(setHighlight).toHaveBeenCalledOnce();
+
+    geometry.top = 100;
+    projectionHost.controls.emitSelectionInvalidation("content");
+    await act(async () => vi.advanceTimersByTimeAsync(17));
+
+    expect(container.querySelector("output")?.dataset.top).toBe("90");
+    expect(setHighlight).toHaveBeenCalledOnce();
     await act(async () => root.unmount());
   });
 
