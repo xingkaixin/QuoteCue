@@ -1,8 +1,15 @@
-export type HostUnavailableReason =
+export type SelectionCaptureFailureReason =
+  | "anchor-unavailable"
   | "assistant-message-unavailable"
+  | "selection-unavailable";
+
+export type SelectionRevealFailureReason = "selection-detached";
+
+export type HostUnavailableReason =
+  | SelectionCaptureFailureReason
+  | SelectionRevealFailureReason
   | "composer-surface-unavailable"
   | "composer-unavailable"
-  | "selection-unavailable"
   | "send-control-unavailable";
 
 export type HostResult<T, R extends string = HostUnavailableReason> =
@@ -85,14 +92,16 @@ export type NativeSelectionAction = {
 };
 
 type HostSelectionBase = {
-  capture(selection?: Selection | null): HostResult<SelectionCapture>;
+  capture(
+    selection?: Selection | null,
+  ): HostResult<SelectionCapture, SelectionCaptureFailureReason>;
   clear(): void;
   highlight(range: Range | null): void;
   isObscured(range: Range, rect: SelectionRect): boolean;
   messageIndex(messageIds?: ReadonlySet<string>): Map<string, HTMLElement>;
   observeCaptureIntent(callback: (intent: SelectionCaptureIntent) => void): () => void;
   observeInvalidation(callback: (invalidation: SelectionInvalidation) => void): () => void;
-  reveal(range: Range): HostResult<"scrolled" | "visible">;
+  reveal(range: Range): HostResult<"scrolled" | "visible", SelectionRevealFailureReason>;
 };
 
 export type HostSelection = HostSelectionBase &

@@ -20,9 +20,11 @@ export type {
   HostResult,
   HostUnavailableReason,
   SelectionCapture,
+  SelectionCaptureFailureReason,
   SelectionCaptureIntent,
   SelectionInvalidation,
   SelectionRect,
+  SelectionRevealFailureReason,
   TextAnchor,
 } from "@/features/host-port/host-port";
 export type { HostEnvironment } from "./host-context";

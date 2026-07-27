@@ -12,7 +12,7 @@ const CHATGPT_ADAPTER: SiteAdapter = {
   conversationPathPattern: /^\/(?:c|g\/[^/?#]+\/c)\/([^/?#]+)/,
   layout: composerLayout("button", { boundarySelector: "form" }),
   messages: messageAccess({
-    assistantSelector: '[data-message-author-role="assistant"][data-message-id]',
+    assistantSelector: '[data-message-author-role="assistant"]',
     id: (message) => message.dataset.messageId,
     userSelector: '[data-message-author-role="user"][data-message-id]',
   }),
