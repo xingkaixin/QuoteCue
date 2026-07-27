@@ -74,7 +74,9 @@ export function useAnnotationProjection(
         if (invalidation === "content") {
           rangeByAnnotationId = resolveAnnotationRanges(annotations, host);
         }
-        commitGeometry(projectAnnotationGeometry(annotations, rangeByAnnotationId));
+        commitGeometry(
+          projectAnnotationGeometry(annotations, rangeByAnnotationId, geometryRef.current),
+        );
       });
     };
     const stopObserving = host.selection.observeInvalidation(scheduleProjection);
@@ -118,13 +120,19 @@ function resolveAnnotationRanges(annotations: readonly DraftAnnotation[], host: 
 function projectAnnotationGeometry(
   annotations: readonly DraftAnnotation[],
   rangeByAnnotationId: ReadonlyMap<string, Range | null>,
+  previousGeometry: ReadonlyMap<string, AnnotationGeometry>,
 ) {
   const geometry = new Map<string, AnnotationGeometry>();
   for (const annotation of annotations) {
-    const range = rangeByAnnotationId.get(annotation.id);
-    if (!range) {
+    const resolvedRange = rangeByAnnotationId.get(annotation.id);
+    if (!resolvedRange) {
       continue;
     }
+    const previousRange = previousGeometry.get(annotation.id)?.range;
+    const range =
+      previousRange && sameRangeBoundaries(previousRange, resolvedRange)
+        ? previousRange
+        : resolvedRange;
     const rect = selectionRect(rangeEndpointRect(range));
     geometry.set(annotation.id, {
       badge: badgePosition(range, rect),
@@ -210,7 +218,7 @@ function sameGeometry(
     const other = right.get(annotationId);
     if (
       !other ||
-      geometry.range !== other.range ||
+      !sameRangeBoundaries(geometry.range, other.range) ||
       !sameRect(geometry.rect, other.rect) ||
       !sameBadge(geometry.badge, other.badge)
     ) {
@@ -218,6 +226,15 @@ function sameGeometry(
     }
   }
   return true;
+}
+
+function sameRangeBoundaries(left: Range, right: Range) {
+  return (
+    left.startContainer === right.startContainer &&
+    left.startOffset === right.startOffset &&
+    left.endContainer === right.endContainer &&
+    left.endOffset === right.endOffset
+  );
 }
 
 function sameRect(left: SelectionRect, right: SelectionRect) {
