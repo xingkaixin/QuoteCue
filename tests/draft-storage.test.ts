@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { DraftAnnotation } from "@/features/annotations/annotation";
 import { loadDraftAnnotations, saveDraftAnnotations } from "@/features/annotations/draft-storage";
@@ -12,6 +12,7 @@ const extensionStorage = vi.hoisted(() => {
         ? structuredClone(values)
         : Object.fromEntries(keys.filter((key) => key in values).map((key) => [key, values[key]])),
     ),
+    getKeys: vi.fn(async () => Object.keys(values)),
     set: vi.fn(async (updates: Record<string, unknown>) => Object.assign(values, updates)),
     remove: vi.fn(async (keys: string | string[]) => {
       for (const key of Array.isArray(keys) ? keys : [keys]) {
@@ -21,11 +22,15 @@ const extensionStorage = vi.hoisted(() => {
     reset(nextValues: Record<string, unknown> = {}) {
       values = structuredClone(nextValues);
       this.get.mockClear();
+      this.getKeys.mockClear();
       this.set.mockClear();
       this.remove.mockClear();
     },
     snapshot() {
       return structuredClone(values);
+    },
+    keys() {
+      return Object.keys(values);
     },
   };
 });
@@ -36,6 +41,8 @@ vi.mock("wxt/browser", () => ({
 
 const currentKey = "quotecue:draft:A";
 const legacyKey = "askgpt:draft:A";
+const NOW = Date.UTC(2026, 6, 27);
+const DAY_MS = 24 * 60 * 60 * 1_000;
 const conversationA = { kind: "identified", id: "A" } as const;
 const unmarkedAnchor = {
   messageId: "message-a",
@@ -58,25 +65,53 @@ const legacyAnnotation: DraftAnnotation = {
   ...unmarkedAnnotation,
   anchor: { ...unmarkedAnchor, format: "legacy-rendered" },
 };
-const envelope = { version: 3, annotations: [annotation] };
-const legacyEnvelope = { version: 3, annotations: [legacyAnnotation] };
+const envelope = { version: 3, annotations: [annotation], updatedAt: NOW };
+const legacyEnvelope = { version: 3, annotations: [legacyAnnotation], updatedAt: NOW };
 
-beforeEach(() => extensionStorage.reset());
+beforeEach(() => {
+  extensionStorage.reset();
+  vi.spyOn(Date, "now").mockReturnValue(NOW);
+});
+
+afterEach(() => vi.restoreAllMocks());
 
 describe("draft storage", () => {
-  it("removes orphaned temporary drafts without touching other storage", async () => {
+  it("loads without waiting for conservative background cleanup", async () => {
+    const expiredKey = "quotecue:draft:expired";
+    const recentKey = "quotecue:draft:recent";
+    const unmarkedKey = "quotecue:draft:without-updated-at";
+    const staleEnvelope = { ...envelope, updatedAt: NOW - 31 * DAY_MS };
+    const unmarkedEnvelope = { version: 3, annotations: [annotation] };
     extensionStorage.reset({
-      [currentKey]: envelope,
+      [currentKey]: staleEnvelope,
+      [expiredKey]: staleEnvelope,
+      [recentKey]: { ...envelope, updatedAt: NOW - 29 * DAY_MS },
+      [unmarkedKey]: unmarkedEnvelope,
       "quotecue:draft:new-chat:current-orphan": envelope,
       "askgpt:draft:new-chat:legacy-orphan": [annotation],
       "unrelated-key": "preserved",
     });
+    let resolveKeys: (keys: string[]) => void = () => undefined;
+    extensionStorage.getKeys.mockImplementationOnce(
+      () => new Promise<string[]>((resolve) => (resolveKeys = resolve)),
+    );
+    const consoleInfo = vi.spyOn(console, "info").mockImplementation(() => undefined);
 
     await expect(loadDraftAnnotations(conversationA)).resolves.toEqual([annotation]);
-    expect(extensionStorage.snapshot()).toEqual({
-      [currentKey]: envelope,
-      "unrelated-key": "preserved",
+    expect(extensionStorage.remove).not.toHaveBeenCalled();
+
+    resolveKeys(extensionStorage.keys());
+    await vi.waitFor(() => {
+      expect(extensionStorage.snapshot()).toEqual({
+        [currentKey]: staleEnvelope,
+        [recentKey]: { ...envelope, updatedAt: NOW - 29 * DAY_MS },
+        [unmarkedKey]: unmarkedEnvelope,
+        "unrelated-key": "preserved",
+      });
     });
+    expect(extensionStorage.getKeys).toHaveBeenCalledOnce();
+    expect(extensionStorage.get).not.toHaveBeenCalledWith(null);
+    expect(consoleInfo).toHaveBeenCalledWith("[QuoteCue] Removed 1 expired annotation draft");
   });
 
   it("loads the current versioned envelope", async () => {
@@ -104,7 +139,11 @@ describe("draft storage", () => {
       ...renderedAnnotation,
       anchor: { ...renderedAnnotation.anchor, format: "legacy-rendered" },
     };
-    const migratedEnvelope = { version: 3, annotations: [migratedAnnotation] };
+    const migratedEnvelope = {
+      version: 3,
+      annotations: [migratedAnnotation],
+      updatedAt: NOW,
+    };
     extensionStorage.reset({
       [currentKey]: { version: 1, annotations: [renderedAnnotation] },
     });
@@ -139,7 +178,7 @@ describe("draft storage", () => {
       ...storedTableAnnotation,
       anchor: { ...storedTableAnnotation.anchor, format: "exact" },
     };
-    const tableEnvelope = { version: 3, annotations: [tableAnnotation] };
+    const tableEnvelope = { version: 3, annotations: [tableAnnotation], updatedAt: NOW };
     extensionStorage.reset({
       [currentKey]: { version: 2, annotations: [storedTableAnnotation] },
     });
