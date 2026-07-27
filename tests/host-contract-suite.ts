@@ -316,11 +316,16 @@ export function runHostContractSuite(definition: HostContractDefinition) {
       const stop = host().selection.observeInvalidation(onInvalidation);
 
       window.dispatchEvent(new Event("resize"));
-      expect(onInvalidation).toHaveBeenLastCalledWith("layout");
+      expect(onInvalidation).toHaveBeenLastCalledWith({ reason: "layout" });
 
       onInvalidation.mockClear();
       requiredText(fixture.assistantMessage.querySelector("strong")).textContent = "updated answer";
-      await vi.waitFor(() => expect(onInvalidation).toHaveBeenCalledWith("content"));
+      await vi.waitFor(() =>
+        expect(onInvalidation).toHaveBeenCalledWith({
+          dirtyMessageIds: new Set([definition.expectedMessageId]),
+          reason: "content",
+        }),
+      );
 
       stop();
       onInvalidation.mockClear();
@@ -332,12 +337,10 @@ export function runHostContractSuite(definition: HostContractDefinition) {
 
     it("does not classify composer character data as message content", async () => {
       const fixture = definition.installFixture();
-      const onInvalidation = vi.fn();
-      const stop = host().selection.observeInvalidation(onInvalidation);
       const composerText = document.createTextNode("composer text");
       fixture.composer.replaceChildren(composerText);
-      await vi.waitFor(() => expect(onInvalidation).toHaveBeenCalled());
-      onInvalidation.mockClear();
+      const onInvalidation = vi.fn();
+      const stop = host().selection.observeInvalidation(onInvalidation);
 
       composerText.data = "typed composer text";
       await Promise.resolve();
@@ -345,7 +348,12 @@ export function runHostContractSuite(definition: HostContractDefinition) {
       expect(onInvalidation).not.toHaveBeenCalled();
 
       requiredText(fixture.assistantMessage.querySelector("strong")).data = "updated answer";
-      await vi.waitFor(() => expect(onInvalidation).toHaveBeenCalledWith("content"));
+      await vi.waitFor(() =>
+        expect(onInvalidation).toHaveBeenCalledWith({
+          dirtyMessageIds: new Set([definition.expectedMessageId]),
+          reason: "content",
+        }),
+      );
       stop();
     });
 

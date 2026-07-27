@@ -1,11 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useHost } from "@/features/host-port/HostProvider";
-import type {
-  Host,
-  SelectionInvalidationReason,
-  SelectionRect,
-} from "@/features/host-port/host-port";
+import type { Host, SelectionInvalidation, SelectionRect } from "@/features/host-port/host-port";
 import { clampPositionToViewport } from "@/features/layout/floating-position";
 import { currentVisualViewportBounds } from "@/features/layout/use-visual-viewport";
 import { QUOTECUE_HOST_SELECTOR } from "@/lib/dom-identity";
@@ -16,6 +12,7 @@ import { rangeEndpointRect, restoreTextAnchorFromIndex } from "./selection-ancho
 
 const HIGHLIGHT_NAME = "quotecue-annotations";
 const HIGHLIGHT_STYLE_ID = "quotecue-highlight-style";
+const FULL_REANCHOR_INTERVAL_MS = 5_000;
 
 type AnnotationGeometry = {
   badge: ProjectedAnnotation["badge"];
@@ -58,21 +55,33 @@ export function useAnnotationProjection(
 
     ensureHighlightStyle();
     let projectionFrame: number | undefined;
-    let pendingInvalidation: SelectionInvalidationReason | undefined;
+    let lastFullResolutionAt = Number.NEGATIVE_INFINITY;
+    let pendingInvalidation: SelectionInvalidation | undefined;
     let rangeByAnnotationId = new Map<string, Range | null>();
-    const scheduleProjection = (reason: SelectionInvalidationReason) => {
-      if (reason === "content" || pendingInvalidation === undefined) {
-        pendingInvalidation = reason;
-      }
+    const scheduleProjection = (nextInvalidation: SelectionInvalidation) => {
+      pendingInvalidation = mergeInvalidations(pendingInvalidation, nextInvalidation);
       if (projectionFrame !== undefined) {
         return;
       }
       projectionFrame = requestAnimationFrame(() => {
         projectionFrame = undefined;
-        const invalidation = pendingInvalidation ?? "layout";
+        const invalidation = pendingInvalidation ?? { reason: "layout" };
         pendingInvalidation = undefined;
-        if (invalidation === "content") {
-          rangeByAnnotationId = resolveAnnotationRanges(annotations, host);
+        if (invalidation.reason === "content") {
+          const dirtyMessageIds =
+            invalidation.dirtyMessageIds === "all" ||
+            Date.now() - lastFullResolutionAt >= FULL_REANCHOR_INTERVAL_MS
+              ? "all"
+              : invalidation.dirtyMessageIds;
+          if (dirtyMessageIds === "all") {
+            lastFullResolutionAt = Date.now();
+          }
+          rangeByAnnotationId = resolveAnnotationRanges(
+            annotations,
+            host,
+            rangeByAnnotationId,
+            dirtyMessageIds,
+          );
         }
         commitGeometry(
           projectAnnotationGeometry(annotations, rangeByAnnotationId, geometryRef.current),
@@ -80,7 +89,7 @@ export function useAnnotationProjection(
       });
     };
     const stopObserving = host.selection.observeInvalidation(scheduleProjection);
-    scheduleProjection("content");
+    scheduleProjection({ dirtyMessageIds: "all", reason: "content" });
 
     return () => {
       stopObserving();
@@ -106,15 +115,63 @@ export function useAnnotationProjection(
   return projectedAnnotations;
 }
 
-function resolveAnnotationRanges(annotations: readonly DraftAnnotation[], host: Host) {
-  const messageIndex = host.selection.messageIndex();
+function resolveAnnotationRanges(
+  annotations: readonly DraftAnnotation[],
+  host: Host,
+  currentRanges: ReadonlyMap<string, Range | null>,
+  dirtyMessageIds: ReadonlySet<string> | "all",
+) {
+  const annotationIdsToResolve = new Set<string>();
+  const messageIdsToResolve = new Set<string>();
+  for (const annotation of annotations) {
+    const currentRange = currentRanges.get(annotation.id);
+    const shouldResolve =
+      dirtyMessageIds === "all" ||
+      dirtyMessageIds.has(annotation.anchor.messageId) ||
+      !currentRanges.has(annotation.id) ||
+      (currentRange !== undefined && currentRange !== null && !isRangeConnected(currentRange));
+    if (shouldResolve) {
+      annotationIdsToResolve.add(annotation.id);
+      messageIdsToResolve.add(annotation.anchor.messageId);
+    }
+  }
+
+  const messageIndex =
+    annotationIdsToResolve.size === 0
+      ? new Map<string, HTMLElement>()
+      : host.selection.messageIndex(dirtyMessageIds === "all" ? undefined : messageIdsToResolve);
   const messageTextCache = new Map<HTMLElement, string>();
   return new Map(
-    annotations.map((annotation) => [
-      annotation.id,
-      restoreTextAnchorFromIndex(annotation.anchor, messageIndex, messageTextCache),
-    ]),
+    annotations.map((annotation) => {
+      const range = annotationIdsToResolve.has(annotation.id)
+        ? restoreTextAnchorFromIndex(annotation.anchor, messageIndex, messageTextCache)
+        : (currentRanges.get(annotation.id) ?? null);
+      return [annotation.id, range];
+    }),
   );
+}
+
+function isRangeConnected(range: Range) {
+  return range.startContainer.isConnected && range.endContainer.isConnected;
+}
+
+function mergeInvalidations(
+  current: SelectionInvalidation | undefined,
+  next: SelectionInvalidation,
+): SelectionInvalidation {
+  if (!current || current.reason === "layout") {
+    return next;
+  }
+  if (next.reason === "layout") {
+    return current;
+  }
+  if (current.dirtyMessageIds === "all" || next.dirtyMessageIds === "all") {
+    return { dirtyMessageIds: "all", reason: "content" };
+  }
+  return {
+    dirtyMessageIds: new Set([...current.dirtyMessageIds, ...next.dirtyMessageIds]),
+    reason: "content",
+  };
 }
 
 function projectAnnotationGeometry(

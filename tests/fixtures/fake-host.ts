@@ -4,7 +4,7 @@ import type {
   HostLayout,
   HostResult,
   SelectionCapture,
-  SelectionInvalidationReason,
+  SelectionInvalidation,
 } from "@/features/host-port/host-port";
 
 type FakeHostOverrides = {
@@ -18,7 +18,7 @@ type FakeHostOverrides = {
 export type FakeHost = Host & {
   controls: {
     emitLayoutChange(): void;
-    emitSelectionInvalidation(reason: SelectionInvalidationReason): void;
+    emitSelectionInvalidation(invalidation: SelectionInvalidation): void;
     setConversationIdentity(identity: ConversationIdentity | null): void;
     setLayout(layout: HostResult<HostLayout>): void;
     setMessageIndex(index: ReadonlyMap<string, HTMLElement>): void;
@@ -60,7 +60,7 @@ export function createFakeHost(overrides: FakeHostOverrides = {}): FakeHost {
     | undefined;
   const conversationSubscribers = new Set<() => void>();
   const layoutSubscribers = new Set<() => void>();
-  const selectionSubscribers = new Set<(reason: SelectionInvalidationReason) => void>();
+  const selectionSubscribers = new Set<(invalidation: SelectionInvalidation) => void>();
   const submitSubscribers = new Set<(event: Event, button: HTMLElement | null) => void>();
 
   sendControl.addEventListener("click", () => {
@@ -153,9 +153,9 @@ export function createFakeHost(overrides: FakeHostOverrides = {}): FakeHost {
           subscriber();
         }
       },
-      emitSelectionInvalidation(reason) {
+      emitSelectionInvalidation(invalidation) {
         for (const subscriber of selectionSubscribers) {
-          subscriber(reason);
+          subscriber(invalidation);
         }
       },
       setConversationIdentity(identity) {

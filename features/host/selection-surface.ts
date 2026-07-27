@@ -9,7 +9,7 @@ import {
   unavailable,
   type HostContext,
   type HostResult,
-  type SelectionInvalidationReason,
+  type SelectionInvalidation,
 } from "./host-context";
 
 const CONTEXT_LENGTH = 48;
@@ -24,13 +24,22 @@ type SelectionToolbarCandidate = {
 
 export function createSelectionSurface(context: HostContext) {
   const { adapter, document: hostDocument, logger, signals, window: hostWindow } = context;
+  let messageById = new Map<string, HTMLElement>();
 
-  function observeInvalidation(callback: (reason: SelectionInvalidationReason) => void) {
-    const stopMutationObservation = signals.observeMutations(() => callback("content"), {
-      characterData: true,
-      childList: true,
-    });
-    const stopViewportObservation = signals.observeViewport(() => callback("layout"));
+  function observeInvalidation(callback: (invalidation: SelectionInvalidation) => void) {
+    const stopMutationObservation = signals.observeMutations(
+      (records) => {
+        const dirtyMessageIds = dirtyAssistantMessageIds(records);
+        if (dirtyMessageIds === "all" || dirtyMessageIds.size > 0) {
+          callback({ dirtyMessageIds, reason: "content" });
+        }
+      },
+      {
+        characterData: true,
+        childList: true,
+      },
+    );
+    const stopViewportObservation = signals.observeViewport(() => callback({ reason: "layout" }));
 
     return () => {
       stopMutationObservation();
@@ -38,18 +47,87 @@ export function createSelectionSurface(context: HostContext) {
     };
   }
 
-  function messageIndex(root: ParentNode = hostDocument) {
-    const index = new Map<string, HTMLElement>();
-    for (const message of root.querySelectorAll<HTMLElement>(adapter.messages.assistantSelector)) {
+  function messageIndex(messageIds?: ReadonlySet<string>) {
+    if (!messageIds || [...messageIds].some((messageId) => !isCachedMessageValid(messageId))) {
+      rebuildMessageIndex();
+    }
+    if (!messageIds) {
+      return new Map(messageById);
+    }
+    return new Map(
+      [...messageIds].flatMap((messageId) => {
+        const message = messageById.get(messageId);
+        return message ? [[messageId, message] as const] : [];
+      }),
+    );
+  }
+
+  function rebuildMessageIndex() {
+    const nextMessageById = new Map<string, HTMLElement>();
+    for (const message of hostDocument.querySelectorAll<HTMLElement>(
+      adapter.messages.assistantSelector,
+    )) {
       if (!adapter.messages.isAssistant(message)) {
         continue;
       }
       const messageId = adapter.messages.id(message);
-      if (messageId && !index.has(messageId)) {
-        index.set(messageId, message);
+      if (messageId && !nextMessageById.has(messageId)) {
+        nextMessageById.set(messageId, message);
       }
     }
-    return index;
+    messageById = nextMessageById;
+  }
+
+  function isCachedMessageValid(messageId: string) {
+    const message = messageById.get(messageId);
+    return (
+      message?.isConnected === true &&
+      adapter.messages.isAssistant(message) &&
+      adapter.messages.id(message) === messageId
+    );
+  }
+
+  function dirtyAssistantMessageIds(records: readonly MutationRecord[]) {
+    const dirtyMessageIds = new Set<string>();
+    for (const record of records) {
+      for (const message of assistantMessagesAffectedBy(record)) {
+        if (!adapter.messages.isAssistant(message)) {
+          continue;
+        }
+        const messageId = adapter.messages.id(message);
+        if (!messageId) {
+          return "all" as const;
+        }
+        dirtyMessageIds.add(messageId);
+      }
+    }
+    return dirtyMessageIds;
+  }
+
+  function assistantMessagesAffectedBy(record: MutationRecord) {
+    const messages = new Set<HTMLElement>();
+    const target = record.target instanceof Element ? record.target : record.target.parentElement;
+    const targetMessage = target?.closest<HTMLElement>(adapter.messages.assistantSelector);
+    if (targetMessage) {
+      messages.add(targetMessage);
+    }
+    if (record.type !== "childList") {
+      return messages;
+    }
+    for (const node of [...record.addedNodes, ...record.removedNodes]) {
+      if (!(node instanceof Element)) {
+        continue;
+      }
+      if (node.matches(adapter.messages.assistantSelector)) {
+        messages.add(node as HTMLElement);
+      }
+      for (const message of node.querySelectorAll<HTMLElement>(
+        adapter.messages.assistantSelector,
+      )) {
+        messages.add(message);
+      }
+    }
+    return messages;
   }
 
   function capture(selection = hostWindow.getSelection()): HostResult<SelectionCapture> {
@@ -87,6 +165,7 @@ export function createSelectionSurface(context: HostContext) {
     if (!anchor) {
       return unavailable("assistant-message-unavailable");
     }
+    messageById.set(anchor.messageId, message);
 
     return available({
       actionRect,
