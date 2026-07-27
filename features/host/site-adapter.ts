@@ -1,5 +1,3 @@
-import type { SelectionPresentationMode } from "@/features/host-port/host-port";
-
 import type { HostEnvironment } from "./host-context";
 
 export { richTextComposer, textareaComposer } from "./composer-access";
@@ -13,13 +11,27 @@ export type ComposerAccess = {
 
 export type ComposerLayoutAccess = {
   actionSelector: string;
+  boundarySelector?: string;
   fallbackAction: {
     bottomInset: number;
     height: number;
     rightInset: number;
     width: number;
   };
+  surfaceSelector?: string;
 };
+
+export type SelectionToolbarBounds = {
+  maxHeight: number;
+  maxVerticalDistance: number;
+  maxWidth: number;
+  minHeight: number;
+  minWidth: number;
+};
+
+export type SelectionPresentationAccess =
+  | { mode: "native-toolbar"; toolbarBounds?: SelectionToolbarBounds }
+  | { mode: "overlay" };
 
 export type MessageAccess = {
   assistantSelector: string;
@@ -38,8 +50,15 @@ export type SiteAdapter = {
   conversationPathPattern: RegExp;
   layout: ComposerLayoutAccess;
   messages: MessageAccess;
-  selectionPresentation: { mode: SelectionPresentationMode };
+  selectionPresentation: SelectionPresentationAccess;
   sendControl: SendControlAccess;
+};
+
+export type ComposerLayoutOptions = Pick<
+  ComposerLayoutAccess,
+  "boundarySelector" | "surfaceSelector"
+> & {
+  fallbackAction?: ComposerLayoutAccess["fallbackAction"];
 };
 
 type MessageAccessOptions = Omit<MessageAccess, "isAssistant"> & {
@@ -48,14 +67,19 @@ type MessageAccessOptions = Omit<MessageAccess, "isAssistant"> & {
 
 export function composerLayout(
   actionSelector: string,
-  fallbackAction: ComposerLayoutAccess["fallbackAction"] = {
-    bottomInset: 8,
-    height: 36,
-    rightInset: 8,
-    width: 36,
-  },
+  options: ComposerLayoutOptions = {},
 ): ComposerLayoutAccess {
-  return { actionSelector, fallbackAction };
+  return {
+    actionSelector,
+    fallbackAction: options.fallbackAction ?? {
+      bottomInset: 8,
+      height: 36,
+      rightInset: 8,
+      width: 36,
+    },
+    ...(options.boundarySelector ? { boundarySelector: options.boundarySelector } : {}),
+    ...(options.surfaceSelector ? { surfaceSelector: options.surfaceSelector } : {}),
+  };
 }
 
 export function messageAccess(options: MessageAccessOptions): MessageAccess {
