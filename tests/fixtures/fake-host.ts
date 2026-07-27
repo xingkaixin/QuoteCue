@@ -133,6 +133,8 @@ export function createFakeHost(overrides: FakeHostOverrides = {}): FakeHost {
     selection: {
       capture: () => selectionCapture,
       clear: () => undefined,
+      highlight: () => undefined,
+      isObscured: () => false,
       messageIndex: () => new Map(messageIndex),
       observeCaptureIntent(callback) {
         selectionCaptureSubscribers.add(callback);

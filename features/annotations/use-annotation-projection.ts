@@ -5,14 +5,11 @@ import type { Host, SelectionInvalidation, SelectionRect } from "@/features/host
 import { rangeEndpointRect } from "@/features/host-port/range-geometry";
 import { clampPositionToViewport } from "@/features/layout/floating-position";
 import { currentVisualViewportBounds } from "@/features/layout/use-visual-viewport";
-import { QUOTECUE_HOST_SELECTOR } from "@/lib/dom-identity";
 
 import type { DraftAnnotation } from "./annotation";
 import { numberAnnotations, type ProjectedAnnotation } from "./annotation-projection";
 import { restoreTextAnchorFromIndex } from "./selection-anchor";
 
-const HIGHLIGHT_NAME = "quotecue-annotations";
-const HIGHLIGHT_STYLE_ID = "quotecue-highlight-style";
 const FULL_REANCHOR_INTERVAL_MS = 5_000;
 
 type AnnotationGeometry = {
@@ -54,7 +51,6 @@ export function useAnnotationProjection(
       return;
     }
 
-    ensureHighlightStyle();
     let projectionFrame: number | undefined;
     let lastFullResolutionAt = Number.NEGATIVE_INFINITY;
     let pendingInvalidation: SelectionInvalidation | undefined;
@@ -85,7 +81,7 @@ export function useAnnotationProjection(
           );
         }
         commitGeometry(
-          projectAnnotationGeometry(annotations, rangeByAnnotationId, geometryRef.current),
+          projectAnnotationGeometry(annotations, host, rangeByAnnotationId, geometryRef.current),
         );
       });
     };
@@ -109,9 +105,9 @@ export function useAnnotationProjection(
   }, [annotations, host]);
 
   useEffect(() => {
-    renderActiveHighlight(activeRange);
-    return clearHighlights;
-  }, [activeRange]);
+    host.selection.highlight(activeRange);
+    return () => host.selection.highlight(null);
+  }, [activeRange, host]);
 
   return projectedAnnotations;
 }
@@ -177,6 +173,7 @@ function mergeInvalidations(
 
 function projectAnnotationGeometry(
   annotations: readonly DraftAnnotation[],
+  host: Host,
   rangeByAnnotationId: ReadonlyMap<string, Range | null>,
   previousGeometry: ReadonlyMap<string, AnnotationGeometry>,
 ) {
@@ -193,7 +190,7 @@ function projectAnnotationGeometry(
         : resolvedRange;
     const rect = selectionRect(rangeEndpointRect(range));
     geometry.set(annotation.id, {
-      badge: badgePosition(range, rect),
+      badge: badgePosition(host, range, rect),
       range,
       rect,
     });
@@ -201,33 +198,13 @@ function projectAnnotationGeometry(
   return geometry;
 }
 
-function ensureHighlightStyle() {
-  if (document.getElementById(HIGHLIGHT_STYLE_ID)) {
-    return;
-  }
-
-  const style = document.createElement("style");
-  style.id = HIGHLIGHT_STYLE_ID;
-  style.textContent = `::highlight(${HIGHLIGHT_NAME}) {
-    background: color-mix(in srgb, #2f7df4 22%, transparent);
-  }`;
-  document.head.append(style);
-}
-
-function renderActiveHighlight(activeRange: Range | null) {
-  clearHighlights();
-  if (activeRange && "highlights" in CSS && typeof Highlight !== "undefined") {
-    CSS.highlights.set(HIGHLIGHT_NAME, new Highlight(activeRange));
-  }
-}
-
-function badgePosition(range: Range, rect: SelectionRect) {
+function badgePosition(host: Host, range: Range, rect: SelectionRect) {
   const viewport = currentVisualViewportBounds();
 
   if (rect.width === 0 || rect.bottom < viewport.top || rect.top > viewport.top + viewport.height) {
     return null;
   }
-  if (isAnchorObscured(range, rect, viewport)) {
+  if (host.selection.isObscured(range, rect)) {
     return null;
   }
   return clampPositionToViewport(
@@ -235,34 +212,6 @@ function badgePosition(range: Range, rect: SelectionRect) {
     { height: 24, width: 24 },
     { margin: 6, viewport },
   );
-}
-
-// 徽标固定在顶层，不随消息滚动容器裁剪；锚点滚到宿主浮层（如输入框）背后时，
-// 命中测试的首个非 QuoteCue 元素与锚点无包含关系，此时徽标应一并隐藏
-function isAnchorObscured(
-  range: Range,
-  rect: Pick<SelectionRect, "height" | "right" | "top">,
-  viewport: ReturnType<typeof currentVisualViewportBounds>,
-) {
-  if (typeof document.elementsFromPoint !== "function") {
-    return false;
-  }
-
-  const anchor =
-    range.endContainer instanceof Element ? range.endContainer : range.endContainer.parentElement;
-  if (!anchor) {
-    return false;
-  }
-
-  const x = Math.min(Math.max(rect.right - 1, viewport.left), viewport.left + viewport.width - 1);
-  const y = Math.min(
-    Math.max(rect.top + rect.height / 2, viewport.top),
-    viewport.top + viewport.height - 1,
-  );
-  const hit = document
-    .elementsFromPoint(x, y)
-    .find((element) => !element.closest(QUOTECUE_HOST_SELECTOR));
-  return hit !== undefined && !anchor.contains(hit) && !hit.contains(anchor);
 }
 
 function sameGeometry(
@@ -329,10 +278,4 @@ function selectionRect(rect: SelectionRect): SelectionRect {
     top: rect.top,
     width: rect.width,
   };
-}
-
-function clearHighlights() {
-  if ("highlights" in CSS) {
-    CSS.highlights.delete(HIGHLIGHT_NAME);
-  }
 }

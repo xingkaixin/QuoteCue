@@ -76,6 +76,8 @@ export type NativeSelectionAction = {
 type HostSelectionBase = {
   capture(selection?: Selection | null): HostResult<SelectionCapture>;
   clear(): void;
+  highlight(range: Range | null): void;
+  isObscured(range: Range, rect: SelectionRect): boolean;
   messageIndex(messageIds?: ReadonlySet<string>): Map<string, HTMLElement>;
   observeCaptureIntent(callback: (intent: SelectionCaptureIntent) => void): () => void;
   observeInvalidation(callback: (invalidation: SelectionInvalidation) => void): () => void;
