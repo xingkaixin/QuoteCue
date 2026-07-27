@@ -27,7 +27,14 @@ type StoredDraftEnvelope = {
 
 type DecodedDraft = {
   annotations: DraftAnnotation[];
+  hasUnreadableAnnotations: boolean;
   needsMigration: boolean;
+};
+
+type DecodedAnnotations = {
+  annotations: DraftAnnotation[];
+  hasDuplicateAnnotations: boolean;
+  hasUnreadableAnnotations: boolean;
 };
 
 class DraftStorageFormatError extends Error {
@@ -50,7 +57,7 @@ export async function loadDraftAnnotations(conversation: IdentifiedConversation)
 
   if (storedDraft !== undefined) {
     const decoded = decodeStoredDraft(storedDraft);
-    if (decoded.needsMigration) {
+    if (decoded.needsMigration && !decoded.hasUnreadableAnnotations) {
       await browser.storage.local.set({ [key]: draftEnvelope(decoded.annotations) });
     }
     if (result[legacyKey] !== undefined) {
@@ -65,6 +72,9 @@ export async function loadDraftAnnotations(conversation: IdentifiedConversation)
   }
 
   const decoded = decodeStoredDraft(legacyDraft);
+  if (decoded.hasUnreadableAnnotations) {
+    return decoded.annotations;
+  }
   await browser.storage.local.set({ [key]: draftEnvelope(decoded.annotations) });
   await removeMigratedLegacyDraft(legacyKey);
   return decoded.annotations;
@@ -92,8 +102,10 @@ function draftEnvelope(annotations: DraftAnnotation[]): StoredDraftEnvelope {
 
 function decodeStoredDraft(value: unknown): DecodedDraft {
   if (Array.isArray(value)) {
+    const decoded = decodeAnnotations(value, RENDERED_QUOTE_DRAFT_STORAGE_VERSION);
     return {
-      annotations: decodeAnnotations(value, RENDERED_QUOTE_DRAFT_STORAGE_VERSION),
+      annotations: decoded.annotations,
+      hasUnreadableAnnotations: decoded.hasUnreadableAnnotations,
       needsMigration: true,
     };
   }
@@ -104,21 +116,28 @@ function decodeStoredDraft(value: unknown): DecodedDraft {
     throw new DraftStorageFormatError("Draft annotations must be an array");
   }
 
-  const annotations = decodeAnnotations(value.annotations, value.version);
+  const decoded = decodeAnnotations(value.annotations, value.version);
   return {
-    annotations,
-    needsMigration:
-      value.version !== DRAFT_STORAGE_VERSION || annotations.length !== value.annotations.length,
+    annotations: decoded.annotations,
+    hasUnreadableAnnotations: decoded.hasUnreadableAnnotations,
+    needsMigration: value.version !== DRAFT_STORAGE_VERSION || decoded.hasDuplicateAnnotations,
   };
 }
 
-function decodeAnnotations(values: unknown[], version: DraftStorageVersion) {
+function decodeAnnotations(values: unknown[], version: DraftStorageVersion): DecodedAnnotations {
   const annotations: DraftAnnotation[] = [];
   const annotationIds = new Set<string>();
+  let hasDuplicateAnnotations = false;
+  let hasUnreadableAnnotations = false;
 
   for (const value of values) {
     const annotation = decodeAnnotation(value, version);
-    if (!annotation || annotationIds.has(annotation.id)) {
+    if (!annotation) {
+      hasUnreadableAnnotations = true;
+      continue;
+    }
+    if (annotationIds.has(annotation.id)) {
+      hasDuplicateAnnotations = true;
       continue;
     }
     annotationIds.add(annotation.id);
@@ -128,7 +147,7 @@ function decodeAnnotations(values: unknown[], version: DraftStorageVersion) {
   if (values.length > 0 && annotations.length === 0) {
     throw new DraftStorageFormatError("Draft contains no valid annotations");
   }
-  return annotations;
+  return { annotations, hasDuplicateAnnotations, hasUnreadableAnnotations };
 }
 
 function decodeAnnotation(value: unknown, version: DraftStorageVersion): DraftAnnotation | null {
