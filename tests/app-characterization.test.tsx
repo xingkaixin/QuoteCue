@@ -1,16 +1,14 @@
-import { act } from "react";
+import { act, type ComponentProps } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import App from "@/entrypoints/content/App";
 import type { DraftAnnotation, AnchoredSelection } from "@/features/annotations/annotation";
-import type { ProjectedAnnotation } from "@/features/annotations/annotation-projection";
-import { createChatGptHost } from "@/features/chatgpt/chatgpt-host";
 import { HostProvider } from "@/features/host-port/HostProvider";
 import type { IdentifiedConversation } from "@/features/host-port/host-port";
 import { I18nProvider } from "@/features/i18n/I18nProvider";
 
-import { appendUserMessage, installChatGptHostFixture } from "./fixtures/chatgpt-host";
+import { createFakeHost, type FakeHost } from "./fixtures/fake-host";
 
 const draftStorage = vi.hoisted(() => ({
   load: vi.fn<(conversation: IdentifiedConversation) => Promise<DraftAnnotation[]>>(),
@@ -24,46 +22,44 @@ vi.mock("@/features/annotations/draft-storage", () => ({
   saveDraftAnnotations: draftStorage.save,
 }));
 
-vi.mock("@/features/annotations/use-annotation-projection", async () => {
-  const { numberAnnotations } = await import("@/features/annotations/annotation-projection");
-  return {
-    useAnnotationProjection(annotations: readonly DraftAnnotation[]) {
-      return numberAnnotations(annotations).map<ProjectedAnnotation>((entry) => ({
-        ...entry,
-        badge: null,
-        range: document.createRange(),
-        rect: { bottom: 120, height: 20, left: 80, right: 180, top: 100, width: 100 },
-      }));
-    },
-  };
+type AnnotationBadgeProps = ComponentProps<
+  (typeof import("@/features/annotations/AnnotationBadge"))["AnnotationBadge"]
+>;
+type AnnotationEditorProps = ComponentProps<
+  (typeof import("@/features/annotations/AnnotationEditor"))["AnnotationEditor"]
+>;
+type AnnotationQuickInputProps = ComponentProps<
+  (typeof import("@/features/annotations/AnnotationQuickInput"))["AnnotationQuickInput"]
+>;
+type AnnotationSummaryProps = ComponentProps<
+  (typeof import("@/features/annotations/AnnotationSummary"))["AnnotationSummary"]
+>;
+type SelectionPresentationProps = ComponentProps<
+  (typeof import("@/features/annotations/SelectionPresentation"))["SelectionPresentation"]
+>;
+
+vi.mock("@/features/host/use-annotated-composer-layout", () => {
+  const useAnnotatedComposerLayout: (typeof import("@/features/host/use-annotated-composer-layout"))["useAnnotatedComposerLayout"] =
+    (isActive) => {
+      return isActive
+        ? {
+            send: {
+              bottom: 236,
+              height: 36,
+              left: 200,
+              right: 236,
+              top: 200,
+              width: 36,
+            },
+            summary: { left: 10, top: 10 },
+          }
+        : null;
+    };
+  return { useAnnotatedComposerLayout };
 });
 
-vi.mock("@/features/host/use-annotated-composer-layout", () => ({
-  useAnnotatedComposerLayout(isActive: boolean) {
-    return isActive
-      ? {
-          send: {
-            bottom: 236,
-            height: 36,
-            left: 200,
-            right: 236,
-            top: 200,
-            width: 36,
-          },
-          summary: { left: 10, top: 10 },
-        }
-      : null;
-  },
-}));
-
 vi.mock("@/features/annotations/SelectionPresentation", () => ({
-  SelectionPresentation({
-    isEnabled,
-    onActivate,
-  }: {
-    isEnabled: boolean;
-    onActivate: (selection: AnchoredSelection) => void;
-  }) {
+  SelectionPresentation({ isEnabled, onActivate }: SelectionPresentationProps) {
     return (
       <button
         data-testid="start-annotation"
@@ -78,13 +74,7 @@ vi.mock("@/features/annotations/SelectionPresentation", () => ({
 }));
 
 vi.mock("@/features/annotations/AnnotationQuickInput", () => ({
-  AnnotationQuickInput({
-    onClose,
-    onSave,
-  }: {
-    onClose: () => void;
-    onSave: (comment: string) => void;
-  }) {
+  AnnotationQuickInput({ onClose, onSave }: AnnotationQuickInputProps) {
     return (
       <div data-testid="quick-editor">
         <button data-testid="save-quick" onClick={() => onSave("saved comment")} type="button">
@@ -99,7 +89,7 @@ vi.mock("@/features/annotations/AnnotationQuickInput", () => ({
 }));
 
 vi.mock("@/features/annotations/AnnotationEditor", () => ({
-  AnnotationEditor({ onCancel }: { onCancel: () => void }) {
+  AnnotationEditor({ onCancel }: AnnotationEditorProps) {
     return (
       <button data-testid="expanded-editor" onClick={onCancel} type="button">
         Expanded editor
@@ -109,13 +99,7 @@ vi.mock("@/features/annotations/AnnotationEditor", () => ({
 }));
 
 vi.mock("@/features/annotations/AnnotationBadge", () => ({
-  AnnotationBadge({
-    entry,
-    onEdit,
-  }: {
-    entry: ProjectedAnnotation;
-    onEdit: (annotation: ProjectedAnnotation) => void;
-  }) {
+  AnnotationBadge({ entry, onEdit }: AnnotationBadgeProps) {
     return (
       <button data-testid={`badge-${entry.ordinal}`} onClick={() => onEdit(entry)} type="button">
         {entry.ordinal}
@@ -132,14 +116,7 @@ vi.mock("@/features/annotations/AnnotationSummary", () => ({
     onUndo,
     pendingDeletionCount,
     sendStatus,
-  }: {
-    annotations: readonly ProjectedAnnotation[];
-    onRemove: (annotationId: string) => void;
-    onSend: () => void;
-    onUndo: () => void;
-    pendingDeletionCount: number;
-    sendStatus: string;
-  }) {
+  }: AnnotationSummaryProps) {
     return (
       <section
         data-count={annotations.length}
@@ -185,6 +162,7 @@ const anchoredSelection: AnchoredSelection = {
 };
 
 const storedDrafts = new Map<string, DraftAnnotation[]>();
+const rangeRectsDescriptor = Object.getOwnPropertyDescriptor(Range.prototype, "getClientRects");
 
 beforeEach(() => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
@@ -206,6 +184,11 @@ beforeEach(() => {
   });
   vi.stubGlobal("ClipboardEvent", undefined);
   vi.stubGlobal("DataTransfer", undefined);
+  vi.stubGlobal("CSS", {});
+  Object.defineProperty(Range.prototype, "getClientRects", {
+    configurable: true,
+    value: () => [new DOMRect(80, 100, 100, 20)],
+  });
 });
 
 afterEach(() => {
@@ -214,14 +197,16 @@ afterEach(() => {
   document.body.replaceChildren();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+  if (rangeRectsDescriptor) {
+    Object.defineProperty(Range.prototype, "getClientRects", rangeRectsDescriptor);
+  } else {
+    Reflect.deleteProperty(Range.prototype, "getClientRects");
+  }
 });
 
 describe("App annotation workflow", () => {
   it("clears only confirmed annotations and closes the editor", async () => {
     const mounted = await mountApp();
-    mounted.fixture.action.addEventListener("click", () => {
-      appendUserMessage("confirmed-send", mounted.fixture.composer.innerText);
-    });
 
     await click(mounted.container, "start-annotation");
     await click(mounted.container, "start-annotation");
@@ -239,7 +224,7 @@ describe("App annotation workflow", () => {
     });
 
     expect(mounted.container.querySelector('[data-testid="quick-editor"]')).toBeNull();
-    expect(mounted.fixture.composer.innerText).toContain("[Annotation 1]");
+    expect(mounted.host.elements.composer.textContent).toContain("[Annotation 1]");
     expect(storedDrafts.get("conversation-a")).toHaveLength(1);
 
     await act(async () => mounted.root.unmount());
@@ -273,13 +258,23 @@ describe("App annotation workflow", () => {
     expect(summary(mounted.container).dataset.pending).toBe("1");
     expect(mounted.container.querySelector('[data-testid="quick-editor"]')).not.toBeNull();
 
-    await act(async () => window.history.pushState({}, "", "/c/conversation-b"));
+    await act(async () =>
+      mounted.host.controls.setConversationIdentity({
+        kind: "identified",
+        id: "conversation-b",
+      }),
+    );
     await vi.waitFor(() => {
       expect(mounted.container.querySelector('[data-testid="annotation-summary"]')).toBeNull();
       expect(mounted.container.querySelector('[data-testid="quick-editor"]')).toBeNull();
     });
 
-    await act(async () => window.history.pushState({}, "", "/c/conversation-a"));
+    await act(async () =>
+      mounted.host.controls.setConversationIdentity({
+        kind: "identified",
+        id: "conversation-a",
+      }),
+    );
     await vi.waitFor(() => {
       expect(summary(mounted.container).dataset.count).toBe("2");
       expect(summary(mounted.container).dataset.pending).toBe("0");
@@ -291,8 +286,7 @@ describe("App annotation workflow", () => {
 });
 
 async function mountApp() {
-  const fixture = installChatGptHostFixture();
-  const host = createChatGptHost({ document, window });
+  const host = createAppHost();
   const container = document.createElement("div");
   document.body.append(container);
   const root = createRoot(container);
@@ -312,7 +306,7 @@ async function mountApp() {
     ).toBe(false);
   });
 
-  return { container, fixture, host, root };
+  return { container, host, root };
 }
 
 async function click(container: HTMLElement, testId: string) {
@@ -321,6 +315,7 @@ async function click(container: HTMLElement, testId: string) {
     throw new Error(`Missing ${testId}`);
   }
   await act(async () => button.click());
+  await act(async () => nextFrame());
 }
 
 function summary(container: HTMLElement) {
@@ -336,4 +331,18 @@ function cloneAnnotations(annotations: readonly DraftAnnotation[]) {
     ...annotation,
     anchor: { ...annotation.anchor },
   }));
+}
+
+function createAppHost(): FakeHost {
+  const host = createFakeHost();
+  host.controls.setConversationIdentity({ kind: "identified", id: "conversation-a" });
+  const message = document.createElement("article");
+  message.textContent = "A focused answer for the contract fixture.";
+  document.body.append(message);
+  host.controls.setMessageIndex(new Map([["assistant-one", message]]));
+  return host;
+}
+
+function nextFrame() {
+  return new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 }

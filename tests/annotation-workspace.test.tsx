@@ -4,12 +4,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { DraftAnnotation, AnchoredSelection } from "@/features/annotations/annotation";
 import { useAnnotationWorkspace } from "@/features/annotations/use-annotation-workspace";
-import { createChatGptHost } from "@/features/chatgpt/chatgpt-host";
 import { HostProvider } from "@/features/host-port/HostProvider";
 import type { IdentifiedConversation } from "@/features/host-port/host-port";
 import { I18nProvider } from "@/features/i18n/I18nProvider";
 
-import { installChatGptHostFixture } from "./fixtures/chatgpt-host";
+import { createFakeHost, type FakeHost } from "./fixtures/fake-host";
 
 const draftStorage = vi.hoisted(() => ({
   load: vi.fn<(conversation: IdentifiedConversation) => Promise<DraftAnnotation[]>>(),
@@ -22,20 +21,6 @@ vi.mock("@/features/annotations/draft-storage", () => ({
   loadDraftAnnotations: draftStorage.load,
   saveDraftAnnotations: draftStorage.save,
 }));
-
-vi.mock("@/features/annotations/use-annotation-projection", async () => {
-  const { numberAnnotations } = await import("@/features/annotations/annotation-projection");
-  return {
-    useAnnotationProjection(annotations: readonly DraftAnnotation[]) {
-      return numberAnnotations(annotations).map((entry) => ({
-        ...entry,
-        badge: null,
-        range: document.createRange(),
-        rect: { bottom: 120, height: 20, left: 80, right: 180, top: 100, width: 100 },
-      }));
-    },
-  };
-});
 
 const anchoredSelection: AnchoredSelection = {
   anchor: {
@@ -62,6 +47,7 @@ beforeEach(() => {
     configurable: true,
     value: vi.fn(() => false),
   });
+  vi.stubGlobal("CSS", {});
 });
 
 afterEach(() => {
@@ -69,6 +55,7 @@ afterEach(() => {
   window.history.replaceState({}, "", "/");
   document.body.replaceChildren();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe("annotation workspace", () => {
@@ -96,8 +83,7 @@ describe("annotation workspace", () => {
 
   it("reads locale changes without reinstalling the send interceptor", async () => {
     draftStorage.load.mockResolvedValue([]);
-    installChatGptHostFixture();
-    const host = createChatGptHost({ document, window });
+    const host = createWorkspaceHost();
     const subscribeToSubmit = vi.spyOn(host.composer, "subscribeToSubmit");
     const mounted = await mountWorkspace(host);
 
@@ -113,7 +99,7 @@ describe("annotation workspace", () => {
 });
 
 async function mountWorkspace(
-  providedHost = createHostWithFixture(),
+  providedHost = createWorkspaceHost(),
   container = document.createElement("div"),
 ) {
   if (!container.isConnected) {
@@ -132,9 +118,17 @@ async function mountWorkspace(
   return { host: providedHost, root };
 }
 
-function createHostWithFixture() {
-  installChatGptHostFixture();
-  return createChatGptHost({ document, window });
+function createWorkspaceHost(): FakeHost {
+  const host = createFakeHost({
+    conversation: {
+      identity: () => ({ kind: "identified", id: "conversation-a" }),
+    },
+  });
+  const message = document.createElement("article");
+  message.textContent = "A focused answer for the contract fixture.";
+  document.body.append(message);
+  host.controls.setMessageIndex(new Map([["assistant-one", message]]));
+  return host;
 }
 
 function WorkspaceProbe() {
