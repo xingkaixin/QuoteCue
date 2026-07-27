@@ -1,4 +1,5 @@
 export const QUOTECUE_HOST_ATTR = "data-quotecue-host";
+export const QUOTECUE_INTERACTIVE_CLASS = "quotecue-interactive";
 export const QUOTECUE_NATIVE_ACTION_ATTR = "data-quotecue-native-action";
 export const QUOTECUE_ROOT_ATTR = "data-quotecue-root";
 
@@ -11,7 +12,8 @@ export const QUOTECUE_BOUNDARY_SELECTOR = [
   QUOTECUE_ROOT_SELECTOR,
 ].join(", ");
 
-// Host pages may create arbitrary stacking contexts, so floating UI reserves the top two layers.
+// Floating and tooltip layers only order QuoteCue UI inside the base stacking context.
+// Host overlays above the base layer can still obscure QuoteCue UI.
 export const Z_LAYER = {
   base: 40,
   floating: 2_147_483_646,

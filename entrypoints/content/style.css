@@ -10,7 +10,7 @@
     sans-serif;
 }
 
-#quotecue-root {
+[data-quotecue-root] {
   position: fixed;
   inset: 0;
   pointer-events: none;

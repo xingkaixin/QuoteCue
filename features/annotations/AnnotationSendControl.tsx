@@ -6,6 +6,7 @@ import type {
 } from "@/features/annotations/register-send-interceptor";
 import type { HostLayout } from "@/features/host-port/host-port";
 import { useI18n } from "@/features/i18n/I18nProvider";
+import { QUOTECUE_INTERACTIVE_CLASS } from "@/lib/dom-identity";
 
 type AnnotationSendControlProps = {
   onSend: () => void;
@@ -45,7 +46,7 @@ export function AnnotationSendControl({ onSend, position, state }: AnnotationSen
       )}
       <button
         aria-label={failureReason ? messages.retrySendingAnnotations : messages.sendAnnotations}
-        className="quotecue-interactive qc-primary qc-pressable qc-focus fixed flex cursor-pointer items-center justify-center rounded-full shadow-sm disabled:cursor-default disabled:opacity-50"
+        className={`${QUOTECUE_INTERACTIVE_CLASS} qc-primary qc-pressable qc-focus fixed flex cursor-pointer items-center justify-center rounded-full shadow-sm disabled:cursor-default disabled:opacity-50`}
         disabled={isPending}
         onClick={onSend}
         style={position}

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import type { SelectionRect } from "@/features/host-port/host-port";
 import { useI18n } from "@/features/i18n/I18nProvider";
 import { SecureTextField } from "@/features/secure-field/SecureTextField";
+import { QUOTECUE_INTERACTIVE_CLASS } from "@/lib/dom-identity";
 
 import type { DraftAnnotation } from "./annotation";
 import { useAnnotationCommentSurface } from "./use-annotation-comment-surface";
@@ -37,7 +38,7 @@ export function AnnotationEditor({
 
   return (
     <div
-      className="quotecue-interactive qc-surface qc-divider fixed w-[340px] max-w-[calc(100dvw-1.5rem)] overflow-y-auto rounded-2xl border p-3 shadow-sm"
+      className={`${QUOTECUE_INTERACTIVE_CLASS} qc-surface qc-divider fixed w-[340px] max-w-[calc(100dvw-1.5rem)] overflow-y-auto rounded-2xl border p-3 shadow-sm`}
       onPointerDown={resetWarning}
       ref={rootRef}
       style={position}
