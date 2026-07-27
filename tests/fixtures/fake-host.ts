@@ -47,10 +47,8 @@ export function createFakeHost(overrides: FakeHostOverrides = {}): FakeHost {
   let layout: HostResult<HostLayout> = {
     status: "available",
     value: {
-      action: sendControl,
       send: { bottom: 236, height: 36, left: 200, right: 236, top: 200, width: 36 },
       summary: { left: 10, top: 10 },
-      surface,
     },
   };
   let confirmation:
@@ -126,6 +124,7 @@ export function createFakeHost(overrides: FakeHostOverrides = {}): FakeHost {
     },
     layout: {
       current: () => layout,
+      reserveAnnotationRow: () => () => undefined,
       subscribe(callback) {
         layoutSubscribers.add(callback);
         return () => layoutSubscribers.delete(callback);

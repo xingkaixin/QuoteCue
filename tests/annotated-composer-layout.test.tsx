@@ -7,6 +7,7 @@ import { useAnnotatedComposerLayout } from "@/features/host/use-annotated-compos
 
 import { installChatGptHostFixture } from "./fixtures/chatgpt-host";
 import { createFakeHost } from "./fixtures/fake-host";
+import { setElementRect } from "./fixtures/fixture-utils";
 import { HostTestProvider } from "./fixtures/host-provider";
 
 afterEach(() => {
@@ -28,18 +29,11 @@ function LayoutProbe() {
 }
 
 describe("useAnnotatedComposerLayout", () => {
-  it("adds an annotation row to the composer and restores it on unmount", async () => {
+  it("reserves an annotation row and releases it on unmount", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-    vi.stubGlobal(
-      "ResizeObserver",
-      class {
-        disconnect() {}
-        observe() {}
-      },
-    );
-
-    const { action, surface } = installChatGptHostFixture();
-    const host = createChatGptHost({ document, window });
+    const releaseReservation = vi.fn();
+    const reserveAnnotationRow = vi.fn(() => releaseReservation);
+    const host = createFakeHost({ layout: { reserveAnnotationRow } });
 
     const container = document.createElement("div");
     document.body.append(container);
@@ -52,25 +46,16 @@ describe("useAnnotatedComposerLayout", () => {
       ),
     );
 
-    expect(surface.style.paddingTop).toBe("45px");
-    expect(action.style.visibility).toBe("hidden");
-    expect(container.textContent).toBe("112,708|456,748,36,36");
+    expect(reserveAnnotationRow).toHaveBeenCalledWith(40);
+    expect(container.textContent).toBe("10,10|200,200,36,36");
 
     await act(async () => root.unmount());
-    expect(surface.style.paddingTop).toBe("5px");
-    expect(action.style.visibility).toBe("");
+    expect(releaseReservation).toHaveBeenCalledOnce();
   });
 
   it("refreshes throughout a continuous stream of layout signals", async () => {
     vi.useFakeTimers();
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-    vi.stubGlobal(
-      "ResizeObserver",
-      class {
-        disconnect() {}
-        observe() {}
-      },
-    );
     const host = createFakeHost();
     const currentLayout = vi.spyOn(host.layout, "current");
     const container = document.createElement("div");
@@ -114,5 +99,31 @@ describe("useAnnotatedComposerLayout", () => {
       reason: "composer-surface-unavailable",
       status: "unavailable",
     });
+  });
+
+  it("moves an active reservation to a replacement composer surface", () => {
+    const fixture = installChatGptHostFixture();
+    const host = createChatGptHost({ document, window });
+    const release = host.layout.reserveAnnotationRow(40);
+    const nextSurface = document.createElement("div");
+    const nextAction = document.createElement("button");
+    nextSurface.style.backgroundColor = "white";
+    nextSurface.style.borderTopLeftRadius = "20px";
+    nextSurface.style.paddingTop = "3px";
+    nextAction.dataset.testid = "send-button";
+    nextSurface.append(fixture.composer, nextAction);
+    fixture.form.append(nextSurface);
+    setElementRect(nextSurface, new DOMRect(100, 500, 400, 92));
+    setElementRect(nextAction, new DOMRect(456, 548, 36, 36));
+
+    expect(host.layout.current().status).toBe("available");
+    expect(fixture.surface.style.paddingTop).toBe("5px");
+    expect(fixture.action.style.visibility).toBe("");
+    expect(nextSurface.style.paddingTop).toBe("43px");
+    expect(nextAction.style.visibility).toBe("hidden");
+
+    release();
+    expect(nextSurface.style.paddingTop).toBe("3px");
+    expect(nextAction.style.visibility).toBe("");
   });
 });

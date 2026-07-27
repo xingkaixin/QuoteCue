@@ -225,12 +225,27 @@ export function runHostContractSuite(definition: HostContractDefinition) {
       stop();
     });
 
-    it("finds the configured composer surface and action", () => {
+    it("reserves and restores the configured composer row", () => {
       const fixture = definition.installFixture();
-      const layout = availableValue(host().layout.current());
+      fixture.surface.style.setProperty("padding-top", "7px", "important");
+      fixture.sendControl.style.setProperty("visibility", "visible", "important");
+      const siteHost = host();
+      const release = siteHost.layout.reserveAnnotationRow(40);
 
-      expect(layout.surface).toBe(fixture.surface);
-      expect(layout.action).toBe(fixture.sendControl);
+      expect(fixture.surface.style.getPropertyValue("padding-top")).toBe("47px");
+      expect(fixture.surface.style.getPropertyPriority("padding-top")).toBe("important");
+      expect(fixture.sendControl.style.getPropertyValue("visibility")).toBe("hidden");
+      expect(fixture.sendControl.style.getPropertyPriority("visibility")).toBe("important");
+      expect(Object.keys(availableValue(siteHost.layout.current())).sort()).toEqual([
+        "send",
+        "summary",
+      ]);
+
+      release();
+      expect(fixture.surface.style.getPropertyValue("padding-top")).toBe("7px");
+      expect(fixture.surface.style.getPropertyPriority("padding-top")).toBe("important");
+      expect(fixture.sendControl.style.getPropertyValue("visibility")).toBe("visible");
+      expect(fixture.sendControl.style.getPropertyPriority("visibility")).toBe("important");
     });
 
     it("reports a collapsed selection as unavailable", () => {
@@ -282,7 +297,6 @@ export function runHostContractSuite(definition: HostContractDefinition) {
 
       const layout = availableValue(host().layout.current());
 
-      expect(layout.action ?? null).toBeNull();
       expect(layout.send).toEqual({
         bottom: surfaceRect.bottom - 8,
         height: 36,

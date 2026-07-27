@@ -57,10 +57,6 @@ describe("DeepSeek host contract", () => {
 
     const layout = host.layout.current();
     expect(layout.status).toBe("available");
-    if (layout.status === "available") {
-      expect(layout.value.surface).toBe(fixture.surface);
-      expect(layout.value.action).toBe(fixture.sendButton);
-    }
 
     const annotation: DraftAnnotation = {
       id: "annotation-one",

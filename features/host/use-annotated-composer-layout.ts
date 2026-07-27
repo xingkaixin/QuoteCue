@@ -19,81 +19,18 @@ export function useAnnotatedComposerLayout(isActive: boolean) {
     }
 
     let refreshTimer: number | undefined;
-    let styledSurface: HTMLElement | null = null;
-    let hiddenAction: HTMLElement | null = null;
-    let originalPaddingTop = "";
-    let originalPaddingTopPriority = "";
-    let originalActionVisibility = "";
     let lastRefreshAt = Number.NEGATIVE_INFINITY;
-    const resizeObserver = new ResizeObserver(scheduleRefresh);
-
-    function restoreSurface() {
-      if (!styledSurface) {
-        return;
-      }
-      styledSurface.style.setProperty(
-        "padding-top",
-        originalPaddingTop,
-        originalPaddingTopPriority,
-      );
-      styledSurface = null;
-      resizeObserver.disconnect();
-    }
-
-    function styleSurface(surface: HTMLElement) {
-      if (surface === styledSurface) {
-        return;
-      }
-
-      restoreSurface();
-      styledSurface = surface;
-      originalPaddingTop = surface.style.getPropertyValue("padding-top");
-      originalPaddingTopPriority = surface.style.getPropertyPriority("padding-top");
-      const paddingTop = Number.parseFloat(getComputedStyle(surface).paddingTop);
-      surface.style.setProperty(
-        "padding-top",
-        `${paddingTop + ANNOTATION_ROW_HEIGHT}px`,
-        "important",
-      );
-      resizeObserver.observe(surface);
-    }
-
-    function restoreAction() {
-      if (!hiddenAction) {
-        return;
-      }
-      hiddenAction.style.visibility = originalActionVisibility;
-      hiddenAction = null;
-    }
-
-    function hideAction(action: HTMLElement) {
-      if (action === hiddenAction) {
-        return;
-      }
-      restoreAction();
-      hiddenAction = action;
-      originalActionVisibility = action.style.visibility;
-      action.style.visibility = "hidden";
-    }
 
     function refresh() {
       refreshTimer = undefined;
       lastRefreshAt = Date.now();
       const result = host.layout.current();
       if (result.status === "unavailable") {
-        restoreSurface();
-        restoreAction();
         setLayout(null);
         return;
       }
 
-      const { action, send, summary, surface } = result.value;
-      styleSurface(surface);
-      if (action) {
-        hideAction(action);
-      } else {
-        restoreAction();
-      }
+      const { send, summary } = result.value;
       const nextLayout = { send, summary };
       setLayout((current) => (sameLayout(current, nextLayout) ? current : nextLayout));
     }
@@ -112,12 +49,12 @@ export function useAnnotatedComposerLayout(isActive: boolean) {
 
     const stopObserving = host.layout.subscribe(scheduleRefresh);
     refresh();
+    const releaseReservation = host.layout.reserveAnnotationRow(ANNOTATION_ROW_HEIGHT);
 
     return () => {
       stopObserving();
       window.clearTimeout(refreshTimer);
-      restoreSurface();
-      restoreAction();
+      releaseReservation();
     };
   }, [host, isActive]);
 

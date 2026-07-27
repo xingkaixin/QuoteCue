@@ -59,10 +59,8 @@ export type SelectionCapture = AnchoredSelection & {
 };
 
 export type HostLayout = {
-  action: HTMLElement | null;
   send: SelectionRect;
   summary: Pick<SelectionRect, "left" | "top">;
-  surface: HTMLElement;
 };
 
 type ConfirmedSendWatcherOptions = {
@@ -88,6 +86,7 @@ export type Host = {
   };
   layout: {
     current(): HostResult<HostLayout>;
+    reserveAnnotationRow(height: number): () => void;
     subscribe(callback: () => void): () => void;
   };
   reportUnavailable(reason: HostUnavailableReason): void;
