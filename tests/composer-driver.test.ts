@@ -1,12 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { richTextComposer, textareaComposer } from "@/features/host/composer-access";
 import { createComposerDriver } from "@/features/host/composer-driver";
+import { createHostContext } from "@/features/host/host-context";
 import {
-  createHostContext,
+  richTextComposer,
+  textareaComposer,
   type ComposerAccess,
   type SiteAdapter,
-} from "@/features/host/host-context";
+} from "@/features/host/site-adapter";
 import { createTextNormalizer } from "@/features/host/text-normalizer";
 
 afterEach(() => {

@@ -1,7 +1,8 @@
 import { createComposerDriver } from "./composer-driver";
 import { createComposerLayout } from "./composer-layout";
 import type { Host, HostUnavailableReason } from "@/features/host-port/host-port";
-import { createHostContext, type HostEnvironment, type SiteAdapter } from "./host-context";
+import { createHostContext, type HostEnvironment } from "./host-context";
+import type { SiteAdapter } from "./site-adapter";
 import { createSelectionSurface } from "./selection-surface";
 import { createSendPipeline } from "./send-pipeline";
 import { createTextNormalizer } from "./text-normalizer";
@@ -20,7 +21,7 @@ export type {
   SelectionRect,
   TextAnchor,
 } from "@/features/host-port/host-port";
-export type { HostEnvironment, SiteAdapter } from "./host-context";
+export type { HostEnvironment } from "./host-context";
 
 export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter): Host {
   const context = createHostContext(environment, adapter);
