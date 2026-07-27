@@ -18,7 +18,7 @@ export type CoreHostFixture = {
 
 export type HostContractDefinition = {
   appendAssistantMessage: (text: string) => HTMLElement;
-  appendUserMessage: (text: string) => void;
+  appendUserMessage: (text: string) => HTMLElement;
   conversation: {
     additionalMatchedPaths?: string[];
     id: string;
@@ -223,6 +223,25 @@ export function runHostContractSuite(definition: HostContractDefinition) {
       stop();
     });
 
+    it("confirms a new user message after its character data completes", async () => {
+      definition.installFixture();
+      const onConfirmed = vi.fn();
+      const stop = host().composer.watchConfirmedSend({
+        expectedText: "completed message",
+        onConfirmed,
+        onTimeout: vi.fn(),
+        signal: new AbortController().signal,
+      });
+
+      const userMessage = definition.appendUserMessage("pending");
+      await Promise.resolve();
+      expect(onConfirmed).not.toHaveBeenCalled();
+
+      requiredText(userMessage).data = "completed message";
+      await vi.waitFor(() => expect(onConfirmed).toHaveBeenCalledOnce());
+      stop();
+    });
+
     it("finds the configured composer surface and action", () => {
       const fixture = definition.installFixture();
       const layout = availableValue(host().layout.current());
@@ -309,6 +328,25 @@ export function runHostContractSuite(definition: HostContractDefinition) {
         "detached observer";
       await Promise.resolve();
       expect(onInvalidation).not.toHaveBeenCalled();
+    });
+
+    it("does not classify composer character data as message content", async () => {
+      const fixture = definition.installFixture();
+      const onInvalidation = vi.fn();
+      const stop = host().selection.observeInvalidation(onInvalidation);
+      const composerText = document.createTextNode("composer text");
+      fixture.composer.replaceChildren(composerText);
+      await vi.waitFor(() => expect(onInvalidation).toHaveBeenCalled());
+      onInvalidation.mockClear();
+
+      composerText.data = "typed composer text";
+      await Promise.resolve();
+
+      expect(onInvalidation).not.toHaveBeenCalled();
+
+      requiredText(fixture.assistantMessage.querySelector("strong")).data = "updated answer";
+      await vi.waitFor(() => expect(onInvalidation).toHaveBeenCalledWith("content"));
+      stop();
     });
 
     it("centers an offscreen endpoint in the nearest scroll container", () => {
@@ -479,7 +517,7 @@ function requiredText(node: Node | null) {
     throw new Error("Expected fixture text");
   }
   const text = node.nodeType === Node.TEXT_NODE ? node : node.firstChild;
-  if (!text) {
+  if (!(text instanceof Text)) {
     throw new Error("Expected fixture text");
   }
   return text;

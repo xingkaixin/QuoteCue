@@ -44,9 +44,7 @@ const contracts: HostContractDefinition[] = [
       };
     },
     appendAssistantMessage: (text) => appendAssistantMessage("assistant-contract", text),
-    appendUserMessage: (text) => {
-      appendUserMessage("user-contract", text);
-    },
+    appendUserMessage: (text) => appendUserMessage("user-contract", text),
     conversation: {
       additionalMatchedPaths: ["/g/gizmo-contract/c/conversation-contract"],
       id: "conversation-contract",
@@ -84,7 +82,8 @@ const contracts: HostContractDefinition[] = [
     },
     appendAssistantMessage: (text) => appendClaudeAssistantMessage(2, text),
     appendUserMessage: (text) => {
-      appendClaudeUserMessage(3, text);
+      const message = appendClaudeUserMessage(3, text);
+      return requiredElement<HTMLElement>("[data-testid='user-message']", message);
     },
     conversation: {
       id: "conversation-contract",
@@ -130,7 +129,8 @@ const contracts: HostContractDefinition[] = [
       return requiredElement<HTMLElement>(".ds-assistant-message-main-content", item);
     },
     appendUserMessage: (text) => {
-      appendUserMessageItem("user-contract", text);
+      const item = appendUserMessageItem("user-contract", text);
+      return requiredElement<HTMLElement>(".d29f3d7d", item);
     },
     conversation: {
       id: "conversation-contract",
@@ -168,7 +168,8 @@ const contracts: HostContractDefinition[] = [
     },
     appendAssistantMessage: (text) => appendKimiAssistantMessage("assistant-contract", text),
     appendUserMessage: (text) => {
-      appendKimiUserMessage("user-contract", text);
+      const message = appendKimiUserMessage("user-contract", text);
+      return requiredElement<HTMLElement>(".user-content", message);
     },
     conversation: {
       id: "conversation-contract",

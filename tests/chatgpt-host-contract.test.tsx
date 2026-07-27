@@ -312,16 +312,16 @@ describe("ChatGPT host contract", () => {
     });
 
     expect(constructionCount).toBe(1);
-    expect(observe).toHaveBeenCalledTimes(3);
+    expect(observe).toHaveBeenCalledTimes(2);
 
     stopLayoutObservation();
     expect(disconnect).not.toHaveBeenCalled();
 
     stopSelectionObservation();
-    expect(disconnect).not.toHaveBeenCalled();
+    expect(disconnect).toHaveBeenCalledOnce();
 
     stopActionObservation();
-    expect(disconnect).toHaveBeenCalledOnce();
+    expect(disconnect).toHaveBeenCalledTimes(2);
   });
 
   it("centers an offscreen annotation endpoint in its nearest scroll container", () => {
