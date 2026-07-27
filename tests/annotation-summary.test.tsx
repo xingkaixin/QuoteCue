@@ -138,32 +138,6 @@ describe("AnnotationSummary", () => {
     await act(async () => root.unmount());
   });
 
-  it("disables sending while pending and exposes retry after failure", async () => {
-    const onSend = vi.fn();
-    const mounted = await mountSummary({ onSend, sendStatus: "pending" });
-
-    expect(mounted.container.querySelector('[role="status"]')?.textContent).toContain(
-      "Sending annotations",
-    );
-    expect(
-      mounted.container.querySelector<HTMLButtonElement>('[aria-label="Send annotations"]')
-        ?.disabled,
-    ).toBe(true);
-
-    await mounted.render({ sendStatus: "failed" });
-    expect(mounted.container.querySelector('[role="status"]')?.textContent).toContain(
-      "annotation draft was kept",
-    );
-    const retryButton = mounted.container.querySelector<HTMLButtonElement>(
-      '[aria-label="Retry sending annotations"]',
-    );
-    expect(retryButton?.disabled).toBe(false);
-    await act(async () => retryButton?.click());
-    expect(onSend).toHaveBeenCalledOnce();
-
-    await act(async () => mounted.root.unmount());
-  });
-
   it("keeps deletion and clear controls enabled while an undo batch is pending", async () => {
     const onRemove = vi.fn();
     const mounted = await mountSummary({
@@ -297,20 +271,10 @@ async function mountSummary(overrides: Partial<SummaryProps> = {}) {
     onClear: vi.fn(),
     onEdit: vi.fn(),
     onRemove: vi.fn(),
-    onSend: vi.fn(),
     onUndo: vi.fn(),
     pendingDeletionCount: 0,
     pendingDeletionExpiresAt: null,
     position: { left: 10, top: 10 },
-    sendPosition: {
-      bottom: 236,
-      height: 36,
-      left: 200,
-      right: 236,
-      top: 200,
-      width: 36,
-    },
-    sendStatus: "idle",
     ...overrides,
   };
   let currentProps = baseProps;

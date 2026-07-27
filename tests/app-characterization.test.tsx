@@ -31,6 +31,9 @@ type AnnotationEditorProps = ComponentProps<
 type AnnotationQuickInputProps = ComponentProps<
   (typeof import("@/features/annotations/AnnotationQuickInput"))["AnnotationQuickInput"]
 >;
+type AnnotationSendControlProps = ComponentProps<
+  (typeof import("@/features/annotations/AnnotationSendControl"))["AnnotationSendControl"]
+>;
 type AnnotationSummaryProps = ComponentProps<
   (typeof import("@/features/annotations/AnnotationSummary"))["AnnotationSummary"]
 >;
@@ -112,16 +115,13 @@ vi.mock("@/features/annotations/AnnotationSummary", () => ({
   AnnotationSummary({
     annotations,
     onRemove,
-    onSend,
     onUndo,
     pendingDeletionCount,
-    sendStatus,
   }: AnnotationSummaryProps) {
     return (
       <section
         data-count={annotations.length}
         data-pending={pendingDeletionCount}
-        data-send-status={sendStatus}
         data-testid="annotation-summary"
       >
         <button
@@ -137,13 +137,25 @@ vi.mock("@/features/annotations/AnnotationSummary", () => ({
         >
           Delete
         </button>
-        <button data-testid="send-annotations" onClick={onSend} type="button">
-          Send
-        </button>
         <button data-testid="undo-deletion" onClick={onUndo} type="button">
           Undo
         </button>
       </section>
+    );
+  },
+}));
+
+vi.mock("@/features/annotations/AnnotationSendControl", () => ({
+  AnnotationSendControl({ onSend, status }: AnnotationSendControlProps) {
+    return (
+      <button
+        data-send-status={status}
+        data-testid="send-annotations"
+        onClick={onSend}
+        type="button"
+      >
+        Send
+      </button>
     );
   },
 }));
@@ -240,7 +252,7 @@ describe("App annotation workflow", () => {
     await click(mounted.container, "start-annotation");
     await click(mounted.container, "send-annotations");
 
-    expect(summary(mounted.container).dataset.sendStatus).toBe("failed");
+    expect(sendControl(mounted.container).dataset.sendStatus).toBe("failed");
     expect(summary(mounted.container).dataset.count).toBe("1");
     expect(mounted.container.querySelector('[data-testid="quick-editor"]')).not.toBeNull();
     expect(storedDrafts.get("conversation-a")).toHaveLength(1);
@@ -287,7 +299,7 @@ describe("App annotation workflow", () => {
     await act(async () => mounted.root.unmount());
   });
 
-  it("keeps an active send alive when the conversation changes", async () => {
+  it("keeps an active send visible and alive when the conversation changes", async () => {
     const mounted = await mountApp();
     const subscribeToSubmit = vi.spyOn(mounted.host.composer, "subscribeToSubmit");
     let pendingSubmit: Parameters<FakeHost["composer"]["submit"]>[0] | undefined;
@@ -301,9 +313,9 @@ describe("App annotation workflow", () => {
 
     await click(mounted.container, "start-annotation");
     const sentSnapshot = cloneAnnotations(storedDrafts.get("conversation-a") ?? []);
-    storedDrafts.set("conversation-b", cloneAnnotations(sentSnapshot));
+    storedDrafts.set("conversation-c", cloneAnnotations(sentSnapshot));
     await click(mounted.container, "send-annotations");
-    expect(summary(mounted.container).dataset.sendStatus).toBe("pending");
+    expect(sendControl(mounted.container).dataset.sendStatus).toBe("pending");
 
     await act(async () =>
       mounted.host.controls.setConversationIdentity({
@@ -311,16 +323,27 @@ describe("App annotation workflow", () => {
         id: "conversation-b",
       }),
     );
+    await vi.waitFor(() => {
+      expect(mounted.container.querySelector('[data-testid="annotation-summary"]')).toBeNull();
+    });
+    expect(sendControl(mounted.container).dataset.sendStatus).toBe("pending");
+
+    await act(async () =>
+      mounted.host.controls.setConversationIdentity({
+        kind: "identified",
+        id: "conversation-c",
+      }),
+    );
     await vi.waitFor(() => expect(summary(mounted.container).dataset.count).toBe("1"));
 
-    expect(summary(mounted.container).dataset.sendStatus).toBe("pending");
+    expect(sendControl(mounted.container).dataset.sendStatus).toBe("pending");
     expect(pendingSubmit?.signal.aborted).toBe(false);
     expect(subscribeToSubmit).not.toHaveBeenCalled();
 
     await act(async () => confirmSubmit?.());
-    await vi.waitFor(() => expect(summary(mounted.container).dataset.sendStatus).toBe("idle"));
+    await vi.waitFor(() => expect(sendControl(mounted.container).dataset.sendStatus).toBe("idle"));
     expect(summary(mounted.container).dataset.count).toBe("1");
-    expect(storedDrafts.get("conversation-b")).toEqual(sentSnapshot);
+    expect(storedDrafts.get("conversation-c")).toEqual(sentSnapshot);
 
     await act(async () => mounted.root.unmount());
   });
@@ -363,6 +386,14 @@ function summary(container: HTMLElement) {
   const element = container.querySelector<HTMLElement>('[data-testid="annotation-summary"]');
   if (!element) {
     throw new Error("Missing annotation summary");
+  }
+  return element;
+}
+
+function sendControl(container: HTMLElement) {
+  const element = container.querySelector<HTMLElement>('[data-testid="send-annotations"]');
+  if (!element) {
+    throw new Error("Missing annotation send control");
   }
   return element;
 }
