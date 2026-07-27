@@ -13,6 +13,7 @@ import {
   appendComposer as installComposer,
   appendSendButton as installSendButton,
   appendUserMessage as installUserMessage,
+  installChatGptHostFixture,
 } from "./fixtures/chatgpt-host";
 
 const annotation = {
@@ -390,6 +391,64 @@ describe("registerSendInterceptor", () => {
     interceptor.dispose();
   });
 
+  it("scopes send-control observation to the shared composer surface", async () => {
+    const fixture = installChatGptHostFixture();
+    fixture.action.disabled = true;
+    const observe = vi.spyOn(MutationObserver.prototype, "observe");
+    const querySelector = vi.spyOn(document, "querySelector");
+    const host = createChatGptHost({ document, window });
+
+    const result = host.composer.waitForButton(new AbortController().signal);
+    expect(observe).toHaveBeenCalledWith(
+      fixture.surface,
+      expect.objectContaining({ attributes: true, childList: true, subtree: true }),
+    );
+    querySelector.mockClear();
+
+    const unrelated = document.createElement("div");
+    document.body.append(unrelated);
+    unrelated.classList.add("animated");
+    await Promise.resolve();
+    expect(querySelector).not.toHaveBeenCalled();
+
+    fixture.action.disabled = false;
+    await expect(result).resolves.toEqual({ status: "available", value: fixture.action });
+    expect(querySelector).toHaveBeenCalledOnce();
+  });
+
+  it("coalesces confirmation scans to one per animation frame", async () => {
+    vi.useFakeTimers();
+    installChatGptHostFixture();
+    const host = createChatGptHost({ document, window });
+    const querySelectorAll = vi.spyOn(document, "querySelectorAll");
+    const stop = host.composer.watchConfirmedSend({
+      expectedText: "message that does not exist",
+      onConfirmed: vi.fn(),
+      onTimeout: vi.fn(),
+      signal: new AbortController().signal,
+    });
+    querySelectorAll.mockClear();
+    const userMessageScanCount = () =>
+      querySelectorAll.mock.calls.filter(
+        ([selector]) => selector === '[data-message-author-role="user"][data-message-id]',
+      ).length;
+
+    for (let index = 0; index < 3; index += 1) {
+      document.body.append(document.createElement("div"));
+      await Promise.resolve();
+    }
+
+    expect(userMessageScanCount()).toBe(0);
+    await vi.advanceTimersByTimeAsync(17);
+    expect(userMessageScanCount()).toBe(1);
+
+    document.body.append(document.createElement("div"));
+    await Promise.resolve();
+    stop();
+    await vi.advanceTimersByTimeAsync(17);
+    expect(userMessageScanCount()).toBe(1);
+  });
+
   it("does not register confirmation work for an already aborted signal", () => {
     vi.useFakeTimers();
     const observe = vi.spyOn(MutationObserver.prototype, "observe");
@@ -527,7 +586,9 @@ describe("registerSendInterceptor", () => {
       reason: "confirmation-timeout",
     });
 
-    await expect(interceptor.retry()).resolves.toEqual({
+    const retryResult = interceptor.retry();
+    await vi.advanceTimersByTimeAsync(17);
+    await expect(retryResult).resolves.toEqual({
       status: "confirmed",
       annotationIds: ["annotation-1"],
     });

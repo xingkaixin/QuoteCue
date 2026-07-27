@@ -31,7 +31,7 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
   const context = createHostContext(environment, adapter);
   const textNormalizer = createTextNormalizer(adapter.composer);
   const composerDriver = createComposerDriver(context, textNormalizer);
-  const sendPipeline = createSendPipeline(context, textNormalizer);
+  const sendPipeline = createSendPipeline(context, textNormalizer, composerDriver.current);
   const layout = createComposerLayout(context, composerDriver.current);
   const anchoring = createSelectionAnchoring(context);
   const reveal = createSelectionReveal(context);

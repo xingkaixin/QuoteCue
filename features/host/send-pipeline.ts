@@ -11,7 +11,11 @@ type ConfirmedSendWatcherOptions = {
   signal: AbortSignal;
 };
 
-export function createSendPipeline(context: HostContext, textNormalizer: TextNormalizer) {
+export function createSendPipeline(
+  context: HostContext,
+  textNormalizer: TextNormalizer,
+  currentComposer: () => HTMLElement | null,
+) {
   const { adapter, document: hostDocument, logger, signals, window: hostWindow } = context;
   const { normalizedRenderedText } = textNormalizer;
 
@@ -62,10 +66,14 @@ export function createSendPipeline(context: HostContext, textNormalizer: TextNor
         }
       };
       const onAbort = () => finish(unavailable("send-control-unavailable"));
-      stopObserving = signals.observeMutations(findButton, {
+      const observer = new MutationObserver(findButton);
+      observer.observe(sendControlObservationRoot(current), {
         attributeFilter: ["aria-disabled", "class", "disabled"],
+        attributes: true,
         childList: true,
+        subtree: true,
       });
+      stopObserving = () => observer.disconnect();
       timeout = hostWindow.setTimeout(() => {
         logger?.("[QuoteCue host] send control wait timed out");
         finish(unavailable("send-control-unavailable"));
@@ -105,10 +113,14 @@ export function createSendPipeline(context: HostContext, textNormalizer: TextNor
     };
     const expectedText = normalizedRenderedText(options.expectedText);
     logger?.(`[QuoteCue host] send confirmation started: existing=${initialMessages.length}`);
+    let confirmationFrame: number | undefined;
     let stopObserving: () => void = () => undefined;
     let timeout: number | undefined;
     const cleanup = once(() => {
       stopObserving();
+      if (confirmationFrame !== undefined) {
+        hostWindow.cancelAnimationFrame(confirmationFrame);
+      }
       if (timeout !== undefined) {
         hostWindow.clearTimeout(timeout);
       }
@@ -125,15 +137,26 @@ export function createSendPipeline(context: HostContext, textNormalizer: TextNor
         }
         return normalizedRenderedText(message) === expectedText;
       });
-      logger?.(
-        `[QuoteCue host] send confirmation observed: total=${messages.length}, matched=${Boolean(confirmedMessage)}`,
-      );
+      if (logger) {
+        logger(
+          `[QuoteCue host] send confirmation observed: total=${messages.length}, matched=${Boolean(confirmedMessage)}`,
+        );
+      }
       if (confirmedMessage) {
         cleanup();
         options.onConfirmed();
       }
     };
-    stopObserving = signals.observeMutations(findConfirmedMessage, {
+    const scheduleConfirmationScan = () => {
+      if (confirmationFrame !== undefined) {
+        return;
+      }
+      confirmationFrame = hostWindow.requestAnimationFrame(() => {
+        confirmationFrame = undefined;
+        findConfirmedMessage();
+      });
+    };
+    stopObserving = signals.observeMutations(scheduleConfirmationScan, {
       characterData: true,
       childList: true,
     });
@@ -184,6 +207,28 @@ export function createSendPipeline(context: HostContext, textNormalizer: TextNor
 
   function userMessages() {
     return Array.from(hostDocument.querySelectorAll<HTMLElement>(adapter.messages.userSelector));
+  }
+
+  function sendControlObservationRoot(button: HTMLElement | null) {
+    const composer = currentComposer();
+    if (!composer) {
+      return hostDocument.body;
+    }
+
+    if (button) {
+      let commonAncestor: HTMLElement | null = composer;
+      while (commonAncestor && !commonAncestor.contains(button)) {
+        commonAncestor = commonAncestor.parentElement;
+      }
+      if (commonAncestor) {
+        return commonAncestor;
+      }
+    }
+
+    const boundary = adapter.layout.boundarySelector
+      ? composer.closest<HTMLElement>(adapter.layout.boundarySelector)
+      : composer.closest<HTMLElement>("form");
+    return boundary ?? composer.parentElement ?? hostDocument.body;
   }
 
   return { isButtonAvailable, subscribeToSubmit, waitForButton, watchConfirmedSend };
