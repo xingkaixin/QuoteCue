@@ -278,6 +278,27 @@ describe("draft annotation lifecycle", () => {
     await act(async () => root.unmount());
   });
 
+  it("settles an in-flight save after unmount without starting more storage work", async () => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    draftStorage.load.mockResolvedValue([]);
+    let resolveSave: () => void = () => undefined;
+    draftStorage.save.mockImplementation(
+      () => new Promise<void>((resolve) => (resolveSave = resolve)),
+    );
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    await act(async () => root.render(<DraftHarness conversationIdentity={conversationA} />));
+    await act(async () => latestDrafts.addAnnotation(annotation));
+    expect(draftStorage.save).toHaveBeenCalledOnce();
+
+    await act(async () => root.unmount());
+    await act(async () => resolveSave());
+
+    expect(draftStorage.save).toHaveBeenCalledOnce();
+  });
+
   it("preserves newer edits while removing annotations that were sent unchanged", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     draftStorage.load.mockResolvedValue([]);
