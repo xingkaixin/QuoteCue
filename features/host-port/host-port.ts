@@ -27,6 +27,11 @@ export type ComposerSubmitOptions = {
 
 export type ComposerSubmitResult = HostResult<"confirmed", ComposerSubmitFailureReason>;
 
+export type ComposerSubmitIntent = {
+  event: Event;
+  isSendAvailable: boolean;
+};
+
 export type IdentifiedConversation = {
   kind: "identified";
   id: string;
@@ -75,13 +80,6 @@ export type HostLayout = {
   summary: Pick<SelectionRect, "left" | "top">;
 };
 
-type ConfirmedSendWatcherOptions = {
-  expectedText: string;
-  onConfirmed: () => void;
-  onTimeout: () => void;
-  signal: AbortSignal;
-};
-
 export type NativeSelectionAction = {
   mount(options: { label: string; onActivate: () => void; rect: SelectionRect }): () => void;
 };
@@ -111,14 +109,9 @@ export type HostSelection = HostSelectionBase &
 
 export type Host = {
   composer: {
-    isButtonAvailable(button: HTMLElement | null): button is HTMLElement;
-    replaceText(composer: HTMLElement, text: string): boolean;
-    restoreText(snapshot: ComposerSnapshot, expectedText: string): boolean;
     snapshot(): HostResult<ComposerSnapshot>;
     submit(options: ComposerSubmitOptions): Promise<ComposerSubmitResult>;
-    subscribeToSubmit(callback: (event: Event, button: HTMLElement | null) => void): () => void;
-    waitForButton(signal: AbortSignal): Promise<HostResult<HTMLElement>>;
-    watchConfirmedSend(options: ConfirmedSendWatcherOptions): () => void;
+    subscribeToSubmit(callback: (intent: ComposerSubmitIntent) => void): () => void;
   };
   conversation: {
     identity(sessionKey: string): ConversationIdentity;

@@ -15,6 +15,7 @@ import {
   appendUserMessage as installUserMessage,
   installChatGptHostFixture,
 } from "./fixtures/chatgpt-host";
+import { createFakeHost } from "./fixtures/fake-host";
 
 const annotation = {
   id: "annotation-1",
@@ -80,14 +81,14 @@ describe("registerSendInterceptor", () => {
       locale: () => "en",
       onSendConfirmed,
     });
-    const sendButton = installSendButton(() => {
+    installSendButton(() => {
       const compiledText = composer.textContent ?? "";
       currentAnnotations = [{ ...annotation, comment: "edited while awaiting confirmation" }];
       composer.replaceChildren();
       installUserMessage("user-message-1", compiledText);
     });
 
-    await expect(interceptor.submit(sendButton)).resolves.toEqual({
+    await expect(interceptor.submit()).resolves.toEqual({
       status: "confirmed",
       annotationIds: ["annotation-1"],
     });
@@ -166,14 +167,16 @@ describe("registerSendInterceptor", () => {
     expect(composer.textContent).toBe("original question");
   });
 
-  it("settles a failed attempt when restoring the composer throws", async () => {
-    installComposer("original question");
-    const host = createChatGptHost({ document, window });
-    vi.spyOn(host.composer, "replaceText").mockReturnValue(false);
-    vi.spyOn(host.composer, "restoreText").mockImplementation(() => {
-      throw new Error("host restore failed");
+  it("settles a failed attempt when the host rejects composer replacement", async () => {
+    const host = createFakeHost();
+    vi.spyOn(host.composer, "snapshot").mockReturnValue({
+      status: "available",
+      value: { element: host.elements.composer, text: "original question" },
     });
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    vi.spyOn(host.composer, "submit").mockResolvedValue({
+      reason: "replace-failed",
+      status: "unavailable",
+    });
     const interceptor = createInterceptor(undefined, { host });
 
     let result: ReturnType<typeof interceptor.submit> | undefined;
@@ -185,14 +188,12 @@ describe("registerSendInterceptor", () => {
     const nextResult = interceptor.submit();
     expect(nextResult).not.toBe(result);
     await expect(nextResult).resolves.toEqual({ status: "failed", reason: "replace-failed" });
-    expect(consoleError).toHaveBeenCalledWith("[QuoteCue] Failed to restore composer text");
     interceptor.dispose();
   });
 
-  it("settles a failed attempt when waiting for the send control rejects", async () => {
-    installComposer("original question");
-    const host = createChatGptHost({ document, window });
-    vi.spyOn(host.composer, "waitForButton").mockRejectedValue(new Error("host wait failed"));
+  it("settles a failed attempt when the host submission rejects", async () => {
+    const host = createFakeHost();
+    vi.spyOn(host.composer, "submit").mockRejectedValue(new Error("host submit failed"));
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const interceptor = createInterceptor(undefined, { host });
 
@@ -215,13 +216,13 @@ describe("registerSendInterceptor", () => {
     });
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const interceptor = createInterceptor(onSendConfirmed);
-    const sendButton = installSendButton(() => {
+    installSendButton(() => {
       const compiledText = composer.textContent ?? "";
       composer.replaceChildren();
       installUserMessage("confirmed-user-message", compiledText);
     });
 
-    await expect(interceptor.submit(sendButton)).resolves.toEqual({
+    await expect(interceptor.submit()).resolves.toEqual({
       status: "confirmed",
       annotationIds: ["annotation-1"],
     });
@@ -290,43 +291,24 @@ describe("registerSendInterceptor", () => {
     interceptor.dispose();
   });
 
-  it.each([
-    {
-      failure: "returns false",
-      replace(composer: HTMLElement, compiledText: string) {
-        composer.textContent = compiledText;
-        return false;
-      },
-    },
-    {
-      failure: "throws",
-      replace(composer: HTMLElement, compiledText: string) {
-        composer.textContent = compiledText;
-        throw new Error("host editor failed");
-      },
-    },
-  ])("rolls back and retries when composer replacement $failure", async ({ replace }) => {
-    const composer = installComposer("original question");
-    const host = createChatGptHost({ document, window });
-    const originalReplace = host.composer.replaceText.bind(host.composer);
-    vi.spyOn(host.composer, "replaceText")
-      .mockImplementationOnce(replace)
-      .mockImplementation(originalReplace);
+  it("retries a host replacement failure with the original question", async () => {
+    const host = createFakeHost();
+    vi.spyOn(host.composer, "snapshot").mockReturnValue({
+      status: "available",
+      value: { element: host.elements.composer, text: "original question" },
+    });
+    const submit = vi
+      .spyOn(host.composer, "submit")
+      .mockResolvedValueOnce({ reason: "replace-failed", status: "unavailable" })
+      .mockResolvedValueOnce({ status: "available", value: "confirmed" });
     const onSendConfirmed = vi.fn();
     const onStateChange = vi.fn();
     const interceptor = createInterceptor(onSendConfirmed, { host, onStateChange });
-    let retriedText = "";
-    const sendButton = installSendButton(() => {
-      retriedText = composer.textContent ?? "";
-      composer.replaceChildren();
-      installUserMessage("retried-user-message", retriedText);
-    });
 
-    await expect(interceptor.submit(sendButton)).resolves.toEqual({
+    await expect(interceptor.submit()).resolves.toEqual({
       status: "failed",
       reason: "replace-failed",
     });
-    expect(composer.textContent).toBe("original question");
     expect(interceptor.getState()).toMatchObject({
       status: "failed",
       reason: "replace-failed",
@@ -339,6 +321,7 @@ describe("registerSendInterceptor", () => {
       status: "confirmed",
       annotationIds: ["annotation-1"],
     });
+    const retriedText = submit.mock.calls[1]?.[0].text ?? "";
     expect(retriedText).toContain("[Supplemental question]\noriginal question");
     expect(retriedText.match(/\[Annotation 1\]/g)).toHaveLength(1);
     expect(onSendConfirmed).toHaveBeenCalledWith([annotation]);
@@ -363,12 +346,15 @@ describe("registerSendInterceptor", () => {
   });
 
   it("fails a custom submit before changing a disabled send control", async () => {
+    vi.useFakeTimers();
     const composer = installComposer("original question");
     const sendButton = installSendButton();
     sendButton.disabled = true;
     const interceptor = createInterceptor();
 
-    await expect(interceptor.submit(sendButton)).resolves.toEqual({
+    const result = interceptor.submit();
+    await vi.advanceTimersByTimeAsync(2_001);
+    await expect(result).resolves.toEqual({
       status: "failed",
       reason: "send-unavailable",
     });
@@ -397,8 +383,15 @@ describe("registerSendInterceptor", () => {
     const observe = vi.spyOn(MutationObserver.prototype, "observe");
     const querySelector = vi.spyOn(document, "querySelector");
     const host = createChatGptHost({ document, window });
+    fixture.action.addEventListener("click", () => {
+      installUserMessage("submitted-message", fixture.composer.textContent ?? "");
+    });
 
-    const result = host.composer.waitForButton(new AbortController().signal);
+    const result = host.composer.submit({
+      restoreTo: availableComposer(host),
+      signal: new AbortController().signal,
+      text: "compiled prompt",
+    });
     expect(observe).toHaveBeenCalledWith(
       fixture.surface,
       expect.objectContaining({ attributes: true, childList: true, subtree: true }),
@@ -412,21 +405,27 @@ describe("registerSendInterceptor", () => {
     expect(querySelector).not.toHaveBeenCalled();
 
     fixture.action.disabled = false;
-    await expect(result).resolves.toEqual({ status: "available", value: fixture.action });
-    expect(querySelector).toHaveBeenCalledOnce();
+    await expect(result).resolves.toEqual({ status: "available", value: "confirmed" });
+    expect(
+      querySelector.mock.calls.filter(
+        ([selector]) => selector === "button[data-testid='send-button']",
+      ),
+    ).toHaveLength(1);
   });
 
   it("coalesces confirmation scans to one per animation frame", async () => {
     vi.useFakeTimers();
-    installChatGptHostFixture();
+    const fixture = installChatGptHostFixture();
+    fixture.action.disabled = false;
     const host = createChatGptHost({ document, window });
     const querySelectorAll = vi.spyOn(document, "querySelectorAll");
-    const stop = host.composer.watchConfirmedSend({
-      expectedText: "message that does not exist",
-      onConfirmed: vi.fn(),
-      onTimeout: vi.fn(),
-      signal: new AbortController().signal,
+    const controller = new AbortController();
+    const result = host.composer.submit({
+      restoreTo: availableComposer(host),
+      signal: controller.signal,
+      text: "message that does not exist",
     });
+    await Promise.resolve();
     querySelectorAll.mockClear();
     const userMessageScanCount = () =>
       querySelectorAll.mock.calls.filter(
@@ -444,49 +443,63 @@ describe("registerSendInterceptor", () => {
 
     document.body.append(document.createElement("div"));
     await Promise.resolve();
-    stop();
+    controller.abort();
+    await expect(result).resolves.toEqual({
+      reason: "send-unavailable",
+      status: "unavailable",
+    });
     await vi.advanceTimersByTimeAsync(17);
     expect(userMessageScanCount()).toBe(1);
   });
 
-  it("does not register confirmation work for an already aborted signal", () => {
+  it("does not register send work for an already aborted signal", async () => {
     vi.useFakeTimers();
+    const fixture = installChatGptHostFixture();
+    fixture.action.disabled = false;
     const observe = vi.spyOn(MutationObserver.prototype, "observe");
     const setTimeout = vi.spyOn(window, "setTimeout");
-    const logger = vi.fn();
+    const send = vi.fn();
+    fixture.action.addEventListener("click", send);
     const controller = new AbortController();
     controller.abort();
-    const host = createChatGptHost({ document, logger, window });
-    const onConfirmed = vi.fn();
-    const onTimeout = vi.fn();
+    const host = createChatGptHost({ document, window });
 
-    const stop = host.composer.watchConfirmedSend({
-      expectedText: "compiled prompt",
-      onConfirmed,
-      onTimeout,
-      signal: controller.signal,
+    await expect(
+      host.composer.submit({
+        restoreTo: availableComposer(host),
+        signal: controller.signal,
+        text: "compiled prompt",
+      }),
+    ).resolves.toEqual({
+      reason: "send-unavailable",
+      status: "unavailable",
     });
     vi.advanceTimersByTime(15_001);
 
-    expect(logger).toHaveBeenCalledWith("[QuoteCue host] send confirmation skipped: aborted");
     expect(observe).not.toHaveBeenCalled();
-    expect(setTimeout).not.toHaveBeenCalled();
-    expect(onConfirmed).not.toHaveBeenCalled();
-    expect(onTimeout).not.toHaveBeenCalled();
-    stop();
+    expect(setTimeout.mock.calls.every(([, delay]) => delay === 0)).toBe(true);
+    expect(send).not.toHaveBeenCalled();
+    expect(fixture.composer.textContent).toBe("Original question");
   });
 
-  it("does not watch a send attempt disposed while waiting for its button", async () => {
-    const composer = installComposer("original question");
-    const sendButton = installSendButton();
-    const host = createChatGptHost({ document, window });
-    let resolveButton: (result: { status: "available"; value: HTMLElement }) => void = () =>
-      undefined;
-    const buttonResult = new Promise<{ status: "available"; value: HTMLElement }>((resolve) => {
-      resolveButton = resolve;
+  it("aborts a host submission when disposed", async () => {
+    const host = createFakeHost();
+    vi.spyOn(host.composer, "snapshot").mockReturnValue({
+      status: "available",
+      value: { element: host.elements.composer, text: "original question" },
     });
-    const waitForButton = vi.spyOn(host.composer, "waitForButton").mockReturnValue(buttonResult);
-    const watchConfirmedSend = vi.spyOn(host.composer, "watchConfirmedSend");
+    let submittedSignal: AbortSignal | undefined;
+    const submit = vi.spyOn(host.composer, "submit").mockImplementation(
+      ({ signal }) =>
+        new Promise((resolve) => {
+          submittedSignal = signal;
+          signal.addEventListener(
+            "abort",
+            () => resolve({ reason: "send-unavailable", status: "unavailable" }),
+            { once: true },
+          );
+        }),
+    );
     const interceptor = registerSendInterceptor({
       annotations: () => numberAnnotations([annotation]),
       compilePrompt: compileAnnotatedPrompt,
@@ -496,14 +509,11 @@ describe("registerSendInterceptor", () => {
     });
 
     const result = interceptor.submit();
-    await vi.waitFor(() => expect(waitForButton).toHaveBeenCalledOnce());
+    await vi.waitFor(() => expect(submit).toHaveBeenCalledOnce());
     interceptor.dispose();
     await expect(result).resolves.toEqual({ status: "failed", reason: "disposed" });
 
-    resolveButton({ status: "available", value: sendButton });
-    await Promise.resolve();
-    expect(watchConfirmedSend).not.toHaveBeenCalled();
-    expect(composer.textContent).toBe("original question");
+    expect(submittedSignal?.aborted).toBe(true);
   });
 
   it("does not confirm a send when only the composer becomes empty", async () => {
@@ -511,9 +521,9 @@ describe("registerSendInterceptor", () => {
     const composer = installComposer("original question");
     const onSendConfirmed = vi.fn();
     const interceptor = createInterceptor(onSendConfirmed);
-    const sendButton = installSendButton(() => composer.replaceChildren());
+    installSendButton(() => composer.replaceChildren());
 
-    const result = interceptor.submit(sendButton);
+    const result = interceptor.submit();
     await vi.advanceTimersByTimeAsync(15_001);
 
     await expect(result).resolves.toEqual({
@@ -530,7 +540,7 @@ describe("registerSendInterceptor", () => {
     const logger = vi.fn();
     const host = createChatGptHost({ document, logger, window });
     let messageInnerTextReads = 0;
-    const sendButton = installSendButton(() => {
+    installSendButton(() => {
       const message = installUserMessage("short-user-message", "short");
       Object.defineProperty(message, "innerText", {
         configurable: true,
@@ -550,7 +560,7 @@ describe("registerSendInterceptor", () => {
       onSendConfirmed: vi.fn(),
     });
 
-    const result = interceptor.submit(sendButton);
+    const result = interceptor.submit();
     await vi.waitFor(() =>
       expect(logger).toHaveBeenCalledWith(
         "[QuoteCue host] send confirmation observed: total=1, matched=false",
@@ -602,14 +612,14 @@ describe("registerSendInterceptor", () => {
     const composer = installComposer("original question");
     const onSendConfirmed = vi.fn();
     const interceptor = createInterceptor(onSendConfirmed);
-    const sendButton = installSendButton(() => {
+    installSendButton(() => {
       const compiledText = composer.textContent ?? "";
       composer.remove();
       installComposer();
       installUserMessage("user-message-after-replacement", compiledText);
     });
 
-    await expect(interceptor.submit(sendButton)).resolves.toEqual({
+    await expect(interceptor.submit()).resolves.toEqual({
       status: "confirmed",
       annotationIds: ["annotation-1"],
     });
@@ -641,13 +651,13 @@ describe("registerSendInterceptor", () => {
     installUserMessage("old-message", "unrelated");
     const onSendConfirmed = vi.fn();
     const interceptor = createInterceptor(onSendConfirmed);
-    const sendButton = installSendButton(() => {
+    installSendButton(() => {
       const compiledText = composer.textContent ?? "";
       composer.replaceChildren();
       installUserMessage("new-message", `${compiledText} changed`);
     });
 
-    const result = interceptor.submit(sendButton);
+    const result = interceptor.submit();
     await vi.advanceTimersByTimeAsync(15_001);
 
     await expect(result).resolves.toEqual({
@@ -681,4 +691,12 @@ function createInterceptor(
     onSendConfirmed,
     onStateChange,
   });
+}
+
+function availableComposer(host: Host) {
+  const snapshot = host.composer.snapshot();
+  if (snapshot.status === "unavailable") {
+    throw new Error("Expected composer snapshot");
+  }
+  return snapshot.value;
 }

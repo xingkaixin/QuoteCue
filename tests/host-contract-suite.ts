@@ -160,30 +160,12 @@ export function runHostContractSuite(definition: HostContractDefinition) {
       });
     });
 
-    it("snapshots, replaces, and restores the configured composer", () => {
+    it("snapshots the configured composer", () => {
       const fixture = definition.installFixture();
       const siteHost = host();
       const original = availableValue(siteHost.composer.snapshot());
 
       expect(original).toEqual({ element: fixture.composer, text: "Original question" });
-      expect(siteHost.composer.replaceText(fixture.composer, "Replacement question")).toBe(true);
-      expect(availableValue(siteHost.composer.snapshot()).text).toBe("Replacement question");
-      expect(siteHost.composer.restoreText(original, "Replacement question")).toBe(true);
-      expect(availableValue(siteHost.composer.snapshot()).text).toBe("Original question");
-    });
-
-    it("resolves the configured send control and its disabled state", async () => {
-      const fixture = definition.installFixture();
-      const siteHost = host();
-      definition.setSendDisabled(fixture.sendControl, false);
-
-      expect(siteHost.composer.isButtonAvailable(fixture.sendControl)).toBe(true);
-      expect(
-        availableValue(await siteHost.composer.waitForButton(new AbortController().signal)),
-      ).toBe(fixture.sendControl);
-
-      definition.setSendDisabled(fixture.sendControl, true);
-      expect(siteHost.composer.isButtonAvailable(fixture.sendControl)).toBe(false);
     });
 
     it("owns composer replacement, dispatch, confirmation, and replay suppression", async () => {
@@ -234,45 +216,76 @@ export function runHostContractSuite(definition: HostContractDefinition) {
       expect(send).not.toHaveBeenCalled();
     });
 
-    it("confirms only normalized user messages", async () => {
-      definition.installFixture();
+    it("reports replacement failure through the submit protocol", async () => {
+      const fixture = definition.installFixture();
       const siteHost = host();
-      const onConfirmed = vi.fn();
-      const onTimeout = vi.fn();
-      const stop = siteHost.composer.watchConfirmedSend({
-        expectedText: "first\nsecond",
-        onConfirmed,
-        onTimeout,
+      const restoreTo = availableValue(siteHost.composer.snapshot());
+      fixture.composer.remove();
+
+      await expect(
+        siteHost.composer.submit({
+          restoreTo,
+          signal: new AbortController().signal,
+          text: "Replacement question",
+        }),
+      ).resolves.toEqual({
+        reason: "replace-failed",
+        status: "unavailable",
+      });
+    });
+
+    it("confirms only normalized user messages", async () => {
+      const fixture = definition.installFixture();
+      const siteHost = host();
+      definition.setSendDisabled(fixture.sendControl, false);
+      let notifyDispatched: () => void = () => undefined;
+      const dispatched = new Promise<void>((resolve) => {
+        notifyDispatched = resolve;
+      });
+      fixture.sendControl.addEventListener("click", () => {
+        definition.appendAssistantMessage("first \n second");
+        notifyDispatched();
+      });
+      const result = siteHost.composer.submit({
+        restoreTo: availableValue(siteHost.composer.snapshot()),
         signal: new AbortController().signal,
+        text: "first\nsecond",
       });
 
-      definition.appendAssistantMessage("first \n second");
-      await Promise.resolve();
-      expect(onConfirmed).not.toHaveBeenCalled();
+      await dispatched;
+      let isSettled = false;
+      void result.then(() => {
+        isSettled = true;
+      });
+      await nextFrame();
+      expect(isSettled).toBe(false);
 
       definition.appendUserMessage("first \n second");
-      await vi.waitFor(() => expect(onConfirmed).toHaveBeenCalledOnce());
-      expect(onTimeout).not.toHaveBeenCalled();
-      stop();
+      await expect(result).resolves.toEqual({ status: "available", value: "confirmed" });
     });
 
     it("confirms a new user message after its character data completes", async () => {
-      definition.installFixture();
-      const onConfirmed = vi.fn();
-      const stop = host().composer.watchConfirmedSend({
-        expectedText: "completed message",
-        onConfirmed,
-        onTimeout: vi.fn(),
+      const fixture = definition.installFixture();
+      const siteHost = host();
+      definition.setSendDisabled(fixture.sendControl, false);
+      let userMessage: HTMLElement | null = null;
+      let notifyDispatched: () => void = () => undefined;
+      const dispatched = new Promise<void>((resolve) => {
+        notifyDispatched = resolve;
+      });
+      fixture.sendControl.addEventListener("click", () => {
+        userMessage = definition.appendUserMessage("pending");
+        notifyDispatched();
+      });
+      const result = siteHost.composer.submit({
+        restoreTo: availableValue(siteHost.composer.snapshot()),
         signal: new AbortController().signal,
+        text: "completed message",
       });
 
-      const userMessage = definition.appendUserMessage("pending");
-      await Promise.resolve();
-      expect(onConfirmed).not.toHaveBeenCalled();
-
+      await dispatched;
       requiredText(userMessage).data = "completed message";
-      await vi.waitFor(() => expect(onConfirmed).toHaveBeenCalledOnce());
-      stop();
+      await expect(result).resolves.toEqual({ status: "available", value: "confirmed" });
     });
 
     it("reserves and restores the configured composer row", () => {
@@ -462,18 +475,29 @@ export function runHostContractSuite(definition: HostContractDefinition) {
 
     it.skipIf(!definition.supportsSyntheticPaste)(
       "uses synthetic paste before the rich-text fallback",
-      () => {
+      async () => {
         const fixture = definition.installFixture();
         installSyntheticPasteSupport();
+        const siteHost = host();
+        definition.setSendDisabled(fixture.sendControl, false);
         fixture.composer.addEventListener("paste", (event) => {
           event.preventDefault();
           fixture.composer.textContent =
             (event as ClipboardEvent).clipboardData?.getData("text/plain") ?? "";
         });
+        fixture.sendControl.addEventListener("click", () => {
+          definition.appendUserMessage(availableValue(siteHost.composer.snapshot()).text);
+        });
 
-        expect(host().composer.replaceText(fixture.composer, "Replacement question")).toBe(true);
+        await expect(
+          siteHost.composer.submit({
+            restoreTo: availableValue(siteHost.composer.snapshot()),
+            signal: new AbortController().signal,
+            text: "Replacement question",
+          }),
+        ).resolves.toEqual({ status: "available", value: "confirmed" });
         expect(document.execCommand).not.toHaveBeenCalled();
-        expect(availableValue(host().composer.snapshot()).text).toBe("Replacement question");
+        expect(availableValue(siteHost.composer.snapshot()).text).toBe("Replacement question");
       },
     );
 

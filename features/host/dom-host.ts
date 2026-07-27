@@ -56,14 +56,9 @@ export function createDomHost(environment: HostEnvironment, adapter: SiteAdapter
 
   return {
     composer: {
-      isButtonAvailable: sendPipeline.isButtonAvailable,
-      replaceText: composerDriver.replaceText,
-      restoreText: composerDriver.restoreText,
       snapshot: composerDriver.snapshot,
       submit: sendPipeline.submit,
       subscribeToSubmit: sendPipeline.subscribeToSubmit,
-      waitForButton: sendPipeline.waitForButton,
-      watchConfirmedSend: sendPipeline.watchConfirmedSend,
     },
     conversation: {
       identity(sessionKey: string) {

@@ -50,47 +50,21 @@ export function createFakeHost(overrides: FakeHostOverrides = {}): FakeHost {
       summary: { left: 10, top: 10 },
     },
   };
-  let confirmation:
-    | {
-        onConfirmed: () => void;
-        onTimeout: () => void;
-        signal: AbortSignal;
-      }
-    | undefined;
   const conversationSubscribers = new Set<() => void>();
   const layoutSubscribers = new Set<() => void>();
   const selectionCaptureSubscribers = new Set<(intent: SelectionCaptureIntent) => void>();
   const selectionSubscribers = new Set<(invalidation: SelectionInvalidation) => void>();
-  const submitSubscribers = new Set<(event: Event, button: HTMLElement | null) => void>();
+  const submitSubscribers = new Set<Parameters<Host["composer"]["subscribeToSubmit"]>[0]>();
 
   sendControl.addEventListener("click", () => {
     const event = new Event("click", { cancelable: true });
     for (const subscriber of submitSubscribers) {
-      subscriber(event, sendControl);
-    }
-    const pendingConfirmation = confirmation;
-    confirmation = undefined;
-    if (pendingConfirmation && !pendingConfirmation.signal.aborted) {
-      queueMicrotask(pendingConfirmation.onConfirmed);
+      subscriber({ event, isSendAvailable: true });
     }
   });
 
   const defaultHost: Host = {
     composer: {
-      isButtonAvailable: (button): button is HTMLElement => button === sendControl,
-      replaceText(_composer, text) {
-        composerText = text;
-        composer.textContent = text;
-        return true;
-      },
-      restoreText(snapshot, expectedText) {
-        if (composerText !== expectedText) {
-          return false;
-        }
-        composerText = snapshot.text;
-        composer.textContent = snapshot.text;
-        return true;
-      },
       snapshot: () => ({
         status: "available",
         value: { element: composer, text: composerText },
@@ -112,18 +86,6 @@ export function createFakeHost(overrides: FakeHostOverrides = {}): FakeHost {
       subscribeToSubmit(callback) {
         submitSubscribers.add(callback);
         return () => submitSubscribers.delete(callback);
-      },
-      waitForButton: async (signal) =>
-        signal.aborted
-          ? { reason: "send-control-unavailable", status: "unavailable" }
-          : { status: "available", value: sendControl },
-      watchConfirmedSend(options) {
-        confirmation = options;
-        return () => {
-          if (confirmation === options) {
-            confirmation = undefined;
-          }
-        };
       },
     },
     conversation: {

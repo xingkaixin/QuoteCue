@@ -1,5 +1,5 @@
 import type { SupportedLocale } from "@/features/i18n/messages";
-import type { ComposerSnapshot, Host } from "@/features/host-port/host-port";
+import type { ComposerSnapshot, ComposerSubmitIntent, Host } from "@/features/host-port/host-port";
 
 import type { DraftAnnotation } from "./annotation";
 import type { NumberedAnnotation } from "./annotation-projection";
@@ -42,6 +42,7 @@ type SendAttempt = {
   compiledText: string;
   annotations: readonly NumberedAnnotation[];
   controller: AbortController;
+  failureOverride?: AnnotatedSendFailureReason;
   result: Promise<AnnotatedSendResult>;
   resolve: (result: AnnotatedSendResult) => void;
 };
@@ -55,7 +56,6 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
   const host = options.host;
   let activeAttempt: SendAttempt | null = null;
   let lastFailedAttempt: SendAttempt | null = null;
-  let isDispatchingReplay = false;
   let isDisposed = false;
   let state: AnnotatedSendState = { status: "idle" };
 
@@ -108,51 +108,46 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
     abortAttempt(attempt);
     setState({ status: "failed", attemptId: attempt.id, reason });
     attempt.resolve({ status: "failed", reason });
-    runSafely("Failed to restore composer text", () =>
-      host.composer.restoreText(attempt.snapshot, attempt.compiledText),
-    );
   };
 
-  const replaySend = (attempt: SendAttempt, initialButton: HTMLElement | null) => {
+  const replaySend = (attempt: SendAttempt) => {
+    setState({ status: "replaying", attemptId: attempt.id });
+    let submission: ReturnType<Host["composer"]["submit"]>;
+    try {
+      submission = host.composer.submit({
+        restoreTo: attempt.snapshot,
+        signal: attempt.controller.signal,
+        text: attempt.compiledText,
+      });
+    } catch {
+      reportError("Failed to replay annotated send");
+      finishFailed(attempt, "send-unavailable");
+      return;
+    }
     queueMicrotask(() => {
-      void (async () => {
-        const sendButtonResult = host.composer.isButtonAvailable(initialButton)
-          ? { status: "available" as const, value: initialButton }
-          : await host.composer.waitForButton(attempt.controller.signal);
+      if (activeAttempt === attempt && !isDisposed) {
+        setState({ status: "awaiting-confirmation", attemptId: attempt.id });
+      }
+    });
+    void submission
+      .then((result) => {
         if (activeAttempt !== attempt) {
           return;
         }
-        if (sendButtonResult.status === "unavailable") {
-          host.reportUnavailable(sendButtonResult.reason);
-          finishFailed(attempt, "send-unavailable");
-          return;
+        if (result.status === "available") {
+          finishConfirmed(attempt);
+        } else {
+          finishFailed(attempt, attempt.failureOverride ?? result.reason);
         }
-        const sendButton = sendButtonResult.value;
-
-        host.composer.watchConfirmedSend({
-          expectedText: attempt.compiledText,
-          signal: attempt.controller.signal,
-          onConfirmed: () => finishConfirmed(attempt),
-          onTimeout: () => finishFailed(attempt, "confirmation-timeout"),
-        });
-        setState({ status: "awaiting-confirmation", attemptId: attempt.id });
-        isDispatchingReplay = true;
-        try {
-          sendButton.click();
-        } catch {
-          finishFailed(attempt, "send-unavailable");
-        } finally {
-          isDispatchingReplay = false;
-        }
-      })().catch(() => {
+      })
+      .catch(() => {
         reportError("Failed to replay annotated send");
-        finishFailed(attempt, "send-unavailable");
+        finishFailed(attempt, attempt.failureOverride ?? "send-unavailable");
       });
-    });
   };
 
   const beginSend = (
-    initialButton: HTMLElement | null,
+    isSendAvailable: boolean | undefined,
     source: "custom" | "native",
     retryOriginalText?: string,
   ): StartedSend => {
@@ -177,16 +172,8 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
     // 空 composer 时发送控件多半只是因缺少输入而不可用；批注文本补入后即可用,
     // 所以仍接管发送。非空时保持不接管,把真正被阻塞的发送留给页面自己处理。
     const isRecoverableBySend = snapshot.text.trim().length === 0;
-    if (
-      source === "native" &&
-      !host.composer.isButtonAvailable(initialButton) &&
-      !isRecoverableBySend
-    ) {
+    if (source === "native" && !isSendAvailable && !isRecoverableBySend) {
       return failedResult("send-unavailable");
-    }
-    if (source === "custom" && initialButton && !host.composer.isButtonAvailable(initialButton)) {
-      host.reportUnavailable("send-control-unavailable");
-      return failBeforeOwnership("send-unavailable", source, setState);
     }
     const originalText =
       retryOriginalText && snapshot.text.trim().length === 0 ? retryOriginalText : snapshot.text;
@@ -197,30 +184,18 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
     lastFailedAttempt = null;
     setState({ status: "preparing", attemptId: attempt.id });
 
-    let isReplaced = false;
-    try {
-      isReplaced = host.composer.replaceText(snapshot.element, compiledText);
-    } catch {
-      isReplaced = false;
-    }
-    if (!isReplaced) {
-      finishFailed(attempt, "replace-failed");
-      return { isOwned: false, result: attempt.result };
-    }
-
-    setState({ status: "replaying", attemptId: attempt.id });
-    replaySend(attempt, initialButton);
+    replaySend(attempt);
     return { isOwned: true, result: attempt.result };
   };
 
-  const prepareNativeSend = (event: Event, button: HTMLElement | null) => {
+  const prepareNativeSend = ({ event, isSendAvailable }: ComposerSubmitIntent) => {
     if (activeAttempt) {
       event.preventDefault();
       event.stopImmediatePropagation();
       return;
     }
 
-    const started = beginSend(button, "native");
+    const started = beginSend(isSendAvailable, "native");
     if (!started.isOwned) {
       return;
     }
@@ -228,18 +203,13 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
     event.stopImmediatePropagation();
   };
 
-  const stopListening = host.composer.subscribeToSubmit((event, button) => {
-    if (isDispatchingReplay) {
-      return;
-    }
-    prepareNativeSend(event, button);
-  });
+  const stopListening = host.composer.subscribeToSubmit(prepareNativeSend);
   setState(state);
 
   return {
     getState: () => state,
-    submit: (button: HTMLElement | null = null) => beginSend(button, "custom").result,
-    retry: () => beginSend(null, "custom", lastFailedAttempt?.snapshot.text).result,
+    submit: () => beginSend(undefined, "custom").result,
+    retry: () => beginSend(undefined, "custom", lastFailedAttempt?.snapshot.text).result,
     dispose() {
       if (isDisposed) {
         return;
@@ -247,7 +217,8 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
       isDisposed = true;
       stopListening();
       if (activeAttempt) {
-        finishFailed(activeAttempt, "disposed");
+        activeAttempt.failureOverride = "disposed";
+        abortAttempt(activeAttempt);
       }
     },
   };
