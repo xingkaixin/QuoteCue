@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, expectTypeOf, it } from "vitest";
 
 import { createDomHost } from "@/features/host/dom-host";
 import {
@@ -9,7 +9,7 @@ import {
 } from "@/features/host/site-adapter";
 import { QUOTECUE_NATIVE_ACTION_SELECTOR } from "@/lib/dom-identity";
 
-import { requiredElement, setElementRect } from "./fixtures/fixture-utils";
+import { requiredElement, requiredNativeAction, setElementRect } from "./fixtures/fixture-utils";
 
 afterEach(() => {
   document.body.replaceChildren();
@@ -74,7 +74,7 @@ describe("site adapter discovery", () => {
       }),
     );
 
-    const stop = host.selection.mountAction({
+    const stop = requiredNativeAction(host).mount({
       label: "Add QuoteCue annotation",
       onActivate: () => undefined,
       rect: { bottom: 220, height: 20, left: 200, right: 400, top: 200, width: 200 },
@@ -82,6 +82,16 @@ describe("site adapter discovery", () => {
 
     expect(actionRow.querySelector(QUOTECUE_NATIVE_ACTION_SELECTOR)).not.toBeNull();
     stop();
+  });
+
+  it("omits native action mounting from overlay hosts", () => {
+    const host = createDomHost({ document, window }, adapter({}));
+
+    expect(host.selection.presentation).toBe("overlay");
+    expect(host.selection).not.toHaveProperty("nativeAction");
+    if (host.selection.presentation === "overlay") {
+      expectTypeOf(host.selection.nativeAction).toEqualTypeOf<undefined>();
+    }
   });
 });
 

@@ -15,6 +15,7 @@ import {
   appendUserMessage,
   installChatGptHostFixture,
 } from "./fixtures/chatgpt-host";
+import { requiredNativeAction } from "./fixtures/fixture-utils";
 import { HostTestProvider } from "./fixtures/host-provider";
 
 beforeEach(() => {
@@ -42,7 +43,7 @@ afterEach(() => {
 describe("ChatGPT host contract", () => {
   it("mounts a delayed native-styled first action without localized text", async () => {
     const onActivate = vi.fn();
-    const stop = createChatGptHost({ document, window }).selection.mountAction({
+    const stop = requiredNativeAction(createChatGptHost({ document, window })).mount({
       label: "Add QuoteCue annotation",
       onActivate,
       rect: {
@@ -74,7 +75,7 @@ describe("ChatGPT host contract", () => {
     const nativeRequestAnimationFrame = window.requestAnimationFrame.bind(window);
     const requestAnimationFrame = vi.spyOn(window, "requestAnimationFrame");
     const getComputedStyle = vi.spyOn(window, "getComputedStyle");
-    const stop = createChatGptHost({ document, window }).selection.mountAction({
+    const stop = requiredNativeAction(createChatGptHost({ document, window })).mount({
       label: "Add QuoteCue annotation",
       onActivate: vi.fn(),
       rect: {
@@ -109,7 +110,7 @@ describe("ChatGPT host contract", () => {
 
   it("finds the native toolbar after block and inline position fallbacks", () => {
     const { actionRow } = appendSelectionToolbar(new DOMRect(768, 49, 196, 36));
-    const stop = createChatGptHost({ document, window }).selection.mountAction({
+    const stop = requiredNativeAction(createChatGptHost({ document, window })).mount({
       label: "Add QuoteCue annotation",
       onActivate: vi.fn(),
       rect: {
@@ -311,7 +312,7 @@ describe("ChatGPT host contract", () => {
 
     const stopLayoutObservation = host.layout.subscribe(vi.fn());
     const stopSelectionObservation = host.selection.observeInvalidation(vi.fn());
-    const stopActionObservation = host.selection.mountAction({
+    const stopActionObservation = requiredNativeAction(host).mount({
       label: "Add QuoteCue annotation",
       onActivate: vi.fn(),
       rect: { bottom: 20, height: 10, left: 0, right: 20, top: 10, width: 20 },

@@ -30,7 +30,6 @@ export type SelectionInvalidation =
   | { reason: "layout" }
   | { dirtyMessageIds: ReadonlySet<string> | "all"; reason: "content" };
 export type SelectionCaptureIntent = "capture" | "dismiss";
-export type SelectionPresentationMode = "native-toolbar" | "overlay";
 
 type TextAnchorBase = {
   end: number;
@@ -70,6 +69,31 @@ type ConfirmedSendWatcherOptions = {
   signal: AbortSignal;
 };
 
+export type NativeSelectionAction = {
+  mount(options: { label: string; onActivate: () => void; rect: SelectionRect }): () => void;
+};
+
+type HostSelectionBase = {
+  capture(selection?: Selection | null): HostResult<SelectionCapture>;
+  clear(): void;
+  messageIndex(messageIds?: ReadonlySet<string>): Map<string, HTMLElement>;
+  observeCaptureIntent(callback: (intent: SelectionCaptureIntent) => void): () => void;
+  observeInvalidation(callback: (invalidation: SelectionInvalidation) => void): () => void;
+  reveal(range: Range): HostResult<"scrolled" | "visible">;
+};
+
+export type HostSelection = HostSelectionBase &
+  (
+    | {
+        nativeAction: NativeSelectionAction;
+        presentation: "native-toolbar";
+      }
+    | {
+        nativeAction?: never;
+        presentation: "overlay";
+      }
+  );
+
 export type Host = {
   composer: {
     isButtonAvailable(button: HTMLElement | null): button is HTMLElement;
@@ -90,18 +114,5 @@ export type Host = {
     subscribe(callback: () => void): () => void;
   };
   reportUnavailable(reason: HostUnavailableReason): void;
-  selection: {
-    capture(selection?: Selection | null): HostResult<SelectionCapture>;
-    clear(): void;
-    messageIndex(messageIds?: ReadonlySet<string>): Map<string, HTMLElement>;
-    mountAction(options: {
-      label: string;
-      onActivate: () => void;
-      rect: SelectionRect;
-    }): () => void;
-    observeCaptureIntent(callback: (intent: SelectionCaptureIntent) => void): () => void;
-    observeInvalidation(callback: (invalidation: SelectionInvalidation) => void): () => void;
-    presentation: SelectionPresentationMode;
-    reveal(range: Range): HostResult<"scrolled" | "visible">;
-  };
+  selection: HostSelection;
 };
