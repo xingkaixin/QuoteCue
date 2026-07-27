@@ -14,6 +14,11 @@ Persistable evidence for restoring selected text inside one assistant message. E
 DOM text; legacy-rendered anchors retain older rendered text. Restoration fails closed when the
 evidence does not identify one range.
 
+**Unresolved Annotation**:
+An annotation whose text anchor cannot be restored to one unique range. It remains in the draft
+and can be deleted from the annotation list, but it has no highlight, badge, or editable source
+position.
+
 **Anchored Selection**:
 A transient selection snapshot containing a text anchor and screen geometry. It exists only between
 selection capture and annotation creation; it is not a draft.

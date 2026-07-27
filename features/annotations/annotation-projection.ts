@@ -7,11 +7,22 @@ export type NumberedAnnotation = {
   ordinal: number;
 };
 
-export type ProjectedAnnotation = NumberedAnnotation & {
+export type AnnotationGeometry = {
   badge: Pick<SelectionRect, "left" | "top"> | null;
-  range: Range | null;
-  rect: SelectionRect | null;
+  range: Range;
+  rect: SelectionRect;
 };
+
+export type AnnotationResolution =
+  | { resolution: "pending" }
+  | { resolution: "unresolved" }
+  | { resolution: "resolved"; geometry: AnnotationGeometry };
+
+export type ProjectedAnnotation = NumberedAnnotation & AnnotationResolution;
+
+export type ResolvedProjectedAnnotation = Extract<ProjectedAnnotation, { resolution: "resolved" }>;
+
+export type SettledAnnotationResolution = Exclude<AnnotationResolution, { resolution: "pending" }>;
 
 export function numberAnnotations(annotations: readonly DraftAnnotation[]): NumberedAnnotation[] {
   return annotations.map((annotation, index) => ({ annotation, ordinal: index + 1 }));

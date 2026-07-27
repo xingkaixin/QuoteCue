@@ -244,6 +244,21 @@ describe("AnnotationSummary", () => {
     await act(async () => root.unmount());
   });
 
+  it("does not report a pending projection as an unavailable source", async () => {
+    const { container, root, summary } = await mountSummary({
+      annotations: [{ annotation, ordinal: 1, resolution: "pending" }],
+    });
+
+    await hover(summary);
+
+    expect(container.textContent).not.toContain("Source position changed");
+    expect(
+      container.querySelector<HTMLButtonElement>('[aria-label="Edit annotation 1"]')?.disabled,
+    ).toBe(true);
+
+    await act(async () => root.unmount());
+  });
+
   it("uses the supplied ordinal for every numbered control", async () => {
     const { container, root, summary } = await mountSummary({
       annotations: [projectAnnotation(annotation, 7)],
@@ -303,12 +318,18 @@ function projectAnnotation(
   ordinal: number,
   isResolved = true,
 ): ProjectedAnnotation {
+  if (!isResolved) {
+    return { annotation: item, ordinal, resolution: "unresolved" };
+  }
   return {
     annotation: item,
-    badge: null,
+    geometry: {
+      badge: null,
+      range: document.createRange(),
+      rect: { bottom: 30, height: 20, left: 10, right: 30, top: 10, width: 20 },
+    },
     ordinal,
-    range: isResolved ? document.createRange() : null,
-    rect: isResolved ? { bottom: 30, height: 20, left: 10, right: 30, top: 10, width: 20 } : null,
+    resolution: "resolved",
   };
 }
 

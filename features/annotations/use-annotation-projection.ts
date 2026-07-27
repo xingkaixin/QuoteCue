@@ -7,47 +7,46 @@ import { clampPositionToViewport } from "@/features/layout/floating-position";
 import { currentVisualViewportBounds } from "@/features/layout/use-visual-viewport";
 
 import type { DraftAnnotation } from "./annotation";
-import { numberAnnotations, type ProjectedAnnotation } from "./annotation-projection";
+import {
+  numberAnnotations,
+  type AnnotationResolution,
+  type ProjectedAnnotation,
+  type SettledAnnotationResolution,
+} from "./annotation-projection";
 import { restoreTextAnchorFromIndex } from "./selection-anchor";
 
 const FULL_REANCHOR_INTERVAL_MS = 5_000;
-
-type AnnotationGeometry = {
-  badge: ProjectedAnnotation["badge"];
-  range: Range;
-  rect: SelectionRect;
-};
-
-const EMPTY_GEOMETRY = new Map<string, AnnotationGeometry>();
+const PENDING_RESOLUTION: AnnotationResolution = { resolution: "pending" };
+const UNRESOLVED_RESOLUTION: SettledAnnotationResolution = { resolution: "unresolved" };
+const EMPTY_RESOLUTIONS = new Map<string, SettledAnnotationResolution>();
 
 export function useAnnotationProjection(
   annotations: readonly DraftAnnotation[],
   activeAnnotationId: string | null,
 ) {
   const host = useHost();
-  const [geometryByAnnotationId, setGeometryByAnnotationId] =
-    useState<ReadonlyMap<string, AnnotationGeometry>>(EMPTY_GEOMETRY);
-  const geometryRef = useRef<ReadonlyMap<string, AnnotationGeometry>>(geometryByAnnotationId);
+  const [resolutionByAnnotationId, setResolutionByAnnotationId] =
+    useState<ReadonlyMap<string, SettledAnnotationResolution>>(EMPTY_RESOLUTIONS);
+  const resolutionRef =
+    useRef<ReadonlyMap<string, SettledAnnotationResolution>>(resolutionByAnnotationId);
   const numberedAnnotations = useMemo(() => numberAnnotations(annotations), [annotations]);
   const projectedAnnotations = useMemo(
     () =>
       numberedAnnotations.map<ProjectedAnnotation>((entry) => ({
         ...entry,
-        ...(geometryByAnnotationId.get(entry.annotation.id) ?? {
-          badge: null,
-          range: null,
-          rect: null,
-        }),
+        ...(resolutionByAnnotationId.get(entry.annotation.id) ?? PENDING_RESOLUTION),
       })),
-    [geometryByAnnotationId, numberedAnnotations],
+    [numberedAnnotations, resolutionByAnnotationId],
+  );
+  const activeProjection = projectedAnnotations.find(
+    ({ annotation }) => annotation.id === activeAnnotationId,
   );
   const activeRange =
-    projectedAnnotations.find(({ annotation }) => annotation.id === activeAnnotationId)?.range ??
-    null;
+    activeProjection?.resolution === "resolved" ? activeProjection.geometry.range : null;
 
   useEffect(() => {
     if (annotations.length === 0) {
-      commitGeometry(EMPTY_GEOMETRY);
+      commitResolutions(EMPTY_RESOLUTIONS);
       return;
     }
 
@@ -80,8 +79,13 @@ export function useAnnotationProjection(
             dirtyMessageIds,
           );
         }
-        commitGeometry(
-          projectAnnotationGeometry(annotations, host, rangeByAnnotationId, geometryRef.current),
+        commitResolutions(
+          projectAnnotationResolutions(
+            annotations,
+            host,
+            rangeByAnnotationId,
+            resolutionRef.current,
+          ),
         );
       });
     };
@@ -95,12 +99,12 @@ export function useAnnotationProjection(
       }
     };
 
-    function commitGeometry(nextGeometry: ReadonlyMap<string, AnnotationGeometry>) {
-      if (sameGeometry(geometryRef.current, nextGeometry)) {
+    function commitResolutions(next: ReadonlyMap<string, SettledAnnotationResolution>) {
+      if (sameResolutions(resolutionRef.current, next)) {
         return;
       }
-      geometryRef.current = nextGeometry;
-      setGeometryByAnnotationId(nextGeometry);
+      resolutionRef.current = next;
+      setResolutionByAnnotationId(next);
     }
   }, [annotations, host]);
 
@@ -171,31 +175,37 @@ function mergeInvalidations(
   };
 }
 
-function projectAnnotationGeometry(
+function projectAnnotationResolutions(
   annotations: readonly DraftAnnotation[],
   host: Host,
   rangeByAnnotationId: ReadonlyMap<string, Range | null>,
-  previousGeometry: ReadonlyMap<string, AnnotationGeometry>,
+  previousResolutions: ReadonlyMap<string, SettledAnnotationResolution>,
 ) {
-  const geometry = new Map<string, AnnotationGeometry>();
+  const resolutions = new Map<string, SettledAnnotationResolution>();
   for (const annotation of annotations) {
     const resolvedRange = rangeByAnnotationId.get(annotation.id);
     if (!resolvedRange) {
+      resolutions.set(annotation.id, UNRESOLVED_RESOLUTION);
       continue;
     }
-    const previousRange = previousGeometry.get(annotation.id)?.range;
+    const previousResolution = previousResolutions.get(annotation.id);
+    const previousRange =
+      previousResolution?.resolution === "resolved" ? previousResolution.geometry.range : undefined;
     const range =
       previousRange && sameRangeBoundaries(previousRange, resolvedRange)
         ? previousRange
         : resolvedRange;
     const rect = selectionRect(rangeEndpointRect(range));
-    geometry.set(annotation.id, {
-      badge: badgePosition(host, range, rect),
-      range,
-      rect,
+    resolutions.set(annotation.id, {
+      resolution: "resolved",
+      geometry: {
+        badge: badgePosition(host, range, rect),
+        range,
+        rect,
+      },
     });
   }
-  return geometry;
+  return resolutions;
 }
 
 function badgePosition(host: Host, range: Range, rect: SelectionRect) {
@@ -214,20 +224,25 @@ function badgePosition(host: Host, range: Range, rect: SelectionRect) {
   );
 }
 
-function sameGeometry(
-  left: ReadonlyMap<string, AnnotationGeometry>,
-  right: ReadonlyMap<string, AnnotationGeometry>,
+function sameResolutions(
+  left: ReadonlyMap<string, SettledAnnotationResolution>,
+  right: ReadonlyMap<string, SettledAnnotationResolution>,
 ) {
   if (left.size !== right.size) {
     return false;
   }
-  for (const [annotationId, geometry] of left) {
+  for (const [annotationId, resolution] of left) {
     const other = right.get(annotationId);
+    if (!other || resolution.resolution !== other.resolution) {
+      return false;
+    }
+    if (resolution.resolution === "unresolved" || other.resolution === "unresolved") {
+      continue;
+    }
     if (
-      !other ||
-      !sameRangeBoundaries(geometry.range, other.range) ||
-      !sameRect(geometry.rect, other.rect) ||
-      !sameBadge(geometry.badge, other.badge)
+      !sameRangeBoundaries(resolution.geometry.range, other.geometry.range) ||
+      !sameRect(resolution.geometry.rect, other.geometry.rect) ||
+      !sameBadge(resolution.geometry.badge, other.geometry.badge)
     ) {
       return false;
     }

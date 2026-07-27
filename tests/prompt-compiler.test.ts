@@ -60,14 +60,8 @@ describe("compileAnnotatedPrompt", () => {
 
   it("keeps a selected text annotation without an empty comment label", () => {
     const selectionOnly = [{ ...annotations[0], comment: "" }];
-    const unresolvedProjection = {
-      ...numberAnnotations(selectionOnly)[0],
-      badge: null,
-      range: null,
-      rect: null,
-    };
 
-    expect(compileAnnotatedPrompt([unresolvedProjection], "")).toBe(
+    expect(compileAnnotatedPrompt(numberAnnotations(selectionOnly), "")).toBe(
       "请结合以下批注回答：\n\n[批注 1]\n选中文本：全球招聘的基础设施层",
     );
   });

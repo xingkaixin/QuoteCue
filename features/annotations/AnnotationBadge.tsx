@@ -2,12 +2,12 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useI18n } from "@/features/i18n/I18nProvider";
 import { Z_LAYER } from "@/lib/dom-identity";
 
-import type { ProjectedAnnotation } from "./annotation-projection";
+import type { ResolvedProjectedAnnotation } from "./annotation-projection";
 
 type AnnotationBadgeProps = {
-  entry: ProjectedAnnotation;
+  entry: ResolvedProjectedAnnotation;
   left: number;
-  onEdit: (annotation: ProjectedAnnotation) => void;
+  onEdit: (annotation: ResolvedProjectedAnnotation) => void;
   top: number;
 };
 
