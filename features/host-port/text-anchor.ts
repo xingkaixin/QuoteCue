@@ -1,3 +1,5 @@
+import { isRecord } from "@/lib/is-record";
+
 import type { TextAnchor } from "./host-port";
 
 export function parseTextAnchor(value: unknown): TextAnchor | null {
@@ -42,8 +44,4 @@ export function selectedTextFor(anchor: TextAnchor) {
 
 function isTextOffset(value: unknown): value is number {
   return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
 }

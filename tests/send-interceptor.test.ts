@@ -195,16 +195,16 @@ describe("registerSendInterceptor", () => {
     const host = createFakeHost();
     vi.spyOn(host.composer, "submit").mockRejectedValue(new Error("host submit failed"));
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
-    const interceptor = createInterceptor(undefined, { host });
+    const onStateChange = vi.fn();
+    const interceptor = createInterceptor(undefined, { host, onStateChange });
 
     await expect(interceptor.submit()).resolves.toEqual({
       status: "failed",
       reason: "send-unavailable",
     });
-    expect(interceptor.getState()).toMatchObject({
-      status: "failed",
-      reason: "send-unavailable",
-    });
+    expect(onStateChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ status: "failed", reason: "send-unavailable" }),
+    );
     expect(consoleError).toHaveBeenCalledWith("[QuoteCue] Failed to replay annotated send");
     interceptor.dispose();
   });
@@ -223,11 +223,6 @@ describe("registerSendInterceptor", () => {
       status: "failed",
       reason: "composer-unavailable",
     });
-    expect(interceptor.getState()).toEqual({
-      status: "failed-before-attempt",
-      reason: "composer-unavailable",
-    });
-    expect(interceptor.getState()).not.toHaveProperty("attemptId");
     expect(reportUnavailable).toHaveBeenCalledWith("composer-unavailable");
     expect(onStateChange).toHaveBeenLastCalledWith({
       status: "failed-before-attempt",
@@ -254,11 +249,10 @@ describe("registerSendInterceptor", () => {
       status: "confirmed",
       annotationIds: ["annotation-1"],
     });
-    expect(interceptor.getState()).toEqual({
+    expect(onStateChange).toHaveBeenLastCalledWith({
       status: "confirmed",
       attemptId: expect.any(String),
     });
-    expect(onStateChange).toHaveBeenLastCalledWith(interceptor.getState());
     expect(consoleError).toHaveBeenCalledWith("[QuoteCue] Failed to apply confirmed annotations");
     interceptor.dispose();
   });
@@ -277,7 +271,6 @@ describe("registerSendInterceptor", () => {
     expect(event.defaultPrevented).toBe(false);
     expect(hostClick).toHaveBeenCalledOnce();
     expect(composer.textContent).toBe("original question");
-    expect(interceptor.getState()).toEqual({ status: "idle" });
     expect(onStateChange).not.toHaveBeenCalled();
     interceptor.dispose();
   });
@@ -300,7 +293,6 @@ describe("registerSendInterceptor", () => {
     expect(event.defaultPrevented).toBe(false);
     expect(hostKeydown).toHaveBeenCalledOnce();
     expect(composer.textContent).toBe("original question");
-    expect(interceptor.getState()).toEqual({ status: "idle" });
     expect(onStateChange).not.toHaveBeenCalled();
     interceptor.dispose();
   });
@@ -341,10 +333,6 @@ describe("registerSendInterceptor", () => {
       status: "failed",
       reason: "replace-failed",
     });
-    expect(interceptor.getState()).toMatchObject({
-      status: "failed",
-      reason: "replace-failed",
-    });
     expect(onStateChange).toHaveBeenLastCalledWith(
       expect.objectContaining({ status: "failed", reason: "replace-failed" }),
     );
@@ -357,7 +345,7 @@ describe("registerSendInterceptor", () => {
     expect(retriedText).toContain("[Supplemental question]\noriginal question");
     expect(retriedText.match(/\[Annotation 1\]/g)).toHaveLength(1);
     expect(onSendConfirmed).toHaveBeenCalledWith([annotation]);
-    expect(interceptor.getState()).toEqual({
+    expect(onStateChange).toHaveBeenLastCalledWith({
       status: "confirmed",
       attemptId: expect.any(String),
     });
@@ -401,10 +389,13 @@ describe("registerSendInterceptor", () => {
     vi.useFakeTimers();
     const composer = installComposer("original question");
     vi.mocked(document.execCommand).mockReturnValue(true);
-    const interceptor = createInterceptor();
+    const onStateChange = vi.fn();
+    const interceptor = createInterceptor(undefined, { onStateChange });
 
     const result = interceptor.submit();
-    expect(interceptor.getState()).toMatchObject({ status: "replaying" });
+    expect(onStateChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ status: "replaying" }),
+    );
     await vi.advanceTimersByTimeAsync(2_001);
 
     await expect(result).resolves.toEqual({ status: "failed", reason: "send-unavailable" });

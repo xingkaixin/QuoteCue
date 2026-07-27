@@ -6,7 +6,7 @@ import { createShadowRootUi } from "wxt/utils/content-script-ui/shadow-root";
 import { PortalContainerProvider } from "@/components/ui/portal-container";
 import { createBrowserDraftStore } from "@/features/annotations/draft-storage";
 import { DraftStoreProvider } from "@/features/annotations/DraftStoreProvider";
-import { activeHost, activeSite } from "@/features/host/active-host";
+import { resolveActiveHost } from "@/features/host/active-host";
 import { SITE_URL_PATTERNS } from "@/features/host/site-urls";
 import { HostProvider } from "@/features/host-port/HostProvider";
 import { I18nProvider } from "@/features/i18n/I18nProvider";
@@ -20,11 +20,15 @@ export default defineContentScript({
   cssInjectionMode: "ui",
 
   async main(context) {
-    const site = activeSite;
-    const host = activeHost;
-    if (!site || !host) {
+    const active = resolveActiveHost(window.location.hostname, {
+      document,
+      logger: import.meta.env.DEV ? (message) => console.debug(message) : undefined,
+      window,
+    });
+    if (!active) {
       return;
     }
+    const { host, site } = active;
     const draftStore = createBrowserDraftStore();
 
     const ui = await createShadowRootUi(context, {

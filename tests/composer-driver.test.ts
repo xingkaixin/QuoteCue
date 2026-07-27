@@ -94,10 +94,7 @@ function adapter(composer: ComposerAccess): SiteAdapter {
   return {
     composer,
     conversationPathPattern: /^\/c\/([^/]+)/,
-    layout: {
-      actionSelector: "button",
-      fallbackAction: { bottomInset: 8, height: 36, rightInset: 8, width: 36 },
-    },
+    layout: { actionSelector: "button" },
     messages: {
       assistantSelector: "article",
       id: (message) => message.id,

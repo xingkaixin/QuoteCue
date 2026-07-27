@@ -10,7 +10,7 @@ import {
 const MESSAGE_ITEM_SELECTOR = "[data-virtual-list-item-key]";
 const USER_MESSAGE_SELECTOR = `${MESSAGE_ITEM_SELECTOR}:has(> .ds-message.d29f3d7d)`;
 // 发送/停止共用同一个圆形按钮，仅图标不同；用发送箭头的 path 前缀区分，避免拦截停止操作
-const SEND_ICON_PATH_PREFIX = "M8.3125 0.981587";
+export const DEEPSEEK_SEND_ICON_PATH_PREFIX = "M8.3125 0.981587";
 
 const DEEPSEEK_ADAPTER: SiteAdapter = {
   composer: textareaComposer('textarea[name="search"]'),
@@ -24,7 +24,7 @@ const DEEPSEEK_ADAPTER: SiteAdapter = {
   }),
   selectionPresentation: { mode: "overlay" },
   sendControl: sendControlAccess(
-    `.ds-button--circle:has(path[d^="${SEND_ICON_PATH_PREFIX}"])`,
+    `.ds-button--circle:has(path[d^="${DEEPSEEK_SEND_ICON_PATH_PREFIX}"])`,
     (button) => button.classList.contains("ds-button--disabled"),
   ),
 };

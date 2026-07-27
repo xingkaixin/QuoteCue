@@ -1,3 +1,5 @@
+import { readRenderedText } from "@/lib/rendered-text";
+
 import type { HostEnvironment } from "./host-context";
 import type { ComposerAccess } from "./site-adapter";
 
@@ -7,12 +9,9 @@ export function richTextComposer(
   selector: string,
   normalize: (text: string) => string = normalizeWhitespace,
 ): ComposerAccess {
-  const read = (composer: HTMLElement) =>
-    typeof composer.innerText === "string" ? composer.innerText : (composer.textContent ?? "");
-
   return {
     normalize,
-    read,
+    read: readRenderedText,
     selector,
     write(composer, text, environment) {
       selectComposerContents(composer, environment);
@@ -30,10 +29,10 @@ export function richTextComposer(
         // Lexical 类编辑器接受 beforeinput 后异步渲染 DOM，同步读回为空不代表插入失败；
         // 此处不因读回不匹配而中止（fallback 的 replaceChildren 反而会打乱编辑器内部状态），
         // 内容正确性由发送确认的全文强匹配兜底
-        const isSynced = normalize(read(composer)) === normalize(text);
+        const isSynced = normalize(readRenderedText(composer)) === normalize(text);
         environment.logger?.(`[QuoteCue host] composer command replacement: synced=${isSynced}`);
         if (!isSynced) {
-          logMismatch("command", composer, text, environment, read, normalize);
+          logMismatch("command", composer, text, environment, readRenderedText, normalize);
         }
         return true;
       }
@@ -44,22 +43,19 @@ export function richTextComposer(
       composer.dispatchEvent(
         new InputEvent("input", { bubbles: true, data: text, inputType: "insertText" }),
       );
-      const isReplaced = normalize(read(composer)) === normalize(text);
+      const isReplaced = normalize(readRenderedText(composer)) === normalize(text);
       environment.logger?.(`[QuoteCue host] composer fallback replacement: matched=${isReplaced}`);
       if (!isReplaced) {
-        logMismatch("fallback", composer, text, environment, read, normalize);
+        logMismatch("fallback", composer, text, environment, readRenderedText, normalize);
       }
       return isReplaced;
     },
   };
 }
 
-export function textareaComposer(
-  selector: string,
-  normalize: (text: string) => string = normalizeWhitespace,
-): ComposerAccess {
+export function textareaComposer(selector: string): ComposerAccess {
   return {
-    normalize,
+    normalize: normalizeWhitespace,
     read(composer) {
       return composer instanceof HTMLTextAreaElement ? composer.value : "";
     },

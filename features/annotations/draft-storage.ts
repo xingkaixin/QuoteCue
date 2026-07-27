@@ -2,6 +2,7 @@ import { browser } from "wxt/browser";
 
 import type { IdentifiedConversation } from "@/features/host-port/host-port";
 import { parseTextAnchor } from "@/features/host-port/text-anchor";
+import { isRecord } from "@/lib/is-record";
 
 import type { DraftAnnotation } from "./annotation";
 import type { DraftStore } from "./draft-store";
@@ -212,10 +213,6 @@ function isDraftStorageVersion(value: unknown): value is DraftStorageVersion {
     value === UNMARKED_ANCHOR_DRAFT_STORAGE_VERSION ||
     value === DRAFT_STORAGE_VERSION
   );
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
 }
 
 function scheduleDraftCleanup(state: BrowserDraftStoreState, currentDraftKey: string) {
