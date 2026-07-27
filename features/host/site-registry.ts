@@ -3,17 +3,10 @@ import { createClaudeHost } from "@/features/claude/claude-host";
 import { createDeepSeekHost } from "@/features/deepseek/deepseek-host";
 import { createKimiHost } from "@/features/kimi/kimi-host";
 import type { Host } from "@/features/host-port/host-port";
+import type { SiteAccentTokens } from "@/features/theme/accent-tokens";
 
 import type { HostEnvironment } from "./dom-host";
 import { SITE_URLS, type SiteUrl } from "./site-urls";
-
-export type SiteAccentTokens = {
-  accent: string;
-  "accent-foreground": string;
-  "accent-subtle": string;
-  "accent-subtle-foreground": string;
-  "accent-text": string;
-};
 
 export type SiteRegistration = SiteUrl & {
   accentTokens: SiteAccentTokens;
