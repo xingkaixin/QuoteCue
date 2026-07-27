@@ -165,6 +165,70 @@ describe("registerSendInterceptor", () => {
     expect(composer.textContent).toBe("original question");
   });
 
+  it("settles a failed attempt when restoring the composer throws", async () => {
+    installComposer("original question");
+    const host = createChatGptHost({ document, window });
+    vi.spyOn(host.composer, "replaceText").mockReturnValue(false);
+    vi.spyOn(host.composer, "restoreText").mockImplementation(() => {
+      throw new Error("host restore failed");
+    });
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const interceptor = createInterceptor(undefined, { host });
+
+    let result: ReturnType<typeof interceptor.submit> | undefined;
+    expect(() => {
+      result = interceptor.submit();
+    }).not.toThrow();
+
+    await expect(result).resolves.toEqual({ status: "failed", reason: "replace-failed" });
+    const nextResult = interceptor.submit();
+    expect(nextResult).not.toBe(result);
+    await expect(nextResult).resolves.toEqual({ status: "failed", reason: "replace-failed" });
+    expect(consoleError).toHaveBeenCalledWith("[QuoteCue] Failed to restore composer text");
+    interceptor.dispose();
+  });
+
+  it("settles a failed attempt when waiting for the send control rejects", async () => {
+    installComposer("original question");
+    const host = createChatGptHost({ document, window });
+    vi.spyOn(host.composer, "waitForButton").mockRejectedValue(new Error("host wait failed"));
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const interceptor = createInterceptor(undefined, { host });
+
+    await expect(interceptor.submit()).resolves.toEqual({
+      status: "failed",
+      reason: "send-unavailable",
+    });
+    expect(interceptor.getState()).toMatchObject({
+      status: "failed",
+      reason: "send-unavailable",
+    });
+    expect(consoleError).toHaveBeenCalledWith("[QuoteCue] Failed to replay annotated send");
+    interceptor.dispose();
+  });
+
+  it("settles a confirmed attempt when its completion callback throws", async () => {
+    const composer = installComposer("original question");
+    const onSendConfirmed = vi.fn(() => {
+      throw new Error("confirmation callback failed");
+    });
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const interceptor = createInterceptor(onSendConfirmed);
+    const sendButton = installSendButton(() => {
+      const compiledText = composer.textContent ?? "";
+      composer.replaceChildren();
+      installUserMessage("confirmed-user-message", compiledText);
+    });
+
+    await expect(interceptor.submit(sendButton)).resolves.toEqual({
+      status: "confirmed",
+      annotationIds: ["annotation-1"],
+    });
+    expect(interceptor.getState()).toEqual({ status: "idle" });
+    expect(consoleError).toHaveBeenCalledWith("[QuoteCue] Failed to apply confirmed annotations");
+    interceptor.dispose();
+  });
+
   it("leaves native clicks untouched when there are no annotations", () => {
     const composer = installComposer("original question");
     const sendButton = installSendButton();
