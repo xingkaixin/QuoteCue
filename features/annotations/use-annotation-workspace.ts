@@ -165,7 +165,7 @@ export function useAnnotationWorkspace() {
     if (!controller) {
       return;
     }
-    if (sendState.status === "failed") {
+    if (sendState.status === "failed" || sendState.status === "failed-before-attempt") {
       void controller.retry();
       return;
     }
@@ -199,15 +199,8 @@ export function useAnnotationWorkspace() {
       pendingDeletionExpiresAt,
       remove: deleteAnnotation,
       send,
-      sendStatus: annotationSendStatus(sendState),
+      sendState,
       undoDeletion: discardPendingDeletions,
     },
   };
-}
-
-function annotationSendStatus(state: AnnotatedSendState): "idle" | "pending" | "failed" {
-  if (state.status === "idle") {
-    return "idle";
-  }
-  return state.status === "failed" ? "failed" : "pending";
 }

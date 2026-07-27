@@ -209,13 +209,41 @@ describe("registerSendInterceptor", () => {
     interceptor.dispose();
   });
 
+  it("models composer access failure before an attempt without a nullable id", async () => {
+    const host = createFakeHost();
+    vi.spyOn(host.composer, "snapshot").mockReturnValue({
+      status: "unavailable",
+      reason: "composer-unavailable",
+    });
+    const reportUnavailable = vi.spyOn(host, "reportUnavailable");
+    const onStateChange = vi.fn();
+    const interceptor = createInterceptor(undefined, { host, onStateChange });
+
+    await expect(interceptor.submit()).resolves.toEqual({
+      status: "failed",
+      reason: "composer-unavailable",
+    });
+    expect(interceptor.getState()).toEqual({
+      status: "failed-before-attempt",
+      reason: "composer-unavailable",
+    });
+    expect(interceptor.getState()).not.toHaveProperty("attemptId");
+    expect(reportUnavailable).toHaveBeenCalledWith("composer-unavailable");
+    expect(onStateChange).toHaveBeenLastCalledWith({
+      status: "failed-before-attempt",
+      reason: "composer-unavailable",
+    });
+    interceptor.dispose();
+  });
+
   it("settles a confirmed attempt when its completion callback throws", async () => {
     const composer = installComposer("original question");
     const onSendConfirmed = vi.fn(() => {
       throw new Error("confirmation callback failed");
     });
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
-    const interceptor = createInterceptor(onSendConfirmed);
+    const onStateChange = vi.fn();
+    const interceptor = createInterceptor(onSendConfirmed, { onStateChange });
     installSendButton(() => {
       const compiledText = composer.textContent ?? "";
       composer.replaceChildren();
@@ -226,7 +254,11 @@ describe("registerSendInterceptor", () => {
       status: "confirmed",
       annotationIds: ["annotation-1"],
     });
-    expect(interceptor.getState()).toEqual({ status: "idle" });
+    expect(interceptor.getState()).toEqual({
+      status: "confirmed",
+      attemptId: expect.any(String),
+    });
+    expect(onStateChange).toHaveBeenLastCalledWith(interceptor.getState());
     expect(consoleError).toHaveBeenCalledWith("[QuoteCue] Failed to apply confirmed annotations");
     interceptor.dispose();
   });
@@ -325,7 +357,10 @@ describe("registerSendInterceptor", () => {
     expect(retriedText).toContain("[Supplemental question]\noriginal question");
     expect(retriedText.match(/\[Annotation 1\]/g)).toHaveLength(1);
     expect(onSendConfirmed).toHaveBeenCalledWith([annotation]);
-    expect(interceptor.getState()).toEqual({ status: "idle" });
+    expect(interceptor.getState()).toEqual({
+      status: "confirmed",
+      attemptId: expect.any(String),
+    });
     interceptor.dispose();
   });
 

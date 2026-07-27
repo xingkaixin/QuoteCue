@@ -146,10 +146,10 @@ vi.mock("@/features/annotations/AnnotationSummary", () => ({
 }));
 
 vi.mock("@/features/annotations/AnnotationSendControl", () => ({
-  AnnotationSendControl({ onSend, status }: AnnotationSendControlProps) {
+  AnnotationSendControl({ onSend, state }: AnnotationSendControlProps) {
     return (
       <button
-        data-send-status={status}
+        data-send-state={state.status}
         data-testid="send-annotations"
         onClick={onSend}
         type="button"
@@ -252,7 +252,7 @@ describe("App annotation workflow", () => {
     await click(mounted.container, "start-annotation");
     await click(mounted.container, "send-annotations");
 
-    expect(sendControl(mounted.container).dataset.sendStatus).toBe("failed");
+    expect(sendControl(mounted.container).dataset.sendState).toBe("failed");
     expect(summary(mounted.container).dataset.count).toBe("1");
     expect(mounted.container.querySelector('[data-testid="quick-editor"]')).not.toBeNull();
     expect(storedDrafts.get("conversation-a")).toHaveLength(1);
@@ -315,7 +315,7 @@ describe("App annotation workflow", () => {
     const sentSnapshot = cloneAnnotations(storedDrafts.get("conversation-a") ?? []);
     storedDrafts.set("conversation-c", cloneAnnotations(sentSnapshot));
     await click(mounted.container, "send-annotations");
-    expect(sendControl(mounted.container).dataset.sendStatus).toBe("pending");
+    expect(sendControl(mounted.container).dataset.sendState).toBe("awaiting-confirmation");
 
     await act(async () =>
       mounted.host.controls.setConversationIdentity({
@@ -326,7 +326,7 @@ describe("App annotation workflow", () => {
     await vi.waitFor(() => {
       expect(mounted.container.querySelector('[data-testid="annotation-summary"]')).toBeNull();
     });
-    expect(sendControl(mounted.container).dataset.sendStatus).toBe("pending");
+    expect(sendControl(mounted.container).dataset.sendState).toBe("awaiting-confirmation");
 
     await act(async () =>
       mounted.host.controls.setConversationIdentity({
@@ -336,12 +336,14 @@ describe("App annotation workflow", () => {
     );
     await vi.waitFor(() => expect(summary(mounted.container).dataset.count).toBe("1"));
 
-    expect(sendControl(mounted.container).dataset.sendStatus).toBe("pending");
+    expect(sendControl(mounted.container).dataset.sendState).toBe("awaiting-confirmation");
     expect(pendingSubmit?.signal.aborted).toBe(false);
     expect(subscribeToSubmit).not.toHaveBeenCalled();
 
     await act(async () => confirmSubmit?.());
-    await vi.waitFor(() => expect(sendControl(mounted.container).dataset.sendStatus).toBe("idle"));
+    await vi.waitFor(() =>
+      expect(sendControl(mounted.container).dataset.sendState).toBe("confirmed"),
+    );
     expect(summary(mounted.container).dataset.count).toBe("1");
     expect(storedDrafts.get("conversation-c")).toEqual(sentSnapshot);
 
