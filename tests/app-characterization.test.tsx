@@ -311,6 +311,31 @@ describe("App annotation workflow", () => {
     await act(async () => mounted.root.unmount());
   });
 
+  it("hides failure feedback after leaving the conversation that failed", async () => {
+    const mounted = await mountApp();
+    vi.spyOn(mounted.host.composer, "submit").mockResolvedValue({
+      reason: "replace-failed",
+      status: "unavailable",
+    });
+
+    await click(mounted.container, "start-annotation");
+    await click(mounted.container, "send-annotations");
+    expect(sendControl(mounted.container).dataset.sendState).toBe("failed");
+
+    await act(async () =>
+      mounted.host.controls.setConversationIdentity({
+        kind: "identified",
+        id: "conversation-b",
+      }),
+    );
+
+    await vi.waitFor(() => {
+      expect(mounted.container.querySelector('[data-testid="send-annotations"]')).toBeNull();
+    });
+
+    await act(async () => mounted.root.unmount());
+  });
+
   it("keeps an active send visible and alive when the conversation changes", async () => {
     const mounted = await mountApp();
     const subscribeToSubmit = vi.spyOn(mounted.host.composer, "subscribeToSubmit");

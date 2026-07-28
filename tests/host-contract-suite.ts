@@ -536,6 +536,7 @@ export function runHostContractSuite(definition: HostContractDefinition) {
       const interceptor = registerSendInterceptor({
         annotations: () => numberAnnotations([annotation]),
         compilePrompt: compileAnnotatedPrompt,
+        conversationIdentity: () => ({ kind: "identified", id: "conversation-test" }),
         host: siteHost,
         locale: () => "en",
         onSendConfirmed,
@@ -545,7 +546,10 @@ export function runHostContractSuite(definition: HostContractDefinition) {
         status: "confirmed",
         annotationIds: [annotation.id],
       });
-      expect(onSendConfirmed).toHaveBeenCalledWith([annotation]);
+      expect(onSendConfirmed).toHaveBeenCalledWith([annotation], {
+        kind: "identified",
+        id: "conversation-test",
+      });
       interceptor.dispose();
     });
 
@@ -565,6 +569,7 @@ export function runHostContractSuite(definition: HostContractDefinition) {
             { anchor, comment: "Explain the tradeoff", id: "annotation-contract" },
           ]),
         compilePrompt: compileAnnotatedPrompt,
+        conversationIdentity: () => ({ kind: "identified", id: "conversation-test" }),
         host: siteHost,
         locale: () => "en",
         onSendConfirmed,

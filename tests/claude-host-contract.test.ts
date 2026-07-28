@@ -66,6 +66,7 @@ describe("Claude host contract", () => {
     const interceptor = registerSendInterceptor({
       annotations: () => numberAnnotations([annotation()]),
       compilePrompt: compileAnnotatedPrompt,
+      conversationIdentity: () => ({ kind: "identified", id: "conversation-test" }),
       host,
       locale: () => "en",
       onSendConfirmed,
@@ -75,7 +76,10 @@ describe("Claude host contract", () => {
       status: "confirmed",
       annotationIds: ["annotation-one"],
     });
-    expect(onSendConfirmed).toHaveBeenCalledWith([annotation()]);
+    expect(onSendConfirmed).toHaveBeenCalledWith([annotation()], {
+      kind: "identified",
+      id: "conversation-test",
+    });
     expect(fixture.composer.innerText).toContain("[Annotation 1]");
     interceptor.dispose();
   });
