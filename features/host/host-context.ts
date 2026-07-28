@@ -46,7 +46,6 @@ type MutationSummary = {
   attributeNames: Set<string>;
   hasCharacterData: boolean;
   hasChildList: boolean;
-  hasRemovedElement: boolean;
 };
 
 type MutationObservationPlan = {
@@ -108,9 +107,32 @@ function createHostSignals(
         subscription.callback(records);
       }
     }
-    if (observesCharacterData && summary.hasRemovedElement) {
+    if (observesCharacterData && removesMessageRoot(records)) {
       updateMutationObservation(true);
     }
+  };
+  // MutationObserver cannot unobserve a single target, so a detached message root still costs a
+  // full rebuild. Unrelated removals must not pay it.
+  const removesMessageRoot = (records: MutationRecord[]) => {
+    for (const record of records) {
+      if (record.type !== "childList") {
+        continue;
+      }
+      for (const node of record.removedNodes) {
+        if (node instanceof Element && containsMessageRoot(node)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  };
+  const containsMessageRoot = (node: Element) => {
+    if (node instanceof HTMLElement && observedMessageRoots.has(node)) {
+      return true;
+    }
+    return [messageAccess.assistantSelector, messageAccess.userSelector].some(
+      (selector) => node.matches(selector) || node.querySelector(selector) !== null,
+    );
   };
   const updateMutationObservation = (forceReset = false) => {
     if (mutationSubscriptions.size === 0) {
@@ -280,7 +302,6 @@ function summarizeMutations(records: MutationRecord[]): MutationSummary {
     attributeNames: new Set(),
     hasCharacterData: false,
     hasChildList: false,
-    hasRemovedElement: false,
   };
   for (const record of records) {
     if (record.type === "attributes" && record.attributeName !== null) {
@@ -289,9 +310,6 @@ function summarizeMutations(records: MutationRecord[]): MutationSummary {
       summary.hasCharacterData = true;
     } else if (record.type === "childList") {
       summary.hasChildList = true;
-      summary.hasRemovedElement ||= [...record.removedNodes].some(
-        (node) => node.nodeType === Node.ELEMENT_NODE,
-      );
     }
   }
   return summary;
