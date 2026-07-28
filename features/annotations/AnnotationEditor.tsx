@@ -11,6 +11,7 @@ import { useAnnotationCommentSurface } from "./use-annotation-comment-surface";
 
 type AnnotationEditorProps = {
   annotation: DraftAnnotation;
+  bindSession?: (requestDismissal: (() => boolean) | null) => void;
   onCancel: () => void;
   onDelete: () => void;
   onSave: (comment: string) => void;
@@ -21,6 +22,7 @@ const EDITOR_SIZE = { height: 164, width: 340 };
 
 export function AnnotationEditor({
   annotation,
+  bindSession,
   onCancel,
   onDelete,
   onSave,
@@ -29,6 +31,7 @@ export function AnnotationEditor({
   const { messages } = useI18n();
   const { commentFieldProps, position, resetWarning, rootRef, saveComment } =
     useAnnotationCommentSurface({
+      bindSession,
       initialComment: annotation.comment,
       onDismiss: onCancel,
       onSave,
