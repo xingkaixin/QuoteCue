@@ -25,13 +25,23 @@ pnpm dev
 
 ## 验证与打包
 
-`pnpm check` 是本地和 CI 共用的唯一质量门禁，包含格式检查、lint、类型检查、测试以及一次
-生产构建。
+`pnpm check` 是本仓库代码的唯一质量门禁，包含格式检查、lint、类型检查、测试以及一次生产
+构建，并且完全离线运行。
 
 ```bash
 pnpm check
 pnpm zip
 ```
+
+依赖安全是一道独立门禁，因为它需要查询 registry 的 advisory 数据库：结果依赖网络访问，
+并且会随时间变化，与本仓库的代码无关。
+
+```bash
+pnpm audit:high
+```
+
+CI 会同时运行两者。修改依赖或 `pnpm-workspace.yaml` 中的 overrides 时，请在本地运行
+`pnpm audit:high`；参见 [docs/dependency-overrides.md](./docs/dependency-overrides.md)。
 
 生产版扩展会输出到 `.output/chrome-mv3`，可分发的压缩包会输出到
 `.output/quotecue-<version>-chrome.zip`。

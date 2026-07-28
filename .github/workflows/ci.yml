@@ -35,3 +35,6 @@ jobs:
 
       - name: Check project
         run: pnpm check
+
+      - name: Audit dependencies
+        run: pnpm audit:high
