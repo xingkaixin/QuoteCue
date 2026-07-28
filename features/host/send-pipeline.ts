@@ -28,7 +28,6 @@ export function createSendPipeline(
 
   const currentSendButton = () =>
     hostDocument.querySelector<HTMLElement>(adapter.sendControl.selector);
-  let isDispatchingSubmit = false;
 
   function isButtonAvailable(button: HTMLElement | null): button is HTMLElement {
     return (
@@ -225,13 +224,10 @@ export function createSendPipeline(
     options: ComposerSubmitOptions,
   ): Promise<ComposerSubmitResult> {
     const confirmation = createConfirmation(options.text, options.signal);
-    isDispatchingSubmit = true;
     try {
       sendButton.click();
     } catch {
       confirmation.cancel();
-    } finally {
-      isDispatchingSubmit = false;
     }
     return confirmation.result;
   }
@@ -268,9 +264,12 @@ export function createSendPipeline(
     return { cancel: onAbort, result };
   }
 
+  // Only the browser can produce a trusted event, so this is the boundary between a user
+  // choosing to send and a host page script synthesizing a send. It also covers our own
+  // replay click in dispatchAndConfirm, which is untrusted by the same rule.
   function subscribeToSubmit(callback: (intent: ComposerSubmitIntent) => void) {
     const onClick = (event: MouseEvent) => {
-      if (isDispatchingSubmit) {
+      if (!event.isTrusted) {
         return;
       }
       const target = event.target;
@@ -283,7 +282,7 @@ export function createSendPipeline(
       }
     };
     const onKeyDown = (event: KeyboardEvent) => {
-      if (isDispatchingSubmit) {
+      if (!event.isTrusted) {
         return;
       }
       const target = event.target;

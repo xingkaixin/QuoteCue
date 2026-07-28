@@ -513,7 +513,7 @@ export function runHostContractSuite(definition: HostContractDefinition) {
       },
     );
 
-    it("takes over a native send when the composer is empty", async () => {
+    it("sends annotations when the composer is empty", async () => {
       const fixture = definition.installFixture();
       const siteHost = host();
       selectNodeContents(requiredText(fixture.assistantMessage.querySelector("strong")));
@@ -540,12 +540,50 @@ export function runHostContractSuite(definition: HostContractDefinition) {
         locale: () => "en",
         onSendConfirmed,
       });
-      const event = new MouseEvent("click", { bubbles: true, cancelable: true });
 
-      fixture.sendControl.dispatchEvent(event);
+      await expect(interceptor.submit()).resolves.toEqual({
+        status: "confirmed",
+        annotationIds: [annotation.id],
+      });
+      expect(onSendConfirmed).toHaveBeenCalledWith([annotation]);
+      interceptor.dispose();
+    });
 
-      expect(event.defaultPrevented).toBe(true);
-      await vi.waitFor(() => expect(onSendConfirmed).toHaveBeenCalledWith([annotation]));
+    it("ignores send events synthesized by host page script", () => {
+      const fixture = definition.installFixture();
+      const siteHost = host();
+      selectNodeContents(requiredText(fixture.assistantMessage.querySelector("strong")));
+      const anchor = availableValue(siteHost.selection.capture()).anchor;
+      definition.setSendDisabled(fixture.sendControl, false);
+      const hostClick = vi.fn();
+      fixture.sendControl.addEventListener("click", hostClick);
+      const onSendConfirmed = vi.fn();
+      const onStateChange = vi.fn();
+      const interceptor = registerSendInterceptor({
+        annotations: () =>
+          numberAnnotations([
+            { anchor, comment: "Explain the tradeoff", id: "annotation-contract" },
+          ]),
+        compilePrompt: compileAnnotatedPrompt,
+        host: siteHost,
+        locale: () => "en",
+        onSendConfirmed,
+        onStateChange,
+      });
+      const composerText = availableValue(siteHost.composer.snapshot()).text;
+      onStateChange.mockClear();
+
+      const click = new MouseEvent("click", { bubbles: true, cancelable: true });
+      fixture.sendControl.dispatchEvent(click);
+      const enter = new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: "Enter" });
+      fixture.composer.dispatchEvent(enter);
+
+      expect(click.defaultPrevented).toBe(false);
+      expect(enter.defaultPrevented).toBe(false);
+      expect(hostClick).toHaveBeenCalledOnce();
+      expect(availableValue(siteHost.composer.snapshot()).text).toBe(composerText);
+      expect(onStateChange).not.toHaveBeenCalled();
+      expect(onSendConfirmed).not.toHaveBeenCalled();
       interceptor.dispose();
     });
 
