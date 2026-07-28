@@ -25,13 +25,23 @@ Load `.output/chrome-mv3-dev` as an unpacked extension when using a persistent C
 
 ## Validation and packaging
 
-`pnpm check` is the single local and CI quality gate. It checks formatting, lint, types, tests, and
-a production build.
+`pnpm check` is the single quality gate for the code in this repository. It checks formatting,
+lint, types, tests, and a production build, and it runs entirely offline.
 
 ```bash
 pnpm check
 pnpm zip
 ```
+
+Dependency security is a separate gate because it queries the registry advisory database, so its
+result depends on network access and changes over time independently of this repository's code:
+
+```bash
+pnpm audit:high
+```
+
+CI runs both. Run `pnpm audit:high` locally whenever you change dependencies or the overrides in
+`pnpm-workspace.yaml`; see [docs/dependency-overrides.md](./docs/dependency-overrides.md).
 
 The production extension is written to `.output/chrome-mv3`, and the distributable archive is
 written to `.output/quotecue-<version>-chrome.zip`.
