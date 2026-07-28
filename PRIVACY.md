@@ -48,8 +48,8 @@ earlier versions. Users can remove all locally stored QuoteCue data by uninstall
 ## Data sharing and sale
 
 The developer does not receive, sell, rent, or share user data. QuoteCue includes annotation data
-in a ChatGPT message only when the user explicitly chooses to send that message. No data is shared
-with advertisers, data brokers, or analytics providers.
+in a message to the supported AI service being used only when the user explicitly chooses to send
+that message. No data is shared with advertisers, data brokers, or analytics providers.
 
 ## Permissions
 
