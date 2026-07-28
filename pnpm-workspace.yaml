@@ -5,4 +5,5 @@ allowBuilds:
 overrides:
   firefox-profile>adm-zip: 0.6.0
   fx-runner>shell-quote: 1.10.0
+  web-ext-run>multimatch: 8.0.0
   web-ext-run>tmp: 0.2.7
