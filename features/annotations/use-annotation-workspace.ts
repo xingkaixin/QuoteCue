@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useHost } from "@/features/host-port/HostProvider";
-import type { ConversationIdentity } from "@/features/host-port/host-port";
+
 import { useI18n } from "@/features/i18n/I18nProvider";
 
 import type { AnchoredSelection, AnnotationEditorState, DraftAnnotation } from "./annotation";
@@ -58,7 +58,6 @@ export function useAnnotationWorkspace() {
   const conversationIdentityRef = useRef(conversationIdentity);
   const localeRef = useRef(locale);
   const removeConfirmedAnnotationsRef = useRef(removeConfirmedAnnotations);
-  const sendConversationIdentityRef = useRef<ConversationIdentity | null>(null);
   const sendControllerRef = useRef<SendController | null>(null);
   const requestSessionDismissalRef = useRef<(() => boolean) | null>(null);
   const bindEditorSession = useCallback((requestDismissal: (() => boolean) | null) => {
@@ -72,20 +71,13 @@ export function useAnnotationWorkspace() {
 
   useEffect(() => {
     const controller = registerSendInterceptor({
-      annotations: () => {
-        sendConversationIdentityRef.current = conversationIdentityRef.current;
-        return annotationsRef.current;
-      },
+      annotations: () => annotationsRef.current,
       compilePrompt: compileAnnotatedPrompt,
+      conversationIdentity: () => conversationIdentityRef.current,
       host,
       locale: () => localeRef.current,
-      onSendConfirmed: (sentAnnotations) => {
-        const sentConversationIdentity = sendConversationIdentityRef.current;
-        sendConversationIdentityRef.current = null;
-        if (
-          !sentConversationIdentity ||
-          !sameConversationIdentity(conversationIdentityRef.current, sentConversationIdentity)
-        ) {
+      onSendConfirmed: (sentAnnotations, sentConversationIdentity) => {
+        if (!sameConversationIdentity(conversationIdentityRef.current, sentConversationIdentity)) {
           return;
         }
         removeConfirmedAnnotationsRef.current(sentAnnotations);
@@ -103,7 +95,10 @@ export function useAnnotationWorkspace() {
     };
   }, [closeEditor, host]);
 
-  useEffect(closeEditor, [closeEditor, conversationIdentity]);
+  useEffect(() => {
+    closeEditor();
+    sendControllerRef.current?.conversationChanged();
+  }, [closeEditor, conversationIdentity]);
 
   const startAnnotation = useCallback(
     (selection: AnchoredSelection) => {

@@ -7,7 +7,7 @@ import {
   type AnnotatedSendState,
 } from "@/features/annotations/register-send-interceptor";
 import { createChatGptHost } from "@/features/chatgpt/chatgpt-host";
-import type { Host } from "@/features/host-port/host-port";
+import type { ConversationIdentity, Host } from "@/features/host-port/host-port";
 
 import {
   appendComposer as installComposer,
@@ -77,6 +77,7 @@ describe("registerSendInterceptor", () => {
     const interceptor = registerSendInterceptor({
       annotations: () => numberAnnotations(currentAnnotations),
       compilePrompt: compileAnnotatedPrompt,
+      conversationIdentity: () => ({ kind: "identified", id: "conversation-test" }),
       host: createChatGptHost({ document, window }),
       locale: () => "en",
       onSendConfirmed,
@@ -92,7 +93,10 @@ describe("registerSendInterceptor", () => {
       status: "confirmed",
       annotationIds: ["annotation-1"],
     });
-    expect(onSendConfirmed).toHaveBeenCalledWith([annotation]);
+    expect(onSendConfirmed).toHaveBeenCalledWith([annotation], {
+      kind: "identified",
+      id: "conversation-test",
+    });
     interceptor.dispose();
   });
 
@@ -332,7 +336,10 @@ describe("registerSendInterceptor", () => {
     const retriedText = submit.mock.calls[1]?.[0].text ?? "";
     expect(retriedText).toContain("[Supplemental question]\noriginal question");
     expect(retriedText.match(/\[Annotation 1\]/g)).toHaveLength(1);
-    expect(onSendConfirmed).toHaveBeenCalledWith([annotation]);
+    expect(onSendConfirmed).toHaveBeenCalledWith([annotation], {
+      kind: "identified",
+      id: "conversation-test",
+    });
     expect(onStateChange).toHaveBeenLastCalledWith({
       status: "confirmed",
       attemptId: expect.any(String),
@@ -501,6 +508,7 @@ describe("registerSendInterceptor", () => {
     const interceptor = registerSendInterceptor({
       annotations: () => numberAnnotations([annotation]),
       compilePrompt: compileAnnotatedPrompt,
+      conversationIdentity: () => ({ kind: "identified", id: "conversation-test" }),
       host,
       locale: () => "en",
       onSendConfirmed: vi.fn(),
@@ -553,6 +561,7 @@ describe("registerSendInterceptor", () => {
     const interceptor = registerSendInterceptor({
       annotations: () => numberAnnotations([annotation]),
       compilePrompt: compileAnnotatedPrompt,
+      conversationIdentity: () => ({ kind: "identified", id: "conversation-test" }),
       host,
       locale: () => "en",
       onSendConfirmed: vi.fn(),
@@ -602,7 +611,88 @@ describe("registerSendInterceptor", () => {
     });
     expect(retriedText).toContain("[Supplemental question]\noriginal question");
     expect(retriedText.match(/\[Annotation 1\]/g)).toHaveLength(1);
-    expect(onSendConfirmed).toHaveBeenCalledWith([annotation]);
+    expect(onSendConfirmed).toHaveBeenCalledWith([annotation], {
+      kind: "identified",
+      id: "conversation-test",
+    });
+    interceptor.dispose();
+  });
+
+  it("never reuses a failed question from another conversation", async () => {
+    vi.useFakeTimers();
+    const composer = installComposer("question from conversation A");
+    let identity: ConversationIdentity = { kind: "identified", id: "conversation-a" };
+    const interceptor = createInterceptor(vi.fn(), {
+      conversationIdentity: () => identity,
+    });
+    let sentText = "";
+    installSendButton(() => {
+      sentText = composer.textContent ?? "";
+      composer.replaceChildren();
+    });
+
+    await expect(
+      (async () => {
+        const result = interceptor.submit();
+        await vi.advanceTimersByTimeAsync(15_001);
+        return result;
+      })(),
+    ).resolves.toEqual({ status: "failed", reason: "confirmation-timeout" });
+    expect(sentText).toContain("question from conversation A");
+
+    identity = { kind: "identified", id: "conversation-b" };
+    interceptor.conversationChanged();
+    sentText = "";
+
+    void interceptor.retry();
+    await vi.advanceTimersByTimeAsync(17);
+
+    expect(sentText).not.toContain("question from conversation A");
+    expect(sentText).not.toContain("[Supplemental question]");
+    interceptor.dispose();
+  });
+
+  it("reports idle after leaving the conversation that failed", async () => {
+    vi.useFakeTimers();
+    installComposer("question from conversation A");
+    let identity: ConversationIdentity = { kind: "identified", id: "conversation-a" };
+    const onStateChange = vi.fn();
+    const interceptor = createInterceptor(vi.fn(), {
+      conversationIdentity: () => identity,
+      onStateChange,
+    });
+    installSendButton();
+
+    const result = interceptor.submit();
+    await vi.advanceTimersByTimeAsync(15_001);
+    await expect(result).resolves.toEqual({ status: "failed", reason: "confirmation-timeout" });
+    expect(onStateChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ status: "failed", reason: "confirmation-timeout" }),
+    );
+
+    identity = { kind: "identified", id: "conversation-b" };
+    interceptor.conversationChanged();
+
+    expect(onStateChange).toHaveBeenLastCalledWith({ status: "idle" });
+    interceptor.dispose();
+  });
+
+  it("keeps failure feedback while staying in the same conversation", async () => {
+    vi.useFakeTimers();
+    installComposer("question from conversation A");
+    const onStateChange = vi.fn();
+    const interceptor = createInterceptor(vi.fn(), { onStateChange });
+    installSendButton();
+
+    const result = interceptor.submit();
+    await vi.advanceTimersByTimeAsync(15_001);
+    await expect(result).resolves.toEqual({ status: "failed", reason: "confirmation-timeout" });
+
+    interceptor.conversationChanged();
+
+    expect(onStateChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ status: "failed", reason: "confirmation-timeout" }),
+    );
     interceptor.dispose();
   });
 
@@ -621,7 +711,10 @@ describe("registerSendInterceptor", () => {
       status: "confirmed",
       annotationIds: ["annotation-1"],
     });
-    expect(onSendConfirmed).toHaveBeenCalledWith([annotation]);
+    expect(onSendConfirmed).toHaveBeenCalledWith([annotation], {
+      kind: "identified",
+      id: "conversation-test",
+    });
     interceptor.dispose();
   });
 
@@ -639,7 +732,10 @@ describe("registerSendInterceptor", () => {
       status: "confirmed",
       annotationIds: ["annotation-1"],
     });
-    expect(onSendConfirmed).toHaveBeenCalledWith([annotation]);
+    expect(onSendConfirmed).toHaveBeenCalledWith([annotation], {
+      kind: "identified",
+      id: "conversation-test",
+    });
     interceptor.dispose();
   });
 
@@ -669,6 +765,7 @@ describe("registerSendInterceptor", () => {
 
 type CreateInterceptorOptions = {
   annotations?: readonly (typeof annotation)[];
+  conversationIdentity?: () => ConversationIdentity;
   host?: Host;
   onStateChange?: (state: AnnotatedSendState) => void;
 };
@@ -677,6 +774,7 @@ function createInterceptor(
   onSendConfirmed = vi.fn(),
   {
     annotations = [annotation],
+    conversationIdentity = () => ({ kind: "identified", id: "conversation-test" }) as const,
     host = createChatGptHost({ document, window }),
     onStateChange,
   }: CreateInterceptorOptions = {},
@@ -684,6 +782,7 @@ function createInterceptor(
   return registerSendInterceptor({
     annotations: () => numberAnnotations(annotations),
     compilePrompt: compileAnnotatedPrompt,
+    conversationIdentity,
     host,
     locale: () => "en",
     onSendConfirmed,

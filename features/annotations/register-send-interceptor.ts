@@ -1,8 +1,14 @@
 import type { SupportedLocale } from "@/features/i18n/messages";
-import type { ComposerSnapshot, ComposerSubmitIntent, Host } from "@/features/host-port/host-port";
+import type {
+  ComposerSnapshot,
+  ComposerSubmitIntent,
+  ConversationIdentity,
+  Host,
+} from "@/features/host-port/host-port";
 
 import type { DraftAnnotation } from "./annotation";
 import type { NumberedAnnotation } from "./annotation-projection";
+import { sameConversationIdentity } from "./conversation-identity";
 
 export type AnnotatedSendFailureReason =
   | "composer-unavailable"
@@ -37,14 +43,19 @@ type SendInterceptorOptions = {
     originalText: string,
     locale: SupportedLocale,
   ) => string;
+  conversationIdentity: () => ConversationIdentity;
   host: Host;
   locale: () => SupportedLocale;
-  onSendConfirmed: (annotations: readonly DraftAnnotation[]) => void;
+  onSendConfirmed: (
+    annotations: readonly DraftAnnotation[],
+    conversationIdentity: ConversationIdentity,
+  ) => void;
   onStateChange?: (state: AnnotatedSendState) => void;
 };
 
 type SendAttempt = {
   id: string;
+  conversationIdentity: ConversationIdentity;
   snapshot: ComposerSnapshot;
   compiledPrompt: string;
   annotations: readonly NumberedAnnotation[];
@@ -100,7 +111,7 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
       annotationIds: sentAnnotations.map(({ id }) => id),
     });
     runSafely("Failed to apply confirmed annotations", () =>
-      options.onSendConfirmed(sentAnnotations),
+      options.onSendConfirmed(sentAnnotations, attempt.conversationIdentity),
     );
   };
 
@@ -184,7 +195,12 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
       retryOriginalText && snapshot.text.trim().length === 0 ? retryOriginalText : snapshot.text;
     const ownedSnapshot = { ...snapshot, text: originalText };
     const compiledPrompt = options.compilePrompt(annotations, originalText, options.locale());
-    const attempt = createAttempt(ownedSnapshot, compiledPrompt, annotations);
+    const attempt = createAttempt(
+      options.conversationIdentity(),
+      ownedSnapshot,
+      compiledPrompt,
+      annotations,
+    );
     activeAttempt = attempt;
     lastFailedAttempt = null;
     setState({ status: "preparing", attemptId: attempt.id });
@@ -214,6 +230,23 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
   return {
     submit: () => beginSend(undefined, "custom").result,
     retry: () => beginSend(undefined, "custom", lastFailedAttempt?.snapshot.text).result,
+    // A failed attempt's question belongs to the conversation that produced it. An active attempt
+    // keeps running so it can still confirm after navigation.
+    conversationChanged() {
+      if (
+        !lastFailedAttempt ||
+        sameConversationIdentity(
+          lastFailedAttempt.conversationIdentity,
+          options.conversationIdentity(),
+        )
+      ) {
+        return;
+      }
+      lastFailedAttempt = null;
+      if (!activeAttempt) {
+        setState({ status: "idle" });
+      }
+    },
     dispose() {
       if (isDisposed) {
         return;
@@ -229,6 +262,7 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
 }
 
 function createAttempt(
+  conversationIdentity: ConversationIdentity,
   snapshot: ComposerSnapshot,
   compiledPrompt: string,
   annotations: readonly NumberedAnnotation[],
@@ -239,6 +273,7 @@ function createAttempt(
   });
   return {
     id: crypto.randomUUID(),
+    conversationIdentity,
     snapshot,
     compiledPrompt,
     annotations,

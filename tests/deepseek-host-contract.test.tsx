@@ -73,6 +73,7 @@ describe("DeepSeek host contract", () => {
     const interceptor = registerSendInterceptor({
       annotations: () => numberAnnotations(annotations),
       compilePrompt: compileAnnotatedPrompt,
+      conversationIdentity: () => ({ kind: "identified", id: "conversation-test" }),
       host,
       locale: () => "en",
       onSendConfirmed,
@@ -82,7 +83,10 @@ describe("DeepSeek host contract", () => {
       status: "confirmed",
       annotationIds: ["annotation-one"],
     });
-    expect(onSendConfirmed).toHaveBeenCalledWith([annotation]);
+    expect(onSendConfirmed).toHaveBeenCalledWith([annotation], {
+      kind: "identified",
+      id: "conversation-test",
+    });
     expect(annotations).toEqual([]);
 
     interceptor.dispose();
@@ -113,6 +117,7 @@ describe("DeepSeek host contract", () => {
           { id: "annotation-one", anchor: emptyAnchor(), comment: "Explain the tradeoff" },
         ]),
       compilePrompt: compileAnnotatedPrompt,
+      conversationIdentity: () => ({ kind: "identified", id: "conversation-test" }),
       host,
       locale: () => "en",
       onSendConfirmed,
@@ -123,9 +128,10 @@ describe("DeepSeek host contract", () => {
       annotationIds: ["annotation-one"],
     });
 
-    expect(onSendConfirmed).toHaveBeenCalledWith([
-      expect.objectContaining({ id: "annotation-one" }),
-    ]);
+    expect(onSendConfirmed).toHaveBeenCalledWith(
+      [expect.objectContaining({ id: "annotation-one" })],
+      { kind: "identified", id: "conversation-test" },
+    );
     expect(sentText).toContain("[Annotation 1]");
     expect(sentText).not.toContain("[Supplemental question]");
     interceptor.dispose();
@@ -153,6 +159,7 @@ describe("DeepSeek host contract", () => {
           { id: "annotation-one", anchor: emptyAnchor(), comment: "Explain the tradeoff" },
         ]),
       compilePrompt: compileAnnotatedPrompt,
+      conversationIdentity: () => ({ kind: "identified", id: "conversation-test" }),
       host,
       locale: () => "en",
       onSendConfirmed: vi.fn(),
