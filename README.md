@@ -50,10 +50,12 @@ written to `.output/quotecue-<version>-chrome.zip`.
 
 1. Start from a clean checkout and run `pnpm install --frozen-lockfile`, `pnpm check`, and
    `pnpm zip`.
-2. Inspect `.output/chrome-mv3/manifest.json`. It should request only `storage` and access to
+2. `pnpm check` ends with `pnpm verify:manifest`, which asserts that
+   `.output/chrome-mv3/manifest.json` requests only `storage` and access to
    `https://chatgpt.com/*`, `https://claude.ai/*`, `https://chat.deepseek.com/*`, and
-   `https://www.kimi.com/*`; its web-accessible resources should be limited to the secure field and
-   generated content styles required by the extension.
+   `https://www.kimi.com/*`, and that its web-accessible resources are limited to the secure field
+   and the generated content styles. Widening any of these fails the gate; update
+   `scripts/verify-manifest.ts` only as part of a reviewed permission change.
 3. Confirm the manifest behavior still matches [PRIVACY.md](./PRIVACY.md), especially local draft
    storage, supported-host access, closed Shadow DOM, and extension-origin annotation fields.
 4. Load `.output/chrome-mv3` as an unpacked extension in a clean Chrome profile and complete the
