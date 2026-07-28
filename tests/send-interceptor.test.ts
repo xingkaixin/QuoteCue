@@ -257,61 +257,49 @@ describe("registerSendInterceptor", () => {
     interceptor.dispose();
   });
 
-  it("leaves native clicks untouched when there are no annotations", () => {
-    const composer = installComposer("original question");
-    const sendButton = installSendButton();
-    const hostClick = vi.fn();
-    sendButton.addEventListener("click", hostClick);
+  it("declines a native send intent when there are no annotations", () => {
+    const host = createFakeHost();
+    host.elements.composer.textContent = "original question";
     const onStateChange = vi.fn();
-    const interceptor = createInterceptor(undefined, { annotations: [], onStateChange });
+    const interceptor = createInterceptor(undefined, { annotations: [], host, onStateChange });
     onStateChange.mockClear();
-    const event = new MouseEvent("click", { bubbles: true, cancelable: true });
+    const event = new Event("click", { cancelable: true });
 
-    expect(sendButton.dispatchEvent(event)).toBe(true);
+    host.controls.emitSubmitIntent({ event, isSendAvailable: true });
+
     expect(event.defaultPrevented).toBe(false);
-    expect(hostClick).toHaveBeenCalledOnce();
-    expect(composer.textContent).toBe("original question");
+    expect(host.elements.composer.textContent).toBe("original question");
     expect(onStateChange).not.toHaveBeenCalled();
     interceptor.dispose();
   });
 
-  it("leaves native Enter untouched when there are no annotations", () => {
-    const composer = installComposer("original question");
-    installSendButton();
-    const hostKeydown = vi.fn();
-    composer.addEventListener("keydown", hostKeydown);
-    const onStateChange = vi.fn();
-    const interceptor = createInterceptor(undefined, { annotations: [], onStateChange });
-    onStateChange.mockClear();
-    const event = new KeyboardEvent("keydown", {
-      bubbles: true,
-      cancelable: true,
-      key: "Enter",
+  it("declines a native send intent when the send control is unavailable", () => {
+    const host = createFakeHost();
+    vi.spyOn(host.composer, "snapshot").mockReturnValue({
+      status: "available",
+      value: { element: host.elements.composer, text: "original question" },
     });
+    const submit = vi.spyOn(host.composer, "submit");
+    const interceptor = createInterceptor(undefined, { host });
+    const event = new Event("click", { cancelable: true });
 
-    expect(composer.dispatchEvent(event)).toBe(true);
+    host.controls.emitSubmitIntent({ event, isSendAvailable: false });
+
     expect(event.defaultPrevented).toBe(false);
-    expect(hostKeydown).toHaveBeenCalledOnce();
-    expect(composer.textContent).toBe("original question");
-    expect(onStateChange).not.toHaveBeenCalled();
+    expect(submit).not.toHaveBeenCalled();
     interceptor.dispose();
   });
 
-  it("leaves native Enter untouched when no send button is available", () => {
-    const composer = installComposer("original question");
-    const interceptor = createInterceptor();
-    const hostKeydown = vi.fn();
-    composer.addEventListener("keydown", hostKeydown);
-    const event = new KeyboardEvent("keydown", {
-      bubbles: true,
-      cancelable: true,
-      key: "Enter",
-    });
+  it("takes over a native send intent when the composer is empty", () => {
+    const host = createFakeHost();
+    const submit = vi.spyOn(host.composer, "submit");
+    const interceptor = createInterceptor(undefined, { host });
+    const event = new Event("click", { cancelable: true });
 
-    expect(composer.dispatchEvent(event)).toBe(true);
-    expect(event.defaultPrevented).toBe(false);
-    expect(hostKeydown).toHaveBeenCalledOnce();
-    expect(composer.textContent).toBe("original question");
+    host.controls.emitSubmitIntent({ event, isSendAvailable: false });
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(submit).toHaveBeenCalledOnce();
     interceptor.dispose();
   });
 
@@ -349,22 +337,6 @@ describe("registerSendInterceptor", () => {
       status: "confirmed",
       attemptId: expect.any(String),
     });
-    interceptor.dispose();
-  });
-
-  it("leaves a disabled native send control untouched", () => {
-    const composer = installComposer("original question");
-    const sendButton = installSendButton();
-    sendButton.disabled = true;
-    const interceptor = createInterceptor();
-    const hostClick = vi.fn();
-    sendButton.addEventListener("click", hostClick);
-    const event = new MouseEvent("click", { bubbles: true, cancelable: true });
-
-    expect(sendButton.dispatchEvent(event)).toBe(true);
-    expect(event.defaultPrevented).toBe(false);
-    expect(hostClick).toHaveBeenCalledOnce();
-    expect(composer.textContent).toBe("original question");
     interceptor.dispose();
   });
 

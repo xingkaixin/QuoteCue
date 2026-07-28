@@ -88,7 +88,7 @@ describe("DeepSeek host contract", () => {
     interceptor.dispose();
   });
 
-  it("takes over a native send on an empty composer and fills in annotations", async () => {
+  it("sends annotations on an empty composer without a supplemental question", async () => {
     const fixture = installDeepSeekHostFixture();
     const host = createDeepSeekHost({ document, window });
     fixture.composer.value = "";
@@ -118,15 +118,14 @@ describe("DeepSeek host contract", () => {
       onSendConfirmed,
     });
 
-    const click = new MouseEvent("click", { bubbles: true, cancelable: true });
-    fixture.sendButton.dispatchEvent(click);
+    await expect(interceptor.submit()).resolves.toEqual({
+      status: "confirmed",
+      annotationIds: ["annotation-one"],
+    });
 
-    expect(click.defaultPrevented).toBe(true);
-    await vi.waitFor(() =>
-      expect(onSendConfirmed).toHaveBeenCalledWith([
-        expect.objectContaining({ id: "annotation-one" }),
-      ]),
-    );
+    expect(onSendConfirmed).toHaveBeenCalledWith([
+      expect.objectContaining({ id: "annotation-one" }),
+    ]);
     expect(sentText).toContain("[Annotation 1]");
     expect(sentText).not.toContain("[Supplemental question]");
     interceptor.dispose();

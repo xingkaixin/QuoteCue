@@ -1,4 +1,5 @@
 import type {
+  ComposerSubmitIntent,
   ConversationIdentity,
   Host,
   HostLayout,
@@ -19,6 +20,7 @@ export type FakeHost = Host & {
     emitLayoutChange(): void;
     emitSelectionCaptureIntent(intent: SelectionCaptureIntent): void;
     emitSelectionInvalidation(invalidation: SelectionInvalidation): void;
+    emitSubmitIntent(intent: ComposerSubmitIntent): void;
     setConversationIdentity(identity: ConversationIdentity | null): void;
     setLayout(layout: HostResult<HostLayout>): void;
     setMessageIndex(index: ReadonlyMap<string, HTMLElement>): void;
@@ -54,13 +56,6 @@ export function createFakeHost(overrides: FakeHostOverrides = {}): FakeHost {
   const selectionCaptureSubscribers = new Set<(intent: SelectionCaptureIntent) => void>();
   const selectionSubscribers = new Set<(invalidation: SelectionInvalidation) => void>();
   const submitSubscribers = new Set<Parameters<Host["composer"]["subscribeToSubmit"]>[0]>();
-
-  sendControl.addEventListener("click", () => {
-    const event = new Event("click", { cancelable: true });
-    for (const subscriber of submitSubscribers) {
-      subscriber({ event, isSendAvailable: true });
-    }
-  });
 
   const defaultHost: Host = {
     composer: {
@@ -142,6 +137,11 @@ export function createFakeHost(overrides: FakeHostOverrides = {}): FakeHost {
       emitSelectionInvalidation(invalidation) {
         for (const subscriber of selectionSubscribers) {
           subscriber(invalidation);
+        }
+      },
+      emitSubmitIntent(intent) {
+        for (const subscriber of submitSubscribers) {
+          subscriber(intent);
         }
       },
       setConversationIdentity(identity) {
