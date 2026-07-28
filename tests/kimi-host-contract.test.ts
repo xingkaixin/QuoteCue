@@ -115,6 +115,63 @@ describe("Kimi host contract", () => {
     interceptor.dispose();
   });
 
+  it("confirms an optimistic user message after its baseline node is replaced", async () => {
+    const fixture = installKimiHostFixture("");
+    const baseline = appendKimiUserMessage(undefined, "Previous optimistic message");
+    const host = createKimiHost({ document, window });
+    fixture.composer.addEventListener("input", () => {
+      fixture.sendControl.classList.remove("disabled");
+    });
+    fixture.sendControl.addEventListener("click", () => {
+      const sent = fixture.composer.innerText;
+      // Kimi reconciliation swaps the optimistic node for a fresh one carrying the same text.
+      baseline.remove();
+      appendKimiUserMessage(undefined, "Previous optimistic message");
+      appendKimiUserMessage(undefined, sent);
+    });
+    const interceptor = registerSendInterceptor({
+      annotations: () => numberAnnotations([annotation()]),
+      compilePrompt: compileAnnotatedPrompt,
+      host,
+      locale: () => "zh-CN",
+      onSendConfirmed: vi.fn(),
+    });
+
+    await expect(interceptor.submit()).resolves.toEqual({
+      status: "confirmed",
+      annotationIds: ["annotation-one"],
+    });
+    interceptor.dispose();
+  });
+
+  it("does not confirm against a pre-existing message with identical text", async () => {
+    const fixture = installKimiHostFixture("");
+    const host = createKimiHost({ document, window });
+    fixture.composer.addEventListener("input", () => {
+      fixture.sendControl.classList.remove("disabled");
+    });
+    const compiled = compileAnnotatedPrompt(numberAnnotations([annotation()]), "", "zh-CN");
+    appendKimiUserMessage(undefined, compiled);
+    const interceptor = registerSendInterceptor({
+      annotations: () => numberAnnotations([annotation()]),
+      compilePrompt: compileAnnotatedPrompt,
+      host,
+      locale: () => "zh-CN",
+      onSendConfirmed: vi.fn(),
+    });
+
+    vi.useFakeTimers();
+    const result = interceptor.submit();
+    await vi.advanceTimersByTimeAsync(15_001);
+
+    await expect(result).resolves.toEqual({
+      status: "failed",
+      reason: "confirmation-timeout",
+    });
+    vi.useRealTimers();
+    interceptor.dispose();
+  });
+
   it("confirms an optimistic user message without a host id after another such message", async () => {
     const fixture = installKimiHostFixture("");
     appendKimiUserMessage(undefined, "Previous optimistic message");

@@ -97,26 +97,21 @@ export function createSendPipeline(
     }
 
     const initialMessages = userMessages();
-    const lastInitialMessage = initialMessages.at(-1);
     const existingMessageIds = new Set(
       initialMessages
         .map((message) => adapter.messages.id(message))
         .filter((messageId): messageId is string => messageId !== undefined),
     );
+    // Messages without a host id have no stable identity, so the only fact that survives
+    // optimistic reconciliation is which nodes already existed when the watcher started.
+    // Reusing an existing node for a new message reads as old, which fails closed.
+    const initialMessageNodes = new WeakSet(initialMessages);
     const isNewMessage = (message: HTMLElement) => {
       const messageId = adapter.messages.id(message);
       if (messageId) {
         return !existingMessageIds.has(messageId);
       }
-      if (!lastInitialMessage) {
-        return true;
-      }
-      return (
-        lastInitialMessage.isConnected &&
-        Boolean(
-          lastInitialMessage.compareDocumentPosition(message) & Node.DOCUMENT_POSITION_FOLLOWING,
-        )
-      );
+      return !initialMessageNodes.has(message);
     };
     const expectedText = normalizedRenderedText(options.expectedText);
     logger?.(`[QuoteCue host] send confirmation started: existing=${initialMessages.length}`);
