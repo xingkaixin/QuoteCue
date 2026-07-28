@@ -49,10 +49,11 @@ CI 会同时运行两者。修改依赖或 `pnpm-workspace.yaml` 中的 override
 ## 发布检查清单
 
 1. 从干净的检出开始，依次运行 `pnpm install --frozen-lockfile`、`pnpm check` 和 `pnpm zip`。
-2. 检查 `.output/chrome-mv3/manifest.json`。它应当只请求 `storage` 权限，以及
-   `https://chatgpt.com/*`、`https://claude.ai/*`、`https://chat.deepseek.com/*` 和
-   `https://www.kimi.com/*` 的访问权限；其 web-accessible resources 应仅限于扩展所需的
-   安全输入字段和生成的内容样式。
+2. `pnpm check` 的最后一步是 `pnpm verify:manifest`，它会断言
+   `.output/chrome-mv3/manifest.json` 只请求 `storage` 权限，以及 `https://chatgpt.com/*`、
+   `https://claude.ai/*`、`https://chat.deepseek.com/*` 和 `https://www.kimi.com/*` 的访问
+   权限，并且其 web-accessible resources 仅限于安全输入字段和生成的内容样式。任何范围扩大
+   都会让门禁失败；只有在经过评审的权限变更中才应修改 `scripts/verify-manifest.ts`。
 3. 确认 manifest 的行为仍然符合 [PRIVACY.md](./PRIVACY.md) 的描述，尤其是本地草稿存储、
    受支持的宿主访问范围、closed Shadow DOM 以及扩展来源的批注输入字段。
 4. 在一个干净的 Chrome 配置文件中将 `.output/chrome-mv3` 作为未打包扩展加载，并完成下方的
