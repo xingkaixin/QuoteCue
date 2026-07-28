@@ -24,6 +24,8 @@ export function createComposerLayout(
   const { adapter, document: hostDocument, signals, window: hostWindow } = context;
   const surfaceByComposer = new WeakMap<HTMLElement, HTMLElement>();
   let activeReservation: { height: number } | null = null;
+  let resizeObserver: ResizeObserver | null = null;
+  let observedSurface: HTMLElement | null = null;
   let styledSurface: HTMLElement | null = null;
   let hiddenAction: HTMLElement | null = null;
   let originalPaddingTop = "";
@@ -31,17 +33,32 @@ export function createComposerLayout(
   let originalActionVisibility = "";
   let originalActionVisibilityPriority = "";
 
+  // The single expensive boundary: one measurement serves layout publication, the reservation
+  // and the resize observation, so raw signals only have to invalidate.
   function current(): HostResult<HostLayout> {
     const elements = currentElements();
     if (elements.status === "unavailable") {
       reconcileReservation(null);
+      observeSurfaceResize(null);
       return elements;
     }
     reconcileReservation(elements.value);
+    observeSurfaceResize(elements.value.surface);
     return available({
       send: elements.value.send,
       summary: elements.value.summary,
     });
+  }
+
+  function observeSurfaceResize(surface: HTMLElement | null) {
+    if (surface === observedSurface) {
+      return;
+    }
+    resizeObserver?.disconnect();
+    observedSurface = surface;
+    if (surface) {
+      resizeObserver?.observe(surface);
+    }
   }
 
   function currentElements(): HostResult<ComposerLayoutElements> {
@@ -92,33 +109,16 @@ export function createComposerLayout(
   }
 
   function subscribe(callback: () => void) {
-    let observedSurface: HTMLElement | null = null;
-    const resizeObserver =
-      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(callback);
-    const refresh = () => {
-      const elements = currentElements();
-      const surface = elements.status === "available" ? elements.value.surface : null;
-      if (surface !== observedSurface) {
-        resizeObserver?.disconnect();
-        observedSurface = surface;
-        if (surface) {
-          resizeObserver?.observe(surface);
-        }
-      }
-      callback();
-    };
-    const stopMutationObservation = signals.observeMutations(refresh, { childList: true });
-    const stopViewportObservation = signals.observeViewport(refresh);
-    const elements = currentElements();
-    observedSurface = elements.status === "available" ? elements.value.surface : null;
-    if (observedSurface) {
-      resizeObserver?.observe(observedSurface);
-    }
+    resizeObserver = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(callback);
+    const stopMutationObservation = signals.observeMutations(callback, { childList: true });
+    const stopViewportObservation = signals.observeViewport(callback);
 
     return () => {
       stopMutationObservation();
       stopViewportObservation();
       resizeObserver?.disconnect();
+      resizeObserver = null;
+      observedSurface = null;
     };
   }
 

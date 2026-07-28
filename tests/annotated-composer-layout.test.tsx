@@ -78,6 +78,39 @@ describe("useAnnotatedComposerLayout", () => {
     await act(async () => root.unmount());
   });
 
+  it("measures the composer once per refresh window, not once per raw signal", async () => {
+    vi.useFakeTimers();
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    installChatGptHostFixture();
+    const host = createChatGptHost({ document, window });
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    await act(async () =>
+      root.render(
+        <HostTestProvider host={host}>
+          <LayoutProbe />
+        </HostTestProvider>,
+      ),
+    );
+
+    const getComputedStyle = vi.spyOn(window, "getComputedStyle");
+    const querySelector = vi.spyOn(document, "querySelector");
+    const rawSignals = 10;
+    for (let index = 0; index < rawSignals; index += 1) {
+      const node = document.createElement("div");
+      document.body.append(node);
+      await act(async () => vi.advanceTimersByTimeAsync(20));
+    }
+    await act(async () => vi.advanceTimersByTimeAsync(80));
+
+    // 10 signals across 200ms fall into ~3 throttle windows plus a trailing refresh.
+    expect(querySelector.mock.calls.length).toBeLessThan(rawSignals);
+    expect(getComputedStyle.mock.calls.length).toBeLessThan(rawSignals);
+
+    await act(async () => root.unmount());
+  });
+
   it("reuses a validated composer surface without rescanning its ancestors", () => {
     const { composer, surface } = installChatGptHostFixture();
     const wrapper = document.createElement("div");
