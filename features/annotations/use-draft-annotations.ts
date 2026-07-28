@@ -201,10 +201,26 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
       (annotationIds: readonly string[]) => mutateAnnotations({ kind: "discard", annotationIds }),
       [mutateAnnotations],
     ),
+    // A send started in one conversation can be confirmed after navigating away, so the draft to
+    // clean is the one that owned the attempt, not whichever is mounted now.
     removeConfirmedAnnotations: useCallback(
-      (confirmedAnnotations: readonly DraftAnnotation[]) =>
-        mutateAnnotations({ kind: "discard-confirmed", annotations: confirmedAnnotations }),
-      [mutateAnnotations],
+      (conversation: ConversationIdentity, confirmedAnnotations: readonly DraftAnnotation[]) => {
+        const mutation = {
+          kind: "discard-confirmed",
+          annotations: confirmedAnnotations,
+        } as const;
+        if (sameConversationIdentity(conversationIdentity, conversation)) {
+          return mutateAnnotations(mutation);
+        }
+        if (conversation.kind === "unidentified") {
+          return false;
+        }
+        void draftStore.mutate(conversation, mutation).catch((error: unknown) => {
+          console.error("[QuoteCue] Failed to remove confirmed annotations", error);
+        });
+        return true;
+      },
+      [conversationIdentity, draftStore, mutateAnnotations],
     ),
     discardAllAnnotations: useCallback(
       () => mutateAnnotations({ kind: "clear" }),
