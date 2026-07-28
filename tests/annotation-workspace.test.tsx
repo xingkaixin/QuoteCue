@@ -126,13 +126,13 @@ describe("annotation workspace", () => {
     await act(async () => workspace.selection.onActivate(anchoredSelection));
     expect(workspace.editor.status).toBe("hidden");
     expect(clearSelection).not.toHaveBeenCalled();
-    expect(draftStoreFixture.store.save).not.toHaveBeenCalled();
+    expect(draftStoreFixture.store.mutate).not.toHaveBeenCalled();
 
     await act(async () => resolveLoad([]));
     await act(async () => workspace.selection.onActivate(anchoredSelection));
     expect(workspace.editor.status).toBe("quick");
     expect(clearSelection).toHaveBeenCalledOnce();
-    expect(draftStoreFixture.store.save).toHaveBeenCalledOnce();
+    expect(draftStoreFixture.store.mutate).toHaveBeenCalledOnce();
 
     await act(async () => new Promise(requestAnimationFrame));
     expect(workspace.editor.status).toBe("quick");

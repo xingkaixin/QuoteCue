@@ -5,7 +5,7 @@ import { parseTextAnchor } from "@/features/host-port/text-anchor";
 import { isRecord } from "@/lib/is-record";
 
 import type { DraftAnnotation } from "./annotation";
-import type { DraftStore } from "./draft-store";
+import { applyDraftMutation, type DraftMutation } from "./draft-mutation";
 
 const DRAFT_KEY_PREFIX = "quotecue:draft:";
 const LEGACY_DRAFT_KEY_PREFIX = "askgpt:draft:";
@@ -41,11 +41,6 @@ type DecodedAnnotations = {
   hasUnreadableAnnotations: boolean;
 };
 
-type BrowserDraftStoreState = {
-  cleanup: Promise<void> | null;
-  keyUseCounts: Map<string, number>;
-};
-
 class DraftStorageFormatError extends Error {
   constructor(message: string) {
     super(message);
@@ -57,24 +52,67 @@ function draftStorageKey(prefix: string, conversationId: string) {
   return `${prefix}${conversationId}`;
 }
 
-export function createBrowserDraftStore(): DraftStore {
-  const state: BrowserDraftStoreState = {
-    cleanup: null,
-    keyUseCounts: new Map(),
-  };
+/**
+ * The single writer for draft storage. Extension contexts share `storage.local`, so a queue that
+ * lives in one content script cannot order writes made by another. Every read-modify-write and the
+ * retention sweep run on one chain here, which is what makes "no silent lost update" and a
+ * TOCTOU-free cleanup possible.
+ */
+export function createDraftOwner() {
+  let chain: Promise<unknown> = Promise.resolve();
+  let hasSweptExpiredDrafts = false;
+  // A conversation loaded during this owner's life has a context open on it, so retention must
+  // not delete it out from under that context even once it looks expired.
+  const openConversationKeys = new Set<string>();
+
+  function serialize<T>(operation: () => Promise<T>): Promise<T> {
+    const result = chain.then(operation, operation);
+    chain = result.catch(() => undefined);
+    return result;
+  }
+
+  async function sweepOnce() {
+    if (hasSweptExpiredDrafts) {
+      return;
+    }
+    hasSweptExpiredDrafts = true;
+    try {
+      await removeStoredDrafts(openConversationKeys);
+    } catch (error: unknown) {
+      console.error("[QuoteCue] Failed to clean stored drafts", error);
+    }
+  }
+
   return {
-    load: (conversation) => loadDraftAnnotations(state, conversation),
-    save: (conversation, annotations) => saveDraftAnnotations(state, conversation, annotations),
+    load(conversation: IdentifiedConversation) {
+      openConversationKeys.add(draftStorageKey(DRAFT_KEY_PREFIX, conversation.id));
+      const draft = serialize(() => readDraft(conversation));
+      // Queued behind this load so the sweep never delays it, but still on the one chain, so it
+      // cannot observe a stale expiry and then delete a draft another context just refreshed.
+      void serialize(sweepOnce);
+      return draft;
+    },
+    mutate(conversation: IdentifiedConversation, mutation: DraftMutation) {
+      openConversationKeys.add(draftStorageKey(DRAFT_KEY_PREFIX, conversation.id));
+      return serialize(async () => {
+        const current = await readDraft(conversation);
+        const next = applyDraftMutation(current, mutation);
+        if (next === null || next === current) {
+          return current;
+        }
+        const annotations = [...next];
+        await writeDraft(conversation, annotations);
+        return annotations;
+      });
+    },
   };
 }
 
-async function loadDraftAnnotations(
-  state: BrowserDraftStoreState,
-  conversation: IdentifiedConversation,
-) {
+export type DraftOwner = ReturnType<typeof createDraftOwner>;
+
+async function readDraft(conversation: IdentifiedConversation) {
   const key = draftStorageKey(DRAFT_KEY_PREFIX, conversation.id);
   const legacyKey = draftStorageKey(LEGACY_DRAFT_KEY_PREFIX, conversation.id);
-  scheduleDraftCleanup(state, key);
   const result = await browser.storage.local.get([key, legacyKey]);
   const storedDraft = result[key];
 
@@ -103,30 +141,17 @@ async function loadDraftAnnotations(
   return decoded.annotations;
 }
 
-async function saveDraftAnnotations(
-  state: BrowserDraftStoreState,
-  conversation: IdentifiedConversation,
-  annotations: DraftAnnotation[],
-) {
+async function writeDraft(conversation: IdentifiedConversation, annotations: DraftAnnotation[]) {
   const key = draftStorageKey(DRAFT_KEY_PREFIX, conversation.id);
   const legacyKey = draftStorageKey(LEGACY_DRAFT_KEY_PREFIX, conversation.id);
-  const releaseDraftKey = retainDraftKey(state, key);
 
-  try {
-    if (annotations.length === 0) {
-      await browser.storage.local.remove([key, legacyKey]);
-      return;
-    }
-
-    await browser.storage.local.set({ [key]: draftEnvelope(annotations) });
-    await browser.storage.local.remove(legacyKey);
-  } finally {
-    if (state.cleanup) {
-      void state.cleanup.then(releaseDraftKey);
-    } else {
-      releaseDraftKey();
-    }
+  if (annotations.length === 0) {
+    await browser.storage.local.remove([key, legacyKey]);
+    return;
   }
+
+  await browser.storage.local.set({ [key]: draftEnvelope(annotations) });
+  await browser.storage.local.remove(legacyKey);
 }
 
 function draftEnvelope(annotations: DraftAnnotation[]): StoredDraftEnvelope {
@@ -215,20 +240,7 @@ function isDraftStorageVersion(value: unknown): value is DraftStorageVersion {
   );
 }
 
-function scheduleDraftCleanup(state: BrowserDraftStoreState, currentDraftKey: string) {
-  const releaseDraftKey = retainDraftKey(state, currentDraftKey);
-  void removeStoredDraftsOnce(state).then(releaseDraftKey);
-}
-
-function removeStoredDraftsOnce(state: BrowserDraftStoreState) {
-  state.cleanup ??= removeStoredDrafts(state).catch((error: unknown) => {
-    state.cleanup = null;
-    console.error("[QuoteCue] Failed to clean stored drafts", error);
-  });
-  return state.cleanup;
-}
-
-async function removeStoredDrafts(state: BrowserDraftStoreState) {
+async function removeStoredDrafts(openConversationKeys: ReadonlySet<string>) {
   const storedKeys = await getStoredKeys();
   const orphanedKeys = storedKeys.filter((key) =>
     ORPHANED_DRAFT_KEY_PREFIXES.some((prefix) => key.startsWith(prefix)),
@@ -241,7 +253,7 @@ async function removeStoredDrafts(state: BrowserDraftStoreState) {
   const expiresBefore = Date.now() - DRAFT_RETENTION_MS;
   const expiredKeys = draftKeys.filter(
     (key) =>
-      !state.keyUseCounts.has(key) && isExpiredDraftEnvelope(storedDrafts[key], expiresBefore),
+      !openConversationKeys.has(key) && isExpiredDraftEnvelope(storedDrafts[key], expiresBefore),
   );
   const keysToRemove = [...orphanedKeys, ...expiredKeys];
 
@@ -273,18 +285,6 @@ function isExpiredDraftEnvelope(value: unknown, expiresBefore: number) {
     Number.isFinite(value.updatedAt) &&
     value.updatedAt <= expiresBefore
   );
-}
-
-function retainDraftKey(state: BrowserDraftStoreState, key: string) {
-  state.keyUseCounts.set(key, (state.keyUseCounts.get(key) ?? 0) + 1);
-  return () => {
-    const nextUseCount = (state.keyUseCounts.get(key) ?? 1) - 1;
-    if (nextUseCount === 0) {
-      state.keyUseCounts.delete(key);
-      return;
-    }
-    state.keyUseCounts.set(key, nextUseCount);
-  };
 }
 
 async function removeMigratedLegacyDraft(legacyKey: string) {
