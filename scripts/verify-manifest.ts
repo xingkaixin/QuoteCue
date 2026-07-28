@@ -14,7 +14,12 @@ const EXPECTED_KEYS = [
   "host_permissions",
   "web_accessible_resources",
   "content_scripts",
+  "background",
 ];
+
+// The draft owner runs here. It must stay an on-demand service worker with no extra fields, so a
+// persistent worker or an added capability fails the contract.
+const EXPECTED_BACKGROUND_KEYS = ["service_worker"];
 
 const EXPECTED_PERMISSIONS = ["storage"];
 
@@ -34,6 +39,7 @@ type ContentScript = {
 };
 
 type ProductionManifest = Record<string, unknown> & {
+  background: Record<string, unknown>;
   permissions: string[];
   host_permissions: string[];
   content_scripts: ContentScript[];
@@ -75,6 +81,7 @@ const manifest = readManifest();
 
 expectSet("manifest keys", Object.keys(manifest), EXPECTED_KEYS);
 expectSet("permissions", manifest.permissions, EXPECTED_PERMISSIONS);
+expectSet("background", Object.keys(manifest.background ?? {}), EXPECTED_BACKGROUND_KEYS);
 expectSet("host_permissions", manifest.host_permissions, SITE_URL_PATTERNS);
 
 expectSet(
