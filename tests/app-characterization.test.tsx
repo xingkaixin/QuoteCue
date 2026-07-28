@@ -1,4 +1,4 @@
-import { act, type ComponentProps } from "react";
+import { act, useState, type ComponentProps } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -81,11 +81,24 @@ vi.mock("@/features/annotations/AnnotationQuickInput", () => ({
 }));
 
 vi.mock("@/features/annotations/AnnotationEditor", () => ({
-  AnnotationEditor({ onCancel }: AnnotationEditorProps) {
+  // Mirrors the real surface: comment lives in local state seeded from the annotation, so a
+  // reused instance would keep the previous target's text.
+  AnnotationEditor({ annotation, onCancel, onSave }: AnnotationEditorProps) {
+    const [comment, setComment] = useState(annotation.comment);
     return (
-      <button data-testid="expanded-editor" onClick={onCancel} type="button">
-        Expanded editor
-      </button>
+      <div data-testid="expanded-editor">
+        <input
+          data-testid="editor-comment"
+          onChange={(event) => setComment(event.target.value)}
+          value={comment}
+        />
+        <button data-testid="editor-save" onClick={() => onSave(comment)} type="button">
+          Save
+        </button>
+        <button data-testid="editor-cancel" onClick={onCancel} type="button">
+          Cancel
+        </button>
+      </div>
     );
   },
 }));
@@ -217,6 +230,26 @@ describe("App annotation workflow", () => {
     expect(mounted.container.querySelector('[data-testid="quick-editor"]')).toBeNull();
     expect(mounted.host.elements.composer.textContent).toContain("[Annotation 1]");
     expect(storedDrafts.get("conversation-a")).toHaveLength(1);
+
+    await act(async () => mounted.root.unmount());
+  });
+
+  it("never saves one annotation's edit into another", async () => {
+    const mounted = await mountApp();
+    await click(mounted.container, "start-annotation");
+    await click(mounted.container, "save-quick");
+    await click(mounted.container, "start-annotation");
+    await click(mounted.container, "save-quick");
+
+    await click(mounted.container, "badge-1");
+    await type(mounted.container, "editor-comment", "edit meant for the first annotation");
+    await click(mounted.container, "badge-2");
+    await click(mounted.container, "editor-save");
+
+    const stored = storedDrafts.get("conversation-a") ?? [];
+    expect(stored.map(({ comment }) => comment)).not.toContain(
+      "edit meant for the first annotation",
+    );
 
     await act(async () => mounted.root.unmount());
   });
@@ -363,6 +396,19 @@ async function click(container: HTMLElement, testId: string) {
   }
   await act(async () => button.click());
   await act(async () => nextFrame());
+}
+
+async function type(container: HTMLElement, testId: string, value: string) {
+  const field = container.querySelector<HTMLInputElement>(`[data-testid="${testId}"]`);
+  if (!field) {
+    throw new Error(`Missing ${testId}`);
+  }
+  // React tracks the value property, so assigning it directly is treated as no change.
+  const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+  await act(async () => {
+    setValue?.call(field, value);
+    field.dispatchEvent(new Event("input", { bubbles: true }));
+  });
 }
 
 function summary(container: HTMLElement) {

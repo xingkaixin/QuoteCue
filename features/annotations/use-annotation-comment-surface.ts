@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { SecureTextFieldHandle } from "@/features/secure-field/SecureTextField";
 import type { SelectionRect } from "@/features/host-port/host-port";
@@ -9,6 +9,7 @@ import { useDismissalWarning } from "./use-dismissal-warning";
 import { useOutsideDiscard } from "./use-outside-discard";
 
 type UseAnnotationCommentSurfaceOptions = {
+  bindSession?: (requestDismissal: (() => boolean) | null) => void;
   initialComment: string;
   onDismiss: () => void;
   onSave: (comment: string) => void;
@@ -17,6 +18,7 @@ type UseAnnotationCommentSurfaceOptions = {
 };
 
 export function useAnnotationCommentSurface({
+  bindSession,
   initialComment,
   onDismiss,
   onSave,
@@ -45,6 +47,13 @@ export function useAnnotationCommentSurface({
   const saveComment = useCallback(() => saveValue(comment), [comment, saveValue]);
 
   useOutsideDiscard(rootRef, requestDismissal);
+
+  // Lets an owner ask this session for permission before replacing it with another target,
+  // so switching runs through the same dismissal decision as any other outside interaction.
+  useEffect(() => {
+    bindSession?.(requestDismissal);
+    return () => bindSession?.(null);
+  }, [bindSession, requestDismissal]);
 
   return {
     commentFieldProps: {

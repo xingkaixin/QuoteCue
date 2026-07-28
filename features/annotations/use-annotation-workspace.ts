@@ -60,6 +60,10 @@ export function useAnnotationWorkspace() {
   const removeConfirmedAnnotationsRef = useRef(removeConfirmedAnnotations);
   const sendConversationIdentityRef = useRef<ConversationIdentity | null>(null);
   const sendControllerRef = useRef<SendController | null>(null);
+  const requestSessionDismissalRef = useRef<(() => boolean) | null>(null);
+  const bindEditorSession = useCallback((requestDismissal: (() => boolean) | null) => {
+    requestSessionDismissalRef.current = requestDismissal;
+  }, []);
 
   annotationsRef.current = projectedAnnotations;
   conversationIdentityRef.current = conversationIdentity;
@@ -131,6 +135,10 @@ export function useAnnotationWorkspace() {
       if (projection.resolution !== "resolved") {
         return;
       }
+      // An open session owns its unsaved comment, so it decides whether it may be replaced.
+      if (requestSessionDismissalRef.current?.() === false) {
+        return;
+      }
       const reveal = host.selection.reveal(projection.geometry.range);
       if (reveal.status === "unavailable") {
         host.reportUnavailable(reveal.reason);
@@ -160,6 +168,12 @@ export function useAnnotationWorkspace() {
     [activeAnnotationId, closeEditor, requestDeletion],
   );
 
+  const deleteActiveAnnotation = useCallback(() => {
+    if (editorState.status !== "hidden") {
+      deleteAnnotation(editorState.annotationId);
+    }
+  }, [deleteAnnotation, editorState]);
+
   const clearAll = useCallback(() => {
     if (!discardAllAnnotations()) {
       return;
@@ -186,7 +200,9 @@ export function useAnnotationWorkspace() {
       state: draft,
     },
     editor: {
+      bindSession: bindEditorSession,
       close: closeEditor,
+      delete: deleteActiveAnnotation,
       projection: activeProjection,
       save: saveActiveAnnotation,
       status: editorState.status,

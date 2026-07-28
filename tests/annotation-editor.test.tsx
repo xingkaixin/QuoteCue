@@ -171,6 +171,43 @@ describe("AnnotationEditor", () => {
     await act(async () => root.unmount());
   });
 
+  it("binds a session that refuses to be replaced while dirty", async () => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    Object.defineProperty(Element.prototype, "animate", {
+      configurable: true,
+      value: vi.fn(),
+    });
+    const session: { requestDismissal: (() => boolean) | null } = { requestDismissal: null };
+    const bindSession = (request: (() => boolean) | null) => {
+      session.requestDismissal = request;
+    };
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    await act(async () =>
+      root.render(
+        <HostTestProvider>
+          <AnnotationEditor
+            annotation={annotation}
+            bindSession={bindSession}
+            onCancel={vi.fn()}
+            onDelete={vi.fn()}
+            onSave={vi.fn()}
+            rect={draft.rect}
+          />
+        </HostTestProvider>,
+      ),
+    );
+    expect(session.requestDismissal).not.toBeNull();
+
+    await act(async () => changeTextarea(container.querySelector("textarea"), "changed comment"));
+    expect(session.requestDismissal?.()).toBe(false);
+    expect(session.requestDismissal?.()).toBe(true);
+
+    await act(async () => root.unmount());
+    expect(session.requestDismissal).toBeNull();
+  });
+
   it("warns again after the comment changes", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     const animate = vi.fn();

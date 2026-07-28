@@ -30,6 +30,8 @@ export default function App() {
 
         {editor.status === "quick" && activeProjection?.resolution === "resolved" && (
           <AnnotationQuickInput
+            bindSession={editor.bindSession}
+            key={activeProjection.annotation.id}
             onClose={editor.close}
             onSave={editor.save}
             rect={activeProjection.geometry.rect}
@@ -39,8 +41,10 @@ export default function App() {
         {editor.status === "expanded" && activeProjection?.resolution === "resolved" && (
           <AnnotationEditor
             annotation={activeProjection.annotation}
+            bindSession={editor.bindSession}
+            key={activeProjection.annotation.id}
             onCancel={editor.close}
-            onDelete={() => summary.remove(activeProjection.annotation.id)}
+            onDelete={editor.delete}
             onSave={editor.save}
             rect={activeProjection.geometry.rect}
           />

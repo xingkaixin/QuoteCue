@@ -75,6 +75,31 @@ describe("annotation workspace", () => {
     await act(async () => mounted.root.unmount());
   });
 
+  it("keeps the current editor target when its session refuses dismissal", async () => {
+    const other: DraftAnnotation = { ...annotation, comment: "other", id: "annotation-two" };
+    draftStoreFixture.store.load.mockResolvedValue([annotation, other]);
+    const mounted = await mountWorkspace();
+    await act(async () => new Promise(requestAnimationFrame));
+    const [first, second] = workspace.summary.annotations;
+    if (!first || !second) {
+      throw new Error("Missing projections");
+    }
+
+    await act(async () => workspace.summary.open(first));
+    expect(workspace.editor.projection?.annotation.id).toBe(annotation.id);
+
+    let isDismissalAllowed = false;
+    act(() => workspace.editor.bindSession(() => isDismissalAllowed));
+    await act(async () => workspace.summary.open(second));
+    expect(workspace.editor.projection?.annotation.id).toBe(annotation.id);
+
+    isDismissalAllowed = true;
+    await act(async () => workspace.summary.open(second));
+    expect(workspace.editor.projection?.annotation.id).toBe(other.id);
+
+    await act(async () => mounted.root.unmount());
+  });
+
   it("closes an active editor after annotation resolution fails", async () => {
     draftStoreFixture.store.load.mockResolvedValue([]);
     const mounted = await mountWorkspace();

@@ -8,6 +8,7 @@ import { QUOTECUE_INTERACTIVE_CLASS } from "@/lib/dom-identity";
 import { useAnnotationCommentSurface } from "./use-annotation-comment-surface";
 
 type AnnotationQuickInputProps = {
+  bindSession?: (requestDismissal: (() => boolean) | null) => void;
   onClose: () => void;
   onSave: (comment: string) => void;
   rect: SelectionRect;
@@ -15,10 +16,16 @@ type AnnotationQuickInputProps = {
 
 const QUICK_INPUT_SIZE = { height: 48, width: 320 };
 
-export function AnnotationQuickInput({ onClose, onSave, rect }: AnnotationQuickInputProps) {
+export function AnnotationQuickInput({
+  bindSession,
+  onClose,
+  onSave,
+  rect,
+}: AnnotationQuickInputProps) {
   const { messages } = useI18n();
   const { commentFieldProps, position, resetWarning, rootRef, saveComment } =
     useAnnotationCommentSurface({
+      bindSession,
       initialComment: "",
       onDismiss: onClose,
       onSave,
