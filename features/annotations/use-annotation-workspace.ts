@@ -77,11 +77,10 @@ export function useAnnotationWorkspace() {
       host,
       locale: () => localeRef.current,
       onSendConfirmed: (sentAnnotations, sentConversationIdentity) => {
-        if (!sameConversationIdentity(conversationIdentityRef.current, sentConversationIdentity)) {
-          return;
+        removeConfirmedAnnotationsRef.current(sentConversationIdentity, sentAnnotations);
+        if (sameConversationIdentity(conversationIdentityRef.current, sentConversationIdentity)) {
+          closeEditor();
         }
-        removeConfirmedAnnotationsRef.current(sentAnnotations);
-        closeEditor();
       },
       onStateChange: setSendState,
     });

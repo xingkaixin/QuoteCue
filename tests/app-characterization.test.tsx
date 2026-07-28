@@ -382,7 +382,43 @@ describe("App annotation workflow", () => {
       expect(sendControl(mounted.container).dataset.sendState).toBe("confirmed"),
     );
     expect(summary(mounted.container).dataset.count).toBe("1");
+    // The current conversation happens to hold the same annotation, and must not be touched.
     expect(storedDrafts.get("conversation-c")).toEqual(sentSnapshot);
+    await vi.waitFor(() => expect(storedDrafts.get("conversation-a")).toEqual([]));
+
+    await act(async () => mounted.root.unmount());
+  });
+
+  it("keeps a source annotation edited after the send was compiled", async () => {
+    const mounted = await mountApp();
+    let confirmSubmit: (() => void) | undefined;
+    vi.spyOn(mounted.host.composer, "submit").mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          confirmSubmit = () => resolve({ status: "available", value: "confirmed" });
+        }),
+    );
+
+    await click(mounted.container, "start-annotation");
+    await click(mounted.container, "send-annotations");
+    expect(sendControl(mounted.container).dataset.sendState).toBe("awaiting-confirmation");
+
+    await act(async () =>
+      mounted.host.controls.setConversationIdentity({
+        kind: "identified",
+        id: "conversation-b",
+      }),
+    );
+    // Another context edits the sent annotation while the attempt is still in flight.
+    const edited = cloneAnnotations(storedDrafts.get("conversation-a") ?? []).map((annotation) => ({
+      ...annotation,
+      comment: "edited after the send was compiled",
+    }));
+    storedDrafts.set("conversation-a", edited);
+
+    await act(async () => confirmSubmit?.());
+
+    await vi.waitFor(() => expect(storedDrafts.get("conversation-a")).toEqual(edited));
 
     await act(async () => mounted.root.unmount());
   });
