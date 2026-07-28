@@ -2,8 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ConversationIdentity, IdentifiedConversation } from "@/features/host-port/host-port";
 
-import { sameAnnotationSnapshot, type DraftAnnotation } from "./annotation";
+import type { DraftAnnotation } from "./annotation";
 import { sameConversationIdentity } from "./conversation-identity";
+import { applyDraftMutation, type DraftMutation } from "./draft-mutation";
 import { useDraftStore } from "./DraftStoreProvider";
 
 type DraftLifecycleState =
@@ -19,7 +20,17 @@ type DraftLifecycleState =
       conversationIdentity: IdentifiedConversation;
       annotations: DraftAnnotation[];
       revision: number;
-      operation: "load" | "save";
+      operation: "load";
+    }
+  // Retrying a failed save resends the mutation that failed, not a whole-draft snapshot, which
+  // would reintroduce the lost update this store exists to prevent. Mutations are idempotent.
+  | {
+      status: "error";
+      conversationIdentity: IdentifiedConversation;
+      annotations: DraftAnnotation[];
+      revision: number;
+      operation: "save";
+      mutation: DraftMutation;
     };
 
 type AvailableDraftLifecycleState = Extract<DraftLifecycleState, { status: "ready" | "error" }>;
@@ -48,7 +59,7 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
   );
   const draftStateRef = useRef(draftState);
   const loadGeneration = useRef(0);
-  const saveQueue = useRef(Promise.resolve());
+  const saveQueue = useRef<Promise<unknown>>(Promise.resolve());
 
   const setDraftState = useCallback((nextState: DraftLifecycleState) => {
     draftStateRef.current = nextState;
@@ -95,22 +106,24 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
     [draftStore, setDraftState],
   );
 
-  const enqueueSave = useCallback(
-    (snapshot: AvailableDraftLifecycleState) => {
+  // The owner returns the authoritative annotations, which may already include another context's
+  // concurrent change. Adopting them is how a lost update is avoided without the React layer
+  // knowing anything about storage revisions.
+  const persistMutation = useCallback(
+    (snapshot: AvailableDraftLifecycleState, mutation: DraftMutation) => {
       const conversation = snapshot.conversationIdentity;
       if (conversation.kind === "unidentified") {
         return;
       }
 
-      const save = () => draftStore.save(conversation, snapshot.annotations);
-      const pendingSave = saveQueue.current.then(save, save);
-      saveQueue.current = pendingSave.catch(() => undefined);
+      const pendingMutation = draftStore.mutate(conversation, mutation);
+      saveQueue.current = pendingMutation.catch(() => undefined);
 
-      void pendingSave
-        .then(() => {
+      void pendingMutation
+        .then((annotations) => {
           const current = draftStateRef.current;
           if (isCurrentRevision(current, snapshot)) {
-            setDraftState({ ...current, status: "ready" });
+            setDraftState({ ...current, status: "ready", annotations });
           }
         })
         .catch((error: unknown) => {
@@ -126,6 +139,7 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
               annotations: current.annotations,
               revision: current.revision,
               operation: "save",
+              mutation,
             });
           }
         });
@@ -141,12 +155,12 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
   }, [conversationIdentity, loadDraftState]);
 
   const mutateAnnotations = useCallback(
-    (mutate: (annotations: DraftAnnotation[]) => DraftAnnotation[] | null) => {
+    (mutation: DraftMutation) => {
       const current = draftStateRef.current;
       if (!canMutateDraftState(current, conversationIdentity)) {
         return false;
       }
-      const annotations = mutate(current.annotations);
+      const annotations = applyDraftMutation(current.annotations, mutation);
       if (annotations === null) {
         return false;
       }
@@ -155,14 +169,14 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
       }
       const next = {
         ...current,
-        annotations,
+        annotations: [...annotations],
         revision: current.revision + 1,
       };
       setDraftState(next);
-      enqueueSave(next);
+      persistMutation(next, mutation);
       return true;
     },
-    [conversationIdentity, enqueueSave, setDraftState],
+    [conversationIdentity, persistMutation, setDraftState],
   );
 
   const visibleDraftState = sameConversationIdentity(
@@ -175,47 +189,27 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
   return {
     draft: toPublicDraftState(visibleDraftState),
     addAnnotation: useCallback(
-      (annotation: DraftAnnotation) => mutateAnnotations((current) => [...current, annotation]),
+      (annotation: DraftAnnotation) => mutateAnnotations({ kind: "add", annotation }),
       [mutateAnnotations],
     ),
     updateAnnotation: useCallback(
       (annotationId: string, comment: string) =>
-        mutateAnnotations((current) => {
-          const index = current.findIndex((annotation) => annotation.id === annotationId);
-          if (index < 0) {
-            return null;
-          }
-          if (current[index]?.comment === comment) {
-            return current;
-          }
-          return current.map((annotation, currentIndex) =>
-            currentIndex === index ? { ...annotation, comment } : annotation,
-          );
-        }),
+        mutateAnnotations({ kind: "update", annotationId, comment }),
       [mutateAnnotations],
     ),
     discardAnnotations: useCallback(
-      (annotationIds: readonly string[]) => {
-        const removedIds = new Set(annotationIds);
-        return mutateAnnotations((current) => current.filter(({ id }) => !removedIds.has(id)));
-      },
+      (annotationIds: readonly string[]) => mutateAnnotations({ kind: "discard", annotationIds }),
       [mutateAnnotations],
     ),
     removeConfirmedAnnotations: useCallback(
-      (confirmedAnnotations: readonly DraftAnnotation[]) => {
-        const confirmedById = new Map(
-          confirmedAnnotations.map((annotation) => [annotation.id, annotation]),
-        );
-        return mutateAnnotations((current) =>
-          current.filter((annotation) => {
-            const confirmed = confirmedById.get(annotation.id);
-            return !confirmed || !sameAnnotationSnapshot(annotation, confirmed);
-          }),
-        );
-      },
+      (confirmedAnnotations: readonly DraftAnnotation[]) =>
+        mutateAnnotations({ kind: "discard-confirmed", annotations: confirmedAnnotations }),
       [mutateAnnotations],
     ),
-    discardAllAnnotations: useCallback(() => mutateAnnotations(() => []), [mutateAnnotations]),
+    discardAllAnnotations: useCallback(
+      () => mutateAnnotations({ kind: "clear" }),
+      [mutateAnnotations],
+    ),
     retry: useCallback(() => {
       if (visibleDraftState.status !== "error") {
         return;
@@ -230,8 +224,8 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
         annotations: visibleDraftState.annotations,
         revision: visibleDraftState.revision,
       });
-      enqueueSave(visibleDraftState);
-    }, [conversationIdentity, enqueueSave, loadDraftState, setDraftState, visibleDraftState]),
+      persistMutation(visibleDraftState, visibleDraftState.mutation);
+    }, [conversationIdentity, loadDraftState, persistMutation, setDraftState, visibleDraftState]),
   };
 }
 

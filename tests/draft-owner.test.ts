@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { DraftAnnotation } from "@/features/annotations/annotation";
-import { createBrowserDraftStore } from "@/features/annotations/draft-storage";
+import { createDraftOwner } from "@/features/annotations/draft-owner";
 
 const extensionStorage = vi.hoisted(() => {
   let values: Record<string, unknown> = {};
@@ -67,11 +67,11 @@ const legacyAnnotation: DraftAnnotation = {
 };
 const envelope = { version: 3, annotations: [annotation], updatedAt: NOW };
 const legacyEnvelope = { version: 3, annotations: [legacyAnnotation], updatedAt: NOW };
-let draftStore = createBrowserDraftStore();
+let draftStore = createDraftOwner();
 
 beforeEach(() => {
   extensionStorage.reset();
-  draftStore = createBrowserDraftStore();
+  draftStore = createDraftOwner();
   vi.spyOn(Date, "now").mockReturnValue(NOW);
 });
 
@@ -82,10 +82,10 @@ describe("draft storage", () => {
     extensionStorage.reset({ [currentKey]: envelope });
     extensionStorage.getKeys.mockClear();
 
-    await createBrowserDraftStore().load(conversationA);
+    await createDraftOwner().load(conversationA);
     await vi.waitFor(() => expect(extensionStorage.getKeys).toHaveBeenCalledOnce());
 
-    await createBrowserDraftStore().load(conversationA);
+    await createDraftOwner().load(conversationA);
     await vi.waitFor(() => expect(extensionStorage.getKeys).toHaveBeenCalledTimes(2));
   });
 
@@ -327,13 +327,115 @@ describe("draft storage", () => {
     expect(extensionStorage.snapshot()).toEqual({ [legacyKey]: storedDraft });
   });
 
-  it("saves versioned drafts and clears current and legacy keys together", async () => {
-    extensionStorage.reset({ [legacyKey]: [annotation] });
+  it("writes a versioned envelope and clears current and legacy keys together", async () => {
+    extensionStorage.reset({});
 
-    await draftStore.save(conversationA, [annotation]);
+    await draftStore.mutate(conversationA, { kind: "add", annotation });
     expect(extensionStorage.snapshot()).toEqual({ [currentKey]: envelope });
 
-    await draftStore.save(conversationA, []);
+    await draftStore.mutate(conversationA, { kind: "clear" });
     expect(extensionStorage.snapshot()).toEqual({});
+  });
+
+  it("applies a mutation on top of a migrated legacy draft", async () => {
+    extensionStorage.reset({ [legacyKey]: [unmarkedAnnotation] });
+
+    await expect(
+      draftStore.mutate(conversationA, {
+        kind: "update",
+        annotationId: legacyAnnotation.id,
+        comment: "edited after migration",
+      }),
+    ).resolves.toEqual([{ ...legacyAnnotation, comment: "edited after migration" }]);
+    expect(extensionStorage.keys()).toEqual([currentKey]);
+  });
+
+  it("ignores a duplicate add so a retried message cannot double the annotation", async () => {
+    extensionStorage.reset({ [currentKey]: envelope });
+
+    await expect(draftStore.mutate(conversationA, { kind: "add", annotation })).resolves.toEqual([
+      annotation,
+    ]);
+    expect(extensionStorage.snapshot()).toEqual({ [currentKey]: envelope });
+  });
+
+  it("orders concurrent adds from separate clients without losing either", async () => {
+    extensionStorage.reset({});
+    const owner = createDraftOwner();
+    const second: DraftAnnotation = { ...annotation, id: "annotation-b", comment: "from B" };
+
+    const [first, latest] = await Promise.all([
+      owner.mutate(conversationA, { kind: "add", annotation }),
+      owner.mutate(conversationA, { kind: "add", annotation: second }),
+    ]);
+
+    expect(first).toEqual([annotation]);
+    expect(latest).toEqual([annotation, second]);
+  });
+
+  it("orders concurrent updates so the last one wins and neither is dropped", async () => {
+    extensionStorage.reset({ [currentKey]: envelope });
+    const owner = createDraftOwner();
+
+    const [, latest] = await Promise.all([
+      owner.mutate(conversationA, { kind: "update", annotationId: annotation.id, comment: "A" }),
+      owner.mutate(conversationA, { kind: "update", annotationId: annotation.id, comment: "B" }),
+    ]);
+
+    expect(latest).toEqual([{ ...annotation, comment: "B" }]);
+    expect(await owner.load(conversationA)).toEqual([{ ...annotation, comment: "B" }]);
+  });
+
+  it("applies a concurrent update and discard in issue order", async () => {
+    extensionStorage.reset({ [currentKey]: envelope });
+    const owner = createDraftOwner();
+
+    const [updated, discarded] = await Promise.all([
+      owner.mutate(conversationA, { kind: "update", annotationId: annotation.id, comment: "A" }),
+      owner.mutate(conversationA, { kind: "discard", annotationIds: [annotation.id] }),
+    ]);
+
+    expect(updated).toEqual([{ ...annotation, comment: "A" }]);
+    expect(discarded).toEqual([]);
+    expect(extensionStorage.snapshot()).toEqual({});
+  });
+
+  it("keeps an annotation edited concurrently with its send confirmation", async () => {
+    extensionStorage.reset({ [currentKey]: envelope });
+    const owner = createDraftOwner();
+
+    const [, remaining] = await Promise.all([
+      owner.mutate(conversationA, {
+        kind: "update",
+        annotationId: annotation.id,
+        comment: "edited after the send was compiled",
+      }),
+      owner.mutate(conversationA, { kind: "discard-confirmed", annotations: [annotation] }),
+    ]);
+
+    expect(remaining).toEqual([{ ...annotation, comment: "edited after the send was compiled" }]);
+  });
+
+  it("never sweeps a draft using expiry read before a queued refresh", async () => {
+    const staleConversation = { kind: "identified", id: "stale" } as const;
+    const staleKey = "quotecue:draft:stale";
+    extensionStorage.reset({
+      [currentKey]: envelope,
+      [staleKey]: { ...envelope, updatedAt: NOW - 31 * DAY_MS },
+    });
+    let resolveKeys: (keys: string[]) => void = () => undefined;
+    extensionStorage.getKeys.mockImplementationOnce(
+      () => new Promise<string[]>((resolve) => (resolveKeys = resolve)),
+    );
+    const owner = createDraftOwner();
+
+    await owner.load(conversationA);
+    const refreshed = owner.mutate(staleConversation, { kind: "add", annotation });
+    await vi.waitFor(() => expect(extensionStorage.getKeys).toHaveBeenCalled());
+    resolveKeys(extensionStorage.keys());
+    await refreshed;
+
+    expect(extensionStorage.keys()).toContain(staleKey);
+    expect(await owner.load(staleConversation)).toEqual([annotation]);
   });
 });
