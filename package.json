@@ -8,6 +8,7 @@
     "site:dev": "pnpm --dir website dev",
     "site:build": "pnpm --dir website build",
     "site:check": "pnpm --dir website check",
+    "site:deploy": "pnpm --dir website deploy",
     "build": "wxt build",
     "zip": "wxt zip",
     "prepare": "wxt prepare",
