@@ -16,6 +16,7 @@ tmp/
 .agents/
 .claude/
 skills-lock.json
+.design/
 
 # issues
 .issues/
