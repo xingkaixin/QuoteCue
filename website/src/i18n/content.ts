@@ -3,7 +3,6 @@ export type Locale = "zh-CN" | "en";
 export interface DemoCopy {
   locale: Locale;
   title: string;
-  liveLabel: string;
   intro: string;
   userMessage: string;
   answer: string[];
@@ -34,7 +33,6 @@ const links = {
   chrome: "https://chromewebstore.google.com/detail/quotecue/gbppndnpgjmgmbepccdcbfmdjjiehofp",
   edge: "https://microsoftedge.microsoft.com/addons/detail/icopgahikmamgfagjdjjdfobfnhicbie",
   github: "https://github.com/xingkaixin/QuoteCue",
-  privacy: "https://github.com/xingkaixin/QuoteCue/blob/main/PRIVACY.md",
 } as const;
 
 const zh = {
@@ -69,7 +67,6 @@ const zh = {
   demo: {
     locale: "zh-CN",
     title: "现在就试一遍",
-    liveLabel: "↓ 真的能用，不是截图",
     intro:
       "用鼠标选中下面这段回答里的任意一句话，QuoteCue 按钮就会浮出来。这就是它装进 AI 对话页面后的样子。",
     userMessage: "帮我规划一个三天的京都行程。",
@@ -188,11 +185,6 @@ const zh = {
     title: "下一次追问，直接指到那一句。",
     description: "安装后打开 ChatGPT、Claude、DeepSeek 或 Kimi，选中一段回答就能开始。",
   },
-  footer: {
-    privacy: "扩展隐私政策",
-    github: "GitHub 源码",
-    analytics: "本站使用无 Cookie 的 Cloudflare Web Analytics 衡量页面性能。",
-  },
   links,
 } as const;
 
@@ -228,7 +220,6 @@ const en = {
   demo: {
     locale: "en",
     title: "Try the whole flow",
-    liveLabel: "↓ Really works, not a screenshot",
     intro:
       "Select any sentence in the answer below and the QuoteCue button floats up. This is how it behaves inside a supported AI conversation.",
     userMessage: "Plan me a three-day itinerary for Kyoto.",
@@ -350,11 +341,6 @@ const en = {
     title: "Next time, just point at the sentence.",
     description:
       "Install QuoteCue, open ChatGPT, Claude, DeepSeek, or Kimi, and select part of an answer to begin.",
-  },
-  footer: {
-    privacy: "Extension privacy policy",
-    github: "Source on GitHub",
-    analytics: "This site uses cookie-free Cloudflare Web Analytics to measure page performance.",
   },
   links,
 } as const;

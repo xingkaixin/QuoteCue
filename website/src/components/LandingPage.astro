@@ -196,12 +196,9 @@ const structuredData = {
     </section>
 
     <section class="mx-auto max-w-[77.25rem] scroll-mt-20 px-5 pt-15 pb-10 sm:px-7" id="demo">
-      <div class="mb-2 flex flex-wrap items-baseline gap-3.5">
-        <h2 class="font-display m-0 text-[clamp(1.625rem,3.4vw,2.5rem)] font-bold tracking-[-0.025em]">
-          {copy.demo.title}
-        </h2>
-        <span class="font-mono text-xs text-accent">{copy.demo.liveLabel}</span>
-      </div>
+      <h2 class="font-display mt-0 mb-2 text-[clamp(1.625rem,3.4vw,2.5rem)] font-bold tracking-[-0.025em]">
+        {copy.demo.title}
+      </h2>
       <p class="mt-0 mb-6 max-w-[62ch] text-[0.96875rem] leading-[1.6] text-muted">
         {copy.demo.intro}
       </p>
@@ -320,31 +317,9 @@ const structuredData = {
   </main>
 
   <footer class="border-t border-line px-5 py-7 text-[0.8125rem] text-muted sm:px-7">
-    <div class="mx-auto flex max-w-[73.75rem] flex-wrap items-center gap-4">
+    <div class="mx-auto flex max-w-[73.75rem] items-center gap-4">
       <img src="/brand/quotecue-icon-128.png" width="20" height="20" alt="" loading="lazy" />
       <span>QuoteCue</span>
-      <div class="ml-auto flex flex-wrap items-center justify-end gap-x-4 gap-y-2 max-sm:ml-0 max-sm:w-full max-sm:justify-start">
-        <a
-          class="transition-colors hover:text-foreground"
-          href={copy.links.privacy}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          {copy.footer.privacy}
-        </a>
-        <a
-          class="transition-colors hover:text-foreground"
-          href={copy.links.github}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          {copy.footer.github}
-        </a>
-        <a class="font-mono text-[0.71875rem]" href="mailto:xingkaixin@gmail.com">
-          xingkaixin@gmail.com
-        </a>
-      </div>
-      <p class="m-0 w-full text-xs leading-5 text-muted">{copy.footer.analytics}</p>
     </div>
   </footer>
 </BaseLayout>
