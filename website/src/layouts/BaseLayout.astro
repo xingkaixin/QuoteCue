@@ -16,7 +16,18 @@ const { lang, title, description } = Astro.props;
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
+    <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>{title}</title>
+    <script is:inline>
+      try {
+        const savedTheme = localStorage.getItem("quotecue-theme");
+        const systemTheme = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        document.documentElement.dataset.theme = savedTheme ?? systemTheme;
+      } catch {
+        document.documentElement.dataset.theme = "dark";
+      }
+    </script>
   </head>
   <body>
     <slot />
