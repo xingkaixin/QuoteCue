@@ -17,7 +17,7 @@
     "format:check": "oxfmt --check .",
     "test": "vitest run",
     "verify:manifest": "node scripts/verify-manifest.ts",
-    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm verify:manifest && pnpm site:check",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm site:check && pnpm build && pnpm verify:manifest",
     "audit:high": "pnpm audit --audit-level high"
   },
   "dependencies": {

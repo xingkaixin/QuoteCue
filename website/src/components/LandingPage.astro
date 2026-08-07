@@ -19,9 +19,84 @@ const supportedSites = [
   { name: "DeepSeek", host: "chat.deepseek.com" },
   { name: "Kimi", host: "www.kimi.com" },
 ];
+const pageUrl = new URL(locale === "en" ? "/en/" : "/", Astro.site).href;
+const organizationId = new URL("/#organization", Astro.site).href;
+const softwareId = new URL("/#software", Astro.site).href;
+const websiteId = new URL("/#website", Astro.site).href;
+const structuredData = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": websiteId,
+      url: new URL("/", Astro.site).href,
+      name: "QuoteCue",
+      inLanguage: ["zh-CN", "en"],
+      publisher: { "@id": organizationId },
+    },
+    {
+      "@type": "Organization",
+      "@id": organizationId,
+      name: "QuoteCue",
+      url: new URL("/", Astro.site).href,
+      logo: new URL("/brand/quotecue-icon-512.png", Astro.site).href,
+      email: "xingkaixin@gmail.com",
+      sameAs: [copy.links.github],
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": softwareId,
+      name: "QuoteCue",
+      url: pageUrl,
+      description: copy.meta.description,
+      applicationCategory: "BrowserApplication",
+      applicationSubCategory: "Browser extension",
+      browserRequirements: "Google Chrome or Microsoft Edge",
+      operatingSystem: "ChromeOS, Linux, macOS, Windows",
+      inLanguage: copy.locale,
+      isAccessibleForFree: true,
+      downloadUrl: [copy.links.chrome, copy.links.edge],
+      featureList: copy.features.items.map((feature) => feature.title),
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "USD",
+        availability: "https://schema.org/InStock",
+      },
+      author: { "@id": organizationId },
+    },
+    {
+      "@type": "WebPage",
+      "@id": `${pageUrl}#webpage`,
+      url: pageUrl,
+      name: copy.meta.title,
+      description: copy.meta.description,
+      inLanguage: copy.locale,
+      isPartOf: { "@id": websiteId },
+      about: { "@id": softwareId },
+    },
+    {
+      "@type": "FAQPage",
+      "@id": `${pageUrl}#faq`,
+      mainEntity: copy.faq.items.map((item) => ({
+        "@type": "Question",
+        name: item.question,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: item.answer,
+        },
+      })),
+    },
+  ],
+};
 ---
 
-<BaseLayout lang={copy.locale} title={copy.meta.title} description={copy.meta.description}>
+<BaseLayout
+  lang={copy.locale}
+  title={copy.meta.title}
+  description={copy.meta.description}
+  structuredData={structuredData}
+>
   <a
     class="fixed top-3 left-3 z-[100] -translate-y-20 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground transition-transform focus:translate-y-0"
     href="#main"
@@ -269,6 +344,7 @@ const supportedSites = [
           xingkaixin@gmail.com
         </a>
       </div>
+      <p class="m-0 w-full text-xs leading-5 text-muted">{copy.footer.analytics}</p>
     </div>
   </footer>
 </BaseLayout>

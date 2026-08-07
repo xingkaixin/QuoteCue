@@ -1,0 +1,22 @@
+{
+  "name": "QuoteCue",
+  "short_name": "QuoteCue",
+  "description": "Annotate AI answers and turn every point into one focused follow-up.",
+  "lang": "en",
+  "start_url": "/",
+  "display": "browser",
+  "background_color": "#0e0e10",
+  "theme_color": "#0e0e10",
+  "icons": [
+    {
+      "src": "/brand/quotecue-icon-128.png",
+      "sizes": "128x128",
+      "type": "image/png"
+    },
+    {
+      "src": "/brand/quotecue-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

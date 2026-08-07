@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://quotecue.xingkaixin.me/sitemap-index.xml

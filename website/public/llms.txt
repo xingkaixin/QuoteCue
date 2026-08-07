@@ -1,0 +1,32 @@
+# QuoteCue
+
+> QuoteCue is a free, open-source Chrome and Microsoft Edge extension for attaching private annotations to selected text in ChatGPT, Claude, DeepSeek, and Kimi answers, then compiling those notes into one focused follow-up message.
+
+Official website: https://quotecue.xingkaixin.me/
+English page: https://quotecue.xingkaixin.me/en/
+Source code: https://github.com/xingkaixin/QuoteCue
+Extension privacy policy: https://github.com/xingkaixin/QuoteCue/blob/main/PRIVACY.md
+
+## What QuoteCue does
+
+- Select part of an AI answer and attach an optional annotation.
+- Keep multiple annotations anchored to their original passages.
+- Compile every selected passage and annotation into one numbered follow-up.
+- Preserve a draft until a matching sent message is confirmed.
+
+## Supported services
+
+- ChatGPT at chatgpt.com
+- Claude at claude.ai
+- DeepSeek at chat.deepseek.com
+- Kimi at www.kimi.com
+
+## Privacy facts
+
+- The QuoteCue extension operates no developer-controlled server.
+- Identified-conversation drafts stay in browser-local extension storage.
+- The extension requests only the storage permission and access to the four supported hosts.
+- Current-version drafts expire after 30 days without an update.
+- The extension itself collects no analytics. The product website uses cookie-free Cloudflare Web Analytics for aggregate performance measurement.
+
+Last updated: 2026-08-07

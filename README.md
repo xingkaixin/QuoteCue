@@ -23,6 +23,20 @@ pnpm dev
 
 Load `.output/chrome-mv3-dev` as an unpacked extension when using a persistent Chrome profile.
 
+## Landing website
+
+The Astro landing website lives in `website/` and generates localized static pages for
+`https://quotecue.xingkaixin.me`:
+
+```bash
+pnpm site:dev
+pnpm site:check
+pnpm site:build
+```
+
+See [website/README.md](./website/README.md) for Cloudflare Workers deployment, Web Analytics, and
+SEO configuration.
+
 ## Validation and packaging
 
 `pnpm check` is the single quality gate for the code in this repository. It checks formatting,

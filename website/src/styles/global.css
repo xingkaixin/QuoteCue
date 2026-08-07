@@ -64,7 +64,7 @@
   --line: #2c2c31;
   --hairline: #232327;
   --accent: #4d92ff;
-  --accent-foreground: #ffffff;
+  --accent-foreground: #0e0e10;
   --ring: #4d92ff;
   --accent-soft: rgb(77 146 255 / 18%);
   --mark: rgb(77 146 255 / 26%);
@@ -80,9 +80,10 @@
   --muted: #525252;
   --line: #dedee1;
   --hairline: #ececef;
-  --accent: #2f7df4;
-  --accent-soft: rgb(47 125 244 / 14%);
-  --mark: rgb(47 125 244 / 22%);
+  --accent: #1b65c4;
+  --accent-foreground: #ffffff;
+  --accent-soft: rgb(27 101 196 / 12%);
+  --mark: rgb(27 101 196 / 22%);
   --surface-shadow: 0 18px 48px rgb(0 0 0 / 16%);
 }
 

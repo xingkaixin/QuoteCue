@@ -191,6 +191,7 @@ const zh = {
   footer: {
     privacy: "扩展隐私政策",
     github: "GitHub 源码",
+    analytics: "本站使用无 Cookie 的 Cloudflare Web Analytics 衡量页面性能。",
   },
   links,
 } as const;
@@ -353,6 +354,7 @@ const en = {
   footer: {
     privacy: "Extension privacy policy",
     github: "Source on GitHub",
+    analytics: "This site uses cookie-free Cloudflare Web Analytics to measure page performance.",
   },
   links,
 } as const;

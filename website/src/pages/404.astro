@@ -1,0 +1,29 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout
+  lang="zh-CN"
+  title="页面未找到 · QuoteCue"
+  description="这个 QuoteCue 页面不存在。"
+  canonicalPath="/404/"
+  indexable={false}
+>
+  <main class="mx-auto flex min-h-screen max-w-[48rem] items-center px-5 py-20 sm:px-7">
+    <div>
+      <p class="font-mono mb-4 text-sm text-accent">404 · text anchor unresolved</p>
+      <h1 class="font-display mt-0 mb-5 text-[clamp(2.75rem,9vw,6rem)] leading-none font-bold tracking-[-0.04em]">
+        没找到这一句。
+      </h1>
+      <p class="mb-8 max-w-[40rem] text-base leading-7 text-muted">
+        这个页面不存在，或者已经移动。The page does not exist or has moved.
+      </p>
+      <a
+        class="inline-flex h-12 items-center rounded-full bg-accent px-5 font-semibold text-accent-foreground outline-none transition-[filter,transform] hover:brightness-110 focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]"
+        href="/"
+      >
+        返回 QuoteCue 首页 · Back home
+      </a>
+    </div>
+  </main>
+</BaseLayout>

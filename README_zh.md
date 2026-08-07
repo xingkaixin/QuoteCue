@@ -23,6 +23,19 @@ pnpm dev
 
 若使用持久化的 Chrome 配置文件，将 `.output/chrome-mv3-dev` 作为未打包扩展加载。
 
+## 产品落地页
+
+Astro 落地页位于 `website/`，为 `https://quotecue.xingkaixin.me` 生成中英文静态页面：
+
+```bash
+pnpm site:dev
+pnpm site:check
+pnpm site:build
+```
+
+Cloudflare Workers 部署、Web Analytics 与 SEO 配置见
+[website/README.md](./website/README.md)。
+
 ## 验证与打包
 
 `pnpm check` 是本仓库代码的唯一质量门禁，包含格式检查、lint、类型检查、测试以及一次生产

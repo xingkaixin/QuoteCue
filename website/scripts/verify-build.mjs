@@ -1,0 +1,89 @@
+import assert from "node:assert/strict";
+import { readFile, stat } from "node:fs/promises";
+
+const distUrl = new URL("../dist/", import.meta.url);
+
+async function read(relativePath) {
+  return readFile(new URL(relativePath, distUrl), "utf8");
+}
+
+function occurrences(source, pattern) {
+  return source.match(pattern)?.length ?? 0;
+}
+
+function readStructuredData(html) {
+  const match = html.match(/<script type="application\/ld\+json">(.+?)<\/script>/s);
+  assert(match, "JSON-LD is missing");
+  return JSON.parse(match[1]);
+}
+
+const pages = [
+  {
+    path: "index.html",
+    lang: "zh-CN",
+    canonical: "https://quotecue.xingkaixin.me/",
+  },
+  {
+    path: "en/index.html",
+    lang: "en",
+    canonical: "https://quotecue.xingkaixin.me/en/",
+  },
+];
+
+for (const page of pages) {
+  const html = await read(page.path);
+  assert.match(html, new RegExp(`<html lang="${page.lang}"`));
+  assert.match(html, new RegExp(`<link rel="canonical" href="${page.canonical}"`));
+  assert.match(html, /<meta name="description" content="[^"]+">/);
+  assert.match(html, /<meta name="robots" content="index, follow, max-image-preview:large">/);
+  assert.match(html, /<link rel="alternate" hreflang="zh-CN"/);
+  assert.match(html, /<link rel="alternate" hreflang="en"/);
+  assert.match(html, /<link rel="alternate" hreflang="x-default"/);
+  assert.match(
+    html,
+    /<meta property="og:image" content="https:\/\/quotecue\.xingkaixin\.me\/og-cover\.png">/,
+  );
+  assert.equal(occurrences(html, /<h1\b/g), 1, `${page.path} must contain one h1`);
+
+  const structuredData = readStructuredData(html);
+  const graph = structuredData["@graph"];
+  assert(Array.isArray(graph), `${page.path} JSON-LD must use @graph`);
+  const types = new Set(graph.map((entry) => entry["@type"]));
+  for (const type of ["WebSite", "Organization", "SoftwareApplication", "WebPage", "FAQPage"]) {
+    assert(types.has(type), `${page.path} is missing ${type} schema`);
+  }
+  const faq = graph.find((entry) => entry["@type"] === "FAQPage");
+  assert.equal(faq.mainEntity.length, 5, `${page.path} FAQ schema must match visible questions`);
+}
+
+const notFound = await read("404.html");
+assert.match(notFound, /<meta name="robots" content="noindex, nofollow">/);
+assert.equal(occurrences(notFound, /<h1\b/g), 1);
+
+const sitemap = await read("sitemap-0.xml");
+assert.match(sitemap, /<loc>https:\/\/quotecue\.xingkaixin\.me\/<\/loc>/);
+assert.match(sitemap, /<loc>https:\/\/quotecue\.xingkaixin\.me\/en\/<\/loc>/);
+assert.doesNotMatch(sitemap, /404/);
+assert.equal(occurrences(sitemap, /<url>/g), 2);
+
+const robots = await read("robots.txt");
+assert.match(robots, /^User-agent: \*\nAllow: \//);
+assert.match(robots, /Sitemap: https:\/\/quotecue\.xingkaixin\.me\/sitemap-index\.xml/);
+
+const manifest = JSON.parse(await read("site.webmanifest"));
+assert.equal(manifest.name, "QuoteCue");
+assert.equal(manifest.icons.length, 2);
+
+const headers = await read("_headers");
+assert.match(headers, /Content-Security-Policy:/);
+assert.match(headers, /static\.cloudflareinsights\.com/);
+assert.doesNotMatch(headers, /no-transform/);
+
+const llms = await read("llms.txt");
+assert.match(llms, /^# QuoteCue/m);
+assert.match(llms, /## Privacy facts/);
+
+const socialImage = await stat(new URL("og-cover.png", distUrl));
+assert(socialImage.size > 10_000, "Social preview image is unexpectedly small");
+
+console.log("Verified landing SEO and deployment artifacts");
