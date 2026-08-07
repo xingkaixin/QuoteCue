@@ -10,7 +10,9 @@ minimumReleaseAgeExclude:
   - astro@7.2.0
 
 overrides:
+  brace-expansion: 5.0.9
   firefox-profile>adm-zip: 0.6.0
   fx-runner>shell-quote: 1.10.0
+  miniflare>undici: 7.29.0
   web-ext-run>multimatch: 8.0.0
   web-ext-run>tmp: 0.2.7
