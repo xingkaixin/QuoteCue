@@ -5,6 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "wxt",
+    "site:dev": "pnpm --dir website dev",
+    "site:build": "pnpm --dir website build",
+    "site:check": "pnpm --dir website check",
     "build": "wxt build",
     "zip": "wxt zip",
     "prepare": "wxt prepare",
@@ -14,7 +17,7 @@
     "format:check": "oxfmt --check .",
     "test": "vitest run",
     "verify:manifest": "node scripts/verify-manifest.ts",
-    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm verify:manifest",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm verify:manifest && pnpm site:check",
     "audit:high": "pnpm audit --audit-level high"
   },
   "dependencies": {

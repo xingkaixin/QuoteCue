@@ -26,5 +26,5 @@
       }
     }
   ],
-  "ignorePatterns": [".output/**", ".wxt/**"]
+  "ignorePatterns": [".output/**", ".wxt/**", "website/.astro/**", "website/dist/**"]
 }

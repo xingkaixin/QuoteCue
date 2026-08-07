@@ -1,6 +1,9 @@
 node_modules/
 .output/
 .wxt/
+website/.astro/
+website/dist/
+website/.wrangler/
 coverage/
 tmp/
 
