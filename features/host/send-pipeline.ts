@@ -4,7 +4,14 @@ import type {
   ComposerSubmitResult,
 } from "@/features/host-port/host-port";
 
-import { available, once, unavailable, type HostContext, type HostResult } from "./host-context";
+import {
+  available,
+  failure,
+  once,
+  unavailable,
+  type HostContext,
+  type HostResult,
+} from "./host-context";
 import type { ComposerDriver } from "./composer-driver";
 import type { TextNormalizer } from "./text-normalizer";
 
@@ -174,11 +181,11 @@ export function createSendPipeline(
 
   async function submit(options: ComposerSubmitOptions): Promise<ComposerSubmitResult> {
     if (options.signal.aborted) {
-      return unavailable("send-unavailable");
+      return failure("send-unavailable");
     }
     if (!replaceComposer(options)) {
       restoreComposer(options);
-      return unavailable("replace-failed");
+      return failure("replace-failed");
     }
 
     let result: ComposerSubmitResult;
@@ -187,9 +194,9 @@ export function createSendPipeline(
       result =
         sendButtonResult.status === "available" && !options.signal.aborted
           ? await dispatchAndConfirm(sendButtonResult.value, options)
-          : unavailable("send-unavailable");
+          : failure("send-unavailable");
     } catch {
-      result = unavailable("send-unavailable");
+      result = failure("send-unavailable");
     }
 
     if (result.status === "unavailable") {
@@ -243,11 +250,11 @@ export function createSendPipeline(
       signal.removeEventListener("abort", onAbort);
       resolveResult(nextResult);
     };
-    const onAbort = () => finish(unavailable("send-unavailable"));
+    const onAbort = () => finish(failure("send-unavailable"));
     stopWatching = watchConfirmedSend({
       expectedText,
       onConfirmed: () => finish(available("confirmed")),
-      onTimeout: () => finish(unavailable("confirmation-timeout")),
+      onTimeout: () => finish(failure("confirmation-timeout")),
       signal,
     });
     if (signal.aborted) {

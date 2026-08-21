@@ -56,7 +56,6 @@ describe("annotation workspace", () => {
     draftStoreFixture.store.load.mockResolvedValue([annotation]);
     const host = createWorkspaceHost();
     vi.spyOn(host.selection, "reveal").mockReturnValue({
-      reason: "selection-detached",
       status: "unavailable",
     });
     const mounted = await mountWorkspace(host);

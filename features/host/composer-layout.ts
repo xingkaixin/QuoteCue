@@ -21,7 +21,7 @@ export function createComposerLayout(
   context: HostContext,
   currentComposer: () => HTMLElement | null,
 ) {
-  const { adapter, document: hostDocument, signals, window: hostWindow } = context;
+  const { adapter, document: hostDocument, logger, signals, window: hostWindow } = context;
   let activeReservation: { height: number } | null = null;
   let resizeObserver: ResizeObserver | null = null;
   let observedSurface: HTMLElement | null = null;
@@ -63,16 +63,16 @@ export function createComposerLayout(
   function currentElements(): HostResult<ComposerLayoutElements> {
     const composer = currentComposer();
     if (!composer) {
-      return unavailable("composer-unavailable");
+      return unavailable("composer-unavailable", logger);
     }
 
     const boundary = findComposerBoundary(composer);
     if (!boundary) {
-      return unavailable("composer-surface-unavailable");
+      return unavailable("composer-surface-unavailable", logger);
     }
     const surface = findComposerSurface(composer, boundary);
     if (!surface) {
-      return unavailable("composer-surface-unavailable");
+      return unavailable("composer-surface-unavailable", logger);
     }
 
     const rect = surface.getBoundingClientRect();
