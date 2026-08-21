@@ -352,7 +352,7 @@ describe("registerSendInterceptor", () => {
       expect.objectContaining({ status: "failed", reason: "replace-failed" }),
     );
 
-    await expect(interceptor.retry()).resolves.toEqual({
+    await expect(interceptor.submit()).resolves.toEqual({
       status: "confirmed",
       annotationIds: ["annotation-1"],
     });
@@ -623,7 +623,7 @@ describe("registerSendInterceptor", () => {
       reason: "confirmation-timeout",
     });
 
-    const retryResult = interceptor.retry();
+    const retryResult = interceptor.submit();
     await vi.advanceTimersByTimeAsync(17);
     await expect(retryResult).resolves.toEqual({
       status: "confirmed",
@@ -664,7 +664,7 @@ describe("registerSendInterceptor", () => {
     interceptor.conversationChanged();
     sentText = "";
 
-    void interceptor.retry();
+    void interceptor.submit();
     await vi.advanceTimersByTimeAsync(17);
 
     expect(sentText).not.toContain("question from conversation A");

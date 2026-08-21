@@ -232,8 +232,7 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
   setState({ status: "idle" });
 
   return {
-    submit: () => beginSend(undefined, "custom").result,
-    retry: () => beginSend(undefined, "custom", failedSendSnapshot?.originalText).result,
+    submit: () => beginSend(undefined, "custom", failedSendSnapshot?.originalText).result,
     // A failed attempt's question belongs to the conversation that produced it. An active attempt
     // keeps running so it can still confirm after navigation.
     conversationChanged() {

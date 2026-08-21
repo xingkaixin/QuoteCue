@@ -177,16 +177,8 @@ export function useAnnotationWorkspace() {
   }, [closeEditor, discardAllAnnotations, discardPendingDeletions]);
 
   const send = useCallback(() => {
-    const controller = sendControllerRef.current;
-    if (!controller) {
-      return;
-    }
-    if (sendState.status === "failed") {
-      void controller.retry();
-      return;
-    }
-    void controller.submit();
-  }, [sendState.status]);
+    void sendControllerRef.current?.submit();
+  }, []);
 
   return {
     draft: {
