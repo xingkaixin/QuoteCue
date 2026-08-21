@@ -26,6 +26,7 @@ export interface DemoCopy {
     annotation: string;
     selection: string;
     comment: string;
+    supplementalQuestion: string;
   };
 }
 
@@ -100,6 +101,7 @@ const zh = {
       annotation: "批注",
       selection: "选中文本：",
       comment: "我的批注：",
+      supplementalQuestion: "[补充问题]",
     },
   } satisfies DemoCopy,
   features: {
@@ -251,8 +253,9 @@ const en = {
     compiledPrompt: {
       intro: "Please respond based on the following annotations:",
       annotation: "Annotation",
-      selection: "Selected text:",
-      comment: "My comment:",
+      selection: "Selected text: ",
+      comment: "My comment: ",
+      supplementalQuestion: "[Supplemental question]",
     },
   } satisfies DemoCopy,
   features: {
