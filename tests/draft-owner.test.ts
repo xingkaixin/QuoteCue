@@ -82,13 +82,15 @@ afterEach(() => vi.restoreAllMocks());
 describe("draft storage", () => {
   it("rejects oversized mutations before writing storage", async () => {
     await expect(
-      draftStore.mutate(conversationA, {
-        kind: "add",
-        annotation: {
-          ...annotation,
-          comment: "x".repeat(MAX_ANNOTATION_COMMENT_LENGTH + 1),
+      draftStore.mutate(conversationA, [
+        {
+          kind: "add",
+          annotation: {
+            ...annotation,
+            comment: "x".repeat(MAX_ANNOTATION_COMMENT_LENGTH + 1),
+          },
         },
-      }),
+      ]),
     ).rejects.toThrow("Draft mutation exceeds QuoteCue capacity");
 
     expect(extensionStorage.set).not.toHaveBeenCalled();
@@ -162,8 +164,8 @@ describe("draft storage", () => {
     const claudeKey = "quotecue:draft:claude:A";
     const claudeAnnotation = { ...annotation, id: "annotation-claude", comment: "Claude draft" };
 
-    await draftStore.mutate(conversationA, { kind: "add", annotation });
-    await draftStore.mutate(claudeConversation, { kind: "add", annotation: claudeAnnotation });
+    await draftStore.mutate(conversationA, [{ kind: "add", annotation }]);
+    await draftStore.mutate(claudeConversation, [{ kind: "add", annotation: claudeAnnotation }]);
 
     expect(await draftStore.load(conversationA)).toEqual([annotation]);
     expect(await draftStore.load(claudeConversation)).toEqual([claudeAnnotation]);
@@ -369,10 +371,10 @@ describe("draft storage", () => {
   it("writes a versioned envelope and clears current and legacy keys together", async () => {
     extensionStorage.reset({});
 
-    await draftStore.mutate(conversationA, { kind: "add", annotation });
+    await draftStore.mutate(conversationA, [{ kind: "add", annotation }]);
     expect(extensionStorage.snapshot()).toEqual({ [currentKey]: envelope });
 
-    await draftStore.mutate(conversationA, { kind: "clear" });
+    await draftStore.mutate(conversationA, [{ kind: "clear" }]);
     expect(extensionStorage.snapshot()).toEqual({});
   });
 
@@ -380,11 +382,13 @@ describe("draft storage", () => {
     extensionStorage.reset({ [legacyKey]: [unmarkedAnnotation] });
 
     await expect(
-      draftStore.mutate(conversationA, {
-        kind: "update",
-        annotationId: legacyAnnotation.id,
-        comment: "edited after migration",
-      }),
+      draftStore.mutate(conversationA, [
+        {
+          kind: "update",
+          annotationId: legacyAnnotation.id,
+          comment: "edited after migration",
+        },
+      ]),
     ).resolves.toEqual([{ ...legacyAnnotation, comment: "edited after migration" }]);
     expect(extensionStorage.keys()).toEqual([currentKey]);
   });
@@ -392,10 +396,25 @@ describe("draft storage", () => {
   it("ignores a duplicate add so a retried message cannot double the annotation", async () => {
     extensionStorage.reset({ [currentKey]: envelope });
 
-    await expect(draftStore.mutate(conversationA, { kind: "add", annotation })).resolves.toEqual([
+    await expect(draftStore.mutate(conversationA, [{ kind: "add", annotation }])).resolves.toEqual([
       annotation,
     ]);
     expect(extensionStorage.snapshot()).toEqual({ [currentKey]: envelope });
+  });
+
+  it("applies an ordered mutation batch against one authoritative draft", async () => {
+    extensionStorage.reset({ [currentKey]: envelope });
+    const second = { ...annotation, id: "annotation-b", comment: "draft B" };
+
+    await expect(
+      draftStore.mutate(conversationA, [
+        { kind: "update", annotationId: annotation.id, comment: "updated" },
+        { kind: "add", annotation: second },
+      ]),
+    ).resolves.toEqual([{ ...annotation, comment: "updated" }, second]);
+    expect(extensionStorage.snapshot()[currentKey]).toMatchObject({
+      annotations: [{ ...annotation, comment: "updated" }, second],
+    });
   });
 
   it("orders concurrent adds from separate clients without losing either", async () => {
@@ -404,8 +423,8 @@ describe("draft storage", () => {
     const second: DraftAnnotation = { ...annotation, id: "annotation-b", comment: "from B" };
 
     const [first, latest] = await Promise.all([
-      owner.mutate(conversationA, { kind: "add", annotation }),
-      owner.mutate(conversationA, { kind: "add", annotation: second }),
+      owner.mutate(conversationA, [{ kind: "add", annotation }]),
+      owner.mutate(conversationA, [{ kind: "add", annotation: second }]),
     ]);
 
     expect(first).toEqual([annotation]);
@@ -417,8 +436,8 @@ describe("draft storage", () => {
     const owner = createDraftOwner();
 
     const [, latest] = await Promise.all([
-      owner.mutate(conversationA, { kind: "update", annotationId: annotation.id, comment: "A" }),
-      owner.mutate(conversationA, { kind: "update", annotationId: annotation.id, comment: "B" }),
+      owner.mutate(conversationA, [{ kind: "update", annotationId: annotation.id, comment: "A" }]),
+      owner.mutate(conversationA, [{ kind: "update", annotationId: annotation.id, comment: "B" }]),
     ]);
 
     expect(latest).toEqual([{ ...annotation, comment: "B" }]);
@@ -430,8 +449,8 @@ describe("draft storage", () => {
     const owner = createDraftOwner();
 
     const [updated, discarded] = await Promise.all([
-      owner.mutate(conversationA, { kind: "update", annotationId: annotation.id, comment: "A" }),
-      owner.mutate(conversationA, { kind: "discard", annotationIds: [annotation.id] }),
+      owner.mutate(conversationA, [{ kind: "update", annotationId: annotation.id, comment: "A" }]),
+      owner.mutate(conversationA, [{ kind: "discard", annotationIds: [annotation.id] }]),
     ]);
 
     expect(updated).toEqual([{ ...annotation, comment: "A" }]);
@@ -444,12 +463,14 @@ describe("draft storage", () => {
     const owner = createDraftOwner();
 
     const [, remaining] = await Promise.all([
-      owner.mutate(conversationA, {
-        kind: "update",
-        annotationId: annotation.id,
-        comment: "edited after the send was compiled",
-      }),
-      owner.mutate(conversationA, { kind: "discard-confirmed", annotations: [annotation] }),
+      owner.mutate(conversationA, [
+        {
+          kind: "update",
+          annotationId: annotation.id,
+          comment: "edited after the send was compiled",
+        },
+      ]),
+      owner.mutate(conversationA, [{ kind: "discard-confirmed", annotations: [annotation] }]),
     ]);
 
     expect(remaining).toEqual([{ ...annotation, comment: "edited after the send was compiled" }]);
@@ -469,7 +490,7 @@ describe("draft storage", () => {
     const owner = createDraftOwner();
 
     await owner.load(conversationA);
-    const refreshed = owner.mutate(staleConversation, { kind: "add", annotation });
+    const refreshed = owner.mutate(staleConversation, [{ kind: "add", annotation }]);
     await vi.waitFor(() => expect(extensionStorage.getKeys).toHaveBeenCalled());
     resolveKeys(extensionStorage.keys());
     await refreshed;

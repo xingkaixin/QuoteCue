@@ -15,6 +15,7 @@ type DraftLifecycleState =
       conversationIdentity: ConversationIdentity;
       annotations: DraftAnnotation[];
       revision: number;
+      pendingMutations: readonly DraftMutation[];
     }
   | {
       status: "error";
@@ -23,18 +24,19 @@ type DraftLifecycleState =
       revision: number;
       operation: "load";
     }
-  // Retrying a failed save resends the mutation that failed, not a whole-draft snapshot, which
-  // would reintroduce the lost update this store exists to prevent. Mutations are idempotent.
   | {
       status: "error";
       conversationIdentity: IdentifiedConversation;
       annotations: DraftAnnotation[];
       revision: number;
       operation: "save";
-      mutation: DraftMutation;
+      pendingMutations: readonly DraftMutation[];
     };
 
-type AvailableDraftLifecycleState = Extract<DraftLifecycleState, { status: "ready" | "error" }>;
+type AvailableDraftLifecycleState = Extract<
+  DraftLifecycleState,
+  { pendingMutations: readonly DraftMutation[] }
+>;
 
 export type Draft = {
   readonly annotations: readonly DraftAnnotation[];
@@ -90,6 +92,7 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
             conversationIdentity: identity,
             annotations,
             revision: 0,
+            pendingMutations: [],
           });
         })
         .catch((error: unknown) => {
@@ -109,24 +112,26 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
     [draftStore, setDraftState],
   );
 
-  // The owner returns the authoritative annotations, which may already include another context's
-  // concurrent change. Adopting them is how a lost update is avoided without the React layer
-  // knowing anything about storage revisions.
   const persistMutation = useCallback(
-    (snapshot: AvailableDraftLifecycleState, mutation: DraftMutation) => {
+    (snapshot: AvailableDraftLifecycleState) => {
       const conversation = snapshot.conversationIdentity;
       if (conversation.kind === "unidentified") {
         return;
       }
 
-      const pendingMutation = draftStore.mutate(conversation, mutation);
+      const pendingMutation = draftStore.mutate(conversation, snapshot.pendingMutations);
       saveQueue.current = pendingMutation.catch(() => undefined);
 
       void pendingMutation
         .then((annotations) => {
           const current = draftStateRef.current;
           if (isCurrentRevision(current, snapshot)) {
-            setDraftState({ ...current, status: "ready", annotations });
+            setDraftState({
+              ...current,
+              status: "ready",
+              annotations,
+              pendingMutations: [],
+            });
           }
         })
         .catch((error: unknown) => {
@@ -142,7 +147,7 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
               annotations: current.annotations,
               revision: current.revision,
               operation: "save",
-              mutation,
+              pendingMutations: current.pendingMutations,
             });
           }
         });
@@ -179,10 +184,14 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
         ...current,
         annotations: [...annotations],
         revision: current.revision + 1,
+        pendingMutations:
+          current.conversationIdentity.kind === "identified"
+            ? [...current.pendingMutations, mutation]
+            : [],
       };
       setDraftState(next);
       setCapacityExceeded(false);
-      persistMutation(next, mutation);
+      persistMutation(next);
       return true;
     },
     [conversationIdentity, persistMutation, setDraftState],
@@ -225,7 +234,7 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
         if (conversation.kind === "unidentified") {
           return false;
         }
-        void draftStore.mutate(conversation, mutation).catch((error: unknown) => {
+        void draftStore.mutate(conversation, [mutation]).catch((error: unknown) => {
           console.error("[QuoteCue] Failed to remove confirmed annotations", error);
         });
         return true;
@@ -249,8 +258,9 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
         conversationIdentity: visibleDraftState.conversationIdentity,
         annotations: visibleDraftState.annotations,
         revision: visibleDraftState.revision,
+        pendingMutations: visibleDraftState.pendingMutations,
       });
-      persistMutation(visibleDraftState, visibleDraftState.mutation);
+      persistMutation(visibleDraftState);
     }, [conversationIdentity, loadDraftState, persistMutation, setDraftState, visibleDraftState]),
   };
 }
@@ -281,7 +291,13 @@ function loadingDraftState(conversationIdentity: ConversationIdentity): DraftLif
 }
 
 function readyDraftState(conversationIdentity: ConversationIdentity): DraftLifecycleState {
-  return { status: "ready", conversationIdentity, annotations: [], revision: 0 };
+  return {
+    status: "ready",
+    conversationIdentity,
+    annotations: [],
+    revision: 0,
+    pendingMutations: [],
+  };
 }
 
 function canMutateDraftState(

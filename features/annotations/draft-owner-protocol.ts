@@ -14,7 +14,7 @@ export type DraftOwnerRequest =
       channel: typeof DRAFT_OWNER_MESSAGE;
       kind: "mutate";
       conversation: IdentifiedConversation;
-      mutation: DraftMutation;
+      mutations: readonly DraftMutation[];
     };
 
 export type DraftOwnerResponse =
@@ -32,7 +32,12 @@ export function isDraftOwnerRequest(value: unknown): value is DraftOwnerRequest 
   if (value.kind === "load") {
     return true;
   }
-  return value.kind === "mutate" && isDraftMutation(value.mutation);
+  return (
+    value.kind === "mutate" &&
+    Array.isArray(value.mutations) &&
+    value.mutations.length > 0 &&
+    value.mutations.every(isDraftMutation)
+  );
 }
 
 export function isDraftOwnerResponse(value: unknown): value is DraftOwnerResponse {
