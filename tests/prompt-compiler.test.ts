@@ -32,6 +32,10 @@ const annotations: DraftAnnotation[] = [
     comment: "有没有真实的迁移成本数据？",
   },
 ];
+const firstAnnotation = annotations[0];
+if (!firstAnnotation) {
+  throw new Error("Missing prompt annotation fixture");
+}
 
 describe("compileAnnotatedPrompt", () => {
   it("combines annotations and the user's prompt in display order", () => {
@@ -59,7 +63,7 @@ describe("compileAnnotatedPrompt", () => {
   });
 
   it("keeps a selected text annotation without an empty comment label", () => {
-    const selectionOnly = [{ ...annotations[0], comment: "" }];
+    const selectionOnly = [{ ...firstAnnotation, comment: "" }];
 
     expect(compileAnnotatedPrompt(numberAnnotations(selectionOnly), "")).toBe(
       "请结合以下批注回答：\n\n[批注 1]\n选中文本：全球招聘的基础设施层",
@@ -67,7 +71,7 @@ describe("compileAnnotatedPrompt", () => {
   });
 
   it("uses the active locale for an annotation-only prompt", () => {
-    const selectionOnly = [{ ...annotations[0], comment: "" }];
+    const selectionOnly = [{ ...firstAnnotation, comment: "" }];
 
     expect(compileAnnotatedPrompt(numberAnnotations(selectionOnly), "", "en")).toBe(
       "Please respond based on the following annotations:\n\n[Annotation 1]\nSelected text: 全球招聘的基础设施层",
@@ -77,9 +81,9 @@ describe("compileAnnotatedPrompt", () => {
   it("uses rendered selection text instead of the compact DOM quote", () => {
     const tableSelection = [
       {
-        ...annotations[0],
+        ...firstAnnotation,
         anchor: {
-          ...annotations[0].anchor,
+          ...firstAnnotation.anchor,
           displayQuote: "alpha beta",
           format: "exact" as const,
           quote: "alphabeta",
@@ -95,7 +99,7 @@ describe("compileAnnotatedPrompt", () => {
 
   it("uses the supplied ordinal instead of deriving one from array position", () => {
     expect(
-      compileAnnotatedPrompt([{ annotation: annotations[0], ordinal: 7 }], "", "en"),
+      compileAnnotatedPrompt([{ annotation: firstAnnotation, ordinal: 7 }], "", "en"),
     ).toContain("[Annotation 7]");
   });
 });

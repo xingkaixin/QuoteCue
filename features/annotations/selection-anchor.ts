@@ -53,8 +53,9 @@ function resolveTextAnchor(messageText: string, anchor: TextAnchor) {
   }
 
   const candidates = quoteOffsets(messageText, anchor.quote);
-  if (candidates.length === 1) {
-    return { quote: anchor.quote, start: candidates[0] };
+  const uniqueCandidate = candidates.length === 1 ? candidates[0] : undefined;
+  if (uniqueCandidate !== undefined) {
+    return { quote: anchor.quote, start: uniqueCandidate };
   }
 
   const start = uniqueContextMatch(messageText, anchor, candidates);
