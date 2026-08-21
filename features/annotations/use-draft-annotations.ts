@@ -14,29 +14,28 @@ type DraftLifecycleState =
       status: "ready";
       conversationIdentity: ConversationIdentity;
       annotations: DraftAnnotation[];
-      revision: number;
-      pendingMutations: readonly DraftMutation[];
     }
   | {
       status: "error";
       conversationIdentity: IdentifiedConversation;
       annotations: DraftAnnotation[];
-      revision: number;
       operation: "load";
     }
   | {
       status: "error";
       conversationIdentity: IdentifiedConversation;
       annotations: DraftAnnotation[];
-      revision: number;
       operation: "save";
-      pendingMutations: readonly DraftMutation[];
     };
 
-type AvailableDraftLifecycleState = Extract<
-  DraftLifecycleState,
-  { pendingMutations: readonly DraftMutation[] }
->;
+type PendingDraftSave = {
+  conversationIdentity: IdentifiedConversation;
+  mutations: readonly DraftMutation[];
+};
+
+type MutableDraftLifecycleState =
+  | Extract<DraftLifecycleState, { status: "ready" }>
+  | Extract<DraftLifecycleState, { status: "error"; operation: "save" }>;
 
 export type Draft = {
   readonly annotations: readonly DraftAnnotation[];
@@ -63,7 +62,8 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
   const [capacityExceeded, setCapacityExceeded] = useState(false);
   const draftStateRef = useRef(draftState);
   const loadGeneration = useRef(0);
-  const saveQueue = useRef<Promise<unknown>>(Promise.resolve());
+  const activeSave = useRef<Promise<void> | null>(null);
+  const pendingSave = useRef<PendingDraftSave | null>(null);
 
   const setDraftState = useCallback((nextState: DraftLifecycleState) => {
     draftStateRef.current = nextState;
@@ -81,8 +81,16 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
 
       setDraftState(loadingDraftState(identity));
 
-      void saveQueue.current
-        .then(() => draftStore.load(identity))
+      void (activeSave.current ?? Promise.resolve())
+        .then(() => {
+          if (
+            pendingSave.current &&
+            !sameConversationIdentity(pendingSave.current.conversationIdentity, identity)
+          ) {
+            pendingSave.current = null;
+          }
+          return draftStore.load(identity);
+        })
         .then((annotations) => {
           if (generation !== loadGeneration.current) {
             return;
@@ -91,8 +99,6 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
             status: "ready",
             conversationIdentity: identity,
             annotations,
-            revision: 0,
-            pendingMutations: [],
           });
         })
         .catch((error: unknown) => {
@@ -104,7 +110,6 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
             status: "error",
             conversationIdentity: identity,
             annotations: [],
-            revision: 0,
             operation: "load",
           });
         });
@@ -112,48 +117,78 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
     [draftStore, setDraftState],
   );
 
-  const persistMutation = useCallback(
-    (snapshot: AvailableDraftLifecycleState) => {
-      const conversation = snapshot.conversationIdentity;
-      if (conversation.kind === "unidentified") {
-        return;
+  const persistPendingMutations = useCallback(() => {
+    if (activeSave.current) {
+      return;
+    }
+    const initial = pendingSave.current;
+    if (!initial) {
+      return;
+    }
+    const conversation = initial.conversationIdentity;
+
+    const save = drainPendingMutations().finally(() => {
+      if (activeSave.current === save) {
+        activeSave.current = null;
       }
+    });
+    activeSave.current = save;
 
-      const pendingMutation = draftStore.mutate(conversation, snapshot.pendingMutations);
-      saveQueue.current = pendingMutation.catch(() => undefined);
-
-      void pendingMutation
-        .then((annotations) => {
-          const current = draftStateRef.current;
-          if (isCurrentRevision(current, snapshot)) {
-            setDraftState({
-              ...current,
-              status: "ready",
-              annotations,
-              pendingMutations: [],
-            });
-          }
-        })
-        .catch((error: unknown) => {
+    async function drainPendingMutations() {
+      while (true) {
+        const snapshot = pendingSave.current;
+        if (
+          !snapshot ||
+          !sameConversationIdentity(snapshot.conversationIdentity, conversation) ||
+          snapshot.mutations.length === 0
+        ) {
+          return;
+        }
+        const confirmedMutationCount = snapshot.mutations.length;
+        let annotations: DraftAnnotation[];
+        try {
+          annotations = await draftStore.mutate(conversation, snapshot.mutations);
+        } catch (error: unknown) {
           console.error("[QuoteCue] Failed to save draft annotations", error);
           const current = draftStateRef.current;
           if (
-            isCurrentRevision(current, snapshot) &&
+            canMutateDraftState(current, conversation) &&
             current.conversationIdentity.kind === "identified"
           ) {
             setDraftState({
               status: "error",
               conversationIdentity: current.conversationIdentity,
               annotations: current.annotations,
-              revision: current.revision,
               operation: "save",
-              pendingMutations: current.pendingMutations,
             });
           }
-        });
-    },
-    [draftStore, setDraftState],
-  );
+          return;
+        }
+
+        const currentPending = pendingSave.current;
+        if (
+          !currentPending ||
+          !sameConversationIdentity(currentPending.conversationIdentity, conversation)
+        ) {
+          return;
+        }
+        // One request drains at a time, so new local mutations can only extend this confirmed prefix.
+        const remainingMutations = currentPending.mutations.slice(confirmedMutationCount);
+        pendingSave.current =
+          remainingMutations.length > 0
+            ? { conversationIdentity: conversation, mutations: remainingMutations }
+            : null;
+        const current = draftStateRef.current;
+        if (canMutateDraftState(current, conversation)) {
+          setDraftState({
+            status: "ready",
+            conversationIdentity: current.conversationIdentity,
+            annotations: applyDraftMutations(annotations, remainingMutations),
+          });
+        }
+      }
+    }
+  }, [draftStore, setDraftState]);
 
   useEffect(() => {
     loadDraftState(conversationIdentity);
@@ -183,18 +218,20 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
       const next = {
         ...current,
         annotations: [...annotations],
-        revision: current.revision + 1,
-        pendingMutations:
-          current.conversationIdentity.kind === "identified"
-            ? [...current.pendingMutations, mutation]
-            : [],
       };
+      if (current.conversationIdentity.kind === "identified") {
+        const pending = pendingSave.current;
+        pendingSave.current =
+          pending && sameConversationIdentity(pending.conversationIdentity, conversationIdentity)
+            ? { ...pending, mutations: [...pending.mutations, mutation] }
+            : { conversationIdentity: current.conversationIdentity, mutations: [mutation] };
+      }
       setDraftState(next);
       setCapacityExceeded(false);
-      persistMutation(next);
+      persistPendingMutations();
       return true;
     },
-    [conversationIdentity, persistMutation, setDraftState],
+    [conversationIdentity, persistPendingMutations, setDraftState],
   );
 
   const visibleDraftState = sameConversationIdentity(
@@ -257,11 +294,15 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
         status: "ready",
         conversationIdentity: visibleDraftState.conversationIdentity,
         annotations: visibleDraftState.annotations,
-        revision: visibleDraftState.revision,
-        pendingMutations: visibleDraftState.pendingMutations,
       });
-      persistMutation(visibleDraftState);
-    }, [conversationIdentity, loadDraftState, persistMutation, setDraftState, visibleDraftState]),
+      persistPendingMutations();
+    }, [
+      conversationIdentity,
+      loadDraftState,
+      persistPendingMutations,
+      setDraftState,
+      visibleDraftState,
+    ]),
   };
 }
 
@@ -295,28 +336,25 @@ function readyDraftState(conversationIdentity: ConversationIdentity): DraftLifec
     status: "ready",
     conversationIdentity,
     annotations: [],
-    revision: 0,
-    pendingMutations: [],
   };
 }
 
 function canMutateDraftState(
   state: DraftLifecycleState,
   conversationIdentity: ConversationIdentity,
-): state is AvailableDraftLifecycleState {
+): state is MutableDraftLifecycleState {
   return (
     sameConversationIdentity(state.conversationIdentity, conversationIdentity) &&
     (state.status === "ready" || (state.status === "error" && state.operation === "save"))
   );
 }
 
-function isCurrentRevision(
-  current: DraftLifecycleState,
-  saved: AvailableDraftLifecycleState,
-): current is AvailableDraftLifecycleState {
-  return (
-    current.status !== "loading" &&
-    sameConversationIdentity(current.conversationIdentity, saved.conversationIdentity) &&
-    current.revision === saved.revision
+function applyDraftMutations(
+  annotations: readonly DraftAnnotation[],
+  mutations: readonly DraftMutation[],
+) {
+  return mutations.reduce<DraftAnnotation[]>(
+    (current, mutation) => [...(applyDraftMutation(current, mutation) ?? current)],
+    [...annotations],
   );
 }
