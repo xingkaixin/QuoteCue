@@ -3,13 +3,15 @@ import sitemap, { ChangeFreqEnum } from "@astrojs/sitemap";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "astro/config";
 
+import { DEFAULT_WEBSITE_LOCALE, WEBSITE_LOCALES } from "./src/i18n/locales";
+
 export default defineConfig({
   site: "https://quotecue.xingkaixin.me",
   output: "static",
   trailingSlash: "always",
   i18n: {
-    defaultLocale: "zh-CN",
-    locales: ["zh-CN", "en"],
+    defaultLocale: DEFAULT_WEBSITE_LOCALE,
+    locales: WEBSITE_LOCALES,
     routing: {
       prefixDefaultLocale: false,
     },
@@ -19,11 +21,8 @@ export default defineConfig({
     sitemap({
       filter: (page) => !page.endsWith("/404/"),
       i18n: {
-        defaultLocale: "zh-CN",
-        locales: {
-          "zh-CN": "zh-CN",
-          en: "en",
-        },
+        defaultLocale: DEFAULT_WEBSITE_LOCALE,
+        locales: Object.fromEntries(WEBSITE_LOCALES.map((locale) => [locale, locale])),
       },
       namespaces: {
         image: false,

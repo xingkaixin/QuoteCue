@@ -1,10 +1,17 @@
 ---
 import "../styles/global.css";
+import {
+  DEFAULT_WEBSITE_LOCALE,
+  WEBSITE_LOCALE_CONFIG,
+  WEBSITE_LOCALES,
+  type Locale,
+} from "../i18n/locales";
 
 interface Props {
-  lang: "zh-CN" | "en";
+  lang: Locale;
   title: string;
   description: string;
+  socialImageAlt: string;
   canonicalPath?: string;
   indexable?: boolean;
   structuredData?: Record<string, unknown>;
@@ -14,13 +21,20 @@ const {
   lang,
   title,
   description,
-  canonicalPath = lang === "en" ? "/en/" : "/",
+  socialImageAlt,
+  canonicalPath = WEBSITE_LOCALE_CONFIG[lang].path,
   indexable = true,
   structuredData,
 } = Astro.props;
 const canonicalUrl = new URL(canonicalPath, Astro.site);
-const chineseUrl = new URL("/", Astro.site);
-const englishUrl = new URL("/en/", Astro.site);
+const localeAlternates = WEBSITE_LOCALES.map((locale) => ({
+  locale,
+  url: new URL(WEBSITE_LOCALE_CONFIG[locale].path, Astro.site),
+}));
+const alternateOgLocales = WEBSITE_LOCALES.filter((locale) => locale !== lang).map(
+  (locale) => WEBSITE_LOCALE_CONFIG[locale].ogLocale,
+);
+const defaultUrl = new URL(WEBSITE_LOCALE_CONFIG[DEFAULT_WEBSITE_LOCALE].path, Astro.site);
 const socialImageUrl = new URL("/og-cover.png", Astro.site);
 const analyticsToken = import.meta.env.PUBLIC_CLOUDFLARE_WEB_ANALYTICS_TOKEN;
 const jsonLd = structuredData ? JSON.stringify(structuredData).replaceAll("<", "\\u003c") : null;
@@ -40,9 +54,13 @@ const jsonLd = structuredData ? JSON.stringify(structuredData).replaceAll("<", "
       content={indexable ? "index, follow, max-image-preview:large" : "noindex, nofollow"}
     />
     {indexable && <link rel="canonical" href={canonicalUrl} />}
-    {indexable && <link rel="alternate" hreflang="zh-CN" href={chineseUrl} />}
-    {indexable && <link rel="alternate" hreflang="en" href={englishUrl} />}
-    {indexable && <link rel="alternate" hreflang="x-default" href={chineseUrl} />}
+    {
+      indexable &&
+        localeAlternates.map(({ locale, url }) => (
+          <link rel="alternate" hreflang={locale} href={url} />
+        ))
+    }
+    {indexable && <link rel="alternate" hreflang="x-default" href={defaultUrl} />}
     <link rel="sitemap" href="/sitemap-index.xml" />
     <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -55,17 +73,16 @@ const jsonLd = structuredData ? JSON.stringify(structuredData).replaceAll("<", "
           <meta property="og:title" content={title} />
           <meta property="og:description" content={description} />
           <meta property="og:url" content={canonicalUrl} />
-          <meta property="og:locale" content={lang === "en" ? "en_US" : "zh_CN"} />
-          <meta
-            property="og:locale:alternate"
-            content={lang === "en" ? "zh_CN" : "en_US"}
-          />
+          <meta property="og:locale" content={WEBSITE_LOCALE_CONFIG[lang].ogLocale} />
+          {alternateOgLocales.map((locale) => (
+            <meta property="og:locale:alternate" content={locale} />
+          ))}
           <meta property="og:image" content={socialImageUrl} />
           <meta property="og:image:width" content="1200" />
           <meta property="og:image:height" content="630" />
           <meta
             property="og:image:alt"
-            content="QuoteCue — annotate an AI answer and ask one focused follow-up"
+            content={socialImageAlt}
           />
           <meta name="twitter:card" content="summary_large_image" />
           <meta name="twitter:title" content={title} />
@@ -73,7 +90,7 @@ const jsonLd = structuredData ? JSON.stringify(structuredData).replaceAll("<", "
           <meta name="twitter:image" content={socialImageUrl} />
           <meta
             name="twitter:image:alt"
-            content="QuoteCue — annotate an AI answer and ask one focused follow-up"
+            content={socialImageAlt}
           />
         </>
       )
