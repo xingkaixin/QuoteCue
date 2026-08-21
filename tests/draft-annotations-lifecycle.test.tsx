@@ -40,6 +40,30 @@ afterEach(() => {
 });
 
 describe("draft annotation lifecycle", () => {
+  it("isolates identical conversation ids across sites", async () => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    const claudeConversationA: IdentifiedConversation = {
+      ...conversationA,
+      siteId: "claude",
+    };
+    const claudeAnnotation = { ...annotation, id: "annotation-claude", comment: "draft Claude" };
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    await act(async () => root.render(<DraftHarness conversationIdentity={conversationA} />));
+    await act(async () => latestDrafts.addAnnotation(annotation));
+
+    await act(async () => root.render(<DraftHarness conversationIdentity={claudeConversationA} />));
+    expect(currentAnnotations()).toEqual([]);
+    await act(async () => latestDrafts.addAnnotation(claudeAnnotation));
+
+    await act(async () => root.render(<DraftHarness conversationIdentity={conversationA} />));
+    expect(currentAnnotations()).toEqual([annotation]);
+
+    await act(async () => root.unmount());
+  });
+
   it("never writes A annotations to B while navigating", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     const pendingLoads = new Map<string, (annotations: DraftAnnotation[]) => void>();
