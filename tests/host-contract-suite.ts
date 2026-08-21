@@ -252,7 +252,8 @@ export function runHostContractSuite(definition: HostContractDefinition) {
 
     it("reports replacement failure through the submit protocol", async () => {
       const fixture = definition.installFixture();
-      const siteHost = host();
+      const logger = vi.fn();
+      const siteHost = definition.createHost({ document, logger, window });
       const restoreTo = availableValue(siteHost.composer.snapshot());
       fixture.composer.remove();
 
@@ -263,9 +264,10 @@ export function runHostContractSuite(definition: HostContractDefinition) {
           text: "Replacement question",
         }),
       ).resolves.toEqual({
-        reason: "replace-failed",
+        reason: "send-unavailable",
         status: "unavailable",
       });
+      expect(logger).toHaveBeenCalledWith("[QuoteCue host] composer replacement failed");
     });
 
     it("confirms only normalized user messages", async () => {

@@ -191,7 +191,7 @@ describe("registerSendInterceptor", () => {
       value: { element: host.elements.composer, text: "original question" },
     });
     const submit = vi.spyOn(host.composer, "submit").mockResolvedValue({
-      reason: "replace-failed",
+      reason: "send-unavailable",
       status: "unavailable",
     });
     const onStateChange = vi.fn();
@@ -262,11 +262,11 @@ describe("registerSendInterceptor", () => {
     });
 
     interceptor.submit();
-    await vi.waitFor(() => expect(onStateChange).toHaveBeenLastCalledWith({ status: "confirmed" }));
+    await vi.waitFor(() => expect(onStateChange).toHaveBeenLastCalledWith({ status: "idle" }));
     expect(onStateChange.mock.calls.map(([state]) => state)).toEqual([
       { status: "idle" },
       { status: "sending" },
-      { status: "confirmed" },
+      { status: "idle" },
     ]);
     expect(consoleError).toHaveBeenCalledWith("[QuoteCue] Failed to apply confirmed annotations");
     interceptor.dispose();
@@ -345,7 +345,7 @@ describe("registerSendInterceptor", () => {
     });
     const submit = vi
       .spyOn(host.composer, "submit")
-      .mockResolvedValueOnce({ reason: "replace-failed", status: "unavailable" })
+      .mockResolvedValueOnce({ reason: "send-unavailable", status: "unavailable" })
       .mockResolvedValueOnce({ status: "available", value: "confirmed" });
     const onSendConfirmed = vi.fn();
     const onStateChange = vi.fn();
@@ -369,9 +369,7 @@ describe("registerSendInterceptor", () => {
       id: "conversation-test",
       siteId: "chatgpt",
     });
-    expect(onStateChange).toHaveBeenLastCalledWith({
-      status: "confirmed",
-    });
+    expect(onStateChange).toHaveBeenLastCalledWith({ status: "idle" });
     interceptor.dispose();
   });
 
@@ -645,7 +643,7 @@ describe("registerSendInterceptor", () => {
 
     interceptor.submit();
     await vi.advanceTimersByTimeAsync(17);
-    expect(onStateChange).toHaveBeenLastCalledWith({ status: "confirmed" });
+    expect(onStateChange).toHaveBeenLastCalledWith({ status: "idle" });
     expect(retriedText).toContain("[Supplemental question]\noriginal question");
     expect(retriedText.match(/\[Annotation 1\]/g)).toHaveLength(1);
     expect(onSendConfirmed).toHaveBeenCalledWith([annotation], {

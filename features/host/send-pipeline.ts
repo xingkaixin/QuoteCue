@@ -185,8 +185,9 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
       return failure("send-unavailable");
     }
     if (!replaceComposer(options)) {
+      logger?.("[QuoteCue host] composer replacement failed");
       restoreComposer(options);
-      return failure("replace-failed");
+      return failure("send-unavailable");
     }
 
     let result: ComposerSubmitResult;

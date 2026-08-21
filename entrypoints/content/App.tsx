@@ -12,8 +12,7 @@ import { useAnnotatedComposerLayout } from "@/features/host/use-annotated-compos
 
 export default function App() {
   const { draft, editor, selection, summary } = useAnnotationWorkspace();
-  const hasSendFeedback =
-    summary.sendState.status !== "idle" && summary.sendState.status !== "confirmed";
+  const hasSendFeedback = summary.sendState.status !== "idle";
   const isSendControlVisible = summary.isVisible || hasSendFeedback;
   const composerLayout = useAnnotatedComposerLayout(isSendControlVisible);
   const activeProjection = editor.projection;
