@@ -14,7 +14,7 @@ describe("AnnotationSendControl", () => {
     const onSend = vi.fn();
     const mounted = await mountSendControl({
       onSend,
-      state: { status: "awaiting-confirmation", attemptId: "attempt-1" },
+      state: { status: "sending" },
     });
 
     expect(mounted.container.querySelector('[role="status"]')?.textContent).toContain(
@@ -26,7 +26,7 @@ describe("AnnotationSendControl", () => {
     ).toBe(true);
 
     await mounted.render({
-      state: { status: "failed", attemptId: "attempt-1", reason: "replace-failed" },
+      state: { status: "failed", reason: "replace-failed" },
     });
     expect(mounted.container.querySelector('[role="status"]')?.textContent).toContain(
       "annotation draft was kept",
@@ -43,7 +43,7 @@ describe("AnnotationSendControl", () => {
 
   it("distinguishes confirmation timeout from an unavailable composer", async () => {
     const mounted = await mountSendControl({
-      state: { status: "failed", attemptId: "attempt-1", reason: "confirmation-timeout" },
+      state: { status: "failed", reason: "confirmation-timeout" },
     });
 
     expect(mounted.container.querySelector('[role="status"]')?.textContent).toContain(
@@ -51,7 +51,7 @@ describe("AnnotationSendControl", () => {
     );
 
     await mounted.render({
-      state: { status: "failed-before-attempt", reason: "composer-unavailable" },
+      state: { status: "failed", reason: "composer-unavailable" },
     });
     expect(mounted.container.querySelector('[role="status"]')?.textContent).toContain(
       "couldn't access the message box",

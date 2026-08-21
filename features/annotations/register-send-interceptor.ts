@@ -29,12 +29,9 @@ export type AnnotatedSendResult =
 
 export type AnnotatedSendState =
   | { status: "idle" }
-  | { status: "preparing"; attemptId: string }
-  | { status: "replaying"; attemptId: string }
-  | { status: "awaiting-confirmation"; attemptId: string }
-  | { status: "confirmed"; attemptId: string }
-  | { status: "failed-before-attempt"; reason: AnnotatedSendFailureReason }
-  | (AnnotatedSendFailure & { attemptId: string });
+  | { status: "sending" }
+  | { status: "confirmed" }
+  | AnnotatedSendFailure;
 
 type SendInterceptorOptions = {
   annotations: () => readonly NumberedAnnotation[];
@@ -54,7 +51,6 @@ type SendInterceptorOptions = {
 };
 
 type SendAttempt = {
-  id: string;
   conversationIdentity: ConversationIdentity;
   snapshot: ComposerSnapshot;
   compiledPrompt: string;
@@ -65,6 +61,11 @@ type SendAttempt = {
   resolve: (result: AnnotatedSendResult) => void;
 };
 
+type FailedSendSnapshot = {
+  conversationIdentity: ConversationIdentity;
+  originalText: string;
+};
+
 type StartedSend = {
   isOwned: boolean;
   result: Promise<AnnotatedSendResult>;
@@ -73,7 +74,7 @@ type StartedSend = {
 export function registerSendInterceptor(options: SendInterceptorOptions) {
   const host = options.host;
   let activeAttempt: SendAttempt | null = null;
-  let lastFailedAttempt: SendAttempt | null = null;
+  let failedSendSnapshot: FailedSendSnapshot | null = null;
   let isDisposed = false;
 
   const reportError = (message: string) => {
@@ -102,10 +103,10 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
       return;
     }
     activeAttempt = null;
-    lastFailedAttempt = null;
+    failedSendSnapshot = null;
     const sentAnnotations = attempt.annotations.map(({ annotation }) => annotation);
     abortAttempt(attempt);
-    setState({ status: "confirmed", attemptId: attempt.id });
+    setState({ status: "confirmed" });
     attempt.resolve({
       status: "confirmed",
       annotationIds: sentAnnotations.map(({ id }) => id),
@@ -120,14 +121,16 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
       return;
     }
     activeAttempt = null;
-    lastFailedAttempt = attempt;
+    failedSendSnapshot = {
+      conversationIdentity: attempt.conversationIdentity,
+      originalText: attempt.snapshot.text,
+    };
     abortAttempt(attempt);
-    setState({ status: "failed", attemptId: attempt.id, reason });
+    setState({ status: "failed", reason });
     attempt.resolve({ status: "failed", reason });
   };
 
   const replaySend = (attempt: SendAttempt) => {
-    setState({ status: "replaying", attemptId: attempt.id });
     let submission: ReturnType<Host["composer"]["submit"]>;
     try {
       submission = host.composer.submit({
@@ -140,11 +143,6 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
       finishFailed(attempt, "send-unavailable");
       return;
     }
-    queueMicrotask(() => {
-      if (activeAttempt === attempt && !isDisposed) {
-        setState({ status: "awaiting-confirmation", attemptId: attempt.id });
-      }
-    });
     void submission
       .then((result) => {
         if (activeAttempt !== attempt) {
@@ -202,8 +200,8 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
       annotations,
     );
     activeAttempt = attempt;
-    lastFailedAttempt = null;
-    setState({ status: "preparing", attemptId: attempt.id });
+    failedSendSnapshot = null;
+    setState({ status: "sending" });
 
     replaySend(attempt);
     return { isOwned: true, result: attempt.result };
@@ -229,20 +227,20 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
 
   return {
     submit: () => beginSend(undefined, "custom").result,
-    retry: () => beginSend(undefined, "custom", lastFailedAttempt?.snapshot.text).result,
+    retry: () => beginSend(undefined, "custom", failedSendSnapshot?.originalText).result,
     // A failed attempt's question belongs to the conversation that produced it. An active attempt
     // keeps running so it can still confirm after navigation.
     conversationChanged() {
       if (
-        !lastFailedAttempt ||
+        !failedSendSnapshot ||
         sameConversationIdentity(
-          lastFailedAttempt.conversationIdentity,
+          failedSendSnapshot.conversationIdentity,
           options.conversationIdentity(),
         )
       ) {
         return;
       }
-      lastFailedAttempt = null;
+      failedSendSnapshot = null;
       if (!activeAttempt) {
         setState({ status: "idle" });
       }
@@ -272,7 +270,6 @@ function createAttempt(
     resolve = resultResolve;
   });
   return {
-    id: crypto.randomUUID(),
     conversationIdentity,
     snapshot,
     compiledPrompt,
@@ -303,7 +300,7 @@ function failBeforeAttempt(
   setState: (state: AnnotatedSendState) => void,
 ) {
   if (source === "custom") {
-    setState({ status: "failed-before-attempt", reason });
+    setState({ status: "failed", reason });
   }
   return failedResult(reason);
 }

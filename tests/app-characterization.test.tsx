@@ -352,7 +352,7 @@ describe("App annotation workflow", () => {
     const sentSnapshot = cloneAnnotations(storedDrafts.get("conversation-a") ?? []);
     storedDrafts.set("conversation-c", cloneAnnotations(sentSnapshot));
     await click(mounted.container, "send-annotations");
-    expect(sendControl(mounted.container).dataset.sendState).toBe("awaiting-confirmation");
+    expect(sendControl(mounted.container).dataset.sendState).toBe("sending");
 
     await act(async () =>
       mounted.host.controls.setConversationIdentity({
@@ -363,7 +363,7 @@ describe("App annotation workflow", () => {
     await vi.waitFor(() => {
       expect(mounted.container.querySelector('[data-testid="annotation-summary"]')).toBeNull();
     });
-    expect(sendControl(mounted.container).dataset.sendState).toBe("awaiting-confirmation");
+    expect(sendControl(mounted.container).dataset.sendState).toBe("sending");
 
     await act(async () =>
       mounted.host.controls.setConversationIdentity({
@@ -373,7 +373,7 @@ describe("App annotation workflow", () => {
     );
     await vi.waitFor(() => expect(summary(mounted.container).dataset.count).toBe("1"));
 
-    expect(sendControl(mounted.container).dataset.sendState).toBe("awaiting-confirmation");
+    expect(sendControl(mounted.container).dataset.sendState).toBe("sending");
     expect(pendingSubmit?.signal.aborted).toBe(false);
     expect(subscribeToSubmit).not.toHaveBeenCalled();
 
@@ -401,7 +401,7 @@ describe("App annotation workflow", () => {
 
     await click(mounted.container, "start-annotation");
     await click(mounted.container, "send-annotations");
-    expect(sendControl(mounted.container).dataset.sendState).toBe("awaiting-confirmation");
+    expect(sendControl(mounted.container).dataset.sendState).toBe("sending");
 
     await act(async () =>
       mounted.host.controls.setConversationIdentity({
