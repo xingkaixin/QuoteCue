@@ -1,6 +1,6 @@
 import { readRenderedText } from "@/lib/rendered-text";
 
-import type { HostEnvironment } from "./host-context";
+import type { HostEnvironment } from "./host-environment";
 import type { ComposerAccess } from "./site-adapter";
 
 const normalizeWhitespace = (text: string) => text.replace(/\s+/g, " ").trim();

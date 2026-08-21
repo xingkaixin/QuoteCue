@@ -5,7 +5,7 @@ import { createKimiHost } from "@/features/kimi/kimi-host";
 import type { Host } from "@/features/host-port/host-port";
 import type { SiteAccentTokens } from "@/features/theme/accent-tokens";
 
-import type { HostEnvironment } from "./dom-host";
+import type { HostEnvironment } from "./host-environment";
 import { SITE_URLS, type SiteUrl } from "./site-urls";
 
 export type SiteRegistration = SiteUrl & {

@@ -1,4 +1,5 @@
 import type { MessageAccess, SiteAdapter } from "./site-adapter";
+import type { HostEnvironment } from "./host-environment";
 
 const HISTORY_CHANGE_EVENT = "quotecue:history-change";
 const HISTORY_PATCH_STATE_PROPERTY = "quotecue:history-change:patch";
@@ -19,12 +20,6 @@ export type {
   SelectionCaptureIntent,
   SelectionInvalidation,
 } from "@/features/host-port/host-port";
-
-export type HostEnvironment = {
-  document: Document;
-  logger?: (message: string) => void;
-  window: Window;
-};
 
 export type HostContext = HostEnvironment & {
   adapter: SiteAdapter;

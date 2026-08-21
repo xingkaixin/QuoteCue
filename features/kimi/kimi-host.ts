@@ -1,8 +1,8 @@
 import { createHostEngine, type HostEnvironment } from "@/features/host/dom-host";
+import { richTextComposer } from "@/features/host/composer-access";
 import {
   composerLayout,
   messageAccess,
-  richTextComposer,
   sendControlAccess,
   type SiteAdapter,
 } from "@/features/host/site-adapter";

@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, expectTypeOf, it } from "vitest";
 
+import { richTextComposer } from "@/features/host/composer-access";
 import { createHostEngine } from "@/features/host/dom-host";
 import {
   composerLayout,
-  richTextComposer,
   type SelectionPresentationAccess,
   type SiteAdapter,
 } from "@/features/host/site-adapter";

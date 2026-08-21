@@ -1,4 +1,4 @@
-import type { HostEnvironment } from "./dom-host";
+import type { HostEnvironment } from "./host-environment";
 import { siteForHostname } from "./site-registry";
 
 export function resolveActiveHost(hostname: string, environment: HostEnvironment) {

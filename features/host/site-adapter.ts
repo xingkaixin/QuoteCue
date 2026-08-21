@@ -1,6 +1,4 @@
-import type { HostEnvironment } from "./host-context";
-
-export { richTextComposer, textareaComposer } from "./composer-access";
+import type { HostEnvironment } from "./host-environment";
 
 export type ComposerAccess = {
   normalize(text: string): string;

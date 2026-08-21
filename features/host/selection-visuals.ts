@@ -2,7 +2,7 @@ import type { SelectionRect } from "@/features/host-port/host-port";
 import { currentVisualViewportBounds } from "@/features/layout/use-visual-viewport";
 import { QUOTECUE_HOST_SELECTOR } from "@/lib/dom-identity";
 
-import type { HostEnvironment } from "./host-context";
+import type { HostEnvironment } from "./host-environment";
 
 const HIGHLIGHT_NAME = "quotecue-annotations";
 const HIGHLIGHT_STYLE_ID = "quotecue-highlight-style";

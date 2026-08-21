@@ -2,7 +2,8 @@ import type { Host } from "@/features/host-port/host-port";
 
 import { createComposerDriver } from "./composer-driver";
 import { createComposerLayout } from "./composer-layout";
-import { createHostContext, type HostEnvironment } from "./host-context";
+import { createHostContext } from "./host-context";
+import type { HostEnvironment } from "./host-environment";
 import { createNativeActionMount } from "./native-action-mount";
 import { createSelectionAnchoring } from "./selection-anchoring";
 import { createSelectionReveal } from "./selection-reveal";
@@ -27,7 +28,7 @@ export type {
   SelectionRevealFailureReason,
   TextAnchor,
 } from "@/features/host-port/host-port";
-export type { HostEnvironment } from "./host-context";
+export type { HostEnvironment } from "./host-environment";
 
 export function createHostEngine(environment: HostEnvironment, adapter: SiteAdapter): Host {
   const context = createHostContext(environment, adapter);
