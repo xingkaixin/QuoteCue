@@ -6,6 +6,7 @@ import type { DraftAnnotation } from "@/features/annotations/annotation";
 import { numberAnnotations } from "@/features/annotations/annotation-projection";
 import { SelectionPresentation } from "@/features/annotations/SelectionPresentation";
 import { createDeepSeekHost } from "@/features/deepseek/deepseek-host";
+import { I18nProvider } from "@/features/i18n/I18nProvider";
 import { registerSendInterceptor } from "@/features/annotations/register-send-interceptor";
 import type { AnchoredSelection } from "@/features/annotations/annotation";
 
@@ -30,6 +31,7 @@ beforeEach(() => {
 afterEach(() => {
   window.getSelection()?.removeAllRanges();
   document.body.replaceChildren();
+  document.documentElement.lang = "";
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -190,12 +192,15 @@ describe("DeepSeek host contract", () => {
     const root = createRoot(container);
     const onActivate = vi.fn();
     const host = createDeepSeekHost({ document, window });
+    document.documentElement.lang = "ja";
 
     await act(async () =>
       root.render(
-        <HostTestProvider host={host}>
-          <OverlayHarness onActivate={onActivate} />
-        </HostTestProvider>,
+        <I18nProvider>
+          <HostTestProvider host={host}>
+            <OverlayHarness onActivate={onActivate} />
+          </HostTestProvider>
+        </I18nProvider>,
       ),
     );
     selectNodeContents(fixture.assistantContent.querySelector("strong")?.firstChild);
@@ -205,7 +210,7 @@ describe("DeepSeek host contract", () => {
     });
 
     const action = container.querySelector<HTMLButtonElement>(
-      'button[aria-label="Add QuoteCue annotation"]',
+      'button[aria-label="QuoteCue 注釈を追加"]',
     );
     expect(action).not.toBeNull();
     expect(action?.textContent).toContain("QuoteCue");

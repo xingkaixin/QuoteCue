@@ -130,6 +130,24 @@
   }
 }
 
+:root:lang(ja) {
+  --font-display:
+    "Space Grotesk Variable", "Hiragino Sans", "Yu Gothic", "YuGothic", "Noto Sans JP", sans-serif;
+}
+
+:root:lang(ja) body {
+  font-family:
+    ui-sans-serif,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    "Hiragino Sans",
+    "Yu Gothic",
+    "YuGothic",
+    "Noto Sans JP",
+    sans-serif;
+}
+
 .hero-mark {
   margin-inline: -0.08em;
   padding-inline: 0.08em;

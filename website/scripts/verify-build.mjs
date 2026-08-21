@@ -22,11 +22,19 @@ const pages = [
     path: "index.html",
     lang: "zh-CN",
     canonical: "https://quotecue.xingkaixin.me/",
+    marker: "现在就试一遍",
   },
   {
     path: "en/index.html",
     lang: "en",
     canonical: "https://quotecue.xingkaixin.me/en/",
+    marker: "Try the whole flow",
+  },
+  {
+    path: "ja/index.html",
+    lang: "ja",
+    canonical: "https://quotecue.xingkaixin.me/ja/",
+    marker: "一連の流れを試す",
   },
 ];
 
@@ -34,10 +42,12 @@ for (const page of pages) {
   const html = await read(page.path);
   assert.match(html, new RegExp(`<html lang="${page.lang}"`));
   assert.match(html, new RegExp(`<link rel="canonical" href="${page.canonical}"`));
+  assert(html.includes(page.marker), `${page.path} must contain localized landing copy`);
   assert.match(html, /<meta name="description" content="[^"]+">/);
   assert.match(html, /<meta name="robots" content="index, follow, max-image-preview:large">/);
   assert.match(html, /<link rel="alternate" hreflang="zh-CN"/);
   assert.match(html, /<link rel="alternate" hreflang="en"/);
+  assert.match(html, /<link rel="alternate" hreflang="ja"/);
   assert.match(html, /<link rel="alternate" hreflang="x-default"/);
   assert.match(
     html,
@@ -63,8 +73,9 @@ assert.equal(occurrences(notFound, /<h1\b/g), 1);
 const sitemap = await read("sitemap-0.xml");
 assert.match(sitemap, /<loc>https:\/\/quotecue\.xingkaixin\.me\/<\/loc>/);
 assert.match(sitemap, /<loc>https:\/\/quotecue\.xingkaixin\.me\/en\/<\/loc>/);
+assert.match(sitemap, /<loc>https:\/\/quotecue\.xingkaixin\.me\/ja\/<\/loc>/);
 assert.doesNotMatch(sitemap, /404/);
-assert.equal(occurrences(sitemap, /<url>/g), 2);
+assert.equal(occurrences(sitemap, /<url>/g), 3);
 
 const robots = await read("robots.txt");
 assert.match(robots, /^User-agent: \*\nAllow: \//);

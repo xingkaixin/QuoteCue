@@ -9,6 +9,11 @@ export const WEBSITE_LOCALE_CONFIG = {
     ogLocale: "en_US",
     path: "/en/",
   },
+  ja: {
+    label: "日本語",
+    ogLocale: "ja_JP",
+    path: "/ja/",
+  },
 } as const;
 
 export type Locale = keyof typeof WEBSITE_LOCALE_CONFIG;

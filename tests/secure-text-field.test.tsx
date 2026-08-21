@@ -116,17 +116,17 @@ describe("SecureTextField", () => {
     channel.port2.onmessage = (event) => receive(event.data);
 
     await act(async () => {
-      document.documentElement.lang = "zh-CN";
+      document.documentElement.lang = "ja";
       await Promise.resolve();
     });
 
-    expect(iframe.lang).toBe("zh-CN");
+    expect(iframe.lang).toBe("ja");
     expect(receive).toHaveBeenCalledWith({
       type: "update",
       update: expect.objectContaining({
-        ariaLabel: "批注内容",
-        lang: "zh-CN",
-        placeholder: "添加可选批注…",
+        ariaLabel: "注釈の内容",
+        lang: "ja",
+        placeholder: "任意のコメントを追加…",
       }),
     });
 

@@ -82,6 +82,47 @@ const ENGLISH: Messages = {
   prompt: annotationPromptMessagesFor("en"),
 };
 
+const JAPANESE: Messages = {
+  addAnnotation: "QuoteCue 注釈を追加",
+  annotation: (number) => `注釈 ${number}`,
+  annotationCount: (count) => `${count} 件の注釈`,
+  annotationContent: "注釈の内容",
+  annotationRemoved: (removed, remaining) =>
+    `${removed} 件の注釈を削除しました。残り ${remaining} 件です。`,
+  annotationSourceUnavailable: "引用元の位置が変更されました",
+  cancel: "キャンセル",
+  clearAnnotations: "すべての注釈を削除",
+  clearAnnotationsConfirmation:
+    "すべての注釈を削除しますか？もう一度クリックして確定してください。",
+  confirmClearAnnotations: "すべての注釈の削除を確定",
+  deleteAnnotation: "注釈を削除",
+  deleteNumberedAnnotation: (number) => `注釈 ${number} を削除`,
+  draftCapacityExceeded: "この下書きは上限に達しました。注釈を短くするか削除して続けてください。",
+  editNumberedAnnotation: (number) => `注釈 ${number} を編集`,
+  loadDraftFailed: "QuoteCue でこの下書きを復元できませんでした。",
+  loadingDraft: "QuoteCue の下書きを復元しています…",
+  optionalComment: "任意のコメントを追加…",
+  save: "保存",
+  saveAnnotation: "注釈を保存",
+  saveDraftFailed: "QuoteCue で注釈を保存できませんでした。",
+  selectedText: "選択したテキスト：",
+  sendAnnotations: "注釈を送信",
+  retry: "再試行",
+  retrySendingAnnotations: "注釈の送信を再試行",
+  sendAnnotationsComposerUnavailable:
+    "QuoteCue がメッセージ入力欄にアクセスできませんでした。注釈の下書きは保持されています。",
+  sendAnnotationsConfirmationTimedOut:
+    "時間内に送信を確認できませんでした。注釈の下書きは保持されています。",
+  sendAnnotationsFailed: "送信を確認できませんでした。注釈の下書きは保持されています。",
+  sendAnnotationsPromptTooLong:
+    "このフォローアップは長すぎて送信できません。注釈を短くするか削除して、もう一度お試しください。",
+  sendingAnnotations: "注釈を送信しています…",
+  undo: "元に戻す",
+  userComment: "コメント：",
+  viewAnnotation: (number) => `注釈 ${number} を表示`,
+  prompt: annotationPromptMessagesFor("ja"),
+};
+
 const SIMPLIFIED_CHINESE: Messages = {
   addAnnotation: "添加 QuoteCue 批注",
   annotation: (number) => `批注 ${number}`,
@@ -156,6 +197,7 @@ const TRADITIONAL_CHINESE: Messages = {
 
 const MESSAGES: Record<SupportedLocale, Messages> = {
   en: ENGLISH,
+  ja: JAPANESE,
   "zh-CN": SIMPLIFIED_CHINESE,
   "zh-TW": TRADITIONAL_CHINESE,
 };
@@ -189,6 +231,9 @@ export function resolveLocale(languageTags: Array<string | null | undefined>): S
     }
     if (normalized.startsWith("en")) {
       return "en";
+    }
+    if (normalized.startsWith("ja")) {
+      return "ja";
     }
   }
 

@@ -1,6 +1,6 @@
 import type { AnnotationPromptMessages } from "./annotation-prompt";
 
-export type AnnotationPromptLocale = "en" | "zh-CN" | "zh-TW";
+export type AnnotationPromptLocale = "en" | "ja" | "zh-CN" | "zh-TW";
 
 const PROMPT_MESSAGES = {
   en: {
@@ -9,6 +9,13 @@ const PROMPT_MESSAGES = {
     introduction: "Please respond based on the following annotations:",
     selectedText: "Selected text: ",
     supplementalQuestion: "[Supplemental question]",
+  },
+  ja: {
+    annotation: (number) => `[注釈 ${number}]`,
+    comment: "コメント：",
+    introduction: "以下の注釈を踏まえて回答してください：",
+    selectedText: "選択したテキスト：",
+    supplementalQuestion: "[補足質問]",
   },
   "zh-CN": {
     annotation: (number) => `[批注 ${number}]`,

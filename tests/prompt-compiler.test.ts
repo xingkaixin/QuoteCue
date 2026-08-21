@@ -76,6 +76,9 @@ describe("compileAnnotatedPrompt", () => {
     expect(compileAnnotatedPrompt(numberAnnotations(selectionOnly), "", "en")).toBe(
       "Please respond based on the following annotations:\n\n[Annotation 1]\nSelected text: 全球招聘的基础设施层",
     );
+    expect(compileAnnotatedPrompt(numberAnnotations(selectionOnly), "", "ja")).toBe(
+      "以下の注釈を踏まえて回答してください：\n\n[注釈 1]\n選択したテキスト：全球招聘的基础设施层",
+    );
   });
 
   it("uses rendered selection text instead of the compact DOM quote", () => {
