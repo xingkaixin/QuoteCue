@@ -1,6 +1,32 @@
-import { isRecord } from "@/lib/is-record";
+import { isRecord } from "./is-record";
 
-import type { TextAnchor } from "./host-port";
+type TextAnchorBase = {
+  end: number;
+  messageId: string;
+  prefix: string;
+  quote: string;
+  start: number;
+  suffix: string;
+};
+
+export type TextAnchor = TextAnchorBase &
+  (
+    | { displayQuote?: string; format: "exact" }
+    | { displayQuote?: never; format: "legacy-rendered" }
+  );
+
+type KeysOfUnion<Value> = Value extends unknown ? keyof Value : never;
+
+const textAnchorFields = {
+  displayQuote: true,
+  end: true,
+  format: true,
+  messageId: true,
+  prefix: true,
+  quote: true,
+  start: true,
+  suffix: true,
+} satisfies Record<KeysOfUnion<TextAnchor>, true>;
 
 export function parseTextAnchor(value: unknown): TextAnchor | null {
   if (
@@ -40,6 +66,12 @@ export function parseTextAnchor(value: unknown): TextAnchor | null {
 
 export function selectedTextFor(anchor: TextAnchor) {
   return anchor.displayQuote ?? anchor.quote;
+}
+
+export function sameTextAnchor(current: TextAnchor, other: TextAnchor) {
+  return (Object.keys(textAnchorFields) as KeysOfUnion<TextAnchor>[]).every(
+    (field) => Reflect.get(current, field) === Reflect.get(other, field),
+  );
 }
 
 function isTextOffset(value: unknown): value is number {

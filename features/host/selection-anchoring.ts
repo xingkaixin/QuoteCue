@@ -1,8 +1,8 @@
 import type { SelectionCapture } from "@/features/host-port/host-port";
 import { rangeEndpointRect } from "@/features/host-port/range-geometry";
 import { toSelectionRect } from "@/features/host-port/selection-rect";
-import { parseTextAnchor } from "@/features/host-port/text-anchor";
 import { isQuoteCueEvent } from "@/lib/dom-identity";
+import { parseTextAnchor } from "@/lib/text-anchor";
 
 import {
   available,

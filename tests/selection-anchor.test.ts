@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { restoreTextAnchorFromIndex } from "@/features/annotations/selection-anchor";
-import type { TextAnchor } from "@/features/host-port/host-port";
+import type { TextAnchor } from "@/lib/text-anchor";
 import { rangeEndpointRect } from "@/features/host-port/range-geometry";
 
 describe("selection anchors", () => {

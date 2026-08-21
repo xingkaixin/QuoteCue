@@ -1,7 +1,7 @@
 import type { IdentifiedConversation } from "@/features/host-port/host-port";
-import { parseTextAnchor } from "@/features/host-port/text-anchor";
 import { isRecord } from "@/lib/is-record";
 import { isSupportedSiteId } from "@/lib/supported-sites";
+import { parseTextAnchor } from "@/lib/text-anchor";
 
 import type { DraftAnnotation } from "./annotation";
 import type { DraftMutation } from "./draft-mutation";
