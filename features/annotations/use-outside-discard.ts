@@ -1,7 +1,7 @@
 import type { RefObject } from "react";
 import { useEffect } from "react";
 
-import { isQuoteCueEvent } from "./is-quotecue-event";
+import { isQuoteCueEvent } from "@/lib/dom-identity";
 
 export function useOutsideDiscard(
   rootRef: RefObject<HTMLElement | null>,
