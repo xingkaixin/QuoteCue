@@ -10,9 +10,15 @@ export function createMemoryDraftStore() {
     async load(conversation) {
       return cloneAnnotations(drafts.get(conversation.id) ?? []);
     },
-    async mutate(conversation, mutation) {
+    async mutate(conversation, mutations) {
       const current = drafts.get(conversation.id) ?? [];
-      const annotations = cloneAnnotations(applyDraftMutation(current, mutation) ?? current);
+      const annotations = cloneAnnotations(
+        mutations.reduce<readonly DraftAnnotation[]>(
+          (currentAnnotations, mutation) =>
+            applyDraftMutation(currentAnnotations, mutation) ?? currentAnnotations,
+          current,
+        ),
+      );
       drafts.set(conversation.id, annotations);
       return cloneAnnotations(annotations);
     },

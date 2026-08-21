@@ -15,7 +15,7 @@ export default defineBackground(() => {
     const annotations =
       message.kind === "load"
         ? owner.load(message.conversation)
-        : owner.mutate(message.conversation, message.mutation);
+        : owner.mutate(message.conversation, message.mutations);
 
     void annotations.then(
       (value) => sendResponse({ status: "ok", annotations: value } satisfies DraftOwnerResponse),

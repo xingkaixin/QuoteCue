@@ -11,8 +11,8 @@ import type { DraftStore } from "./draft-store";
 export function createBrowserDraftStore(): DraftStore {
   return {
     load: (conversation) => request({ channel: DRAFT_OWNER_MESSAGE, kind: "load", conversation }),
-    mutate: (conversation, mutation) =>
-      request({ channel: DRAFT_OWNER_MESSAGE, kind: "mutate", conversation, mutation }),
+    mutate: (conversation, mutations) =>
+      request({ channel: DRAFT_OWNER_MESSAGE, kind: "mutate", conversation, mutations }),
   };
 }
 

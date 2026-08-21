@@ -224,13 +224,17 @@ describe("draft annotation lifecycle", () => {
     // Mirrors the owner: the read-modify-write happens when the mutation is actually applied,
     // not when it is issued, so a later mutation observes the earlier one.
     draftStoreFixture.store.mutate.mockImplementation(
-      (conversation: IdentifiedConversation, mutation: DraftMutation) =>
+      (conversation: IdentifiedConversation, mutations: readonly DraftMutation[]) =>
         new Promise<DraftAnnotation[]>((resolve) => {
           pendingSaves.push({
             resolve: () => {
               const current = storedDrafts.get(conversation.id) ?? [];
               const annotations = structuredClone([
-                ...(applyDraftMutation(current, mutation) ?? current),
+                ...mutations.reduce<readonly DraftAnnotation[]>(
+                  (accumulatedAnnotations, mutation) =>
+                    applyDraftMutation(accumulatedAnnotations, mutation) ?? accumulatedAnnotations,
+                  current,
+                ),
               ]);
               storedDrafts.set(conversation.id, annotations);
               resolve(annotations);
@@ -256,7 +260,7 @@ describe("draft annotation lifecycle", () => {
     await act(async () => root.unmount());
   });
 
-  it("resends the failed mutation on retry without losing memory state", async () => {
+  it("resends all unconfirmed mutations on retry without losing memory state", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     draftStoreFixture.store.load.mockResolvedValue([]);
     const pendingSaves: Array<{ resolve: () => void; reject: (error: Error) => void }> = [];
@@ -283,15 +287,53 @@ describe("draft annotation lifecycle", () => {
 
     await act(async () => latestDrafts.retry());
     expect(draftStoreFixture.store.mutate).toHaveBeenCalledTimes(3);
-    expect(draftStoreFixture.store.mutate).toHaveBeenLastCalledWith(conversationA, {
-      kind: "update",
-      annotationId: annotation.id,
-      comment: "updated",
-    });
+    expect(draftStoreFixture.store.mutate).toHaveBeenLastCalledWith(conversationA, [
+      { kind: "add", annotation },
+      {
+        kind: "update",
+        annotationId: annotation.id,
+        comment: "updated",
+      },
+    ]);
     await act(async () => pendingSaves[2]?.resolve());
     expect(latestDrafts.draft.status).toBe("ready");
 
     consoleError.mockRestore();
+    await act(async () => root.unmount());
+  });
+
+  it("preserves a failed edit when a later mutation saves successfully", async () => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    const storedAnnotations = [annotation];
+    draftStoreFixture.store.load.mockResolvedValue(storedAnnotations);
+    draftStoreFixture.store.mutate
+      .mockRejectedValueOnce(new Error("storage unavailable"))
+      .mockImplementationOnce(async (_conversation, mutations) =>
+        mutations.reduce<DraftAnnotation[]>(
+          (annotations, mutation) => [
+            ...(applyDraftMutation(annotations, mutation) ?? annotations),
+          ],
+          storedAnnotations,
+        ),
+      );
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    await act(async () => root.render(<DraftHarness conversationIdentity={conversationA} />));
+    await act(async () => latestDrafts.updateAnnotation(annotation.id, "local edit"));
+    expect(latestDrafts.draft).toMatchObject({ status: "error", operation: "save" });
+
+    await act(async () =>
+      latestDrafts.addAnnotation({ ...annotation, id: "annotation-b", comment: "draft B" }),
+    );
+
+    expect(currentAnnotations()).toEqual([
+      { ...annotation, comment: "local edit" },
+      { ...annotation, id: "annotation-b", comment: "draft B" },
+    ]);
+
     await act(async () => root.unmount());
   });
 

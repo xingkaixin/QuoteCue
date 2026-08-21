@@ -97,15 +97,18 @@ export function createDraftOwner() {
       void serialize(sweepOnce);
       return draft;
     },
-    mutate(conversation: IdentifiedConversation, mutation: DraftMutation) {
+    mutate(conversation: IdentifiedConversation, mutations: readonly DraftMutation[]) {
       openConversationKeys.add(scopedDraftStorageKey(conversation));
       return serialize(async () => {
         const current = await readDraft(conversation);
-        if (draftMutationExceedsCapacity(current, mutation)) {
-          throw new RangeError("Draft mutation exceeds QuoteCue capacity");
+        let next: readonly DraftAnnotation[] = current;
+        for (const mutation of mutations) {
+          if (draftMutationExceedsCapacity(next, mutation)) {
+            throw new RangeError("Draft mutation exceeds QuoteCue capacity");
+          }
+          next = applyDraftMutation(next, mutation) ?? next;
         }
-        const next = applyDraftMutation(current, mutation);
-        if (next === null || next === current) {
+        if (next === current) {
           return current;
         }
         const annotations = [...next];

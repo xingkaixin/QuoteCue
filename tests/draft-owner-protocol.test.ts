@@ -40,7 +40,7 @@ describe("draft owner protocol", () => {
         channel: DRAFT_OWNER_MESSAGE,
         kind: "mutate",
         conversation,
-        mutation,
+        mutations: [mutation],
       }),
     ).toBe(true);
   });
@@ -68,14 +68,15 @@ describe("draft owner protocol", () => {
       channel: DRAFT_OWNER_MESSAGE,
       kind: "mutate",
       conversation,
-      mutation: { kind: "update", annotationId: "annotation-a", comment: 42 },
+      mutations: [{ kind: "update", annotationId: "annotation-a", comment: 42 }],
     },
     {
       channel: DRAFT_OWNER_MESSAGE,
       kind: "mutate",
       conversation,
-      mutation: { kind: "add", annotation: { ...annotation, anchor: null } },
+      mutations: [{ kind: "add", annotation: { ...annotation, anchor: null } }],
     },
+    { channel: DRAFT_OWNER_MESSAGE, kind: "mutate", conversation, mutations: [] },
   ])("rejects an incomplete request: %#", (request) => {
     expect(isDraftOwnerRequest(request)).toBe(false);
   });
