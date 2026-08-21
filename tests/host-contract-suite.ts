@@ -105,6 +105,44 @@ export function runHostContractSuite(definition: HostContractDefinition) {
       expect(window.getSelection()?.rangeCount).toBe(0);
     });
 
+    it("fails closed when assistant message identities are duplicated", () => {
+      const fixture = definition.installFixture();
+      const duplicate = fixture.assistantMessage.cloneNode(true) as HTMLElement;
+      fixture.assistantMessage.after(duplicate);
+      const logger = vi.fn();
+      const siteHost = definition.createHost({ document, logger, window });
+
+      expect(siteHost.selection.messageIndex().has(definition.expectedMessageId)).toBe(false);
+      expect(logger).toHaveBeenCalledWith("[QuoteCue host] duplicate assistant message identity");
+    });
+
+    it("invalidates a cached message identity when a duplicate is added", async () => {
+      const fixture = definition.installFixture();
+      const logger = vi.fn();
+      const siteHost = definition.createHost({ document, logger, window });
+      const onInvalidation = vi.fn();
+      const stop = siteHost.selection.observeInvalidation(onInvalidation);
+      expect(siteHost.selection.messageIndex().get(definition.expectedMessageId)).toBe(
+        fixture.assistantMessage,
+      );
+
+      fixture.assistantMessage.after(fixture.assistantMessage.cloneNode(true));
+      await vi.waitFor(() =>
+        expect(onInvalidation).toHaveBeenCalledWith({
+          dirtyMessageIds: new Set([definition.expectedMessageId]),
+          reason: "content",
+        }),
+      );
+
+      expect(
+        siteHost.selection
+          .messageIndex(new Set([definition.expectedMessageId]))
+          .has(definition.expectedMessageId),
+      ).toBe(false);
+      expect(logger).toHaveBeenCalledWith("[QuoteCue host] duplicate assistant message identity");
+      stop();
+    });
+
     it("rejects selections inside user messages", () => {
       const fixture = definition.installFixture();
       selectNodeContents(fixture.userMessage);

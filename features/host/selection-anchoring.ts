@@ -17,6 +17,7 @@ const CONTEXT_LENGTH = 48;
 
 export function createSelectionAnchoring(context: HostContext) {
   const { adapter, document: hostDocument, logger, signals, window: hostWindow } = context;
+  let ambiguousMessageIds = new Set<string>();
   let messageById = new Map<string, HTMLElement>();
 
   function observeCaptureIntent(callback: (intent: SelectionCaptureIntent) => void) {
@@ -77,7 +78,12 @@ export function createSelectionAnchoring(context: HostContext) {
   }
 
   function messageIndex(messageIds?: ReadonlySet<string>) {
-    if (!messageIds || [...messageIds].some((messageId) => !isCachedMessageValid(messageId))) {
+    if (
+      !messageIds ||
+      [...messageIds].some(
+        (messageId) => ambiguousMessageIds.has(messageId) || !isCachedMessageValid(messageId),
+      )
+    ) {
       rebuildMessageIndex();
     }
     if (!messageIds) {
@@ -92,6 +98,7 @@ export function createSelectionAnchoring(context: HostContext) {
   }
 
   function rebuildMessageIndex() {
+    const nextAmbiguousMessageIds = new Set<string>();
     const nextMessageById = new Map<string, HTMLElement>();
     for (const message of hostDocument.querySelectorAll<HTMLElement>(
       adapter.messages.assistantSelector,
@@ -100,10 +107,21 @@ export function createSelectionAnchoring(context: HostContext) {
         continue;
       }
       const messageId = adapter.messages.id(message);
-      if (messageId && !nextMessageById.has(messageId)) {
-        nextMessageById.set(messageId, message);
+      if (!messageId) {
+        continue;
       }
+      if (nextAmbiguousMessageIds.has(messageId)) {
+        continue;
+      }
+      if (nextMessageById.has(messageId)) {
+        reportDuplicateIdentity(messageId);
+        nextMessageById.delete(messageId);
+        nextAmbiguousMessageIds.add(messageId);
+        continue;
+      }
+      nextMessageById.set(messageId, message);
     }
+    ambiguousMessageIds = nextAmbiguousMessageIds;
     messageById = nextMessageById;
   }
 
@@ -127,10 +145,22 @@ export function createSelectionAnchoring(context: HostContext) {
         if (!messageId) {
           return "all" as const;
         }
+        const cachedMessage = messageById.get(messageId);
+        if (cachedMessage && cachedMessage !== message && cachedMessage.isConnected) {
+          reportDuplicateIdentity(messageId);
+          messageById.delete(messageId);
+          ambiguousMessageIds.add(messageId);
+        }
         dirtyMessageIds.add(messageId);
       }
     }
     return dirtyMessageIds;
+  }
+
+  function reportDuplicateIdentity(messageId: string) {
+    if (!ambiguousMessageIds.has(messageId)) {
+      logger?.("[QuoteCue host] duplicate assistant message identity");
+    }
   }
 
   function assistantMessagesAffectedBy(record: MutationRecord) {
