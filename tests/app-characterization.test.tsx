@@ -258,7 +258,7 @@ describe("App annotation workflow", () => {
   it("keeps drafts and routes the next send through retry after failure", async () => {
     const mounted = await mountApp();
     const submit = vi.spyOn(mounted.host.composer, "submit").mockResolvedValue({
-      reason: "replace-failed",
+      reason: "send-unavailable",
       status: "unavailable",
     });
 
@@ -317,7 +317,7 @@ describe("App annotation workflow", () => {
   it("hides failure feedback after leaving the conversation that failed", async () => {
     const mounted = await mountApp();
     vi.spyOn(mounted.host.composer, "submit").mockResolvedValue({
-      reason: "replace-failed",
+      reason: "send-unavailable",
       status: "unavailable",
     });
 
@@ -387,9 +387,7 @@ describe("App annotation workflow", () => {
     expect(subscribeToSubmit).not.toHaveBeenCalled();
 
     await act(async () => confirmSubmit?.());
-    await vi.waitFor(() =>
-      expect(sendControl(mounted.container).dataset.sendState).toBe("confirmed"),
-    );
+    await vi.waitFor(() => expect(sendControl(mounted.container).dataset.sendState).toBe("idle"));
     expect(summary(mounted.container).dataset.count).toBe("1");
     // The current conversation happens to hold the same annotation, and must not be touched.
     expect(await loadStoredDrafts("conversation-c")).toEqual(sentSnapshot);

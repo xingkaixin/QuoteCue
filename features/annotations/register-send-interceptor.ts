@@ -2,7 +2,6 @@ import type { SupportedLocale } from "@/features/i18n/messages";
 import type {
   ComposerSnapshot,
   ComposerSubmitDecision,
-  ComposerSubmitFailureReason,
   ComposerSubmitIntent,
   ConversationIdentity,
   Host,
@@ -25,11 +24,7 @@ type AnnotatedSendFailure = {
   reason: AnnotatedSendFailureReason;
 };
 
-export type AnnotatedSendState =
-  | { status: "idle" }
-  | { status: "sending" }
-  | { status: "confirmed" }
-  | AnnotatedSendFailure;
+export type AnnotatedSendState = { status: "idle" } | { status: "sending" } | AnnotatedSendFailure;
 
 type SendInterceptorOptions = {
   getSendInput: () => SendAttemptInput;
@@ -95,7 +90,7 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
     failedSendSnapshot = null;
     const sentAnnotations = attempt.annotations.map(({ annotation }) => annotation);
     abortAttempt(attempt);
-    setState({ status: "confirmed" });
+    setState({ status: "idle" });
     runSafely("Failed to apply confirmed annotations", () =>
       options.onSendConfirmed(sentAnnotations, attempt.conversationIdentity),
     );
@@ -135,7 +130,7 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
         if (result.status === "available") {
           finishConfirmed(attempt);
         } else {
-          finishFailed(attempt, annotatedFailureReason(result.reason));
+          finishFailed(attempt, result.reason);
         }
       })
       .catch(() => {
@@ -272,8 +267,4 @@ function reportPreflightFailure(
   if (source === "custom") {
     setState({ status: "failed", reason });
   }
-}
-
-function annotatedFailureReason(reason: ComposerSubmitFailureReason): AnnotatedSendFailureReason {
-  return reason === "confirmation-timeout" ? reason : "send-unavailable";
 }

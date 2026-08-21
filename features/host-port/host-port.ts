@@ -10,10 +10,7 @@ export type ComposerSnapshot = {
   text: string;
 };
 
-export type ComposerSubmitFailureReason =
-  | "confirmation-timeout"
-  | "replace-failed"
-  | "send-unavailable";
+export type ComposerSubmitFailureReason = "confirmation-timeout" | "send-unavailable";
 
 export type ComposerSubmitOptions = {
   restoreTo: ComposerSnapshot;
