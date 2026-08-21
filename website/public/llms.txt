@@ -4,6 +4,7 @@
 
 Official website: https://quotecue.xingkaixin.me/
 English page: https://quotecue.xingkaixin.me/en/
+Japanese page: https://quotecue.xingkaixin.me/ja/
 Source code: https://github.com/xingkaixin/QuoteCue
 Extension privacy policy: https://github.com/xingkaixin/QuoteCue/blob/main/PRIVACY.md
 

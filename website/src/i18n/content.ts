@@ -176,6 +176,154 @@ const zh = {
   links,
 } as const;
 
+const ja = {
+  locale: "ja" as const,
+  languageSwitcherLabel: "言語を切り替える",
+  mainNavigationLabel: "メインナビゲーション",
+  skipToContent: "メインコンテンツへ移動",
+  themeLabel: "ライトテーマとダークテーマを切り替える",
+  meta: {
+    title: "QuoteCue：AI の回答に注釈を付け、的確にフォローアップ",
+    description:
+      "QuoteCue は ChatGPT、Claude、DeepSeek、Kimi 向けの無料 Chrome・Edge 拡張機能です。AI の回答を選択して注釈を付け、複数のポイントを 1 つの的確なフォローアップにまとめます。",
+    socialImageAlt: "QuoteCue：AI の回答に注釈を付け、的確にフォローアップ",
+  },
+  nav: {
+    demo: "試してみる",
+    features: "機能",
+    privacy: "プライバシー",
+    faq: "よくある質問",
+  },
+  hero: {
+    eyebrow: "Chrome・Edge 拡張機能 · ChatGPT · Claude · DeepSeek · Kimi",
+    before: "AI の回答で",
+    highlight: "気になる箇所を示し",
+    after: "、そのまま聞く。",
+    description:
+      "AI の回答から気になる箇所を選び、考えを書き留めます。QuoteCue はすべての注釈を 1 つの的確なフォローアップにまとめて送信します。コピー＆ペーストも、『3 段落目のあの文です』と説明し直す必要もありません。",
+    chrome: "Chrome に追加",
+    edge: "Edge に追加",
+    note: "無料 · アカウント不要 · サーバーなし",
+  },
+  demo: {
+    locale: "ja",
+    title: "一連の流れを試す",
+    intro:
+      "下の回答から好きな文を選択すると、QuoteCue ボタンが表示されます。対応する AI チャットにインストールしたときと同じ操作を試せます。",
+    userMessage: "京都を 3 日間で巡る旅程を考えてください。",
+    answer: [
+      "移動時間を抑えるため、3 日間をエリアごとに分けましょう。1 日目は東山です。清水寺は朝早く開き、8 時前なら比較的空いています。その後は二年坂と三年坂を歩いて高台寺へ向かい、夕食は祇園周辺がおすすめです。",
+      "2 日目は嵐山です。まず嵯峨野トロッコ列車に乗り、竹林の小径を通って渡月橋まで戻りましょう。午後は天龍寺の庭園でゆっくり過ごせます。歩く距離が長いため、履き慣れた靴がおすすめです。",
+      "3 日目は伏見稲荷と宇治へ行きます。千本鳥居を一周すると約 2 時間かかりますが、写真が目的なら四ツ辻で引き返しても十分です。その後は電車で宇治へ移動し、抹茶を楽しんでから夕食の時間に戻れます。",
+    ],
+    steps: [
+      "回答の文を選択すると、選択範囲のそばに QuoteCue ボタンが表示されます。",
+      "コメントを書いて保存すると、元の文章にハイライトと番号付きの目印が残ります。",
+      "2 つ目、3 つ目の箇所にも注釈を付け、一覧からそれぞれ編集または削除できます。",
+      "送信すると、すべての注釈が 1 つの構造化されたフォローアップとして現在のチャットに送られます。",
+    ],
+    selectAction: "QuoteCue",
+    selectedText: "選択したテキスト：",
+    userComment: "コメント：",
+    optionalComment: "任意のコメントを追加…",
+    cancel: "キャンセル",
+    save: "保存",
+    edit: "注釈を編集",
+    remove: "注釈を削除",
+    clear: "すべての注釈を削除",
+    undo: "元に戻す",
+    sending: "注釈を送信しています…",
+    send: "注釈を送信",
+    composerPrefix: "質問先：",
+    clearConfirm: "もう一度クリックして削除",
+  } satisfies DemoCopy,
+  features: {
+    title: "文脈は QuoteCue が覚えておきます",
+    items: [
+      {
+        title: "注釈を元の文章に固定",
+        body: "各注釈は選択した文章と位置を記憶します。ページを再読み込みしてもハイライトと番号が復元され、元の文章が変わった場合は誤った位置に付けず、変更を明示します。",
+      },
+      {
+        title: "会話ごとに下書きを分離",
+        body: "下書きはブラウザ内に保存され、会話ごとに管理されます。別の会話へ移動して戻っても、注釈は元の会話に残ります。",
+      },
+      {
+        title: "複数の論点を 1 つのメッセージに",
+        body: "送信時に、選択した文章、コメント、入力欄に残っている質問を番号付きのフォローアップへまとめます。",
+      },
+      {
+        title: "送信に失敗しても下書きを保持",
+        body: "一致するユーザーメッセージがページに表示された場合だけ注釈を消去します。確認できなければ下書きを保持し、そのまま再試行できます。",
+      },
+      {
+        title: "削除を 5 秒間取り消せる",
+        body: "削除した注釈はまず非表示になり、5 秒以内なら元に戻せます。すべて削除する操作には再確認が必要です。",
+      },
+      {
+        title: "各サイトの見た目に適応",
+        body: "各サイトのライト・ダークテーマとブランドカラーに合わせます。キーボードでも操作でき、Escape で閉じると元の位置へフォーカスが戻ります。",
+      },
+    ],
+  },
+  supported: {
+    label: "対応サイト · 拡張機能は次の 4 ドメインでのみ動作します",
+  },
+  privacy: {
+    title: ["拡張機能用のサーバーがないため、", "運営者へのアップロードもありません"],
+    description:
+      "QuoteCue 拡張機能は独自のサーバーを運用せず、アカウント、Cookie、閲覧履歴、利用状況を収集しません。注釈が AI サービスへ渡るのは、ユーザーが送信を選んだメッセージとしてだけです。",
+    facts: [
+      { label: "storage", body: "唯一の拡張機能権限。未送信の注釈をローカルに保存します。" },
+      { label: "4 hosts", body: "対応する 4 ドメインだけで動作し、他のサイトには挿入されません。" },
+      {
+        label: "closed",
+        body: "UI は closed Shadow DOM 内に描画され、注釈の入力欄は拡張機能自身のオリジンを使用します。",
+      },
+      {
+        label: "30 days",
+        body: "現行バージョンの下書きは、30 日間更新されないと期限切れになります。送信または全削除すると直ちに消去されます。",
+      },
+    ],
+  },
+  faq: {
+    title: "よくある質問",
+    items: [
+      {
+        question: "QuoteCue は会話全体を読み取りますか？",
+        answer:
+          "いいえ。QuoteCue が処理するのは、ユーザーが選択した回答の文章と、その選択範囲を復元するために必要な少量の周辺テキストおよび位置情報だけです。会話全体、認証情報、Cookie、閲覧履歴は収集しません。",
+      },
+      {
+        question: "ページを再読み込みしても注釈は残りますか？",
+        answer:
+          "URL から会話を安定して識別できるページでは、未送信の注釈をブラウザ内に保存し、再読み込み後に復元します。まだ安定した識別子がない新しい会話では、安全に保存先を決められないため、下書きは現在のページセッション中だけ保持されます。",
+      },
+      {
+        question: "実際には何が送信されますか？",
+        answer:
+          "QuoteCue は通常のユーザーメッセージを 1 件送信します。冒頭の短い指示、選択した文章と対応する注釈、最後に入力欄の補足質問を含みます。上のインタラクティブデモで実際の構造を確認できます。",
+      },
+      {
+        question: "対応している AI サイトとブラウザは？",
+        answer:
+          "現在は ChatGPT、Claude、DeepSeek、Kimi に対応し、Google Chrome 版と Microsoft Edge 版を提供しています。拡張機能は宣言された 4 つのサービスドメインでのみ動作します。",
+      },
+      {
+        question: "ローカルに保存された QuoteCue のデータをすべて削除するには？",
+        answer:
+          "送信が確認されたとき、または明示的に全削除したとき、その会話の下書きは直ちに消去されます。現行バージョンの下書きは、30 日間更新されない場合も期限切れになります。QuoteCue 拡張機能をアンインストールすると、ブラウザプロファイル内に保存された QuoteCue のデータをすべて削除できます。",
+      },
+    ],
+  },
+  closing: {
+    title: "次のフォローアップは、その一文を示すだけ。",
+    description:
+      "QuoteCue をインストールし、ChatGPT、Claude、DeepSeek、Kimi で回答の一部を選択すると始められます。",
+  },
+  links,
+} as const;
+
 const en = {
   locale: "en" as const,
   languageSwitcherLabel: "Switch language",
@@ -327,11 +475,12 @@ const en = {
   links,
 } as const;
 
-export type LandingCopy = typeof zh | typeof en;
+export type LandingCopy = typeof zh | typeof en | typeof ja;
 
 const COPY: Record<Locale, LandingCopy> = {
   "zh-CN": zh,
   en,
+  ja,
 };
 
 export function getCopy(locale: Locale): LandingCopy {

@@ -21,13 +21,25 @@ interface InteractiveDemoProps {
 }
 
 function formatAnnotationCount(copy: DemoCopy, count: number) {
-  if (copy.locale === "zh-CN") return `${count} 条批注`;
-  return `${count} ${count === 1 ? "annotation" : "annotations"}`;
+  switch (copy.locale) {
+    case "zh-CN":
+      return `${count} 条批注`;
+    case "ja":
+      return `${count} 件の注釈`;
+    case "en":
+      return `${count} ${count === 1 ? "annotation" : "annotations"}`;
+  }
 }
 
 function formatRemovedNotice(copy: DemoCopy, remaining: number) {
-  if (copy.locale === "zh-CN") return `批注已删除，还剩 ${remaining} 条。`;
-  return `Annotation removed. ${remaining} ${remaining === 1 ? "annotation" : "annotations"} remaining.`;
+  switch (copy.locale) {
+    case "zh-CN":
+      return `批注已删除，还剩 ${remaining} 条。`;
+    case "ja":
+      return `注釈を削除しました。残り ${remaining} 件です。`;
+    case "en":
+      return `Annotation removed. ${remaining} ${remaining === 1 ? "annotation" : "annotations"} remaining.`;
+  }
 }
 
 export function InteractiveDemo({ copy }: InteractiveDemoProps) {
