@@ -22,7 +22,7 @@ const CLAUDE_ADAPTER: SiteAdapter = {
     userSelector: USER_MESSAGE_MARKER,
   }),
   selectionPresentation: { mode: "native-toolbar" },
-  sendControl: sendControlAccess("button[aria-label='Send message']"),
+  sendControl: sendControlAccess("button[data-testid='chat-input-send']"),
 };
 
 export function createClaudeHost(environment: HostEnvironment) {

@@ -3,6 +3,7 @@ import { requiredElement, setElementRect } from "./fixture-utils";
 export type ClaudeHostFixture = {
   assistantMessage: HTMLElement;
   composer: HTMLElement;
+  sendButton: HTMLButtonElement;
   surface: HTMLElement;
   userMessage: HTMLElement;
   voiceButton: HTMLButtonElement;
@@ -23,8 +24,10 @@ export function installClaudeHostFixture(composerText = "Original question"): Cl
       </div>
       <div data-fixture="composer-surface" style="background-color: white; border-radius: 20px; border-top-left-radius: 20px; padding-top: 6px">
         <div data-testid="chat-input" contenteditable="true" role="textbox">${composerText}</div>
-        <button type="button" aria-label="Press and hold to record"></button>
-        <button type="button" aria-label="Use voice mode"></button>
+        <button type="button" aria-label="按住以录音"></button>
+        <button type="button" aria-label="使用语音模式"></button>
+        <button type="button" aria-label="停止回复"></button>
+        <button type="button" data-testid="chat-input-send" aria-label="发送消息" disabled></button>
       </div>
     </main>
   `;
@@ -33,30 +36,29 @@ export function installClaudeHostFixture(composerText = "Original question"): Cl
   const composer = requiredElement<HTMLElement>('[data-testid="chat-input"]');
   const surface = requiredElement<HTMLElement>('[data-fixture="composer-surface"]');
   const userMessage = requiredElement<HTMLElement>('[data-testid="user-message"]');
-  const voiceButton = requiredElement<HTMLButtonElement>('button[aria-label="Use voice mode"]');
+  const voiceButton = requiredElement<HTMLButtonElement>('button[aria-label="使用语音模式"]');
+  const sendButton = requiredElement<HTMLButtonElement>('[data-testid="chat-input-send"]');
 
   Object.defineProperty(composer, "innerText", {
     configurable: true,
     get: () => composer.textContent ?? "",
   });
   setElementRect(surface, new DOMRect(100, 690, 768, 102));
-  setButtonRect(voiceButton, 828);
-  setButtonRect(requiredElement('button[aria-label="Press and hold to record"]'), 788);
+  setButtonRect(voiceButton, 788);
+  setButtonRect(requiredElement('button[aria-label="按住以录音"]'), 748);
+  setButtonRect(requiredElement('button[aria-label="停止回复"]'), 708);
+  setButtonRect(sendButton, 828);
 
-  return { assistantMessage, composer, surface, userMessage, voiceButton };
+  return { assistantMessage, composer, sendButton, surface, userMessage, voiceButton };
 }
 
-export function replaceVoiceWithSend(onSend: (text: string) => void) {
-  const voiceButton = requiredElement<HTMLButtonElement>('button[aria-label="Use voice mode"]');
-  const sendButton = document.createElement("button");
-  sendButton.type = "button";
-  sendButton.setAttribute("aria-label", "Send message");
-  setButtonRect(sendButton, 828);
+export function enableClaudeSend(onSend: (text: string) => void) {
+  const sendButton = requiredElement<HTMLButtonElement>('[data-testid="chat-input-send"]');
+  sendButton.disabled = false;
   sendButton.addEventListener("click", () => {
     const composer = requiredElement<HTMLElement>('[data-testid="chat-input"]');
     onSend(composer.innerText);
   });
-  voiceButton.replaceWith(sendButton);
   return sendButton;
 }
 

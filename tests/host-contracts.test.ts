@@ -13,8 +13,8 @@ import {
   appendClaudeAssistantMessage,
   appendClaudeSelectionToolbar,
   appendClaudeUserMessage,
+  enableClaudeSend,
   installClaudeHostFixture,
-  replaceVoiceWithSend,
 } from "./fixtures/claude-host";
 import {
   appendAssistantMessageItem,
@@ -68,7 +68,7 @@ const contracts: HostContractDefinition[] = [
     createHost: createClaudeHost,
     installFixture() {
       const fixture = installClaudeHostFixture();
-      const sendControl = replaceVoiceWithSend(() => undefined);
+      const sendControl = enableClaudeSend(() => undefined);
       return {
         assistantMessage: fixture.assistantMessage,
         composer: fixture.composer,

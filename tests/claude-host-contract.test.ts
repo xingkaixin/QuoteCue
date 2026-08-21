@@ -10,8 +10,8 @@ import { QUOTECUE_NATIVE_ACTION_SELECTOR } from "@/lib/dom-identity";
 import {
   appendClaudeSelectionToolbar,
   appendClaudeUserMessage,
+  enableClaudeSend,
   installClaudeHostFixture,
-  replaceVoiceWithSend,
 } from "./fixtures/claude-host";
 import { requiredNativeAction } from "./fixtures/fixture-utils";
 
@@ -51,15 +51,15 @@ describe("Claude host contract", () => {
     stop();
   });
 
-  it("uses the voice slot for layout and waits for the send button after composing", async () => {
+  it("uses the stable send control while ignoring localized voice and stop controls", async () => {
     const fixture = installClaudeHostFixture("");
     const host = createClaudeHost({ document, window });
     const layout = host.layout.current();
     expect(layout.status).toBe("available");
 
     fixture.composer.addEventListener("input", () => {
-      if (!document.querySelector('button[aria-label="Send message"]')) {
-        replaceVoiceWithSend((text) => appendClaudeUserMessage(2, text));
+      if (fixture.sendButton.disabled) {
+        enableClaudeSend((text) => appendClaudeUserMessage(2, text));
       }
     });
     const onSendConfirmed = vi.fn();
@@ -86,6 +86,7 @@ describe("Claude host contract", () => {
       siteId: "claude",
     });
     expect(fixture.composer.innerText).toContain("[Annotation 1]");
+    expect(fixture.voiceButton.disabled).toBe(false);
     interceptor.dispose();
   });
 });
