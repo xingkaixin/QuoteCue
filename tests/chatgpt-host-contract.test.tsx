@@ -339,6 +339,64 @@ describe("ChatGPT host contract", () => {
     expect(disconnect).toHaveBeenCalledTimes(2);
   });
 
+  it("keeps resize updates active for every layout subscriber", () => {
+    const observers: TestResizeObserver[] = [];
+    class TestResizeObserver {
+      private active = false;
+
+      constructor(private readonly callback: ResizeObserverCallback) {
+        observers.push(this);
+      }
+
+      disconnect() {
+        this.active = false;
+      }
+
+      emit() {
+        if (this.active) {
+          this.callback([], this as unknown as ResizeObserver);
+        }
+      }
+
+      observe() {
+        this.active = true;
+      }
+    }
+    vi.stubGlobal("ResizeObserver", TestResizeObserver);
+    installChatGptHostFixture();
+    const host = createChatGptHost({ document, window });
+    const firstSubscriber = vi.fn();
+    const secondSubscriber = vi.fn();
+    host.layout.current();
+    const stopFirst = host.layout.subscribe(firstSubscriber);
+    host.layout.current();
+    const stopSecond = host.layout.subscribe(secondSubscriber);
+    host.layout.current();
+
+    expect(observers).toHaveLength(1);
+    for (const observer of observers) {
+      observer.emit();
+    }
+    expect(firstSubscriber).toHaveBeenCalledOnce();
+    expect(secondSubscriber).toHaveBeenCalledOnce();
+
+    stopFirst();
+    firstSubscriber.mockClear();
+    secondSubscriber.mockClear();
+    for (const observer of observers) {
+      observer.emit();
+    }
+    expect(firstSubscriber).not.toHaveBeenCalled();
+    expect(secondSubscriber).toHaveBeenCalledOnce();
+    stopSecond();
+
+    secondSubscriber.mockClear();
+    for (const observer of observers) {
+      observer.emit();
+    }
+    expect(secondSubscriber).not.toHaveBeenCalled();
+  });
+
   it("centers an offscreen annotation endpoint in its nearest scroll container", () => {
     const endpointTop = { value: 900 };
     const rangeRectsDescriptor = Object.getOwnPropertyDescriptor(Range.prototype, "getClientRects");

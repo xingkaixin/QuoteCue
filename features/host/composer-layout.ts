@@ -23,8 +23,10 @@ export function createComposerLayout(
 ) {
   const { adapter, document: hostDocument, logger, signals, window: hostWindow } = context;
   let activeReservation: { height: number } | null = null;
+  const layoutSubscribers = new Set<() => void>();
   let resizeObserver: ResizeObserver | null = null;
   let observedSurface: HTMLElement | null = null;
+  let stopSignalObservation: (() => void) | null = null;
   let styledSurface: HTMLElement | null = null;
   let hiddenAction: HTMLElement | null = null;
   let originalPaddingTop = "";
@@ -50,6 +52,10 @@ export function createComposerLayout(
   }
 
   function observeSurfaceResize(surface: HTMLElement | null) {
+    if (!resizeObserver) {
+      observedSurface = null;
+      return;
+    }
     if (surface === observedSurface) {
       return;
     }
@@ -108,17 +114,45 @@ export function createComposerLayout(
   }
 
   function subscribe(callback: () => void) {
-    resizeObserver = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(callback);
-    const stopMutationObservation = signals.observeMutations(callback, { childList: true });
-    const stopViewportObservation = signals.observeViewport(callback);
+    const subscription = () => callback();
+    layoutSubscribers.add(subscription);
+    if (layoutSubscribers.size === 1) {
+      startObservation();
+    }
 
-    return () => {
+    return once(() => {
+      layoutSubscribers.delete(subscription);
+      if (layoutSubscribers.size === 0) {
+        stopObservation();
+      }
+    });
+  }
+
+  function startObservation() {
+    resizeObserver =
+      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(notifySubscribers);
+    const stopMutationObservation = signals.observeMutations(notifySubscribers, {
+      childList: true,
+    });
+    const stopViewportObservation = signals.observeViewport(notifySubscribers);
+    stopSignalObservation = () => {
       stopMutationObservation();
       stopViewportObservation();
-      resizeObserver?.disconnect();
-      resizeObserver = null;
-      observedSurface = null;
     };
+  }
+
+  function stopObservation() {
+    stopSignalObservation?.();
+    stopSignalObservation = null;
+    resizeObserver?.disconnect();
+    resizeObserver = null;
+    observedSurface = null;
+  }
+
+  function notifySubscribers() {
+    for (const subscriber of [...layoutSubscribers]) {
+      subscriber();
+    }
   }
 
   function reconcileReservation(elements: ComposerLayoutElements | null) {
