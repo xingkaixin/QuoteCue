@@ -1,4 +1,4 @@
-import type { Host, HostUnavailableReason } from "@/features/host-port/host-port";
+import type { Host } from "@/features/host-port/host-port";
 
 import { createComposerDriver } from "./composer-driver";
 import { createComposerLayout } from "./composer-layout";
@@ -74,9 +74,6 @@ export function createHostEngine(environment: HostEnvironment, adapter: SiteAdap
       subscribe: context.signals.subscribeNavigation,
     },
     layout,
-    reportUnavailable(reason: HostUnavailableReason) {
-      context.logger?.(`[QuoteCue host] unavailable: ${reason}`);
-    },
     selection,
   };
 }

@@ -179,7 +179,6 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
 
     const snapshotResult = host.composer.snapshot();
     if (snapshotResult.status === "unavailable") {
-      host.reportUnavailable(snapshotResult.reason);
       return failBeforeAttempt("composer-unavailable", source, setState);
     }
     const snapshot = snapshotResult.value;

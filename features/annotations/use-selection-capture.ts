@@ -38,9 +38,6 @@ export function useSelectionCapture({
     return host.selection.observeCaptureIntent((intent) => {
       if (intent === "capture") {
         const result = host.selection.capture();
-        if (result.status === "unavailable" && result.reason === "anchor-unavailable") {
-          host.reportUnavailable(result.reason);
-        }
         setSelection(result.status === "available" ? result.value : null);
       } else {
         dismiss();

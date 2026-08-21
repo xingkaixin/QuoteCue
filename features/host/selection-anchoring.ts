@@ -197,7 +197,7 @@ export function createSelectionAnchoring(context: HostContext) {
       suffix: messageText.slice(end, end + CONTEXT_LENGTH),
     });
     if (!anchor) {
-      return unavailable("anchor-unavailable");
+      return unavailable("anchor-unavailable", logger);
     }
     messageById.set(anchor.messageId, message);
 

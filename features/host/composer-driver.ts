@@ -8,7 +8,7 @@ import {
 import type { TextNormalizer } from "./text-normalizer";
 
 export function createComposerDriver(context: HostContext, textNormalizer: TextNormalizer) {
-  const { adapter, document: hostDocument } = context;
+  const { adapter, document: hostDocument, logger } = context;
   const { composerText, normalize, normalizedComposerText } = textNormalizer;
 
   const current = () => hostDocument.querySelector<HTMLElement>(adapter.composer.selector);
@@ -17,7 +17,7 @@ export function createComposerDriver(context: HostContext, textNormalizer: TextN
     const element = current();
     return element
       ? available({ element, text: composerText(element) })
-      : unavailable("composer-unavailable");
+      : unavailable("composer-unavailable", logger);
   }
 
   function replaceText(composer: HTMLElement, text: string) {

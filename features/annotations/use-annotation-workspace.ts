@@ -135,7 +135,6 @@ export function useAnnotationWorkspace() {
       }
       const reveal = host.selection.reveal(projection.geometry.range);
       if (reveal.status === "unavailable") {
-        host.reportUnavailable(reveal.reason);
         return;
       }
 

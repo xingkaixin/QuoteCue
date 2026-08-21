@@ -70,7 +70,11 @@ export function available<T>(value: T): { status: "available"; value: T } {
   return { status: "available", value };
 }
 
-export function unavailable<R extends string>(reason: R): { reason: R; status: "unavailable" } {
+export function unavailable<R extends string>(
+  reason: R,
+  logger?: HostEnvironment["logger"],
+): { reason: R; status: "unavailable" } {
+  logger?.(`[QuoteCue host] unavailable: ${reason}`);
   return { reason, status: "unavailable" };
 }
 

@@ -52,14 +52,13 @@ afterEach(() => {
 });
 
 describe("annotation workspace", () => {
-  it("reports a detached selection when source navigation fails", async () => {
+  it("keeps the editor closed when source navigation fails", async () => {
     draftStoreFixture.store.load.mockResolvedValue([annotation]);
     const host = createWorkspaceHost();
     vi.spyOn(host.selection, "reveal").mockReturnValue({
       reason: "selection-detached",
       status: "unavailable",
     });
-    const reportUnavailable = vi.spyOn(host, "reportUnavailable");
     const mounted = await mountWorkspace(host);
     await act(async () => new Promise(requestAnimationFrame));
     const [projection] = workspace.summary.annotations;
@@ -69,7 +68,6 @@ describe("annotation workspace", () => {
       await act(async () => workspace.summary.open(projection));
     }
 
-    expect(reportUnavailable).toHaveBeenCalledWith("selection-detached");
     expect(workspace.editor.status).toBe("hidden");
 
     await act(async () => mounted.root.unmount());
