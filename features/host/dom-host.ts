@@ -11,7 +11,6 @@ import { createSelectionReveal } from "./selection-reveal";
 import { createSelectionVisuals } from "./selection-visuals";
 import type { SiteAdapter } from "./site-adapter";
 import { createSendPipeline } from "./send-pipeline";
-import { createTextNormalizer } from "./text-normalizer";
 
 export type {
   AnchoredSelection,
@@ -34,9 +33,8 @@ export function createHostEngine(
   siteId: SupportedSiteId,
 ): Host {
   const context = createHostContext(environment, adapter);
-  const textNormalizer = createTextNormalizer(adapter.composer);
-  const composerDriver = createComposerDriver(context, textNormalizer);
-  const sendPipeline = createSendPipeline(context, textNormalizer, composerDriver);
+  const composerDriver = createComposerDriver(context);
+  const sendPipeline = createSendPipeline(context, composerDriver);
   const layout = createComposerLayout(context, composerDriver.current);
   const anchoring = createSelectionAnchoring(context);
   const reveal = createSelectionReveal(context);
