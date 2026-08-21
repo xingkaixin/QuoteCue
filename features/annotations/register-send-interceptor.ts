@@ -2,6 +2,7 @@ import type { SupportedLocale } from "@/features/i18n/messages";
 import type {
   ComposerSnapshot,
   ComposerSubmitDecision,
+  ComposerSubmitFailureReason,
   ComposerSubmitIntent,
   ConversationIdentity,
   Host,
@@ -15,20 +16,13 @@ import { compiledPromptExceedsCapacity } from "./draft-capacity";
 export type AnnotatedSendFailureReason =
   | "composer-unavailable"
   | "confirmation-timeout"
-  | "disposed"
-  | "no-annotations"
   | "prompt-too-long"
-  | "replace-failed"
   | "send-unavailable";
 
 type AnnotatedSendFailure = {
   status: "failed";
   reason: AnnotatedSendFailureReason;
 };
-
-export type AnnotatedSendResult =
-  | { status: "confirmed"; annotationIds: string[] }
-  | AnnotatedSendFailure;
 
 export type AnnotatedSendState =
   | { status: "idle" }
@@ -59,19 +53,11 @@ type SendAttempt = {
   compiledPrompt: string;
   annotations: readonly NumberedAnnotation[];
   controller: AbortController;
-  failureOverride?: AnnotatedSendFailureReason;
-  result: Promise<AnnotatedSendResult>;
-  resolve: (result: AnnotatedSendResult) => void;
 };
 
 type FailedSendSnapshot = {
   conversationIdentity: ConversationIdentity;
   originalText: string;
-};
-
-type StartedSend = {
-  isOwned: boolean;
-  result: Promise<AnnotatedSendResult>;
 };
 
 export function registerSendInterceptor(options: SendInterceptorOptions) {
@@ -110,10 +96,6 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
     const sentAnnotations = attempt.annotations.map(({ annotation }) => annotation);
     abortAttempt(attempt);
     setState({ status: "confirmed" });
-    attempt.resolve({
-      status: "confirmed",
-      annotationIds: sentAnnotations.map(({ id }) => id),
-    });
     runSafely("Failed to apply confirmed annotations", () =>
       options.onSendConfirmed(sentAnnotations, attempt.conversationIdentity),
     );
@@ -130,7 +112,6 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
     };
     abortAttempt(attempt);
     setState({ status: "failed", reason });
-    attempt.resolve({ status: "failed", reason });
   };
 
   const replaySend = (attempt: SendAttempt) => {
@@ -154,12 +135,12 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
         if (result.status === "available") {
           finishConfirmed(attempt);
         } else {
-          finishFailed(attempt, attempt.failureOverride ?? result.reason);
+          finishFailed(attempt, annotatedFailureReason(result.reason));
         }
       })
       .catch(() => {
         reportError("Failed to replay annotated send");
-        finishFailed(attempt, attempt.failureOverride ?? "send-unavailable");
+        finishFailed(attempt, "send-unavailable");
       });
   };
 
@@ -167,29 +148,30 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
     isSendAvailable: boolean | undefined,
     source: "custom" | "native",
     retryOriginalText?: string,
-  ): StartedSend => {
+  ) => {
     if (isDisposed) {
-      return failBeforeAttempt("disposed", source, setState);
+      return false;
     }
     if (activeAttempt) {
-      return { isOwned: true, result: activeAttempt.result };
+      return true;
     }
 
     const annotations = snapshotAnnotations(options.annotations());
     if (annotations.length === 0) {
-      return failBeforeAttempt("no-annotations", source, setState);
+      return false;
     }
 
     const snapshotResult = host.composer.snapshot();
     if (snapshotResult.status === "unavailable") {
-      return failBeforeAttempt("composer-unavailable", source, setState);
+      reportPreflightFailure("composer-unavailable", source, setState);
+      return false;
     }
     const snapshot = snapshotResult.value;
     // 空 composer 时发送控件多半只是因缺少输入而不可用；批注文本补入后即可用,
     // 所以仍接管发送。非空时保持不接管,把真正被阻塞的发送留给页面自己处理。
     const isRecoverableBySend = snapshot.text.trim().length === 0;
     if (source === "native" && !isSendAvailable && !isRecoverableBySend) {
-      return failedResult("send-unavailable");
+      return false;
     }
     const originalText =
       retryOriginalText && snapshot.text.trim().length === 0 ? retryOriginalText : snapshot.text;
@@ -198,7 +180,7 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
     if (compiledPromptExceedsCapacity(compiledPrompt)) {
       const result = { status: "failed", reason: "prompt-too-long" } as const;
       setState(result);
-      return { isOwned: true, result: Promise.resolve(result) };
+      return true;
     }
     const attempt = createAttempt(
       options.conversationIdentity(),
@@ -211,7 +193,7 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
     setState({ status: "sending" });
 
     replaySend(attempt);
-    return { isOwned: true, result: attempt.result };
+    return true;
   };
 
   const prepareNativeSend = ({ isSendAvailable }: ComposerSubmitIntent): ComposerSubmitDecision => {
@@ -219,15 +201,16 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
       return "claim";
     }
 
-    const started = beginSend(isSendAvailable, "native");
-    return started.isOwned ? "claim" : "pass-through";
+    return beginSend(isSendAvailable, "native") ? "claim" : "pass-through";
   };
 
   const stopListening = host.composer.subscribeToSubmit(prepareNativeSend);
   setState({ status: "idle" });
 
   return {
-    submit: () => beginSend(undefined, "custom", failedSendSnapshot?.originalText).result,
+    submit: () => {
+      beginSend(undefined, "custom", failedSendSnapshot?.originalText);
+    },
     // A failed attempt's question belongs to the conversation that produced it. An active attempt
     // keeps running so it can still confirm after navigation.
     conversationChanged() {
@@ -252,7 +235,6 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
       isDisposed = true;
       stopListening();
       if (activeAttempt) {
-        activeAttempt.failureOverride = "disposed";
         abortAttempt(activeAttempt);
       }
     },
@@ -265,18 +247,12 @@ function createAttempt(
   compiledPrompt: string,
   annotations: readonly NumberedAnnotation[],
 ): SendAttempt {
-  let resolve: (result: AnnotatedSendResult) => void = () => undefined;
-  const result = new Promise<AnnotatedSendResult>((resultResolve) => {
-    resolve = resultResolve;
-  });
   return {
     conversationIdentity,
     snapshot,
     compiledPrompt,
     annotations,
     controller: new AbortController(),
-    result,
-    resolve,
   };
 }
 
@@ -290,11 +266,7 @@ function snapshotAnnotations(annotations: readonly NumberedAnnotation[]): Number
   }));
 }
 
-function failedResult(reason: AnnotatedSendFailureReason): StartedSend {
-  return { isOwned: false, result: Promise.resolve({ status: "failed", reason }) };
-}
-
-function failBeforeAttempt(
+function reportPreflightFailure(
   reason: AnnotatedSendFailureReason,
   source: "custom" | "native",
   setState: (state: AnnotatedSendState) => void,
@@ -302,5 +274,8 @@ function failBeforeAttempt(
   if (source === "custom") {
     setState({ status: "failed", reason });
   }
-  return failedResult(reason);
+}
+
+function annotatedFailureReason(reason: ComposerSubmitFailureReason): AnnotatedSendFailureReason {
+  return reason === "confirmation-timeout" ? reason : "send-unavailable";
 }

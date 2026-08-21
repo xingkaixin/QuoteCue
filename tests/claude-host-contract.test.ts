@@ -76,15 +76,14 @@ describe("Claude host contract", () => {
       onSendConfirmed,
     });
 
-    await expect(interceptor.submit()).resolves.toEqual({
-      status: "confirmed",
-      annotationIds: ["annotation-one"],
-    });
-    expect(onSendConfirmed).toHaveBeenCalledWith([annotation()], {
-      kind: "identified",
-      id: "conversation-test",
-      siteId: "claude",
-    });
+    interceptor.submit();
+    await vi.waitFor(() =>
+      expect(onSendConfirmed).toHaveBeenCalledWith([annotation()], {
+        kind: "identified",
+        id: "conversation-test",
+        siteId: "claude",
+      }),
+    );
     expect(fixture.composer.innerText).toContain("[Annotation 1]");
     expect(fixture.voiceButton.disabled).toBe(false);
     interceptor.dispose();

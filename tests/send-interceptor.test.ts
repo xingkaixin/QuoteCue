@@ -50,7 +50,7 @@ describe("registerSendInterceptor", () => {
     const composer = installComposer();
     const onSendConfirmed = vi.fn();
     const interceptor = createInterceptor(onSendConfirmed);
-    const result = interceptor.submit();
+    interceptor.submit();
     let replayedText = "";
     const onNativeSend = vi.fn(() => {
       replayedText = composer.textContent ?? "";
@@ -59,10 +59,7 @@ describe("registerSendInterceptor", () => {
     });
     installSendButton(onNativeSend);
 
-    await expect(result).resolves.toEqual({
-      status: "confirmed",
-      annotationIds: ["annotation-1"],
-    });
+    await vi.waitFor(() => expect(onSendConfirmed).toHaveBeenCalledOnce());
 
     expect(replayedText).toContain("[Annotation 1]");
     expect(replayedText).not.toContain("[Supplemental question]");
@@ -94,27 +91,30 @@ describe("registerSendInterceptor", () => {
       installUserMessage("user-message-1", compiledPrompt);
     });
 
-    await expect(interceptor.submit()).resolves.toEqual({
-      status: "confirmed",
-      annotationIds: ["annotation-1"],
-    });
-    expect(onSendConfirmed).toHaveBeenCalledWith([annotation], {
-      kind: "identified",
-      id: "conversation-test",
-      siteId: "chatgpt",
-    });
+    interceptor.submit();
+    await vi.waitFor(() =>
+      expect(onSendConfirmed).toHaveBeenCalledWith([annotation], {
+        kind: "identified",
+        id: "conversation-test",
+        siteId: "chatgpt",
+      }),
+    );
     interceptor.dispose();
   });
 
   it("restores the original composer when the send button never appears", async () => {
     vi.useFakeTimers();
     const composer = installComposer("original question");
-    const interceptor = createInterceptor();
+    const onStateChange = vi.fn();
+    const interceptor = createInterceptor(undefined, { onStateChange });
 
-    const result = interceptor.submit();
+    interceptor.submit();
     await vi.advanceTimersByTimeAsync(2_001);
 
-    await expect(result).resolves.toEqual({ status: "failed", reason: "send-unavailable" });
+    expect(onStateChange).toHaveBeenLastCalledWith({
+      status: "failed",
+      reason: "send-unavailable",
+    });
     expect(composer.textContent).toBe("original question");
     interceptor.dispose();
   });
@@ -122,44 +122,50 @@ describe("registerSendInterceptor", () => {
   it("does not overwrite user edits while rolling back a failed attempt", async () => {
     vi.useFakeTimers();
     const composer = installComposer("original question");
-    const interceptor = createInterceptor();
+    const onStateChange = vi.fn();
+    const interceptor = createInterceptor(undefined, { onStateChange });
 
-    const result = interceptor.submit();
+    interceptor.submit();
     composer.textContent = "user edited after failure";
     await vi.advanceTimersByTimeAsync(2_001);
 
-    await expect(result).resolves.toEqual({ status: "failed", reason: "send-unavailable" });
+    expect(onStateChange).toHaveBeenLastCalledWith({
+      status: "failed",
+      reason: "send-unavailable",
+    });
     expect(composer.textContent).toBe("user edited after failure");
     interceptor.dispose();
   });
 
-  it("returns the active attempt for repeated submit calls without recompiling", async () => {
+  it("ignores repeated submit calls without recompiling", async () => {
     const composer = installComposer("original question");
     const interceptor = createInterceptor();
 
-    const firstAttempt = interceptor.submit();
-    const secondAttempt = interceptor.submit();
-    const thirdAttempt = interceptor.submit();
+    interceptor.submit();
+    interceptor.submit();
+    interceptor.submit();
 
-    expect(secondAttempt).toBe(firstAttempt);
-    expect(thirdAttempt).toBe(firstAttempt);
     expect(composer.textContent?.match(/\[Annotation 1\]/g)).toHaveLength(1);
 
     interceptor.dispose();
-    await expect(firstAttempt).resolves.toEqual({ status: "failed", reason: "disposed" });
+    await vi.waitFor(() => expect(composer.textContent).toBe("original question"));
   });
 
   it("retries failed attempts without nesting the compiled prompt", async () => {
     vi.useFakeTimers();
     const composer = installComposer("original question");
-    const interceptor = createInterceptor();
+    const onStateChange = vi.fn();
+    const interceptor = createInterceptor(undefined, { onStateChange });
 
     for (let attempt = 0; attempt < 3; attempt += 1) {
-      const result = interceptor.submit();
+      interceptor.submit();
       expect(composer.textContent?.match(/\[Annotation 1\]/g)).toHaveLength(1);
       expect(composer.textContent?.match(/\[Supplemental question\]/g)).toHaveLength(1);
       await vi.advanceTimersByTimeAsync(2_001);
-      await expect(result).resolves.toEqual({ status: "failed", reason: "send-unavailable" });
+      expect(onStateChange).toHaveBeenLastCalledWith({
+        status: "failed",
+        reason: "send-unavailable",
+      });
       expect(composer.textContent).toBe("original question");
     }
 
@@ -170,11 +176,10 @@ describe("registerSendInterceptor", () => {
     const composer = installComposer("original question");
     const interceptor = createInterceptor();
 
-    const result = interceptor.submit();
+    interceptor.submit();
     interceptor.dispose();
 
-    await expect(result).resolves.toEqual({ status: "failed", reason: "disposed" });
-    expect(composer.textContent).toBe("original question");
+    await vi.waitFor(() => expect(composer.textContent).toBe("original question"));
   });
 
   it("settles a failed attempt when the host rejects composer replacement", async () => {
@@ -183,21 +188,23 @@ describe("registerSendInterceptor", () => {
       status: "available",
       value: { element: host.elements.composer, text: "original question" },
     });
-    vi.spyOn(host.composer, "submit").mockResolvedValue({
+    const submit = vi.spyOn(host.composer, "submit").mockResolvedValue({
       reason: "replace-failed",
       status: "unavailable",
     });
-    const interceptor = createInterceptor(undefined, { host });
+    const onStateChange = vi.fn();
+    const interceptor = createInterceptor(undefined, { host, onStateChange });
 
-    let result: ReturnType<typeof interceptor.submit> | undefined;
-    expect(() => {
-      result = interceptor.submit();
-    }).not.toThrow();
+    expect(() => interceptor.submit()).not.toThrow();
 
-    await expect(result).resolves.toEqual({ status: "failed", reason: "replace-failed" });
-    const nextResult = interceptor.submit();
-    expect(nextResult).not.toBe(result);
-    await expect(nextResult).resolves.toEqual({ status: "failed", reason: "replace-failed" });
+    await vi.waitFor(() =>
+      expect(onStateChange).toHaveBeenLastCalledWith({
+        status: "failed",
+        reason: "send-unavailable",
+      }),
+    );
+    interceptor.submit();
+    await vi.waitFor(() => expect(submit).toHaveBeenCalledTimes(2));
     interceptor.dispose();
   });
 
@@ -208,10 +215,13 @@ describe("registerSendInterceptor", () => {
     const onStateChange = vi.fn();
     const interceptor = createInterceptor(undefined, { host, onStateChange });
 
-    await expect(interceptor.submit()).resolves.toEqual({
-      status: "failed",
-      reason: "send-unavailable",
-    });
+    interceptor.submit();
+    await vi.waitFor(() =>
+      expect(onStateChange).toHaveBeenLastCalledWith({
+        status: "failed",
+        reason: "send-unavailable",
+      }),
+    );
     expect(onStateChange).toHaveBeenLastCalledWith(
       expect.objectContaining({ status: "failed", reason: "send-unavailable" }),
     );
@@ -227,10 +237,7 @@ describe("registerSendInterceptor", () => {
     const onStateChange = vi.fn();
     const interceptor = createInterceptor(undefined, { host, onStateChange });
 
-    await expect(interceptor.submit()).resolves.toEqual({
-      status: "failed",
-      reason: "composer-unavailable",
-    });
+    interceptor.submit();
     expect(onStateChange).toHaveBeenLastCalledWith({
       status: "failed",
       reason: "composer-unavailable",
@@ -252,10 +259,8 @@ describe("registerSendInterceptor", () => {
       installUserMessage("confirmed-user-message", compiledPrompt);
     });
 
-    await expect(interceptor.submit()).resolves.toEqual({
-      status: "confirmed",
-      annotationIds: ["annotation-1"],
-    });
+    interceptor.submit();
+    await vi.waitFor(() => expect(onStateChange).toHaveBeenLastCalledWith({ status: "confirmed" }));
     expect(onStateChange.mock.calls.map(([state]) => state)).toEqual([
       { status: "idle" },
       { status: "sending" },
@@ -340,18 +345,16 @@ describe("registerSendInterceptor", () => {
     const onStateChange = vi.fn();
     const interceptor = createInterceptor(onSendConfirmed, { host, onStateChange });
 
-    await expect(interceptor.submit()).resolves.toEqual({
-      status: "failed",
-      reason: "replace-failed",
-    });
-    expect(onStateChange).toHaveBeenLastCalledWith(
-      expect.objectContaining({ status: "failed", reason: "replace-failed" }),
+    interceptor.submit();
+    await vi.waitFor(() =>
+      expect(onStateChange).toHaveBeenLastCalledWith({
+        status: "failed",
+        reason: "send-unavailable",
+      }),
     );
 
-    await expect(interceptor.submit()).resolves.toEqual({
-      status: "confirmed",
-      annotationIds: ["annotation-1"],
-    });
+    interceptor.submit();
+    await vi.waitFor(() => expect(onSendConfirmed).toHaveBeenCalledOnce());
     const retriedText = submit.mock.calls[1]?.[0].text ?? "";
     expect(retriedText).toContain("[Supplemental question]\noriginal question");
     expect(retriedText.match(/\[Annotation 1\]/g)).toHaveLength(1);
@@ -371,11 +374,12 @@ describe("registerSendInterceptor", () => {
     const composer = installComposer("original question");
     const sendButton = installSendButton();
     sendButton.disabled = true;
-    const interceptor = createInterceptor();
+    const onStateChange = vi.fn();
+    const interceptor = createInterceptor(undefined, { onStateChange });
 
-    const result = interceptor.submit();
+    interceptor.submit();
     await vi.advanceTimersByTimeAsync(2_001);
-    await expect(result).resolves.toEqual({
+    expect(onStateChange).toHaveBeenLastCalledWith({
       status: "failed",
       reason: "send-unavailable",
     });
@@ -390,11 +394,14 @@ describe("registerSendInterceptor", () => {
     const onStateChange = vi.fn();
     const interceptor = createInterceptor(undefined, { onStateChange });
 
-    const result = interceptor.submit();
+    interceptor.submit();
     expect(onStateChange).toHaveBeenLastCalledWith(expect.objectContaining({ status: "sending" }));
     await vi.advanceTimersByTimeAsync(2_001);
 
-    await expect(result).resolves.toEqual({ status: "failed", reason: "send-unavailable" });
+    expect(onStateChange).toHaveBeenLastCalledWith({
+      status: "failed",
+      reason: "send-unavailable",
+    });
     expect(composer.textContent).toBe("original question");
     interceptor.dispose();
   });
@@ -535,10 +542,9 @@ describe("registerSendInterceptor", () => {
       onSendConfirmed: vi.fn(),
     });
 
-    const result = interceptor.submit();
+    interceptor.submit();
     await vi.waitFor(() => expect(submit).toHaveBeenCalledOnce());
     interceptor.dispose();
-    await expect(result).resolves.toEqual({ status: "failed", reason: "disposed" });
 
     expect(submittedSignal?.aborted).toBe(true);
   });
@@ -547,13 +553,14 @@ describe("registerSendInterceptor", () => {
     vi.useFakeTimers();
     const composer = installComposer("original question");
     const onSendConfirmed = vi.fn();
-    const interceptor = createInterceptor(onSendConfirmed);
+    const onStateChange = vi.fn();
+    const interceptor = createInterceptor(onSendConfirmed, { onStateChange });
     installSendButton(() => composer.replaceChildren());
 
-    const result = interceptor.submit();
+    interceptor.submit();
     await vi.advanceTimersByTimeAsync(15_001);
 
-    await expect(result).resolves.toEqual({
+    expect(onStateChange).toHaveBeenLastCalledWith({
       status: "failed",
       reason: "confirmation-timeout",
     });
@@ -592,7 +599,7 @@ describe("registerSendInterceptor", () => {
       onSendConfirmed: vi.fn(),
     });
 
-    const result = interceptor.submit();
+    interceptor.submit();
     await vi.waitFor(() =>
       expect(logger).toHaveBeenCalledWith(
         "[QuoteCue host] send confirmation observed: total=1, matched=false",
@@ -601,14 +608,14 @@ describe("registerSendInterceptor", () => {
     expect(messageInnerTextReads).toBe(0);
 
     interceptor.dispose();
-    await expect(result).resolves.toEqual({ status: "failed", reason: "disposed" });
   });
 
   it("retries an unconfirmed send with the original supplemental question", async () => {
     vi.useFakeTimers();
     const composer = installComposer("original question");
     const onSendConfirmed = vi.fn();
-    const interceptor = createInterceptor(onSendConfirmed);
+    const onStateChange = vi.fn();
+    const interceptor = createInterceptor(onSendConfirmed, { onStateChange });
     let sendCount = 0;
     let retriedText = "";
     installSendButton(() => {
@@ -621,19 +628,16 @@ describe("registerSendInterceptor", () => {
       }
     });
 
-    const firstResult = interceptor.submit();
+    interceptor.submit();
     await vi.advanceTimersByTimeAsync(15_001);
-    await expect(firstResult).resolves.toEqual({
+    expect(onStateChange).toHaveBeenLastCalledWith({
       status: "failed",
       reason: "confirmation-timeout",
     });
 
-    const retryResult = interceptor.submit();
+    interceptor.submit();
     await vi.advanceTimersByTimeAsync(17);
-    await expect(retryResult).resolves.toEqual({
-      status: "confirmed",
-      annotationIds: ["annotation-1"],
-    });
+    expect(onStateChange).toHaveBeenLastCalledWith({ status: "confirmed" });
     expect(retriedText).toContain("[Supplemental question]\noriginal question");
     expect(retriedText.match(/\[Annotation 1\]/g)).toHaveLength(1);
     expect(onSendConfirmed).toHaveBeenCalledWith([annotation], {
@@ -652,8 +656,10 @@ describe("registerSendInterceptor", () => {
       id: "conversation-a",
       siteId: "chatgpt",
     };
+    const onStateChange = vi.fn();
     const interceptor = createInterceptor(vi.fn(), {
       conversationIdentity: () => identity,
+      onStateChange,
     });
     let sentText = "";
     installSendButton(() => {
@@ -661,20 +667,19 @@ describe("registerSendInterceptor", () => {
       composer.replaceChildren();
     });
 
-    await expect(
-      (async () => {
-        const result = interceptor.submit();
-        await vi.advanceTimersByTimeAsync(15_001);
-        return result;
-      })(),
-    ).resolves.toEqual({ status: "failed", reason: "confirmation-timeout" });
+    interceptor.submit();
+    await vi.advanceTimersByTimeAsync(15_001);
+    expect(onStateChange).toHaveBeenLastCalledWith({
+      status: "failed",
+      reason: "confirmation-timeout",
+    });
     expect(sentText).toContain("question from conversation A");
 
     identity = { kind: "identified", id: "conversation-b", siteId: "chatgpt" };
     interceptor.conversationChanged();
     sentText = "";
 
-    void interceptor.submit();
+    interceptor.submit();
     await vi.advanceTimersByTimeAsync(17);
 
     expect(sentText).not.toContain("question from conversation A");
@@ -697,9 +702,8 @@ describe("registerSendInterceptor", () => {
     });
     installSendButton();
 
-    const result = interceptor.submit();
+    interceptor.submit();
     await vi.advanceTimersByTimeAsync(15_001);
-    await expect(result).resolves.toEqual({ status: "failed", reason: "confirmation-timeout" });
     expect(onStateChange).toHaveBeenLastCalledWith(
       expect.objectContaining({ status: "failed", reason: "confirmation-timeout" }),
     );
@@ -718,9 +722,8 @@ describe("registerSendInterceptor", () => {
     const interceptor = createInterceptor(vi.fn(), { onStateChange });
     installSendButton();
 
-    const result = interceptor.submit();
+    interceptor.submit();
     await vi.advanceTimersByTimeAsync(15_001);
-    await expect(result).resolves.toEqual({ status: "failed", reason: "confirmation-timeout" });
 
     interceptor.conversationChanged();
 
@@ -741,15 +744,14 @@ describe("registerSendInterceptor", () => {
       installUserMessage("user-message-after-replacement", compiledPrompt);
     });
 
-    await expect(interceptor.submit()).resolves.toEqual({
-      status: "confirmed",
-      annotationIds: ["annotation-1"],
-    });
-    expect(onSendConfirmed).toHaveBeenCalledWith([annotation], {
-      kind: "identified",
-      id: "conversation-test",
-      siteId: "chatgpt",
-    });
+    interceptor.submit();
+    await vi.waitFor(() =>
+      expect(onSendConfirmed).toHaveBeenCalledWith([annotation], {
+        kind: "identified",
+        id: "conversation-test",
+        siteId: "chatgpt",
+      }),
+    );
     interceptor.dispose();
   });
 
@@ -763,15 +765,14 @@ describe("registerSendInterceptor", () => {
       installUserMessage("reflowed-user-message", reflowedText);
     });
 
-    await expect(interceptor.submit()).resolves.toEqual({
-      status: "confirmed",
-      annotationIds: ["annotation-1"],
-    });
-    expect(onSendConfirmed).toHaveBeenCalledWith([annotation], {
-      kind: "identified",
-      id: "conversation-test",
-      siteId: "chatgpt",
-    });
+    interceptor.submit();
+    await vi.waitFor(() =>
+      expect(onSendConfirmed).toHaveBeenCalledWith([annotation], {
+        kind: "identified",
+        id: "conversation-test",
+        siteId: "chatgpt",
+      }),
+    );
     interceptor.dispose();
   });
 
@@ -780,17 +781,18 @@ describe("registerSendInterceptor", () => {
     const composer = installComposer("original question");
     installUserMessage("old-message", "unrelated");
     const onSendConfirmed = vi.fn();
-    const interceptor = createInterceptor(onSendConfirmed);
+    const onStateChange = vi.fn();
+    const interceptor = createInterceptor(onSendConfirmed, { onStateChange });
     installSendButton(() => {
       const compiledPrompt = composer.textContent ?? "";
       composer.replaceChildren();
       installUserMessage("new-message", `${compiledPrompt} changed`);
     });
 
-    const result = interceptor.submit();
+    interceptor.submit();
     await vi.advanceTimersByTimeAsync(15_001);
 
-    await expect(result).resolves.toEqual({
+    expect(onStateChange).toHaveBeenLastCalledWith({
       status: "failed",
       reason: "confirmation-timeout",
     });

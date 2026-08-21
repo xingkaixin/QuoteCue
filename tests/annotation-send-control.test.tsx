@@ -26,7 +26,7 @@ describe("AnnotationSendControl", () => {
     ).toBe(true);
 
     await mounted.render({
-      state: { status: "failed", reason: "replace-failed" },
+      state: { status: "failed", reason: "send-unavailable" },
     });
     expect(mounted.container.querySelector('[role="status"]')?.textContent).toContain(
       "annotation draft was kept",

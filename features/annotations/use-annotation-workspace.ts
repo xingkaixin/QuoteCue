@@ -177,7 +177,7 @@ export function useAnnotationWorkspace() {
   }, [closeEditor, discardAllAnnotations, discardPendingDeletions]);
 
   const send = useCallback(() => {
-    void sendControllerRef.current?.submit();
+    sendControllerRef.current?.submit();
   }, []);
 
   return {
