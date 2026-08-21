@@ -10,7 +10,9 @@ import {
 const CHATGPT_ADAPTER: SiteAdapter = {
   composer: richTextComposer("#prompt-textarea[contenteditable='true']"),
   conversationPathPattern: /^\/(?:c|g\/[^/?#]+\/c)\/([^/?#]+)/,
-  layout: composerLayout("button", { boundarySelector: "form" }),
+  layout: composerLayout("button", "form > div:has(#prompt-textarea)", {
+    boundarySelector: "form",
+  }),
   messages: messageAccess({
     assistantSelector: '[data-message-author-role="assistant"]',
     id: (message) => message.dataset.messageId,

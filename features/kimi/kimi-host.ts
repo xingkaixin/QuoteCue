@@ -14,7 +14,7 @@ const KIMI_ADAPTER: SiteAdapter = {
     text.replace(/\s/g, ""),
   ),
   conversationPathPattern: /^\/chat\/([^/?#]+)/,
-  layout: composerLayout(".send-button-container"),
+  layout: composerLayout(".send-button-container", ".chat-editor-content"),
   messages: messageAccess({
     assistantSelector: ".chat-content-item-assistant",
     id: (message) => message.closest<HTMLElement>(MESSAGE_ITEM_SELECTOR)?.dataset.archerId,

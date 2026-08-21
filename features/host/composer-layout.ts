@@ -22,7 +22,6 @@ export function createComposerLayout(
   currentComposer: () => HTMLElement | null,
 ) {
   const { adapter, document: hostDocument, signals, window: hostWindow } = context;
-  const surfaceByComposer = new WeakMap<HTMLElement, HTMLElement>();
   let activeReservation: { height: number } | null = null;
   let resizeObserver: ResizeObserver | null = null;
   let observedSurface: HTMLElement | null = null;
@@ -184,47 +183,14 @@ export function createComposerLayout(
   }
 
   function findComposerSurface(composer: HTMLElement, boundary: HTMLElement) {
-    if (adapter.layout.surfaceSelector) {
-      const surface = composer.closest<HTMLElement>(adapter.layout.surfaceSelector);
-      return surface && boundary.contains(surface) ? surface : null;
-    }
-
-    const cachedSurface = surfaceByComposer.get(composer);
-    if (
-      cachedSurface &&
-      cachedSurface !== boundary &&
-      boundary.contains(cachedSurface) &&
-      cachedSurface.contains(composer) &&
-      isComposerSurface(cachedSurface)
-    ) {
-      return cachedSurface;
-    }
-
-    let candidate = composer.parentElement;
-    while (candidate && candidate !== boundary) {
-      if (isComposerSurface(candidate)) {
-        surfaceByComposer.set(composer, candidate);
-        return candidate;
-      }
-      candidate = candidate.parentElement;
-    }
-    surfaceByComposer.delete(composer);
-    return null;
+    const surface = composer.closest<HTMLElement>(adapter.layout.surfaceSelector);
+    return surface && surface !== boundary && boundary.contains(surface) ? surface : null;
   }
 
   function findComposerBoundary(composer: HTMLElement) {
     return adapter.layout.boundarySelector
       ? composer.closest<HTMLElement>(adapter.layout.boundarySelector)
       : (composer.closest<HTMLElement>("form") ?? hostDocument.body);
-  }
-
-  function isComposerSurface(candidate: HTMLElement) {
-    const style = hostWindow.getComputedStyle(candidate);
-    return (
-      Number.parseFloat(style.borderTopLeftRadius) > 0 &&
-      style.backgroundColor !== "rgba(0, 0, 0, 0)" &&
-      style.backgroundColor !== "transparent"
-    );
   }
 
   function findComposerAction(root: HTMLElement, surfaceRect: DOMRect) {

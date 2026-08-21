@@ -324,10 +324,9 @@ export function runHostContractSuite(definition: HostContractDefinition) {
       });
     });
 
-    it("reports a composer without a visual surface", () => {
+    it("reports a composer outside its configured surface", () => {
       const fixture = definition.installFixture();
-      fixture.surface.style.backgroundColor = "transparent";
-      fixture.surface.style.borderTopLeftRadius = "0";
+      fixture.surface.replaceWith(fixture.composer, fixture.sendControl);
 
       expect(host().layout.current()).toEqual({
         reason: "composer-surface-unavailable",
