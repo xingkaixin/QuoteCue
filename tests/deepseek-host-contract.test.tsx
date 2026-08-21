@@ -80,15 +80,14 @@ describe("DeepSeek host contract", () => {
       onSendConfirmed,
     });
 
-    await expect(interceptor.submit()).resolves.toEqual({
-      status: "confirmed",
-      annotationIds: ["annotation-one"],
-    });
-    expect(onSendConfirmed).toHaveBeenCalledWith([annotation], {
-      kind: "identified",
-      id: "conversation-test",
-      siteId: "deepseek",
-    });
+    interceptor.submit();
+    await vi.waitFor(() =>
+      expect(onSendConfirmed).toHaveBeenCalledWith([annotation], {
+        kind: "identified",
+        id: "conversation-test",
+        siteId: "deepseek",
+      }),
+    );
     expect(annotations).toEqual([]);
 
     interceptor.dispose();
@@ -129,14 +128,12 @@ describe("DeepSeek host contract", () => {
       onSendConfirmed,
     });
 
-    await expect(interceptor.submit()).resolves.toEqual({
-      status: "confirmed",
-      annotationIds: ["annotation-one"],
-    });
-
-    expect(onSendConfirmed).toHaveBeenCalledWith(
-      [expect.objectContaining({ id: "annotation-one" })],
-      { kind: "identified", id: "conversation-test", siteId: "deepseek" },
+    interceptor.submit();
+    await vi.waitFor(() =>
+      expect(onSendConfirmed).toHaveBeenCalledWith(
+        [expect.objectContaining({ id: "annotation-one" })],
+        { kind: "identified", id: "conversation-test", siteId: "deepseek" },
+      ),
     );
     expect(sentText).toContain("[Annotation 1]");
     expect(sentText).not.toContain("[Supplemental question]");
@@ -175,7 +172,7 @@ describe("DeepSeek host contract", () => {
       onSendConfirmed: vi.fn(),
     });
 
-    const result = interceptor.submit();
+    interceptor.submit();
     await vi.waitFor(() =>
       expect(logger).toHaveBeenCalledWith(
         "[QuoteCue host] send confirmation observed: total=1, matched=false",
@@ -184,7 +181,6 @@ describe("DeepSeek host contract", () => {
     expect(assistantInnerTextReads).toBe(0);
 
     interceptor.dispose();
-    await expect(result).resolves.toEqual({ status: "failed", reason: "disposed" });
   });
 
   it("renders the floating QuoteCue action for overlay hosts", async () => {

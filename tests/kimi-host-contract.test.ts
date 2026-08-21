@@ -52,15 +52,14 @@ describe("Kimi host contract", () => {
       onSendConfirmed,
     });
 
-    await expect(interceptor.submit()).resolves.toEqual({
-      status: "confirmed",
-      annotationIds: ["annotation-one"],
-    });
-    expect(onSendConfirmed).toHaveBeenCalledWith([annotation()], {
-      kind: "identified",
-      id: "conversation-test",
-      siteId: "kimi",
-    });
+    interceptor.submit();
+    await vi.waitFor(() =>
+      expect(onSendConfirmed).toHaveBeenCalledWith([annotation()], {
+        kind: "identified",
+        id: "conversation-test",
+        siteId: "kimi",
+      }),
+    );
     expect(fixture.composer.innerText).toContain("[批注 1]");
     interceptor.dispose();
   });
@@ -79,6 +78,7 @@ describe("Kimi host contract", () => {
     fixture.sendControl.addEventListener("click", () => {
       appendKimiUserMessage("user-two", fixture.composer.innerText);
     });
+    const onSendConfirmed = vi.fn();
     const interceptor = registerSendInterceptor({
       annotations: () => numberAnnotations([annotation()]),
       compilePrompt: compileAnnotatedPrompt,
@@ -89,13 +89,11 @@ describe("Kimi host contract", () => {
       }),
       host: createKimiHost({ document, window }),
       locale: () => "zh-CN",
-      onSendConfirmed: vi.fn(),
+      onSendConfirmed,
     });
 
-    await expect(interceptor.submit()).resolves.toEqual({
-      status: "confirmed",
-      annotationIds: ["annotation-one"],
-    });
+    interceptor.submit();
+    await vi.waitFor(() => expect(onSendConfirmed).toHaveBeenCalledOnce());
     expect(document.execCommand).not.toHaveBeenCalled();
     expect(fixture.composer.innerText).toContain("[批注 1]");
     interceptor.dispose();
@@ -113,6 +111,7 @@ describe("Kimi host contract", () => {
     fixture.sendControl.addEventListener("click", () => {
       appendKimiUserMessage("user-two", fixture.composer.innerText);
     });
+    const onSendConfirmed = vi.fn();
     const interceptor = registerSendInterceptor({
       annotations: () => numberAnnotations([annotation()]),
       compilePrompt: compileAnnotatedPrompt,
@@ -123,13 +122,11 @@ describe("Kimi host contract", () => {
       }),
       host: createKimiHost({ document, window }),
       locale: () => "zh-CN",
-      onSendConfirmed: vi.fn(),
+      onSendConfirmed,
     });
 
-    await expect(interceptor.submit()).resolves.toEqual({
-      status: "confirmed",
-      annotationIds: ["annotation-one"],
-    });
+    interceptor.submit();
+    await vi.waitFor(() => expect(onSendConfirmed).toHaveBeenCalledOnce());
     expect(fixture.composer.innerText).toContain("回答：[批注 1]选中文本：");
     interceptor.dispose();
   });
@@ -148,6 +145,7 @@ describe("Kimi host contract", () => {
       appendKimiUserMessage(undefined, "Previous optimistic message");
       appendKimiUserMessage(undefined, sent);
     });
+    const onSendConfirmed = vi.fn();
     const interceptor = registerSendInterceptor({
       annotations: () => numberAnnotations([annotation()]),
       compilePrompt: compileAnnotatedPrompt,
@@ -158,13 +156,11 @@ describe("Kimi host contract", () => {
       }),
       host,
       locale: () => "zh-CN",
-      onSendConfirmed: vi.fn(),
+      onSendConfirmed,
     });
 
-    await expect(interceptor.submit()).resolves.toEqual({
-      status: "confirmed",
-      annotationIds: ["annotation-one"],
-    });
+    interceptor.submit();
+    await vi.waitFor(() => expect(onSendConfirmed).toHaveBeenCalledOnce());
     interceptor.dispose();
   });
 
@@ -176,6 +172,7 @@ describe("Kimi host contract", () => {
     });
     const compiled = compileAnnotatedPrompt(numberAnnotations([annotation()]), "", "zh-CN");
     appendKimiUserMessage(undefined, compiled);
+    const onStateChange = vi.fn();
     const interceptor = registerSendInterceptor({
       annotations: () => numberAnnotations([annotation()]),
       compilePrompt: compileAnnotatedPrompt,
@@ -187,13 +184,14 @@ describe("Kimi host contract", () => {
       host,
       locale: () => "zh-CN",
       onSendConfirmed: vi.fn(),
+      onStateChange,
     });
 
     vi.useFakeTimers();
-    const result = interceptor.submit();
+    interceptor.submit();
     await vi.advanceTimersByTimeAsync(15_001);
 
-    await expect(result).resolves.toEqual({
+    expect(onStateChange).toHaveBeenLastCalledWith({
       status: "failed",
       reason: "confirmation-timeout",
     });
@@ -211,6 +209,7 @@ describe("Kimi host contract", () => {
     fixture.sendControl.addEventListener("click", () => {
       appendKimiUserMessage(undefined, fixture.composer.innerText);
     });
+    const onSendConfirmed = vi.fn();
     const interceptor = registerSendInterceptor({
       annotations: () => numberAnnotations([annotation()]),
       compilePrompt: compileAnnotatedPrompt,
@@ -221,13 +220,11 @@ describe("Kimi host contract", () => {
       }),
       host,
       locale: () => "zh-CN",
-      onSendConfirmed: vi.fn(),
+      onSendConfirmed,
     });
 
-    await expect(interceptor.submit()).resolves.toEqual({
-      status: "confirmed",
-      annotationIds: ["annotation-one"],
-    });
+    interceptor.submit();
+    await vi.waitFor(() => expect(onSendConfirmed).toHaveBeenCalledOnce());
     interceptor.dispose();
   });
 });

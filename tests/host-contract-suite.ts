@@ -543,15 +543,14 @@ export function runHostContractSuite(definition: HostContractDefinition) {
         onSendConfirmed,
       });
 
-      await expect(interceptor.submit()).resolves.toEqual({
-        status: "confirmed",
-        annotationIds: [annotation.id],
-      });
-      expect(onSendConfirmed).toHaveBeenCalledWith([annotation], {
-        kind: "identified",
-        id: "conversation-test",
-        siteId: definition.siteId,
-      });
+      interceptor.submit();
+      await vi.waitFor(() =>
+        expect(onSendConfirmed).toHaveBeenCalledWith([annotation], {
+          kind: "identified",
+          id: "conversation-test",
+          siteId: definition.siteId,
+        }),
+      );
       interceptor.dispose();
     });
 

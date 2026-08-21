@@ -184,15 +184,14 @@ describe("ChatGPT host contract", () => {
       onSendConfirmed,
     });
 
-    await expect(interceptor.submit()).resolves.toEqual({
-      status: "confirmed",
-      annotationIds: ["annotation-one"],
-    });
-    expect(onSendConfirmed).toHaveBeenCalledWith([annotation], {
-      kind: "identified",
-      id: "conversation-test",
-      siteId: "chatgpt",
-    });
+    interceptor.submit();
+    await vi.waitFor(() =>
+      expect(onSendConfirmed).toHaveBeenCalledWith([annotation], {
+        kind: "identified",
+        id: "conversation-test",
+        siteId: "chatgpt",
+      }),
+    );
     expect(annotations).toEqual([]);
 
     interceptor.dispose();
@@ -399,6 +398,7 @@ describe("ChatGPT host contract", () => {
       },
       comment: "private comment",
     };
+    const onStateChange = vi.fn();
     const interceptor = registerSendInterceptor({
       annotations: () => numberAnnotations([privateAnnotation]),
       compilePrompt: compileAnnotatedPrompt,
@@ -410,9 +410,11 @@ describe("ChatGPT host contract", () => {
       host,
       locale: () => "en",
       onSendConfirmed: vi.fn(),
+      onStateChange,
     });
 
-    await expect(interceptor.submit()).resolves.toEqual({
+    interceptor.submit();
+    expect(onStateChange).toHaveBeenLastCalledWith({
       reason: "composer-unavailable",
       status: "failed",
     });
