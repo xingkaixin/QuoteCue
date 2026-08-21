@@ -111,7 +111,7 @@ describe("useAnnotatedComposerLayout", () => {
     await act(async () => root.unmount());
   });
 
-  it("reuses a validated composer surface without rescanning its ancestors", () => {
+  it("uses the configured composer surface without inspecting ancestor styles", () => {
     const { composer, surface } = installChatGptHostFixture();
     const wrapper = document.createElement("div");
     composer.before(wrapper);
@@ -120,14 +120,12 @@ describe("useAnnotatedComposerLayout", () => {
     const getComputedStyle = vi.spyOn(window, "getComputedStyle");
 
     expect(host.layout.current().status).toBe("available");
-    expect(getComputedStyle.mock.calls.length).toBeGreaterThan(1);
+    expect(getComputedStyle).not.toHaveBeenCalled();
 
-    getComputedStyle.mockClear();
     expect(host.layout.current().status).toBe("available");
-    expect(getComputedStyle).toHaveBeenCalledOnce();
+    expect(getComputedStyle).not.toHaveBeenCalled();
 
-    surface.style.backgroundColor = "transparent";
-    surface.style.borderTopLeftRadius = "0";
+    surface.replaceWith(composer);
     expect(host.layout.current()).toEqual({
       reason: "composer-surface-unavailable",
       status: "unavailable",
@@ -140,8 +138,6 @@ describe("useAnnotatedComposerLayout", () => {
     const release = host.layout.reserveAnnotationRow(40);
     const nextSurface = document.createElement("div");
     const nextAction = document.createElement("button");
-    nextSurface.style.backgroundColor = "white";
-    nextSurface.style.borderTopLeftRadius = "20px";
     nextSurface.style.paddingTop = "3px";
     nextAction.dataset.testid = "send-button";
     nextSurface.append(fixture.composer, nextAction);

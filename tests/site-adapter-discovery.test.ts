@@ -34,9 +34,8 @@ describe("site adapter discovery", () => {
     const host = createHostEngine(
       { document, window },
       adapter({
-        layout: composerLayout("button", {
+        layout: composerLayout("button", "[data-composer-surface]", {
           boundarySelector: "[data-composer-boundary]",
-          surfaceSelector: "[data-composer-surface]",
         }),
       }),
     );
@@ -101,7 +100,7 @@ function adapter(
   return {
     composer: richTextComposer("#composer"),
     conversationPathPattern: /^\/conversation\/([^/]+)/,
-    layout: composerLayout("button"),
+    layout: composerLayout("button", "[data-composer-surface]"),
     messages: {
       assistantSelector: "[data-assistant]",
       id: (message) => message.id,

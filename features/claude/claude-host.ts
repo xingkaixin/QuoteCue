@@ -14,7 +14,7 @@ const MESSAGE_INDEX_SELECTOR = "[data-rs-index]";
 const CLAUDE_ADAPTER: SiteAdapter = {
   composer: richTextComposer("[data-testid='chat-input'][contenteditable='true']"),
   conversationPathPattern: /^\/chat\/([^/?#]+)/,
-  layout: composerLayout("button"),
+  layout: composerLayout("button", "div:has([data-testid=chat-input])"),
   messages: messageAccess({
     assistantSelector: MESSAGE_SELECTOR,
     id: (message) => message.closest<HTMLElement>(MESSAGE_INDEX_SELECTOR)?.dataset.rsIndex,

@@ -12,7 +12,7 @@ export type ComposerAccess = {
 export type ComposerLayoutAccess = {
   actionSelector: string;
   boundarySelector?: string;
-  surfaceSelector?: string;
+  surfaceSelector: string;
 };
 
 export type SelectionToolbarBounds = {
@@ -48,10 +48,7 @@ export type SiteAdapter = {
   sendControl: SendControlAccess;
 };
 
-export type ComposerLayoutOptions = Pick<
-  ComposerLayoutAccess,
-  "boundarySelector" | "surfaceSelector"
->;
+export type ComposerLayoutOptions = Pick<ComposerLayoutAccess, "boundarySelector">;
 
 type MessageAccessOptions = Omit<MessageAccess, "isAssistant"> & {
   isAssistant?: MessageAccess["isAssistant"];
@@ -59,12 +56,13 @@ type MessageAccessOptions = Omit<MessageAccess, "isAssistant"> & {
 
 export function composerLayout(
   actionSelector: string,
+  surfaceSelector: string,
   options: ComposerLayoutOptions = {},
 ): ComposerLayoutAccess {
   return {
     actionSelector,
+    surfaceSelector,
     ...(options.boundarySelector ? { boundarySelector: options.boundarySelector } : {}),
-    ...(options.surfaceSelector ? { surfaceSelector: options.surfaceSelector } : {}),
   };
 }
 

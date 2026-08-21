@@ -94,7 +94,7 @@ function adapter(composer: ComposerAccess): SiteAdapter {
   return {
     composer,
     conversationPathPattern: /^\/c\/([^/]+)/,
-    layout: { actionSelector: "button" },
+    layout: { actionSelector: "button", surfaceSelector: "[data-composer-surface]" },
     messages: {
       assistantSelector: "article",
       id: (message) => message.id,

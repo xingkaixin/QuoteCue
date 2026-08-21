@@ -15,7 +15,7 @@ export const DEEPSEEK_SEND_ICON_PATH_PREFIX = "M8.3125 0.981587";
 const DEEPSEEK_ADAPTER: SiteAdapter = {
   composer: textareaComposer('textarea[name="search"]'),
   conversationPathPattern: /^\/a\/chat\/s\/([^/?#]+)/,
-  layout: composerLayout(".ds-button--circle"),
+  layout: composerLayout(".ds-button--circle", "div:has(textarea[name=search])"),
   messages: messageAccess({
     assistantSelector: ".ds-assistant-message-main-content",
     id: (message) =>
