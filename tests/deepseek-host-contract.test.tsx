@@ -73,7 +73,11 @@ describe("DeepSeek host contract", () => {
     const interceptor = registerSendInterceptor({
       annotations: () => numberAnnotations(annotations),
       compilePrompt: compileAnnotatedPrompt,
-      conversationIdentity: () => ({ kind: "identified", id: "conversation-test" }),
+      conversationIdentity: () => ({
+        kind: "identified",
+        id: "conversation-test",
+        siteId: "deepseek",
+      }),
       host,
       locale: () => "en",
       onSendConfirmed,
@@ -86,6 +90,7 @@ describe("DeepSeek host contract", () => {
     expect(onSendConfirmed).toHaveBeenCalledWith([annotation], {
       kind: "identified",
       id: "conversation-test",
+      siteId: "deepseek",
     });
     expect(annotations).toEqual([]);
 
@@ -117,7 +122,11 @@ describe("DeepSeek host contract", () => {
           { id: "annotation-one", anchor: emptyAnchor(), comment: "Explain the tradeoff" },
         ]),
       compilePrompt: compileAnnotatedPrompt,
-      conversationIdentity: () => ({ kind: "identified", id: "conversation-test" }),
+      conversationIdentity: () => ({
+        kind: "identified",
+        id: "conversation-test",
+        siteId: "deepseek",
+      }),
       host,
       locale: () => "en",
       onSendConfirmed,
@@ -130,7 +139,7 @@ describe("DeepSeek host contract", () => {
 
     expect(onSendConfirmed).toHaveBeenCalledWith(
       [expect.objectContaining({ id: "annotation-one" })],
-      { kind: "identified", id: "conversation-test" },
+      { kind: "identified", id: "conversation-test", siteId: "deepseek" },
     );
     expect(sentText).toContain("[Annotation 1]");
     expect(sentText).not.toContain("[Supplemental question]");
@@ -159,7 +168,11 @@ describe("DeepSeek host contract", () => {
           { id: "annotation-one", anchor: emptyAnchor(), comment: "Explain the tradeoff" },
         ]),
       compilePrompt: compileAnnotatedPrompt,
-      conversationIdentity: () => ({ kind: "identified", id: "conversation-test" }),
+      conversationIdentity: () => ({
+        kind: "identified",
+        id: "conversation-test",
+        siteId: "deepseek",
+      }),
       host,
       locale: () => "en",
       onSendConfirmed: vi.fn(),
@@ -216,7 +229,7 @@ describe("DeepSeek host contract", () => {
 function OverlayHarness({ onActivate }: { onActivate: (selection: AnchoredSelection) => void }) {
   return (
     <SelectionPresentation
-      conversationIdentity={{ kind: "identified", id: "conversation-a" }}
+      conversationIdentity={{ kind: "identified", id: "conversation-a", siteId: "deepseek" }}
       isEnabled
       onActivate={onActivate}
     />

@@ -26,5 +26,5 @@ const CLAUDE_ADAPTER: SiteAdapter = {
 };
 
 export function createClaudeHost(environment: HostEnvironment) {
-  return createHostEngine(environment, CLAUDE_ADAPTER);
+  return createHostEngine(environment, CLAUDE_ADAPTER, "claude");
 }

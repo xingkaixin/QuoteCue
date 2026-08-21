@@ -127,7 +127,7 @@ describe("native selection presentation", () => {
     await act(async () =>
       root.render(
         <SelectionHarness
-          conversationIdentity={{ kind: "identified", id: "conversation-a" }}
+          conversationIdentity={{ kind: "identified", id: "conversation-a", siteId: "chatgpt" }}
           onActivate={vi.fn()}
         />,
       ),
@@ -142,7 +142,7 @@ describe("native selection presentation", () => {
     await act(async () =>
       root.render(
         <SelectionHarness
-          conversationIdentity={{ kind: "identified", id: "conversation-b" }}
+          conversationIdentity={{ kind: "identified", id: "conversation-b", siteId: "chatgpt" }}
           onActivate={vi.fn()}
         />,
       ),
@@ -186,7 +186,7 @@ describe("native selection presentation", () => {
 });
 
 function SelectionHarness({
-  conversationIdentity = { kind: "identified", id: "conversation-a" },
+  conversationIdentity = { kind: "identified", id: "conversation-a", siteId: "chatgpt" },
   host = createChatGptHost({ document, window }),
   onActivate,
 }: {

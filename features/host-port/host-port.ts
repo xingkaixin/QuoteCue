@@ -1,3 +1,5 @@
+import type { SupportedSiteId } from "@/lib/supported-sites";
+
 export type SelectionCaptureFailureReason =
   | "anchor-unavailable"
   | "assistant-message-unavailable"
@@ -42,6 +44,7 @@ export type ComposerSubmitIntent = {
 export type IdentifiedConversation = {
   kind: "identified";
   id: string;
+  siteId: SupportedSiteId;
 };
 
 export type UnidentifiedConversation = {

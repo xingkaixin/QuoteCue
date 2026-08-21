@@ -45,7 +45,8 @@ The result of resolving the current page to either an identified or unidentified
 _Avoid_: Conversation key
 
 **Identified Conversation**:
-A conversation with a stable, host-provided identifier that can safely own a persistent draft.
+A conversation scoped by its supported site and a stable, host-provided identifier so it can safely
+own a persistent draft in extension-wide storage.
 
 **Unidentified Conversation**:
 A conversation without a stable host-provided identifier; its draft exists only for the current

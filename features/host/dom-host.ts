@@ -1,4 +1,5 @@
 import type { Host } from "@/features/host-port/host-port";
+import type { SupportedSiteId } from "@/lib/supported-sites";
 
 import { createComposerDriver } from "./composer-driver";
 import { createComposerLayout } from "./composer-layout";
@@ -30,7 +31,11 @@ export type {
 } from "@/features/host-port/host-port";
 export type { HostEnvironment } from "./host-environment";
 
-export function createHostEngine(environment: HostEnvironment, adapter: SiteAdapter): Host {
+export function createHostEngine(
+  environment: HostEnvironment,
+  adapter: SiteAdapter,
+  siteId: SupportedSiteId,
+): Host {
   const context = createHostContext(environment, adapter);
   const textNormalizer = createTextNormalizer(adapter.composer);
   const composerDriver = createComposerDriver(context, textNormalizer);
@@ -69,7 +74,7 @@ export function createHostEngine(environment: HostEnvironment, adapter: SiteAdap
           adapter.conversationPathPattern,
         )?.[1];
         return conversationId
-          ? { kind: "identified" as const, id: conversationId }
+          ? { kind: "identified" as const, id: conversationId, siteId }
           : { kind: "unidentified" as const, sessionKey };
       },
       subscribe: context.signals.subscribeNavigation,

@@ -6,7 +6,7 @@ import {
   isDraftOwnerResponse,
 } from "@/features/annotations/draft-owner-protocol";
 
-const conversation = { kind: "identified", id: "conversation-a" } as const;
+const conversation = { kind: "identified", id: "conversation-a", siteId: "chatgpt" } as const;
 const annotation = {
   id: "annotation-a",
   anchor: {
@@ -53,6 +53,16 @@ describe("draft owner protocol", () => {
       channel: DRAFT_OWNER_MESSAGE,
       kind: "load",
       conversation: { kind: "unidentified", sessionKey: "session-a" },
+    },
+    {
+      channel: DRAFT_OWNER_MESSAGE,
+      kind: "load",
+      conversation: { kind: "identified", id: "conversation-a" },
+    },
+    {
+      channel: DRAFT_OWNER_MESSAGE,
+      kind: "load",
+      conversation: { kind: "identified", id: "conversation-a", siteId: "unknown" },
     },
     {
       channel: DRAFT_OWNER_MESSAGE,

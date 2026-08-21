@@ -30,5 +30,5 @@ const DEEPSEEK_ADAPTER: SiteAdapter = {
 };
 
 export function createDeepSeekHost(environment: HostEnvironment) {
-  return createHostEngine(environment, DEEPSEEK_ADAPTER);
+  return createHostEngine(environment, DEEPSEEK_ADAPTER, "deepseek");
 }

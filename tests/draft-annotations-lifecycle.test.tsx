@@ -408,5 +408,5 @@ function currentAnnotations() {
 }
 
 function identifiedConversation(id: string): IdentifiedConversation {
-  return { kind: "identified", id };
+  return { kind: "identified", id, siteId: "chatgpt" };
 }

@@ -27,5 +27,5 @@ const KIMI_ADAPTER: SiteAdapter = {
 };
 
 export function createKimiHost(environment: HostEnvironment) {
-  return createHostEngine(environment, KIMI_ADAPTER);
+  return createHostEngine(environment, KIMI_ADAPTER, "kimi");
 }

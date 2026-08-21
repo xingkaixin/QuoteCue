@@ -42,7 +42,11 @@ describe("Kimi host contract", () => {
     const interceptor = registerSendInterceptor({
       annotations: () => numberAnnotations([annotation()]),
       compilePrompt: compileAnnotatedPrompt,
-      conversationIdentity: () => ({ kind: "identified", id: "conversation-test" }),
+      conversationIdentity: () => ({
+        kind: "identified",
+        id: "conversation-test",
+        siteId: "kimi",
+      }),
       host,
       locale: () => "zh-CN",
       onSendConfirmed,
@@ -55,6 +59,7 @@ describe("Kimi host contract", () => {
     expect(onSendConfirmed).toHaveBeenCalledWith([annotation()], {
       kind: "identified",
       id: "conversation-test",
+      siteId: "kimi",
     });
     expect(fixture.composer.innerText).toContain("[批注 1]");
     interceptor.dispose();
@@ -77,7 +82,11 @@ describe("Kimi host contract", () => {
     const interceptor = registerSendInterceptor({
       annotations: () => numberAnnotations([annotation()]),
       compilePrompt: compileAnnotatedPrompt,
-      conversationIdentity: () => ({ kind: "identified", id: "conversation-test" }),
+      conversationIdentity: () => ({
+        kind: "identified",
+        id: "conversation-test",
+        siteId: "kimi",
+      }),
       host: createKimiHost({ document, window }),
       locale: () => "zh-CN",
       onSendConfirmed: vi.fn(),
@@ -107,7 +116,11 @@ describe("Kimi host contract", () => {
     const interceptor = registerSendInterceptor({
       annotations: () => numberAnnotations([annotation()]),
       compilePrompt: compileAnnotatedPrompt,
-      conversationIdentity: () => ({ kind: "identified", id: "conversation-test" }),
+      conversationIdentity: () => ({
+        kind: "identified",
+        id: "conversation-test",
+        siteId: "kimi",
+      }),
       host: createKimiHost({ document, window }),
       locale: () => "zh-CN",
       onSendConfirmed: vi.fn(),
@@ -138,7 +151,11 @@ describe("Kimi host contract", () => {
     const interceptor = registerSendInterceptor({
       annotations: () => numberAnnotations([annotation()]),
       compilePrompt: compileAnnotatedPrompt,
-      conversationIdentity: () => ({ kind: "identified", id: "conversation-test" }),
+      conversationIdentity: () => ({
+        kind: "identified",
+        id: "conversation-test",
+        siteId: "kimi",
+      }),
       host,
       locale: () => "zh-CN",
       onSendConfirmed: vi.fn(),
@@ -162,7 +179,11 @@ describe("Kimi host contract", () => {
     const interceptor = registerSendInterceptor({
       annotations: () => numberAnnotations([annotation()]),
       compilePrompt: compileAnnotatedPrompt,
-      conversationIdentity: () => ({ kind: "identified", id: "conversation-test" }),
+      conversationIdentity: () => ({
+        kind: "identified",
+        id: "conversation-test",
+        siteId: "kimi",
+      }),
       host,
       locale: () => "zh-CN",
       onSendConfirmed: vi.fn(),
@@ -193,7 +214,11 @@ describe("Kimi host contract", () => {
     const interceptor = registerSendInterceptor({
       annotations: () => numberAnnotations([annotation()]),
       compilePrompt: compileAnnotatedPrompt,
-      conversationIdentity: () => ({ kind: "identified", id: "conversation-test" }),
+      conversationIdentity: () => ({
+        kind: "identified",
+        id: "conversation-test",
+        siteId: "kimi",
+      }),
       host,
       locale: () => "zh-CN",
       onSendConfirmed: vi.fn(),

@@ -38,6 +38,7 @@ describe("site adapter discovery", () => {
           boundarySelector: "[data-composer-boundary]",
         }),
       }),
+      "chatgpt",
     );
 
     expect(host.layout.current()).toEqual({
@@ -71,6 +72,7 @@ describe("site adapter discovery", () => {
           },
         },
       }),
+      "chatgpt",
     );
 
     const stop = requiredNativeAction(host).mount({
@@ -84,7 +86,7 @@ describe("site adapter discovery", () => {
   });
 
   it("omits native action mounting from overlay hosts", () => {
-    const host = createHostEngine({ document, window }, adapter({}));
+    const host = createHostEngine({ document, window }, adapter({}), "chatgpt");
 
     expect(host.selection.presentation).toBe("overlay");
     expect(host.selection).not.toHaveProperty("nativeAction");

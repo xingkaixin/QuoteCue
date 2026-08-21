@@ -35,8 +35,16 @@ describe("useConversationIdentity", () => {
     expect(firstIdentity.value).not.toBe(secondIdentity.value);
 
     await act(async () => {
-      firstHost.controls.setConversationIdentity({ kind: "identified", id: "conversation-a" });
-      secondHost.controls.setConversationIdentity({ kind: "identified", id: "conversation-a" });
+      firstHost.controls.setConversationIdentity({
+        kind: "identified",
+        id: "conversation-a",
+        siteId: "chatgpt",
+      });
+      secondHost.controls.setConversationIdentity({
+        kind: "identified",
+        id: "conversation-a",
+        siteId: "chatgpt",
+      });
     });
     expect(readIdentity(firstContainer)).toEqual({
       kind: "identified",

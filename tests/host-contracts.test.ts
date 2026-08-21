@@ -57,6 +57,7 @@ const contracts: HostContractDefinition[] = [
       fixture.assistantMessage.removeAttribute("data-message-id");
     },
     selectionPresentation: "native-toolbar",
+    siteId: "chatgpt",
     setSendDisabled(control, isDisabled) {
       (control as HTMLButtonElement).disabled = isDisabled;
     },
@@ -94,6 +95,7 @@ const contracts: HostContractDefinition[] = [
         ?.removeAttribute("data-rs-index");
     },
     selectionPresentation: "native-toolbar",
+    siteId: "claude",
     setSendDisabled(control, isDisabled) {
       (control as HTMLButtonElement).disabled = isDisabled;
     },
@@ -132,6 +134,7 @@ const contracts: HostContractDefinition[] = [
         ?.removeAttribute("data-virtual-list-item-key");
     },
     selectionPresentation: "overlay",
+    siteId: "deepseek",
     setSendDisabled(control, isDisabled) {
       control.classList.toggle("ds-button--disabled", isDisabled);
     },
@@ -165,6 +168,7 @@ const contracts: HostContractDefinition[] = [
       fixture.assistantMessage.removeAttribute("data-archer-id");
     },
     selectionPresentation: "overlay",
+    siteId: "kimi",
     setSendDisabled(control, isDisabled) {
       control.classList.toggle("disabled", isDisabled);
     },

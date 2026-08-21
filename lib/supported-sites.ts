@@ -28,3 +28,7 @@ export const SUPPORTED_SITES = [
 export type SupportedSite = (typeof SUPPORTED_SITES)[number];
 export type SupportedSiteId = SupportedSite["id"];
 export type SupportedSiteName = SupportedSite["name"];
+
+export function isSupportedSiteId(value: unknown): value is SupportedSiteId {
+  return SUPPORTED_SITES.some(({ id }) => id === value);
+}
