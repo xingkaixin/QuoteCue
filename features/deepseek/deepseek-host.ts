@@ -1,9 +1,9 @@
 import { createHostEngine, type HostEnvironment } from "@/features/host/dom-host";
+import { textareaComposer } from "@/features/host/composer-access";
 import {
   composerLayout,
   messageAccess,
   sendControlAccess,
-  textareaComposer,
   type SiteAdapter,
 } from "@/features/host/site-adapter";
 
