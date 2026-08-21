@@ -9,6 +9,7 @@ const TOKEN = "frame-token";
 const config = {
   ariaLabel: "Annotation content",
   kind: "textarea",
+  lang: "en",
   maxLength: 4_000,
   name: "quotecue-annotation-comment",
   placeholder: "Add a comment",
@@ -87,6 +88,7 @@ describe("secure field frame", () => {
     });
     expect(field.autocomplete).toBe("off");
     expect(document.documentElement.dataset.theme).toBe("dark");
+    expect(document.documentElement.lang).toBe("en");
     expect(document.activeElement).toBe(field);
     expect(port.start).toHaveBeenCalledOnce();
     expect(port.postMessage).toHaveBeenCalledWith({ type: "ready" });
@@ -124,18 +126,29 @@ describe("secure field frame", () => {
     ]);
   });
 
-  it("applies value, theme, and focus commands from the port", async () => {
+  it("applies field updates and focus commands from the port", async () => {
     await bootstrapSecureField();
     const port = new FakeMessagePort();
     dispatchInit(port);
     const field = secureField();
     const focus = vi.spyOn(field, "focus");
 
-    port.receive({ type: "set-value", value: "remote value" });
-    port.receive({ type: "set-theme", theme: "light" });
+    port.receive({
+      type: "update",
+      update: {
+        ariaLabel: "批注内容",
+        lang: "zh-CN",
+        placeholder: "添加批注",
+        theme: "light",
+        value: "remote value",
+      },
+    });
     port.receive({ type: "focus" });
 
     expect(field.value).toBe("remote value");
+    expect(field.ariaLabel).toBe("批注内容");
+    expect(field.placeholder).toBe("添加批注");
+    expect(document.documentElement.lang).toBe("zh-CN");
     expect(document.documentElement.dataset.theme).toBe("light");
     expect(focus).toHaveBeenCalledOnce();
   });

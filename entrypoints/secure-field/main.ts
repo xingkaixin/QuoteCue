@@ -2,6 +2,7 @@ import {
   decodeSecureFieldCommand,
   decodeSecureFieldInit,
   type SecureFieldConfig,
+  type SecureFieldUpdate,
 } from "@/features/secure-field/secure-field-protocol";
 import { isSecureFieldSaveShortcut } from "@/features/secure-field/secure-field-keyboard";
 
@@ -18,15 +19,13 @@ function connect(event: MessageEvent<unknown>) {
   }
 
   const field = createField(init.config);
-  document.documentElement.dataset.theme = init.config.theme;
+  applyUpdate(field, init.config);
   port.onmessage = (message: MessageEvent<unknown>) => {
     const command = decodeSecureFieldCommand(message.data);
     if (command?.type === "focus") {
       field.focus();
-    } else if (command?.type === "set-theme") {
-      document.documentElement.dataset.theme = command.theme;
-    } else if (command?.type === "set-value" && field.value !== command.value) {
-      field.value = command.value;
+    } else if (command?.type === "update") {
+      applyUpdate(field, command.update);
     }
   };
   port.start();
@@ -52,13 +51,20 @@ function connect(event: MessageEvent<unknown>) {
 
 function createField(config: SecureFieldConfig) {
   const field = document.createElement(config.kind);
-  field.setAttribute("aria-label", config.ariaLabel);
   field.setAttribute("autocomplete", "off");
   if (config.maxLength !== undefined) {
     field.maxLength = config.maxLength;
   }
   field.name = config.name;
-  field.placeholder = config.placeholder;
-  field.value = config.value;
   return field;
+}
+
+function applyUpdate(field: HTMLInputElement | HTMLTextAreaElement, update: SecureFieldUpdate) {
+  document.documentElement.lang = update.lang;
+  document.documentElement.dataset.theme = update.theme;
+  field.setAttribute("aria-label", update.ariaLabel);
+  field.placeholder = update.placeholder;
+  if (field.value !== update.value) {
+    field.value = update.value;
+  }
 }
