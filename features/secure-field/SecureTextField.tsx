@@ -24,7 +24,7 @@ type SecureTextFieldProps = Omit<SecureFieldConfig, "theme"> & {
 
 export const SecureTextField = forwardRef<SecureTextFieldHandle, SecureTextFieldProps>(
   function SecureTextField(
-    { ariaLabel, className, kind, name, onCancel, onChange, onSave, placeholder, value },
+    { ariaLabel, className, kind, maxLength, name, onCancel, onChange, onSave, placeholder, value },
     ref,
   ) {
     const theme = useHostTheme();
@@ -35,6 +35,7 @@ export const SecureTextField = forwardRef<SecureTextFieldHandle, SecureTextField
     const configRef = useRef<SecureFieldConfig>({
       ariaLabel,
       kind,
+      maxLength,
       name,
       placeholder,
       theme,
@@ -42,7 +43,7 @@ export const SecureTextField = forwardRef<SecureTextFieldHandle, SecureTextField
     });
     const handlersRef = useRef({ onCancel, onChange, onSave });
 
-    configRef.current = { ariaLabel, kind, name, placeholder, theme, value };
+    configRef.current = { ariaLabel, kind, maxLength, name, placeholder, theme, value };
     handlersRef.current = { onCancel, onChange, onSave };
 
     const handleFieldEvent = useCallback((event: MessageEvent<unknown>) => {

@@ -73,5 +73,8 @@ function failureMessage(
   if (reason === "composer-unavailable") {
     return messages.sendAnnotationsComposerUnavailable;
   }
+  if (reason === "prompt-too-long") {
+    return messages.sendAnnotationsPromptTooLong;
+  }
   return messages.sendAnnotationsFailed;
 }

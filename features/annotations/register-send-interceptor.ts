@@ -9,12 +9,14 @@ import type {
 import type { DraftAnnotation } from "./annotation";
 import type { NumberedAnnotation } from "./annotation-projection";
 import { sameConversationIdentity } from "./conversation-identity";
+import { compiledPromptExceedsCapacity } from "./draft-capacity";
 
 export type AnnotatedSendFailureReason =
   | "composer-unavailable"
   | "confirmation-timeout"
   | "disposed"
   | "no-annotations"
+  | "prompt-too-long"
   | "replace-failed"
   | "send-unavailable";
 
@@ -192,6 +194,11 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
       retryOriginalText && snapshot.text.trim().length === 0 ? retryOriginalText : snapshot.text;
     const ownedSnapshot = { ...snapshot, text: originalText };
     const compiledPrompt = options.compilePrompt(annotations, originalText, options.locale());
+    if (compiledPromptExceedsCapacity(compiledPrompt)) {
+      const result = { status: "failed", reason: "prompt-too-long" } as const;
+      setState(result);
+      return { isOwned: true, result: Promise.resolve(result) };
+    }
     const attempt = createAttempt(
       options.conversationIdentity(),
       ownedSnapshot,

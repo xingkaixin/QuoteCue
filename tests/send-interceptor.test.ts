@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { numberAnnotations } from "@/features/annotations/annotation-projection";
 import { compileAnnotatedPrompt } from "@/features/annotations/prompt-compiler";
+import { MAX_COMPILED_PROMPT_LENGTH } from "@/features/annotations/draft-capacity";
 import {
   registerSendInterceptor,
   type AnnotatedSendState,
@@ -290,6 +291,29 @@ describe("registerSendInterceptor", () => {
 
     expect(event.defaultPrevented).toBe(false);
     expect(submit).not.toHaveBeenCalled();
+    interceptor.dispose();
+  });
+
+  it("blocks a native send when the compiled follow-up exceeds capacity", () => {
+    const host = createFakeHost();
+    host.elements.composer.textContent = "original question";
+    const submit = vi.spyOn(host.composer, "submit");
+    const onStateChange = vi.fn();
+    const interceptor = createInterceptor(undefined, {
+      compilePrompt: () => "x".repeat(MAX_COMPILED_PROMPT_LENGTH + 1),
+      host,
+      onStateChange,
+    });
+    const event = new Event("click", { cancelable: true });
+
+    host.controls.emitSubmitIntent({ event, isSendAvailable: true });
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(submit).not.toHaveBeenCalled();
+    expect(onStateChange).toHaveBeenLastCalledWith({
+      status: "failed",
+      reason: "prompt-too-long",
+    });
     interceptor.dispose();
   });
 
@@ -761,6 +785,7 @@ describe("registerSendInterceptor", () => {
 
 type CreateInterceptorOptions = {
   annotations?: readonly (typeof annotation)[];
+  compilePrompt?: Parameters<typeof registerSendInterceptor>[0]["compilePrompt"];
   conversationIdentity?: () => ConversationIdentity;
   host?: Host;
   onStateChange?: (state: AnnotatedSendState) => void;
@@ -770,6 +795,7 @@ function createInterceptor(
   onSendConfirmed = vi.fn(),
   {
     annotations = [annotation],
+    compilePrompt = compileAnnotatedPrompt,
     conversationIdentity = () => ({ kind: "identified", id: "conversation-test" }) as const,
     host = createChatGptHost({ document, window }),
     onStateChange,
@@ -777,7 +803,7 @@ function createInterceptor(
 ) {
   return registerSendInterceptor({
     annotations: () => numberAnnotations(annotations),
-    compilePrompt: compileAnnotatedPrompt,
+    compilePrompt,
     conversationIdentity,
     host,
     locale: () => "en",

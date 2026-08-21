@@ -5,6 +5,7 @@ import { parseTextAnchor } from "@/features/host-port/text-anchor";
 import { isRecord } from "@/lib/is-record";
 
 import type { DraftAnnotation } from "./annotation";
+import { draftMutationExceedsCapacity } from "./draft-capacity";
 import { applyDraftMutation, type DraftMutation } from "./draft-mutation";
 
 const DRAFT_KEY_PREFIX = "quotecue:draft:";
@@ -96,6 +97,9 @@ export function createDraftOwner() {
       openConversationKeys.add(draftStorageKey(DRAFT_KEY_PREFIX, conversation.id));
       return serialize(async () => {
         const current = await readDraft(conversation);
+        if (draftMutationExceedsCapacity(current, mutation)) {
+          throw new RangeError("Draft mutation exceeds QuoteCue capacity");
+        }
         const next = applyDraftMutation(current, mutation);
         if (next === null || next === current) {
           return current;

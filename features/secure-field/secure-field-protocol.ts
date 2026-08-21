@@ -5,6 +5,7 @@ export const SECURE_FIELD_INIT = "quotecue:secure-field:init";
 export type SecureFieldConfig = {
   ariaLabel: string;
   kind: "input" | "textarea";
+  maxLength?: number;
   name: string;
   placeholder: string;
   theme: "dark" | "light";
@@ -72,6 +73,7 @@ function decodeConfig(value: unknown): SecureFieldConfig | null {
     !isRecord(value) ||
     (value.kind !== "input" && value.kind !== "textarea") ||
     typeof value.ariaLabel !== "string" ||
+    (value.maxLength !== undefined && !isPositiveSafeInteger(value.maxLength)) ||
     typeof value.name !== "string" ||
     typeof value.placeholder !== "string" ||
     (value.theme !== "dark" && value.theme !== "light") ||
@@ -82,9 +84,14 @@ function decodeConfig(value: unknown): SecureFieldConfig | null {
   return {
     ariaLabel: value.ariaLabel,
     kind: value.kind,
+    ...(value.maxLength === undefined ? {} : { maxLength: value.maxLength }),
     name: value.name,
     placeholder: value.placeholder,
     theme: value.theme,
     value: value.value,
   };
+}
+
+function isPositiveSafeInteger(value: unknown): value is number {
+  return Number.isSafeInteger(value) && Number(value) > 0;
 }

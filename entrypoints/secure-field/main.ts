@@ -54,6 +54,9 @@ function createField(config: SecureFieldConfig) {
   const field = document.createElement(config.kind);
   field.setAttribute("aria-label", config.ariaLabel);
   field.setAttribute("autocomplete", "off");
+  if (config.maxLength !== undefined) {
+    field.maxLength = config.maxLength;
+  }
   field.name = config.name;
   field.placeholder = config.placeholder;
   field.value = config.value;

@@ -4,6 +4,7 @@ import { AnnotationEditor } from "@/features/annotations/AnnotationEditor";
 import { AnnotationQuickInput } from "@/features/annotations/AnnotationQuickInput";
 import { AnnotationSendControl } from "@/features/annotations/AnnotationSendControl";
 import { AnnotationSummary } from "@/features/annotations/AnnotationSummary";
+import { DraftCapacityStatus } from "@/features/annotations/DraftCapacityStatus";
 import { DraftPersistenceStatus } from "@/features/annotations/DraftPersistenceStatus";
 import { SelectionPresentation } from "@/features/annotations/SelectionPresentation";
 import { useAnnotationWorkspace } from "@/features/annotations/use-annotation-workspace";
@@ -25,6 +26,8 @@ export default function App() {
         {draft.state.status === "error" && (
           <DraftPersistenceStatus {...draft.state} onRetry={draft.retry} />
         )}
+
+        {draft.capacityExceeded && <DraftCapacityStatus />}
 
         <SelectionPresentation {...selection} />
 

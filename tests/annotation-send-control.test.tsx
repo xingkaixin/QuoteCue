@@ -57,6 +57,13 @@ describe("AnnotationSendControl", () => {
       "couldn't access the message box",
     );
 
+    await mounted.render({
+      state: { status: "failed", reason: "prompt-too-long" },
+    });
+    expect(mounted.container.querySelector('[role="status"]')?.textContent).toContain(
+      "too long to send",
+    );
+
     await act(async () => mounted.root.unmount());
   });
 });
