@@ -89,7 +89,7 @@ function installExecCommand(result: boolean) {
 function adapter(composer: ComposerAccess): SiteAdapter {
   return {
     composer,
-    conversationPathPattern: /^\/c\/([^/]+)/,
+    conversationId: () => null,
     layout: { actionSelector: "button", surfaceSelector: "[data-composer-surface]" },
     messages: {
       assistantSelector: "article",

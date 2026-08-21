@@ -101,7 +101,7 @@ function adapter(
 ): SiteAdapter {
   return {
     composer: richTextComposer("#composer"),
-    conversationPathPattern: /^\/conversation\/([^/]+)/,
+    conversationId: (pathname) => pathname.match(/^\/conversation\/([^/]+)/)?.[1] ?? null,
     layout: composerLayout("button", "[data-composer-surface]"),
     messages: {
       assistantSelector: "[data-assistant]",

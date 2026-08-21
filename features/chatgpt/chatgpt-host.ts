@@ -9,7 +9,7 @@ import {
 
 const CHATGPT_ADAPTER: SiteAdapter = {
   composer: richTextComposer("#prompt-textarea[contenteditable='true']"),
-  conversationPathPattern: /^\/(?:c|g\/[^/?#]+\/c)\/([^/?#]+)/,
+  conversationId: (pathname) => pathname.match(/^\/(?:c|g\/[^/?#]+\/c)\/([^/?#]+)/)?.[1] ?? null,
   layout: composerLayout("button", "form > div:has(#prompt-textarea)", {
     boundarySelector: "form",
   }),

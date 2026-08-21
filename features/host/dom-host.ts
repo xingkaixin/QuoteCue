@@ -67,9 +67,7 @@ export function createHostEngine(
     },
     conversation: {
       identity(sessionKey: string) {
-        const conversationId = context.window.location.pathname.match(
-          adapter.conversationPathPattern,
-        )?.[1];
+        const conversationId = adapter.conversationId(context.window.location.pathname);
         return conversationId
           ? { kind: "identified" as const, id: conversationId, siteId }
           : { kind: "unidentified" as const, sessionKey };

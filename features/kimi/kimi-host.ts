@@ -13,7 +13,7 @@ const KIMI_ADAPTER: SiteAdapter = {
   composer: richTextComposer('[data-lexical-editor="true"][contenteditable="true"]', (text) =>
     text.replace(/\s/g, ""),
   ),
-  conversationPathPattern: /^\/chat\/([^/?#]+)/,
+  conversationId: (pathname) => pathname.match(/^\/chat\/([^/?#]+)/)?.[1] ?? null,
   layout: composerLayout(".send-button-container", ".chat-editor-content"),
   messages: messageAccess({
     assistantSelector: ".chat-content-item-assistant",
