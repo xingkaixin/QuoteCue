@@ -1,5 +1,6 @@
 import { messagesFor, type SupportedLocale } from "@/features/i18n/messages";
 import { selectedTextFor } from "@/features/host-port/text-anchor";
+import { compileAnnotationPrompt } from "@/lib/annotation-prompt";
 
 import type { NumberedAnnotation } from "./annotation-projection";
 
@@ -9,16 +10,13 @@ export function compileAnnotatedPrompt(
   locale: SupportedLocale = "zh-CN",
 ) {
   const messages = messagesFor(locale).prompt;
-  const annotationSections = annotations.map(({ annotation, ordinal }) => {
-    const { anchor, comment } = annotation;
-    const commentLine = comment ? `\n${messages.comment}${comment}` : "";
-    return `${messages.annotation(ordinal)}\n${messages.selectedText}${selectedTextFor(anchor)}${commentLine}`;
-  });
-  const trimmedPrompt = userPrompt.trim();
-  const supplementalQuestionSection =
-    trimmedPrompt.length > 0 ? `${messages.supplementalQuestion}\n${trimmedPrompt}` : "";
-
-  return [messages.introduction, ...annotationSections, supplementalQuestionSection]
-    .filter(Boolean)
-    .join("\n\n");
+  return compileAnnotationPrompt(
+    annotations.map(({ annotation, ordinal }) => ({
+      comment: annotation.comment,
+      ordinal,
+      selectedText: selectedTextFor(annotation.anchor),
+    })),
+    userPrompt,
+    messages,
+  );
 }

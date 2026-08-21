@@ -2,6 +2,7 @@ import { ArrowUp, LoaderCircle, MessageSquareText, Pencil, Trash2, X } from "luc
 import {
   useEffect,
   useLayoutEffect,
+  useReducer,
   useRef,
   useState,
   type CSSProperties,
@@ -11,19 +12,19 @@ import {
 import { Button } from "@/components/ui/button";
 import type { DemoCopy } from "@/i18n/content";
 
+import { compileDemoPrompt } from "./interactive-demo-prompt";
+import {
+  initialInteractiveDemoState,
+  reduceInteractiveDemo,
+  type DemoAnnotation,
+} from "./interactive-demo-state";
+
 const sites = ["ChatGPT", "Claude", "DeepSeek", "Kimi"] as const;
 const highlightName = "quotecue-demo";
 const useClientLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 interface InteractiveDemoProps {
   copy: DemoCopy;
-}
-
-interface Annotation {
-  id: number;
-  text: string;
-  comment: string;
-  range: Range;
 }
 
 interface SelectionCandidate {
@@ -46,11 +47,6 @@ interface Geometry {
   badges: BadgePoint[];
 }
 
-interface UndoBuffer {
-  annotation: Annotation;
-  index: number;
-}
-
 interface HighlightRegistry {
   delete: (name: string) => boolean;
   set: (name: string, highlight: unknown) => void;
@@ -70,7 +66,7 @@ function getLastRect(range: Range) {
 function measureGeometry(
   stage: HTMLDivElement,
   candidate: SelectionCandidate | null,
-  annotations: Annotation[],
+  annotations: DemoAnnotation[],
   editingId: number | null,
 ): Geometry {
   const stageRect = stage.getBoundingClientRect();
@@ -151,16 +147,16 @@ export function InteractiveDemo({ copy }: InteractiveDemoProps) {
 
   const [site, setSite] = useState<(typeof sites)[number]>("ChatGPT");
   const [candidate, setCandidate] = useState<SelectionCandidate | null>(null);
-  const [annotations, setAnnotations] = useState<Annotation[]>([]);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [editorComment, setEditorComment] = useState("");
-  const [summaryOpen, setSummaryOpen] = useState(false);
-  const [sending, setSending] = useState(false);
-  const [sentPrompt, setSentPrompt] = useState("");
-  const [undoBuffer, setUndoBuffer] = useState<UndoBuffer | null>(null);
-  const [clearArmed, setClearArmed] = useState(false);
+  const [demo, dispatch] = useReducer(reduceInteractiveDemo, initialInteractiveDemoState);
   const [layoutVersion, setLayoutVersion] = useState(0);
   const [geometry, setGeometry] = useState<Geometry>({ action: null, badges: [], editor: null });
+
+  const { annotations, editor, sentPrompt, status, summaryOpen } = demo;
+  const editingId = editor?.annotationId ?? null;
+  const editorComment = editor?.comment ?? "";
+  const sending = status.kind === "sending";
+  const clearArmed = status.kind === "clear-armed";
+  const undoBuffer = status.kind === "undo" ? status : null;
 
   useEffect(() => {
     const updateLayout = () => setLayoutVersion((version) => version + 1);
@@ -232,110 +228,69 @@ export function InteractiveDemo({ copy }: InteractiveDemoProps) {
   }
 
   function createAnnotation() {
-    if (!candidate) return;
-    const annotation: Annotation = {
+    if (!candidate || sending) return;
+    const annotation: DemoAnnotation = {
       id: ++sequenceRef.current,
       text: candidate.text,
       comment: "",
       range: candidate.range,
     };
-    setAnnotations((current) => [...current, annotation]);
-    setEditingId(annotation.id);
-    setEditorComment("");
+    clearStatusTimers();
+    dispatch({ type: "add-annotation", annotation });
     setCandidate(null);
-    setSentPrompt("");
     window.getSelection()?.removeAllRanges();
   }
 
-  function openEditor(annotation: Annotation) {
-    setEditingId(annotation.id);
-    setEditorComment(annotation.comment);
-    setSummaryOpen(false);
+  function openEditor(annotation: DemoAnnotation) {
+    if (sending) return;
+    dispatch({ type: "open-editor", annotationId: annotation.id });
   }
 
   function saveEditor() {
-    setAnnotations((current) =>
-      current.map((annotation) =>
-        annotation.id === editingId ? { ...annotation, comment: editorComment.trim() } : annotation,
-      ),
-    );
-    setEditingId(null);
+    dispatch({ type: "save-editor" });
   }
 
   function cancelEditor() {
-    const annotation = annotations.find((item) => item.id === editingId);
-    if (annotation && annotation.comment.length === 0) {
-      setAnnotations((current) => current.filter((item) => item.id !== editingId));
-    }
-    setEditingId(null);
+    dispatch({ type: "cancel-editor" });
   }
 
-  function removeAnnotation(id: number, canUndo = true) {
-    const index = annotations.findIndex((annotation) => annotation.id === id);
-    if (index < 0) return;
-    const annotation = annotations[index];
-    const remaining = annotations.length - 1;
-    setAnnotations((current) => current.filter((item) => item.id !== id));
-    setEditingId(null);
-    setSummaryOpen(remaining > 0 && summaryOpen);
-    if (!canUndo) return;
-
-    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
-    setUndoBuffer({ annotation, index });
-    undoTimerRef.current = setTimeout(() => setUndoBuffer(null), 5000);
+  function removeAnnotation(id: number) {
+    if (sending) return;
+    clearStatusTimers();
+    dispatch({ type: "remove-annotation", annotationId: id });
+    undoTimerRef.current = setTimeout(() => dispatch({ type: "expire-undo" }), 5000);
   }
 
   function undoRemoval() {
     if (!undoBuffer) return;
     if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
-    setAnnotations((current) => {
-      const next = [...current];
-      next.splice(undoBuffer.index, 0, undoBuffer.annotation);
-      return next;
-    });
-    setUndoBuffer(null);
+    dispatch({ type: "undo-removal" });
   }
 
   function clearAll() {
+    if (sending) return;
+    clearStatusTimers();
     if (!clearArmed) {
-      setClearArmed(true);
-      if (clearTimerRef.current) clearTimeout(clearTimerRef.current);
-      clearTimerRef.current = setTimeout(() => setClearArmed(false), 3000);
+      dispatch({ type: "arm-clear" });
+      clearTimerRef.current = setTimeout(() => dispatch({ type: "expire-clear" }), 3000);
       return;
     }
 
-    if (clearTimerRef.current) clearTimeout(clearTimerRef.current);
-    setAnnotations([]);
-    setEditingId(null);
-    setSummaryOpen(false);
-    setUndoBuffer(null);
-    setClearArmed(false);
+    dispatch({ type: "confirm-clear" });
   }
 
-  function compilePrompt() {
-    const prompt = copy.compiledPrompt;
-    const entries = annotations.map((annotation, index) => {
-      const lines = [
-        `[${prompt.annotation} ${index + 1}]`,
-        `${prompt.selection} ${annotation.text}`,
-      ];
-      if (annotation.comment) lines.push(`${prompt.comment} ${annotation.comment}`);
-      return lines.join("\n");
-    });
-    return [prompt.intro, ...entries].join("\n\n");
+  function clearStatusTimers() {
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    if (clearTimerRef.current) clearTimeout(clearTimerRef.current);
   }
 
   function sendAnnotations() {
     if (annotations.length === 0 || sending) return;
-    const prompt = compilePrompt();
-    setSending(true);
-    setEditingId(null);
-    setSummaryOpen(false);
+    clearStatusTimers();
+    const prompt = compileDemoPrompt(annotations, copy);
+    dispatch({ type: "start-send", prompt });
     sendTimerRef.current = setTimeout(() => {
-      setSentPrompt(prompt);
-      setAnnotations([]);
-      setSending(false);
-      setUndoBuffer(null);
+      dispatch({ type: "complete-send" });
     }, 1100);
   }
 
@@ -442,7 +397,8 @@ export function InteractiveDemo({ copy }: InteractiveDemoProps) {
               <div className="flex overflow-hidden rounded-lg border border-line bg-panel shadow-[var(--surface-shadow)]">
                 <button
                   className="flex h-8 cursor-pointer items-center gap-1.5 px-2.5 text-xs font-medium text-foreground outline-none hover:bg-panel-strong focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-                  onClick={() => setSummaryOpen((open) => !open)}
+                  onClick={() => dispatch({ type: "set-summary-open", isOpen: !summaryOpen })}
+                  disabled={sending}
                   type="button"
                 >
                   <MessageSquareText aria-hidden="true" className="text-accent" size={16} />
@@ -452,6 +408,7 @@ export function InteractiveDemo({ copy }: InteractiveDemoProps) {
                   aria-label={copy.clear}
                   className="flex size-8 cursor-pointer items-center justify-center border-l border-line text-muted outline-none hover:bg-panel-strong hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                   onClick={clearAll}
+                  disabled={sending}
                   type="button"
                 >
                   <X aria-hidden="true" size={14} />
@@ -540,6 +497,7 @@ export function InteractiveDemo({ copy }: InteractiveDemoProps) {
             <button
               aria-label={copy.edit}
               className="animate-pop absolute z-30 flex size-5 cursor-pointer items-center justify-center rounded-full border-0 bg-accent text-xs font-semibold text-accent-foreground shadow-[0_0_0_2px_var(--panel),0_8px_20px_rgb(0_0_0/32%)] outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              disabled={sending}
               key={badge.id}
               onClick={() => openEditor(annotation)}
               style={{ left: badge.left, top: badge.top }}
@@ -556,6 +514,7 @@ export function InteractiveDemo({ copy }: InteractiveDemoProps) {
             className="animate-pop absolute z-40 flex h-8 cursor-pointer items-center rounded-full border border-line bg-panel px-3 text-[0.84375rem] font-medium text-foreground shadow-[var(--surface-shadow)] outline-none hover:border-muted focus-visible:ring-2 focus-visible:ring-ring"
             onClick={createAnnotation}
             onMouseDown={(event) => event.preventDefault()}
+            disabled={sending}
             style={actionStyle}
             type="button"
           >
@@ -570,7 +529,9 @@ export function InteractiveDemo({ copy }: InteractiveDemoProps) {
           >
             <textarea
               className="h-24 w-full resize-none border-0 bg-transparent text-sm leading-[1.55] text-foreground outline-none placeholder:text-muted"
-              onChange={(event) => setEditorComment(event.target.value)}
+              onChange={(event) =>
+                dispatch({ type: "change-editor-comment", comment: event.target.value })
+              }
               onKeyDown={(event) => {
                 if (event.key === "Escape") cancelEditor();
                 if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) saveEditor();
