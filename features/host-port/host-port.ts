@@ -23,9 +23,10 @@ export type ComposerSubmitResult =
   | { status: "unavailable"; reason: ComposerSubmitFailureReason };
 
 export type ComposerSubmitIntent = {
-  event: Event;
   isSendAvailable: boolean;
 };
+
+export type ComposerSubmitDecision = "claim" | "pass-through";
 
 export type IdentifiedConversation = {
   kind: "identified";
@@ -107,7 +108,9 @@ export type Host = {
   composer: {
     snapshot(): HostResult<ComposerSnapshot>;
     submit(options: ComposerSubmitOptions): Promise<ComposerSubmitResult>;
-    subscribeToSubmit(callback: (intent: ComposerSubmitIntent) => void): () => void;
+    subscribeToSubmit(
+      callback: (intent: ComposerSubmitIntent) => ComposerSubmitDecision,
+    ): () => void;
   };
   conversation: {
     identity(sessionKey: string): ConversationIdentity;

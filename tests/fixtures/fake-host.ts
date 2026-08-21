@@ -1,4 +1,5 @@
 import type {
+  ComposerSubmitDecision,
   ComposerSubmitIntent,
   ConversationIdentity,
   Host,
@@ -19,7 +20,7 @@ export type FakeHost = Host & {
     emitLayoutChange(): void;
     emitSelectionCaptureIntent(intent: SelectionCaptureIntent): void;
     emitSelectionInvalidation(invalidation: SelectionInvalidation): void;
-    emitSubmitIntent(intent: ComposerSubmitIntent): void;
+    emitSubmitIntent(intent: ComposerSubmitIntent): ComposerSubmitDecision;
     setConversationIdentity(identity: ConversationIdentity | null): void;
     setLayout(layout: HostResult<HostLayout>): void;
     setMessageIndex(index: ReadonlyMap<string, HTMLElement>): void;
@@ -138,8 +139,11 @@ export function createFakeHost(overrides: FakeHostOverrides = {}): FakeHost {
       },
       emitSubmitIntent(intent) {
         for (const subscriber of submitSubscribers) {
-          subscriber(intent);
+          if (subscriber(intent) === "claim") {
+            return "claim";
+          }
         }
+        return "pass-through";
       },
       setConversationIdentity(identity) {
         conversationIdentity = identity;

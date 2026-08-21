@@ -1,6 +1,7 @@
 import type { SupportedLocale } from "@/features/i18n/messages";
 import type {
   ComposerSnapshot,
+  ComposerSubmitDecision,
   ComposerSubmitIntent,
   ConversationIdentity,
   Host,
@@ -213,19 +214,13 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
     return { isOwned: true, result: attempt.result };
   };
 
-  const prepareNativeSend = ({ event, isSendAvailable }: ComposerSubmitIntent) => {
+  const prepareNativeSend = ({ isSendAvailable }: ComposerSubmitIntent): ComposerSubmitDecision => {
     if (activeAttempt) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      return;
+      return "claim";
     }
 
     const started = beginSend(isSendAvailable, "native");
-    if (!started.isOwned) {
-      return;
-    }
-    event.preventDefault();
-    event.stopImmediatePropagation();
+    return started.isOwned ? "claim" : "pass-through";
   };
 
   const stopListening = host.composer.subscribeToSubmit(prepareNativeSend);
