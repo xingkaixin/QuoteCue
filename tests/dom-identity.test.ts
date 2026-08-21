@@ -3,8 +3,8 @@ import { resolve } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { isQuoteCueEvent } from "@/features/host/is-quotecue-event";
 import {
+  isQuoteCueEvent,
   QUOTECUE_INTERACTIVE_CLASS,
   QUOTECUE_ROOT_ATTR,
   QUOTECUE_ROOT_SELECTOR,

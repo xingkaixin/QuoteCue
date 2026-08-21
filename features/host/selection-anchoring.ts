@@ -5,6 +5,7 @@ import type {
 import { rangeEndpointRect } from "@/features/host-port/range-geometry";
 import { toSelectionRect } from "@/features/host-port/selection-rect";
 import { parseTextAnchor } from "@/features/host-port/text-anchor";
+import { isQuoteCueEvent } from "@/lib/dom-identity";
 
 import {
   available,
@@ -14,7 +15,6 @@ import {
   type SelectionCaptureIntent,
   type SelectionInvalidation,
 } from "./host-context";
-import { isQuoteCueEvent } from "./is-quotecue-event";
 
 const CONTEXT_LENGTH = 48;
 
