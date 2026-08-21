@@ -23,5 +23,5 @@ const CHATGPT_ADAPTER: SiteAdapter = {
 };
 
 export function createChatGptHost(environment: HostEnvironment) {
-  return createHostEngine(environment, CHATGPT_ADAPTER);
+  return createHostEngine(environment, CHATGPT_ADAPTER, "chatgpt");
 }

@@ -181,7 +181,7 @@ async function mountWorkspace(
 function createWorkspaceHost(): FakeHost {
   const host = createFakeHost({
     conversation: {
-      identity: () => ({ kind: "identified", id: "conversation-a" }),
+      identity: () => ({ kind: "identified", id: "conversation-a", siteId: "chatgpt" }),
     },
   });
   const message = document.createElement("article");

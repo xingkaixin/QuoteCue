@@ -78,7 +78,11 @@ describe("registerSendInterceptor", () => {
     const interceptor = registerSendInterceptor({
       annotations: () => numberAnnotations(currentAnnotations),
       compilePrompt: compileAnnotatedPrompt,
-      conversationIdentity: () => ({ kind: "identified", id: "conversation-test" }),
+      conversationIdentity: () => ({
+        kind: "identified",
+        id: "conversation-test",
+        siteId: "chatgpt",
+      }),
       host: createChatGptHost({ document, window }),
       locale: () => "en",
       onSendConfirmed,
@@ -97,6 +101,7 @@ describe("registerSendInterceptor", () => {
     expect(onSendConfirmed).toHaveBeenCalledWith([annotation], {
       kind: "identified",
       id: "conversation-test",
+      siteId: "chatgpt",
     });
     interceptor.dispose();
   });
@@ -362,6 +367,7 @@ describe("registerSendInterceptor", () => {
     expect(onSendConfirmed).toHaveBeenCalledWith([annotation], {
       kind: "identified",
       id: "conversation-test",
+      siteId: "chatgpt",
     });
     expect(onStateChange).toHaveBeenLastCalledWith({
       status: "confirmed",
@@ -528,7 +534,11 @@ describe("registerSendInterceptor", () => {
     const interceptor = registerSendInterceptor({
       annotations: () => numberAnnotations([annotation]),
       compilePrompt: compileAnnotatedPrompt,
-      conversationIdentity: () => ({ kind: "identified", id: "conversation-test" }),
+      conversationIdentity: () => ({
+        kind: "identified",
+        id: "conversation-test",
+        siteId: "chatgpt",
+      }),
       host,
       locale: () => "en",
       onSendConfirmed: vi.fn(),
@@ -581,7 +591,11 @@ describe("registerSendInterceptor", () => {
     const interceptor = registerSendInterceptor({
       annotations: () => numberAnnotations([annotation]),
       compilePrompt: compileAnnotatedPrompt,
-      conversationIdentity: () => ({ kind: "identified", id: "conversation-test" }),
+      conversationIdentity: () => ({
+        kind: "identified",
+        id: "conversation-test",
+        siteId: "chatgpt",
+      }),
       host,
       locale: () => "en",
       onSendConfirmed: vi.fn(),
@@ -634,6 +648,7 @@ describe("registerSendInterceptor", () => {
     expect(onSendConfirmed).toHaveBeenCalledWith([annotation], {
       kind: "identified",
       id: "conversation-test",
+      siteId: "chatgpt",
     });
     interceptor.dispose();
   });
@@ -641,7 +656,11 @@ describe("registerSendInterceptor", () => {
   it("never reuses a failed question from another conversation", async () => {
     vi.useFakeTimers();
     const composer = installComposer("question from conversation A");
-    let identity: ConversationIdentity = { kind: "identified", id: "conversation-a" };
+    let identity: ConversationIdentity = {
+      kind: "identified",
+      id: "conversation-a",
+      siteId: "chatgpt",
+    };
     const interceptor = createInterceptor(vi.fn(), {
       conversationIdentity: () => identity,
     });
@@ -660,7 +679,7 @@ describe("registerSendInterceptor", () => {
     ).resolves.toEqual({ status: "failed", reason: "confirmation-timeout" });
     expect(sentText).toContain("question from conversation A");
 
-    identity = { kind: "identified", id: "conversation-b" };
+    identity = { kind: "identified", id: "conversation-b", siteId: "chatgpt" };
     interceptor.conversationChanged();
     sentText = "";
 
@@ -675,7 +694,11 @@ describe("registerSendInterceptor", () => {
   it("reports idle after leaving the conversation that failed", async () => {
     vi.useFakeTimers();
     installComposer("question from conversation A");
-    let identity: ConversationIdentity = { kind: "identified", id: "conversation-a" };
+    let identity: ConversationIdentity = {
+      kind: "identified",
+      id: "conversation-a",
+      siteId: "chatgpt",
+    };
     const onStateChange = vi.fn();
     const interceptor = createInterceptor(vi.fn(), {
       conversationIdentity: () => identity,
@@ -690,7 +713,7 @@ describe("registerSendInterceptor", () => {
       expect.objectContaining({ status: "failed", reason: "confirmation-timeout" }),
     );
 
-    identity = { kind: "identified", id: "conversation-b" };
+    identity = { kind: "identified", id: "conversation-b", siteId: "chatgpt" };
     interceptor.conversationChanged();
 
     expect(onStateChange).toHaveBeenLastCalledWith({ status: "idle" });
@@ -734,6 +757,7 @@ describe("registerSendInterceptor", () => {
     expect(onSendConfirmed).toHaveBeenCalledWith([annotation], {
       kind: "identified",
       id: "conversation-test",
+      siteId: "chatgpt",
     });
     interceptor.dispose();
   });
@@ -755,6 +779,7 @@ describe("registerSendInterceptor", () => {
     expect(onSendConfirmed).toHaveBeenCalledWith([annotation], {
       kind: "identified",
       id: "conversation-test",
+      siteId: "chatgpt",
     });
     interceptor.dispose();
   });
@@ -796,7 +821,8 @@ function createInterceptor(
   {
     annotations = [annotation],
     compilePrompt = compileAnnotatedPrompt,
-    conversationIdentity = () => ({ kind: "identified", id: "conversation-test" }) as const,
+    conversationIdentity = () =>
+      ({ kind: "identified", id: "conversation-test", siteId: "chatgpt" }) as const,
     host = createChatGptHost({ document, window }),
     onStateChange,
   }: CreateInterceptorOptions = {},

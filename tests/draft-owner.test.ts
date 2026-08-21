@@ -40,11 +40,12 @@ vi.mock("wxt/browser", () => ({
   browser: { storage: { local: extensionStorage } },
 }));
 
-const currentKey = "quotecue:draft:A";
+const currentKey = "quotecue:draft:chatgpt:A";
+const unscopedKey = "quotecue:draft:A";
 const legacyKey = "askgpt:draft:A";
 const NOW = Date.UTC(2026, 6, 27);
 const DAY_MS = 24 * 60 * 60 * 1_000;
-const conversationA = { kind: "identified", id: "A" } as const;
+const conversationA = { kind: "identified", id: "A", siteId: "chatgpt" } as const;
 const unmarkedAnchor = {
   messageId: "message-a",
   quote: "selected text",
@@ -147,6 +148,29 @@ describe("draft storage", () => {
 
     await expect(draftStore.load(conversationA)).resolves.toEqual([annotation]);
     expect(extensionStorage.snapshot()).toEqual({ [currentKey]: envelope });
+  });
+
+  it("migrates an unscoped draft into the current site", async () => {
+    extensionStorage.reset({ [unscopedKey]: envelope });
+
+    await expect(draftStore.load(conversationA)).resolves.toEqual([annotation]);
+    expect(extensionStorage.snapshot()).toEqual({ [currentKey]: envelope });
+  });
+
+  it("isolates equal conversation ids from different sites", async () => {
+    const claudeConversation = { ...conversationA, siteId: "claude" } as const;
+    const claudeKey = "quotecue:draft:claude:A";
+    const claudeAnnotation = { ...annotation, id: "annotation-claude", comment: "Claude draft" };
+
+    await draftStore.mutate(conversationA, { kind: "add", annotation });
+    await draftStore.mutate(claudeConversation, { kind: "add", annotation: claudeAnnotation });
+
+    expect(await draftStore.load(conversationA)).toEqual([annotation]);
+    expect(await draftStore.load(claudeConversation)).toEqual([claudeAnnotation]);
+    expect(extensionStorage.snapshot()).toEqual({
+      [currentKey]: envelope,
+      [claudeKey]: { ...envelope, annotations: [claudeAnnotation] },
+    });
   });
 
   it("deduplicates repeated annotation ids in the current envelope", async () => {
@@ -432,8 +456,8 @@ describe("draft storage", () => {
   });
 
   it("never sweeps a draft using expiry read before a queued refresh", async () => {
-    const staleConversation = { kind: "identified", id: "stale" } as const;
-    const staleKey = "quotecue:draft:stale";
+    const staleConversation = { kind: "identified", id: "stale", siteId: "chatgpt" } as const;
+    const staleKey = "quotecue:draft:chatgpt:stale";
     extensionStorage.reset({
       [currentKey]: envelope,
       [staleKey]: { ...envelope, updatedAt: NOW - 31 * DAY_MS },

@@ -53,6 +53,10 @@ function draftStorageKey(prefix: string, conversationId: string) {
   return `${prefix}${conversationId}`;
 }
 
+function scopedDraftStorageKey(conversation: IdentifiedConversation) {
+  return `${DRAFT_KEY_PREFIX}${conversation.siteId}:${conversation.id}`;
+}
+
 /**
  * The single writer for draft storage. Extension contexts share `storage.local`, so a queue that
  * lives in one content script cannot order writes made by another. Every read-modify-write and the
@@ -86,7 +90,7 @@ export function createDraftOwner() {
 
   return {
     load(conversation: IdentifiedConversation) {
-      openConversationKeys.add(draftStorageKey(DRAFT_KEY_PREFIX, conversation.id));
+      openConversationKeys.add(scopedDraftStorageKey(conversation));
       const draft = serialize(() => readDraft(conversation));
       // Queued behind this load so the sweep never delays it, but still on the one chain, so it
       // cannot observe a stale expiry and then delete a draft another context just refreshed.
@@ -94,7 +98,7 @@ export function createDraftOwner() {
       return draft;
     },
     mutate(conversation: IdentifiedConversation, mutation: DraftMutation) {
-      openConversationKeys.add(draftStorageKey(DRAFT_KEY_PREFIX, conversation.id));
+      openConversationKeys.add(scopedDraftStorageKey(conversation));
       return serialize(async () => {
         const current = await readDraft(conversation);
         if (draftMutationExceedsCapacity(current, mutation)) {
@@ -115,9 +119,10 @@ export function createDraftOwner() {
 export type DraftOwner = ReturnType<typeof createDraftOwner>;
 
 async function readDraft(conversation: IdentifiedConversation) {
-  const key = draftStorageKey(DRAFT_KEY_PREFIX, conversation.id);
+  const key = scopedDraftStorageKey(conversation);
+  const unscopedKey = draftStorageKey(DRAFT_KEY_PREFIX, conversation.id);
   const legacyKey = draftStorageKey(LEGACY_DRAFT_KEY_PREFIX, conversation.id);
-  const result = await browser.storage.local.get([key, legacyKey]);
+  const result = await browser.storage.local.get([key, unscopedKey, legacyKey]);
   const storedDraft = result[key];
 
   if (storedDraft !== undefined) {
@@ -125,13 +130,13 @@ async function readDraft(conversation: IdentifiedConversation) {
     if (decoded.needsMigration && !decoded.hasUnreadableAnnotations) {
       await browser.storage.local.set({ [key]: draftEnvelope(decoded.annotations) });
     }
-    if (result[legacyKey] !== undefined) {
-      await removeMigratedLegacyDraft(legacyKey);
+    if (result[unscopedKey] !== undefined || result[legacyKey] !== undefined) {
+      await removeMigratedDraftKeys([unscopedKey, legacyKey]);
     }
     return decoded.annotations;
   }
 
-  const legacyDraft = result[legacyKey];
+  const legacyDraft = result[unscopedKey] ?? result[legacyKey];
   if (legacyDraft === undefined) {
     return [];
   }
@@ -141,21 +146,22 @@ async function readDraft(conversation: IdentifiedConversation) {
     return decoded.annotations;
   }
   await browser.storage.local.set({ [key]: draftEnvelope(decoded.annotations) });
-  await removeMigratedLegacyDraft(legacyKey);
+  await removeMigratedDraftKeys([unscopedKey, legacyKey]);
   return decoded.annotations;
 }
 
 async function writeDraft(conversation: IdentifiedConversation, annotations: DraftAnnotation[]) {
-  const key = draftStorageKey(DRAFT_KEY_PREFIX, conversation.id);
+  const key = scopedDraftStorageKey(conversation);
+  const unscopedKey = draftStorageKey(DRAFT_KEY_PREFIX, conversation.id);
   const legacyKey = draftStorageKey(LEGACY_DRAFT_KEY_PREFIX, conversation.id);
 
   if (annotations.length === 0) {
-    await browser.storage.local.remove([key, legacyKey]);
+    await browser.storage.local.remove([key, unscopedKey, legacyKey]);
     return;
   }
 
   await browser.storage.local.set({ [key]: draftEnvelope(annotations) });
-  await browser.storage.local.remove(legacyKey);
+  await browser.storage.local.remove([unscopedKey, legacyKey]);
 }
 
 function draftEnvelope(annotations: DraftAnnotation[]): StoredDraftEnvelope {
@@ -291,9 +297,9 @@ function isExpiredDraftEnvelope(value: unknown, expiresBefore: number) {
   );
 }
 
-async function removeMigratedLegacyDraft(legacyKey: string) {
+async function removeMigratedDraftKeys(keys: readonly string[]) {
   try {
-    await browser.storage.local.remove(legacyKey);
+    await browser.storage.local.remove([...keys]);
   } catch (error: unknown) {
     console.error("[QuoteCue] Failed to remove migrated legacy draft", error);
   }

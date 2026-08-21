@@ -1,8 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { sameConversationIdentity } from "@/features/annotations/conversation-identity";
 import { createChatGptHost } from "@/features/chatgpt/chatgpt-host";
+import { createClaudeHost } from "@/features/claude/claude-host";
 
 const host = createChatGptHost({ document, window });
+const claudeHost = createClaudeHost({ document, window });
 
 afterEach(() => {
   window.history.replaceState({}, "", "/");
@@ -16,6 +19,7 @@ describe("conversation identities", () => {
     expect(host.conversation.identity("session-a")).toEqual({
       kind: "identified",
       id: "conversation-a",
+      siteId: "chatgpt",
     });
   });
 
@@ -25,7 +29,19 @@ describe("conversation identities", () => {
     expect(host.conversation.identity("session-a")).toEqual({
       kind: "identified",
       id: "conversation-a",
+      siteId: "chatgpt",
     });
+  });
+
+  it("keeps equal host conversation ids distinct across sites", () => {
+    window.history.replaceState({}, "", "/c/shared-id");
+    const chatGptIdentity = host.conversation.identity("chatgpt-session");
+    window.history.replaceState({}, "", "/chat/shared-id");
+    const claudeIdentity = claudeHost.conversation.identity("claude-session");
+
+    expect(chatGptIdentity).toMatchObject({ kind: "identified", id: "shared-id" });
+    expect(claudeIdentity).toMatchObject({ kind: "identified", id: "shared-id" });
+    expect(sameConversationIdentity(chatGptIdentity, claudeIdentity)).toBe(false);
   });
 
   it("keeps unidentified sessions distinct without a magic prefix", () => {

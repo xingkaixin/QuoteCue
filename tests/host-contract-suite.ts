@@ -6,6 +6,7 @@ import { compileAnnotatedPrompt } from "@/features/annotations/prompt-compiler";
 import { registerSendInterceptor } from "@/features/annotations/register-send-interceptor";
 import type { Host, HostEnvironment, HostResult } from "@/features/host/dom-host";
 import { QUOTECUE_NATIVE_ACTION_SELECTOR } from "@/lib/dom-identity";
+import type { SupportedSiteId } from "@/lib/supported-sites";
 
 import { requiredNativeAction } from "./fixtures/fixture-utils";
 
@@ -33,6 +34,7 @@ export type HostContractDefinition = {
   removeMessageIdentity: (fixture: CoreHostFixture) => void;
   name: string;
   selectionPresentation: "native-toolbar" | "overlay";
+  siteId: SupportedSiteId;
   setSendDisabled: (control: HTMLElement, isDisabled: boolean) => void;
   supportsSyntheticPaste: boolean;
 };
@@ -74,6 +76,7 @@ export function runHostContractSuite(definition: HostContractDefinition) {
         expect(siteHost.conversation.identity("session-contract")).toEqual({
           kind: "identified",
           id: definition.conversation.id,
+          siteId: definition.siteId,
         });
       }
 
@@ -541,7 +544,11 @@ export function runHostContractSuite(definition: HostContractDefinition) {
       const interceptor = registerSendInterceptor({
         annotations: () => numberAnnotations([annotation]),
         compilePrompt: compileAnnotatedPrompt,
-        conversationIdentity: () => ({ kind: "identified", id: "conversation-test" }),
+        conversationIdentity: () => ({
+          kind: "identified",
+          id: "conversation-test",
+          siteId: definition.siteId,
+        }),
         host: siteHost,
         locale: () => "en",
         onSendConfirmed,
@@ -554,6 +561,7 @@ export function runHostContractSuite(definition: HostContractDefinition) {
       expect(onSendConfirmed).toHaveBeenCalledWith([annotation], {
         kind: "identified",
         id: "conversation-test",
+        siteId: definition.siteId,
       });
       interceptor.dispose();
     });
@@ -574,7 +582,11 @@ export function runHostContractSuite(definition: HostContractDefinition) {
             { anchor, comment: "Explain the tradeoff", id: "annotation-contract" },
           ]),
         compilePrompt: compileAnnotatedPrompt,
-        conversationIdentity: () => ({ kind: "identified", id: "conversation-test" }),
+        conversationIdentity: () => ({
+          kind: "identified",
+          id: "conversation-test",
+          siteId: definition.siteId,
+        }),
         host: siteHost,
         locale: () => "en",
         onSendConfirmed,

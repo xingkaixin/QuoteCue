@@ -1,6 +1,7 @@
 import type { IdentifiedConversation } from "@/features/host-port/host-port";
 import { parseTextAnchor } from "@/features/host-port/text-anchor";
 import { isRecord } from "@/lib/is-record";
+import { isSupportedSiteId } from "@/lib/supported-sites";
 
 import type { DraftAnnotation } from "./annotation";
 import type { DraftMutation } from "./draft-mutation";
@@ -49,7 +50,12 @@ export function isDraftOwnerResponse(value: unknown): value is DraftOwnerRespons
 }
 
 function isIdentifiedConversation(value: unknown): value is IdentifiedConversation {
-  return isRecord(value) && value.kind === "identified" && typeof value.id === "string";
+  return (
+    isRecord(value) &&
+    value.kind === "identified" &&
+    typeof value.id === "string" &&
+    isSupportedSiteId(value.siteId)
+  );
 }
 
 function isDraftMutation(value: unknown): value is DraftMutation {

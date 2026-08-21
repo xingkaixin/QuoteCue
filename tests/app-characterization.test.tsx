@@ -289,6 +289,7 @@ describe("App annotation workflow", () => {
       mounted.host.controls.setConversationIdentity({
         kind: "identified",
         id: "conversation-b",
+        siteId: "chatgpt",
       }),
     );
     await vi.waitFor(() => {
@@ -300,6 +301,7 @@ describe("App annotation workflow", () => {
       mounted.host.controls.setConversationIdentity({
         kind: "identified",
         id: "conversation-a",
+        siteId: "chatgpt",
       }),
     );
     await vi.waitFor(() => {
@@ -326,6 +328,7 @@ describe("App annotation workflow", () => {
       mounted.host.controls.setConversationIdentity({
         kind: "identified",
         id: "conversation-b",
+        siteId: "chatgpt",
       }),
     );
 
@@ -358,6 +361,7 @@ describe("App annotation workflow", () => {
       mounted.host.controls.setConversationIdentity({
         kind: "identified",
         id: "conversation-b",
+        siteId: "chatgpt",
       }),
     );
     await vi.waitFor(() => {
@@ -369,6 +373,7 @@ describe("App annotation workflow", () => {
       mounted.host.controls.setConversationIdentity({
         kind: "identified",
         id: "conversation-c",
+        siteId: "chatgpt",
       }),
     );
     await vi.waitFor(() => expect(summary(mounted.container).dataset.count).toBe("1"));
@@ -407,6 +412,7 @@ describe("App annotation workflow", () => {
       mounted.host.controls.setConversationIdentity({
         kind: "identified",
         id: "conversation-b",
+        siteId: "chatgpt",
       }),
     );
     // Another context edits the sent annotation while the attempt is still in flight.
@@ -497,7 +503,11 @@ function cloneAnnotations(annotations: readonly DraftAnnotation[]) {
 
 function createAppHost(): FakeHost {
   const host = createFakeHost();
-  host.controls.setConversationIdentity({ kind: "identified", id: "conversation-a" });
+  host.controls.setConversationIdentity({
+    kind: "identified",
+    id: "conversation-a",
+    siteId: "chatgpt",
+  });
   const message = document.createElement("article");
   message.textContent = "A focused answer for the contract fixture.";
   document.body.append(message);

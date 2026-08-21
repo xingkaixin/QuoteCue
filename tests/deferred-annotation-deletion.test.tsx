@@ -37,8 +37,8 @@ const annotations: DraftAnnotation[] = [
 
 let latestDeletion: ReturnType<typeof useDeferredAnnotationDeletion>;
 const commitDeletions = vi.fn();
-const conversationA = { kind: "identified", id: "A" } as const;
-const conversationB = { kind: "identified", id: "B" } as const;
+const conversationA = { kind: "identified", id: "A", siteId: "chatgpt" } as const;
+const conversationB = { kind: "identified", id: "B", siteId: "chatgpt" } as const;
 
 afterEach(() => {
   commitDeletions.mockReset();
@@ -107,7 +107,9 @@ describe("deferred annotation deletion", () => {
     await act(async () => latestDeletion.requestDeletion("annotation-a"));
     await act(async () =>
       root.render(
-        <DeletionHarness conversationIdentity={{ kind: "identified", id: conversationA.id }} />,
+        <DeletionHarness
+          conversationIdentity={{ kind: "identified", id: conversationA.id, siteId: "chatgpt" }}
+        />,
       ),
     );
 

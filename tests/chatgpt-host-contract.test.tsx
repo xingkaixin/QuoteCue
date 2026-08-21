@@ -174,7 +174,11 @@ describe("ChatGPT host contract", () => {
     const interceptor = registerSendInterceptor({
       annotations: () => numberAnnotations(annotations),
       compilePrompt: compileAnnotatedPrompt,
-      conversationIdentity: () => ({ kind: "identified", id: "conversation-test" }),
+      conversationIdentity: () => ({
+        kind: "identified",
+        id: "conversation-test",
+        siteId: "chatgpt",
+      }),
       host,
       locale: () => "en",
       onSendConfirmed,
@@ -187,6 +191,7 @@ describe("ChatGPT host contract", () => {
     expect(onSendConfirmed).toHaveBeenCalledWith([annotation], {
       kind: "identified",
       id: "conversation-test",
+      siteId: "chatgpt",
     });
     expect(annotations).toEqual([]);
 
@@ -397,7 +402,11 @@ describe("ChatGPT host contract", () => {
     const interceptor = registerSendInterceptor({
       annotations: () => numberAnnotations([privateAnnotation]),
       compilePrompt: compileAnnotatedPrompt,
-      conversationIdentity: () => ({ kind: "identified", id: "conversation-test" }),
+      conversationIdentity: () => ({
+        kind: "identified",
+        id: "conversation-test",
+        siteId: "chatgpt",
+      }),
       host,
       locale: () => "en",
       onSendConfirmed: vi.fn(),
