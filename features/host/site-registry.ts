@@ -4,18 +4,19 @@ import { createDeepSeekHost } from "@/features/deepseek/deepseek-host";
 import { createKimiHost } from "@/features/kimi/kimi-host";
 import type { Host } from "@/features/host-port/host-port";
 import type { SiteAccentTokens } from "@/features/theme/accent-tokens";
+import { SUPPORTED_SITES, type SupportedSite, type SupportedSiteId } from "@/lib/supported-sites";
 
 import type { HostEnvironment } from "./host-environment";
-import { SITE_URLS, type SiteUrl } from "./site-urls";
 
-export type SiteRegistration = SiteUrl & {
+type SiteImplementation = {
   accentTokens: SiteAccentTokens;
   createHost(environment: HostEnvironment): Host;
 };
 
-export const SITE_REGISTRY = [
-  {
-    ...SITE_URLS.chatgpt,
+export type SiteRegistration = SupportedSite & SiteImplementation;
+
+const SITE_IMPLEMENTATIONS = {
+  chatgpt: {
     accentTokens: {
       accent: "var(--theme-submit-btn-bg, #2563eb)",
       "accent-foreground": "var(--theme-submit-btn-text, #ffffff)",
@@ -25,19 +26,7 @@ export const SITE_REGISTRY = [
     },
     createHost: createChatGptHost,
   },
-  {
-    ...SITE_URLS.deepseek,
-    accentTokens: {
-      accent: "var(--dsw-alias-brand-primary, #2563eb)",
-      "accent-foreground": "#ffffff",
-      "accent-subtle": "var(--dsw-alias-brand-primary, #2563eb)",
-      "accent-subtle-foreground": "#ffffff",
-      "accent-text": "var(--dsw-alias-brand-primary, #2563eb)",
-    },
-    createHost: createDeepSeekHost,
-  },
-  {
-    ...SITE_URLS.claude,
+  claude: {
     accentTokens: {
       accent: "var(--cds-fill-brand, #2563eb)",
       "accent-foreground": "var(--cds-on-brand, #ffffff)",
@@ -47,8 +36,17 @@ export const SITE_REGISTRY = [
     },
     createHost: createClaudeHost,
   },
-  {
-    ...SITE_URLS.kimi,
+  deepseek: {
+    accentTokens: {
+      accent: "var(--dsw-alias-brand-primary, #2563eb)",
+      "accent-foreground": "#ffffff",
+      "accent-subtle": "var(--dsw-alias-brand-primary, #2563eb)",
+      "accent-subtle-foreground": "#ffffff",
+      "accent-text": "var(--dsw-alias-brand-primary, #2563eb)",
+    },
+    createHost: createDeepSeekHost,
+  },
+  kimi: {
     accentTokens: {
       accent: "var(--Colors-KMBlue, #2563eb)",
       "accent-foreground": "#ffffff",
@@ -58,7 +56,12 @@ export const SITE_REGISTRY = [
     },
     createHost: createKimiHost,
   },
-] satisfies readonly SiteRegistration[];
+} satisfies Record<SupportedSiteId, SiteImplementation>;
+
+export const SITE_REGISTRY = SUPPORTED_SITES.map((site) => ({
+  ...site,
+  ...SITE_IMPLEMENTATIONS[site.id],
+})) satisfies readonly SiteRegistration[];
 
 export function siteForHostname(hostname: string): SiteRegistration | null {
   return SITE_REGISTRY.find((site) => site.hostname === hostname) ?? null;

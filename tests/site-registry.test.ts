@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { SITE_REGISTRY, siteForHostname } from "@/features/host/site-registry";
 import { SITE_URL_PATTERNS } from "@/features/host/site-urls";
+import { SUPPORTED_SITES } from "@/lib/supported-sites";
 
 describe("site registry", () => {
   it("owns one registration per hostname", () => {
@@ -19,6 +20,17 @@ describe("site registry", () => {
 
   it("derives the shared access patterns from the registry URLs", () => {
     expect(SITE_URL_PATTERNS).toEqual(SITE_REGISTRY.map(({ urlPattern }) => urlPattern));
+  });
+
+  it("registers every catalog site with its declared identity", () => {
+    expect(
+      SITE_REGISTRY.map(({ id, name, hostname, urlPattern }) => ({
+        id,
+        name,
+        hostname,
+        urlPattern,
+      })),
+    ).toEqual(SUPPORTED_SITES);
   });
 
   it("returns no registration for unsupported sites", () => {
