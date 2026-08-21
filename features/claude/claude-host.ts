@@ -13,7 +13,7 @@ const MESSAGE_INDEX_SELECTOR = "[data-rs-index]";
 
 const CLAUDE_ADAPTER: SiteAdapter = {
   composer: richTextComposer("[data-testid='chat-input'][contenteditable='true']"),
-  conversationPathPattern: /^\/chat\/([^/?#]+)/,
+  conversationId: (pathname) => pathname.match(/^\/chat\/([^/?#]+)/)?.[1] ?? null,
   layout: composerLayout("button", "div:has([data-testid=chat-input])"),
   messages: messageAccess({
     assistantSelector: MESSAGE_SELECTOR,

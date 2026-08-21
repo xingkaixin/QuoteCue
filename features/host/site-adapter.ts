@@ -39,7 +39,7 @@ export type SendControlAccess = {
 
 export type SiteAdapter = {
   composer: ComposerAccess;
-  conversationPathPattern: RegExp;
+  conversationId(pathname: string): string | null;
   layout: ComposerLayoutAccess;
   messages: MessageAccess;
   selectionPresentation: SelectionPresentationAccess;
