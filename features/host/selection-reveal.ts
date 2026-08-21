@@ -1,5 +1,4 @@
 import { rangeEndpointRect } from "@/features/host-port/range-geometry";
-import type { SelectionRevealFailureReason } from "@/features/host-port/host-port";
 import { currentVisualViewportBounds } from "@/features/layout/use-visual-viewport";
 
 import { available, unavailable, type HostContext, type HostResult } from "./host-context";
@@ -9,9 +8,7 @@ const SCROLLABLE_OVERFLOW_PATTERN = /auto|overlay|scroll/;
 export function createSelectionReveal(context: HostContext) {
   const { logger, window: hostWindow } = context;
 
-  return function reveal(
-    range: Range,
-  ): HostResult<"scrolled" | "visible", SelectionRevealFailureReason> {
+  return function reveal(range: Range): HostResult<"scrolled" | "visible"> {
     if (!range.endContainer.isConnected) {
       return unavailable("selection-detached", logger);
     }

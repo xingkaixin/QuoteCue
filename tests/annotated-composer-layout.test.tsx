@@ -126,10 +126,7 @@ describe("useAnnotatedComposerLayout", () => {
     expect(getComputedStyle).not.toHaveBeenCalled();
 
     surface.replaceWith(composer);
-    expect(host.layout.current()).toEqual({
-      reason: "composer-surface-unavailable",
-      status: "unavailable",
-    });
+    expect(host.layout.current()).toEqual({ status: "unavailable" });
   });
 
   it("moves an active reservation to a replacement composer surface", () => {

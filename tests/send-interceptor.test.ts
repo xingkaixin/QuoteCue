@@ -223,7 +223,6 @@ describe("registerSendInterceptor", () => {
     const host = createFakeHost();
     vi.spyOn(host.composer, "snapshot").mockReturnValue({
       status: "unavailable",
-      reason: "composer-unavailable",
     });
     const onStateChange = vi.fn();
     const interceptor = createInterceptor(undefined, { host, onStateChange });

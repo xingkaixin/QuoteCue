@@ -40,7 +40,6 @@ export function createFakeHost(overrides: FakeHostOverrides = {}): FakeHost {
   let conversationIdentity: ConversationIdentity | null = null;
   let messageIndex = new Map<string, HTMLElement>();
   let selectionCapture: ReturnType<Host["selection"]["capture"]> = {
-    reason: "selection-unavailable",
     status: "unavailable",
   };
   let layout: HostResult<HostLayout> = {

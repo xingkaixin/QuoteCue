@@ -110,10 +110,7 @@ export function runHostContractSuite(definition: HostContractDefinition) {
       const fixture = definition.installFixture();
       selectNodeContents(fixture.userMessage);
 
-      expect(host().selection.capture()).toEqual({
-        reason: "assistant-message-unavailable",
-        status: "unavailable",
-      });
+      expect(host().selection.capture()).toEqual({ status: "unavailable" });
     });
 
     it("rejects assistant selections without a message identity", () => {
@@ -123,10 +120,7 @@ export function runHostContractSuite(definition: HostContractDefinition) {
       const logger = vi.fn();
       const siteHost = definition.createHost({ document, logger, window });
 
-      expect(siteHost.selection.capture()).toEqual({
-        reason: "anchor-unavailable",
-        status: "unavailable",
-      });
+      expect(siteHost.selection.capture()).toEqual({ status: "unavailable" });
       expect(logger).toHaveBeenCalledWith("[QuoteCue host] unavailable: anchor-unavailable");
     });
 
@@ -138,10 +132,7 @@ export function runHostContractSuite(definition: HostContractDefinition) {
       range.setEnd(secondMessage, secondMessage.childNodes.length);
       selectRange(range);
 
-      expect(host().selection.capture()).toEqual({
-        reason: "assistant-message-unavailable",
-        status: "unavailable",
-      });
+      expect(host().selection.capture()).toEqual({ status: "unavailable" });
     });
 
     it("captures a selection spanning structured text nodes", () => {
@@ -321,20 +312,21 @@ export function runHostContractSuite(definition: HostContractDefinition) {
       definition.installFixture();
       window.getSelection()?.removeAllRanges();
 
-      expect(host().selection.capture()).toEqual({
-        reason: "selection-unavailable",
-        status: "unavailable",
-      });
+      expect(host().selection.capture()).toEqual({ status: "unavailable" });
     });
 
     it("reports a composer outside its configured surface", () => {
       const fixture = definition.installFixture();
       fixture.surface.replaceWith(fixture.composer, fixture.sendControl);
 
-      expect(host().layout.current()).toEqual({
-        reason: "composer-surface-unavailable",
+      const logger = vi.fn();
+
+      expect(definition.createHost({ document, logger, window }).layout.current()).toEqual({
         status: "unavailable",
       });
+      expect(logger).toHaveBeenCalledWith(
+        "[QuoteCue host] unavailable: composer-surface-unavailable",
+      );
     });
 
     it("does not intercept Enter while an IME composition is active", () => {
@@ -449,7 +441,7 @@ export function runHostContractSuite(definition: HostContractDefinition) {
       stop();
     });
 
-    it("distinguishes a detached selection from a missing assistant message", () => {
+    it("keeps the detached-selection cause in diagnostics", () => {
       const detachedMessage = document.createElement("p");
       detachedMessage.textContent = "Detached selection";
       const range = document.createRange();
@@ -457,10 +449,7 @@ export function runHostContractSuite(definition: HostContractDefinition) {
       const logger = vi.fn();
       const siteHost = definition.createHost({ document, logger, window });
 
-      expect(siteHost.selection.reveal(range)).toEqual({
-        reason: "selection-detached",
-        status: "unavailable",
-      });
+      expect(siteHost.selection.reveal(range)).toEqual({ status: "unavailable" });
       expect(logger).toHaveBeenCalledWith("[QuoteCue host] unavailable: selection-detached");
     });
 
@@ -712,7 +701,7 @@ export function runHostContractSuite(definition: HostContractDefinition) {
 
 function availableValue<T>(result: HostResult<T>) {
   if (result.status === "unavailable") {
-    throw new Error(`Expected available host result, received ${result.reason}`);
+    throw new Error("Expected available host result");
   }
   return result.value;
 }

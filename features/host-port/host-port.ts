@@ -1,22 +1,6 @@
 import type { SupportedSiteId } from "@/lib/supported-sites";
 
-export type SelectionCaptureFailureReason =
-  | "anchor-unavailable"
-  | "assistant-message-unavailable"
-  | "selection-unavailable";
-
-export type SelectionRevealFailureReason = "selection-detached";
-
-export type HostUnavailableReason =
-  | SelectionCaptureFailureReason
-  | SelectionRevealFailureReason
-  | "composer-surface-unavailable"
-  | "composer-unavailable"
-  | "send-control-unavailable";
-
-export type HostResult<T, R extends string = HostUnavailableReason> =
-  | { status: "available"; value: T }
-  | { status: "unavailable"; reason: R };
+export type HostResult<T> = { status: "available"; value: T } | { status: "unavailable" };
 
 export type ComposerSnapshot = {
   element: HTMLElement;
@@ -34,7 +18,9 @@ export type ComposerSubmitOptions = {
   text: string;
 };
 
-export type ComposerSubmitResult = HostResult<"confirmed", ComposerSubmitFailureReason>;
+export type ComposerSubmitResult =
+  | { status: "available"; value: "confirmed" }
+  | { status: "unavailable"; reason: ComposerSubmitFailureReason };
 
 export type ComposerSubmitIntent = {
   event: Event;
@@ -95,16 +81,14 @@ export type NativeSelectionAction = {
 };
 
 type HostSelectionBase = {
-  capture(
-    selection?: Selection | null,
-  ): HostResult<SelectionCapture, SelectionCaptureFailureReason>;
+  capture(selection?: Selection | null): HostResult<SelectionCapture>;
   clear(): void;
   highlight(range: Range | null): void;
   isObscured(range: Range, rect: SelectionRect): boolean;
   messageIndex(messageIds?: ReadonlySet<string>): Map<string, HTMLElement>;
   observeCaptureIntent(callback: (intent: SelectionCaptureIntent) => void): () => void;
   observeInvalidation(callback: (invalidation: SelectionInvalidation) => void): () => void;
-  reveal(range: Range): HostResult<"scrolled" | "visible", SelectionRevealFailureReason>;
+  reveal(range: Range): HostResult<"scrolled" | "visible">;
 };
 
 export type HostSelection = HostSelectionBase &

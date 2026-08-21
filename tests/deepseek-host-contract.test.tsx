@@ -41,10 +41,7 @@ describe("DeepSeek host contract", () => {
     const host = createDeepSeekHost({ document, window });
     selectNodeContents(fixture.thinkContent.firstChild);
 
-    expect(host.selection.capture()).toEqual({
-      reason: "assistant-message-unavailable",
-      status: "unavailable",
-    });
+    expect(host.selection.capture()).toEqual({ status: "unavailable" });
   });
 
   it("covers layout, annotated send confirmation, and composer restore", async () => {

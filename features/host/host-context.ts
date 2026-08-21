@@ -1,3 +1,5 @@
+import type { ComposerSubmitFailureReason } from "@/features/host-port/host-port";
+
 import type { MessageAccess, SiteAdapter } from "./site-adapter";
 import type { HostEnvironment } from "./host-environment";
 
@@ -16,7 +18,6 @@ type HistoryPatchState = {
 export type {
   ComposerSnapshot,
   HostResult,
-  HostUnavailableReason,
   SelectionCaptureIntent,
   SelectionInvalidation,
 } from "@/features/host-port/host-port";
@@ -65,11 +66,26 @@ export function available<T>(value: T): { status: "available"; value: T } {
   return { status: "available", value };
 }
 
-export function unavailable<R extends string>(
-  reason: R,
+type HostDiagnosticReason =
+  | "anchor-unavailable"
+  | "assistant-message-unavailable"
+  | "composer-surface-unavailable"
+  | "composer-unavailable"
+  | "selection-detached"
+  | "selection-unavailable"
+  | "send-control-unavailable";
+
+export function unavailable(
+  reason: HostDiagnosticReason,
   logger?: HostEnvironment["logger"],
-): { reason: R; status: "unavailable" } {
+): { status: "unavailable" } {
   logger?.(`[QuoteCue host] unavailable: ${reason}`);
+  return { status: "unavailable" };
+}
+
+export function failure<R extends ComposerSubmitFailureReason>(
+  reason: R,
+): { reason: R; status: "unavailable" } {
   return { reason, status: "unavailable" };
 }
 
