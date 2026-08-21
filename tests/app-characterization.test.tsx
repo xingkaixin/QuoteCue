@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "@/entrypoints/content/App";
 import type { DraftAnnotation, AnchoredSelection } from "@/features/annotations/annotation";
 import { DraftStoreProvider } from "@/features/annotations/DraftStoreProvider";
+import type { IdentifiedConversation } from "@/features/host-port/host-port";
 import { HostProvider } from "@/features/host-port/HostProvider";
 import { I18nProvider } from "@/features/i18n/I18nProvider";
 
@@ -175,13 +176,13 @@ const anchoredSelection: AnchoredSelection = {
   rect: { bottom: 120, height: 20, left: 80, right: 180, top: 100, width: 100 },
 };
 
-const { drafts: storedDrafts, store: draftStore } = createMemoryDraftStore();
+let draftStore = createMemoryDraftStore().store;
 const rangeRectsDescriptor = Object.getOwnPropertyDescriptor(Range.prototype, "getClientRects");
 
 beforeEach(() => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   window.history.replaceState({}, "", "/c/conversation-a");
-  storedDrafts.clear();
+  draftStore = createMemoryDraftStore().store;
   Object.defineProperty(document, "execCommand", {
     configurable: true,
     value: vi.fn(() => false),
@@ -229,7 +230,7 @@ describe("App annotation workflow", () => {
 
     expect(mounted.container.querySelector('[data-testid="quick-editor"]')).toBeNull();
     expect(mounted.host.elements.composer.textContent).toContain("[Annotation 1]");
-    expect(storedDrafts.get("conversation-a")).toHaveLength(1);
+    expect(await loadStoredDrafts("conversation-a")).toHaveLength(1);
 
     await act(async () => mounted.root.unmount());
   });
@@ -246,7 +247,7 @@ describe("App annotation workflow", () => {
     await click(mounted.container, "badge-2");
     await click(mounted.container, "editor-save");
 
-    const stored = storedDrafts.get("conversation-a") ?? [];
+    const stored = await loadStoredDrafts("conversation-a");
     expect(stored.map(({ comment }) => comment)).not.toContain(
       "edit meant for the first annotation",
     );
@@ -267,7 +268,7 @@ describe("App annotation workflow", () => {
     expect(sendControl(mounted.container).dataset.sendState).toBe("failed");
     expect(summary(mounted.container).dataset.count).toBe("1");
     expect(mounted.container.querySelector('[data-testid="quick-editor"]')).not.toBeNull();
-    expect(storedDrafts.get("conversation-a")).toHaveLength(1);
+    expect(await loadStoredDrafts("conversation-a")).toHaveLength(1);
 
     await click(mounted.container, "send-annotations");
     expect(submit).toHaveBeenCalledTimes(2);
@@ -352,8 +353,11 @@ describe("App annotation workflow", () => {
     });
 
     await click(mounted.container, "start-annotation");
-    const sentSnapshot = cloneAnnotations(storedDrafts.get("conversation-a") ?? []);
-    storedDrafts.set("conversation-c", cloneAnnotations(sentSnapshot));
+    const sentSnapshot = cloneAnnotations(await loadStoredDrafts("conversation-a"));
+    await draftStore.mutate(
+      identifiedConversation("conversation-c"),
+      sentSnapshot.map((annotation) => ({ kind: "add", annotation })),
+    );
     await click(mounted.container, "send-annotations");
     expect(sendControl(mounted.container).dataset.sendState).toBe("sending");
 
@@ -388,8 +392,8 @@ describe("App annotation workflow", () => {
     );
     expect(summary(mounted.container).dataset.count).toBe("1");
     // The current conversation happens to hold the same annotation, and must not be touched.
-    expect(storedDrafts.get("conversation-c")).toEqual(sentSnapshot);
-    await vi.waitFor(() => expect(storedDrafts.get("conversation-a")).toEqual([]));
+    expect(await loadStoredDrafts("conversation-c")).toEqual(sentSnapshot);
+    await vi.waitFor(async () => expect(await loadStoredDrafts("conversation-a")).toEqual([]));
 
     await act(async () => mounted.root.unmount());
   });
@@ -416,15 +420,18 @@ describe("App annotation workflow", () => {
       }),
     );
     // Another context edits the sent annotation while the attempt is still in flight.
-    const edited = cloneAnnotations(storedDrafts.get("conversation-a") ?? []).map((annotation) => ({
+    const edited = cloneAnnotations(await loadStoredDrafts("conversation-a")).map((annotation) => ({
       ...annotation,
       comment: "edited after the send was compiled",
     }));
-    storedDrafts.set("conversation-a", edited);
+    await draftStore.mutate(
+      identifiedConversation("conversation-a"),
+      edited.map(({ comment, id }) => ({ kind: "update", annotationId: id, comment })),
+    );
 
     await act(async () => confirmSubmit?.());
 
-    await vi.waitFor(() => expect(storedDrafts.get("conversation-a")).toEqual(edited));
+    await vi.waitFor(async () => expect(await loadStoredDrafts("conversation-a")).toEqual(edited));
 
     await act(async () => mounted.root.unmount());
   });
@@ -454,6 +461,14 @@ async function mountApp() {
   });
 
   return { container, host, root };
+}
+
+function identifiedConversation(id: string): IdentifiedConversation {
+  return { kind: "identified", id, siteId: "chatgpt" };
+}
+
+function loadStoredDrafts(id: string) {
+  return draftStore.load(identifiedConversation(id));
 }
 
 async function click(container: HTMLElement, testId: string) {
