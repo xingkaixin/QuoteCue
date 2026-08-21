@@ -271,11 +271,9 @@ describe("registerSendInterceptor", () => {
     const onStateChange = vi.fn();
     const interceptor = createInterceptor(undefined, { annotations: [], host, onStateChange });
     onStateChange.mockClear();
-    const event = new Event("click", { cancelable: true });
+    const decision = host.controls.emitSubmitIntent({ isSendAvailable: true });
 
-    host.controls.emitSubmitIntent({ event, isSendAvailable: true });
-
-    expect(event.defaultPrevented).toBe(false);
+    expect(decision).toBe("pass-through");
     expect(host.elements.composer.textContent).toBe("original question");
     expect(onStateChange).not.toHaveBeenCalled();
     interceptor.dispose();
@@ -289,11 +287,9 @@ describe("registerSendInterceptor", () => {
     });
     const submit = vi.spyOn(host.composer, "submit");
     const interceptor = createInterceptor(undefined, { host });
-    const event = new Event("click", { cancelable: true });
+    const decision = host.controls.emitSubmitIntent({ isSendAvailable: false });
 
-    host.controls.emitSubmitIntent({ event, isSendAvailable: false });
-
-    expect(event.defaultPrevented).toBe(false);
+    expect(decision).toBe("pass-through");
     expect(submit).not.toHaveBeenCalled();
     interceptor.dispose();
   });
@@ -308,11 +304,9 @@ describe("registerSendInterceptor", () => {
       host,
       onStateChange,
     });
-    const event = new Event("click", { cancelable: true });
+    const decision = host.controls.emitSubmitIntent({ isSendAvailable: true });
 
-    host.controls.emitSubmitIntent({ event, isSendAvailable: true });
-
-    expect(event.defaultPrevented).toBe(true);
+    expect(decision).toBe("claim");
     expect(submit).not.toHaveBeenCalled();
     expect(onStateChange).toHaveBeenLastCalledWith({
       status: "failed",
@@ -325,11 +319,9 @@ describe("registerSendInterceptor", () => {
     const host = createFakeHost();
     const submit = vi.spyOn(host.composer, "submit");
     const interceptor = createInterceptor(undefined, { host });
-    const event = new Event("click", { cancelable: true });
+    const decision = host.controls.emitSubmitIntent({ isSendAvailable: false });
 
-    host.controls.emitSubmitIntent({ event, isSendAvailable: false });
-
-    expect(event.defaultPrevented).toBe(true);
+    expect(decision).toBe("claim");
     expect(submit).toHaveBeenCalledOnce();
     interceptor.dispose();
   });

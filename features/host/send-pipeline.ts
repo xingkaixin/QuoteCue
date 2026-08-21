@@ -1,4 +1,5 @@
 import type {
+  ComposerSubmitDecision,
   ComposerSubmitIntent,
   ComposerSubmitOptions,
   ComposerSubmitResult,
@@ -269,7 +270,14 @@ export function createSendPipeline(
   // Only the browser can produce a trusted event, so this is the boundary between a user
   // choosing to send and a host page script synthesizing a send. It also covers our own
   // replay click in dispatchAndConfirm, which is untrusted by the same rule.
-  function subscribeToSubmit(callback: (intent: ComposerSubmitIntent) => void) {
+  function subscribeToSubmit(callback: (intent: ComposerSubmitIntent) => ComposerSubmitDecision) {
+    const dispatchIntent = (event: Event, isSendAvailable: boolean) => {
+      if (callback({ isSendAvailable }) === "pass-through") {
+        return;
+      }
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    };
     const onClick = (event: MouseEvent) => {
       if (!event.isTrusted) {
         return;
@@ -280,7 +288,7 @@ export function createSendPipeline(
           ? target.closest<HTMLElement>(adapter.sendControl.selector)
           : null;
       if (button) {
-        callback({ event, isSendAvailable: isButtonAvailable(button) });
+        dispatchIntent(event, isButtonAvailable(button));
       }
     };
     const onKeyDown = (event: KeyboardEvent) => {
@@ -298,7 +306,7 @@ export function createSendPipeline(
         !event.metaKey &&
         !event.isComposing;
       if (isSubmitKey) {
-        callback({ event, isSendAvailable: isButtonAvailable(currentSendButton()) });
+        dispatchIntent(event, isButtonAvailable(currentSendButton()));
       }
     };
 
