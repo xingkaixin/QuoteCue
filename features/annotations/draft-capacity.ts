@@ -1,4 +1,4 @@
-import { selectedTextFor } from "@/features/host-port/text-anchor";
+import { selectedTextFor } from "@/lib/text-anchor";
 
 import type { DraftAnnotation } from "./annotation";
 import type { DraftMutation } from "./draft-mutation";

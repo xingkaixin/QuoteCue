@@ -1,8 +1,8 @@
 import { browser } from "wxt/browser";
 
 import type { IdentifiedConversation } from "@/features/host-port/host-port";
-import { parseTextAnchor } from "@/features/host-port/text-anchor";
 import { isRecord } from "@/lib/is-record";
+import { parseTextAnchor } from "@/lib/text-anchor";
 
 import type { DraftAnnotation } from "./annotation";
 import { draftMutationExceedsCapacity } from "./draft-capacity";

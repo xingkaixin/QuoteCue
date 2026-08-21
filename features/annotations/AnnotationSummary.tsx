@@ -2,9 +2,9 @@ import { MessageSquareText, Pencil, Trash2, X } from "lucide-react";
 import { Fragment, useEffect, useRef, useState } from "react";
 
 import type { HostLayout } from "@/features/host-port/host-port";
-import { selectedTextFor } from "@/features/host-port/text-anchor";
 import { useI18n } from "@/features/i18n/I18nProvider";
 import { QUOTECUE_INTERACTIVE_CLASS, Z_LAYER } from "@/lib/dom-identity";
+import { selectedTextFor } from "@/lib/text-anchor";
 
 import type { ProjectedAnnotation } from "./annotation-projection";
 import { DELETE_UNDO_WINDOW_MS } from "./use-deferred-annotation-deletion";

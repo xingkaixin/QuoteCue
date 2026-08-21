@@ -1,4 +1,7 @@
 import type { SupportedSiteId } from "@/lib/supported-sites";
+import type { TextAnchor } from "@/lib/text-anchor";
+
+export type { TextAnchor } from "@/lib/text-anchor";
 
 export type HostResult<T> = { status: "available"; value: T } | { status: "unavailable" };
 
@@ -45,21 +48,6 @@ export type SelectionInvalidation =
   | { reason: "layout" }
   | { dirtyMessageIds: ReadonlySet<string> | "all"; reason: "content" };
 export type SelectionCaptureIntent = "capture" | "dismiss";
-
-type TextAnchorBase = {
-  end: number;
-  messageId: string;
-  prefix: string;
-  quote: string;
-  start: number;
-  suffix: string;
-};
-
-export type TextAnchor = TextAnchorBase &
-  (
-    | { displayQuote?: string; format: "exact" }
-    | { displayQuote?: never; format: "legacy-rendered" }
-  );
 
 export type SelectionRect = Pick<DOMRect, "bottom" | "height" | "left" | "right" | "top" | "width">;
 
