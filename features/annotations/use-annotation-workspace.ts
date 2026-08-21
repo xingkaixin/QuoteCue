@@ -7,7 +7,6 @@ import { useI18n } from "@/features/i18n/I18nProvider";
 import type { AnchoredSelection, AnnotationEditorState, DraftAnnotation } from "./annotation";
 import type { ProjectedAnnotation } from "./annotation-projection";
 import { sameConversationIdentity } from "./conversation-identity";
-import { compileAnnotatedPrompt } from "./prompt-compiler";
 import { registerSendInterceptor, type AnnotatedSendState } from "./register-send-interceptor";
 import { useAnnotationProjection } from "./use-annotation-projection";
 import { useConversationIdentity } from "./use-conversation-identity";
@@ -55,9 +54,11 @@ export function useAnnotationWorkspace() {
     }
   }, [activeResolution, closeEditor]);
 
-  const annotationsRef = useRef<readonly ProjectedAnnotation[]>(projectedAnnotations);
-  const conversationIdentityRef = useRef(conversationIdentity);
-  const localeRef = useRef(locale);
+  const sendInputRef = useRef({
+    annotations: projectedAnnotations,
+    conversationIdentity,
+    locale,
+  });
   const removeConfirmedAnnotationsRef = useRef(removeConfirmedAnnotations);
   const sendControllerRef = useRef<SendController | null>(null);
   const requestSessionDismissalRef = useRef<(() => boolean) | null>(null);
@@ -65,21 +66,21 @@ export function useAnnotationWorkspace() {
     requestSessionDismissalRef.current = requestDismissal;
   }, []);
 
-  annotationsRef.current = projectedAnnotations;
-  conversationIdentityRef.current = conversationIdentity;
-  localeRef.current = locale;
+  sendInputRef.current = { annotations: projectedAnnotations, conversationIdentity, locale };
   removeConfirmedAnnotationsRef.current = removeConfirmedAnnotations;
 
   useEffect(() => {
     const controller = registerSendInterceptor({
-      annotations: () => annotationsRef.current,
-      compilePrompt: compileAnnotatedPrompt,
-      conversationIdentity: () => conversationIdentityRef.current,
+      getSendInput: () => sendInputRef.current,
       host,
-      locale: () => localeRef.current,
       onSendConfirmed: (sentAnnotations, sentConversationIdentity) => {
         removeConfirmedAnnotationsRef.current(sentConversationIdentity, sentAnnotations);
-        if (sameConversationIdentity(conversationIdentityRef.current, sentConversationIdentity)) {
+        if (
+          sameConversationIdentity(
+            sendInputRef.current.conversationIdentity,
+            sentConversationIdentity,
+          )
+        ) {
           closeEditor();
         }
       },
@@ -97,7 +98,7 @@ export function useAnnotationWorkspace() {
 
   useEffect(() => {
     closeEditor();
-    sendControllerRef.current?.conversationChanged();
+    sendControllerRef.current?.conversationChanged(conversationIdentity);
   }, [closeEditor, conversationIdentity]);
 
   const startAnnotation = useCallback(
