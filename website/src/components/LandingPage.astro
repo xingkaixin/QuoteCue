@@ -3,7 +3,8 @@ import { Faq } from "./Faq";
 import InstallActions from "./InstallActions.astro";
 import { InteractiveDemo } from "./InteractiveDemo";
 import { ThemeToggle } from "./ThemeToggle";
-import { getCopy, type Locale } from "../i18n/content";
+import { getCopy } from "../i18n/content";
+import { WEBSITE_LOCALE_CONFIG, WEBSITE_LOCALES, type Locale } from "../i18n/locales";
 import BaseLayout from "../layouts/BaseLayout.astro";
 import { SUPPORTED_SITES } from "../../../lib/supported-sites";
 
@@ -13,8 +14,9 @@ interface Props {
 
 const { locale } = Astro.props;
 const copy = getCopy(locale);
-const homeUrl = locale === "en" ? "/en/" : "/";
-const pageUrl = new URL(locale === "en" ? "/en/" : "/", Astro.site).href;
+const pagePath = WEBSITE_LOCALE_CONFIG[locale].path;
+const pageUrl = new URL(pagePath, Astro.site).href;
+const alternateLocales = WEBSITE_LOCALES.filter((candidate) => candidate !== locale);
 const organizationId = new URL("/#organization", Astro.site).href;
 const softwareId = new URL("/#software", Astro.site).href;
 const websiteId = new URL("/#website", Astro.site).href;
@@ -26,7 +28,7 @@ const structuredData = {
       "@id": websiteId,
       url: new URL("/", Astro.site).href,
       name: "QuoteCue",
-      inLanguage: ["zh-CN", "en"],
+      inLanguage: WEBSITE_LOCALES,
       publisher: { "@id": organizationId },
     },
     {
@@ -90,13 +92,14 @@ const structuredData = {
   lang={copy.locale}
   title={copy.meta.title}
   description={copy.meta.description}
+  socialImageAlt={copy.meta.socialImageAlt}
   structuredData={structuredData}
 >
   <a
     class="fixed top-3 left-3 z-[100] -translate-y-20 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground transition-transform focus:translate-y-0"
     href="#main"
   >
-    {locale === "en" ? "Skip to content" : "跳到主要内容"}
+    {copy.skipToContent}
   </a>
 
   <header
@@ -106,7 +109,7 @@ const structuredData = {
       <a
         aria-label="QuoteCue"
         class="font-display mr-auto flex items-center gap-2.5 text-[1.0625rem] font-bold tracking-[-0.01em]"
-        href={homeUrl}
+        href={pagePath}
       >
         <img
           src="/brand/quotecue-icon-128.png"
@@ -118,7 +121,7 @@ const structuredData = {
         QuoteCue
       </a>
 
-      <nav aria-label={locale === "en" ? "Main navigation" : "主导航"} class="hidden md:block">
+      <nav aria-label={copy.mainNavigationLabel} class="hidden md:block">
         <ul class="flex list-none items-center gap-5 p-0 text-[0.84375rem] text-muted">
           <li><a class="transition-colors hover:text-foreground" href="#demo">{copy.nav.demo}</a></li>
           <li>
@@ -136,14 +139,24 @@ const structuredData = {
       </nav>
 
       <div class="flex items-center gap-1.5">
-        <a
-          aria-label={copy.alternateLanguageLabel}
-          class="font-mono flex h-8 items-center rounded-full border border-line px-3 text-[0.71875rem] text-muted outline-none transition-colors hover:border-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
-          href={copy.alternateLanguageUrl}
-          hreflang={locale === "en" ? "zh-CN" : "en"}
-        >
-          {copy.alternateLanguage}
-        </a>
+        <nav aria-label={copy.languageSwitcherLabel}>
+          <ul class="m-0 flex list-none gap-1.5 p-0">
+            {
+              alternateLocales.map((alternateLocale) => (
+                <li>
+                  <a
+                    class="font-mono flex h-8 items-center rounded-full border border-line px-3 text-[0.71875rem] text-muted outline-none transition-colors hover:border-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                    href={WEBSITE_LOCALE_CONFIG[alternateLocale].path}
+                    hreflang={alternateLocale}
+                    lang={alternateLocale}
+                  >
+                    {WEBSITE_LOCALE_CONFIG[alternateLocale].label}
+                  </a>
+                </li>
+              ))
+            }
+          </ul>
+        </nav>
         <ThemeToggle client:load label={copy.themeLabel} />
       </div>
     </div>

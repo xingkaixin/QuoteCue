@@ -1,4 +1,4 @@
-export type Locale = "zh-CN" | "en";
+import type { Locale } from "./locales";
 
 export interface DemoCopy {
   locale: Locale;
@@ -38,15 +38,15 @@ const links = {
 
 const zh = {
   locale: "zh-CN" as const,
-  languageName: "中文",
-  alternateLanguage: "EN",
-  alternateLanguageLabel: "Switch to English",
-  alternateLanguageUrl: "/en/",
+  languageSwitcherLabel: "切换语言",
+  mainNavigationLabel: "主导航",
+  skipToContent: "跳到主要内容",
   themeLabel: "切换亮色或暗色主题",
   meta: {
     title: "QuoteCue：给 AI 回答做批注，一次聚焦追问",
     description:
       "QuoteCue 是适用于 ChatGPT、Claude、DeepSeek 和 Kimi 的 Chrome 与 Edge 扩展。选中 AI 回答、添加批注，再把多个重点编译成一次聚焦追问。",
+    socialImageAlt: "QuoteCue：给 AI 回答添加批注并发起一次聚焦追问",
   },
   nav: {
     demo: "试一试",
@@ -192,15 +192,15 @@ const zh = {
 
 const en = {
   locale: "en" as const,
-  languageName: "English",
-  alternateLanguage: "中文",
-  alternateLanguageLabel: "切换到中文",
-  alternateLanguageUrl: "/",
+  languageSwitcherLabel: "Switch language",
+  mainNavigationLabel: "Main navigation",
+  skipToContent: "Skip to content",
   themeLabel: "Switch between light and dark theme",
   meta: {
     title: "QuoteCue – Annotate AI Answers, Ask Better Follow-ups",
     description:
       "QuoteCue is a free Chrome and Edge extension for annotating ChatGPT, Claude, DeepSeek, and Kimi answers, then sending one focused follow-up.",
+    socialImageAlt: "QuoteCue — annotate an AI answer and ask one focused follow-up",
   },
   nav: {
     demo: "Try it",
@@ -350,6 +350,11 @@ const en = {
 
 export type LandingCopy = typeof zh | typeof en;
 
+const COPY: Record<Locale, LandingCopy> = {
+  "zh-CN": zh,
+  en,
+};
+
 export function getCopy(locale: Locale): LandingCopy {
-  return locale === "en" ? en : zh;
+  return COPY[locale];
 }
