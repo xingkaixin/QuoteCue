@@ -120,6 +120,9 @@ export function reduceInteractiveDemo(
         return state;
       }
       const annotation = state.annotations[index];
+      if (!annotation) {
+        return state;
+      }
       const annotations = state.annotations.filter(({ id }) => id !== action.annotationId);
       return {
         ...state,

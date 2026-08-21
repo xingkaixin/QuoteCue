@@ -11,9 +11,11 @@ const contentStyle = readFileSync(resolve("entrypoints/content/style.css"), "utf
 
 describe("theme token contrast", () => {
   it("defines every CSS theme role at runtime", () => {
-    const runtimeRoles = Object.keys(
-      hostThemeTokens(SITE_REGISTRY[0].accentTokens).light,
-    ).toSorted();
+    const firstSite = SITE_REGISTRY[0];
+    if (!firstSite) {
+      throw new Error("Missing site registration");
+    }
+    const runtimeRoles = Object.keys(hostThemeTokens(firstSite.accentTokens).light).toSorted();
     const cssRoles = [
       ...new Set([...contentStyle.matchAll(/var\(--qc-([a-z0-9-]+)/g)].map((match) => match[1])),
     ].toSorted();
@@ -63,8 +65,9 @@ function luminance(hex: string) {
     .match(/.{2}/g)
     ?.map((channel) => Number.parseInt(channel, 16) / 255)
     .map((channel) => (channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4));
-  if (!channels || channels.length !== 3) {
+  const [red, green, blue] = channels ?? [];
+  if (red === undefined || green === undefined || blue === undefined) {
     throw new Error(`Invalid color: ${hex}`);
   }
-  return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
+  return red * 0.2126 + green * 0.7152 + blue * 0.0722;
 }
