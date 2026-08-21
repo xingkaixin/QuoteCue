@@ -131,6 +131,5 @@ export type Host = {
     reserveAnnotationRow(height: number): () => void;
     subscribe(callback: () => void): () => void;
   };
-  reportUnavailable(reason: HostUnavailableReason): void;
   selection: HostSelection;
 };

@@ -12,7 +12,6 @@ type FakeHostOverrides = {
   composer?: Partial<Host["composer"]>;
   conversation?: Partial<Host["conversation"]>;
   layout?: Partial<Host["layout"]>;
-  reportUnavailable?: Host["reportUnavailable"];
 };
 
 export type FakeHost = Host & {
@@ -99,7 +98,6 @@ export function createFakeHost(overrides: FakeHostOverrides = {}): FakeHost {
         return () => layoutSubscribers.delete(callback);
       },
     },
-    reportUnavailable: () => undefined,
     selection: {
       capture: () => selectionCapture,
       clear: () => undefined,
@@ -162,7 +160,6 @@ export function createFakeHost(overrides: FakeHostOverrides = {}): FakeHost {
     },
     elements: { composer, sendControl, surface },
     layout: { ...defaultHost.layout, ...overrides.layout },
-    reportUnavailable: overrides.reportUnavailable ?? defaultHost.reportUnavailable,
     selection: defaultHost.selection,
   };
 }

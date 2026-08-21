@@ -117,11 +117,14 @@ export function runHostContractSuite(definition: HostContractDefinition) {
       const fixture = definition.installFixture();
       definition.removeMessageIdentity(fixture);
       selectNodeContents(requiredText(fixture.assistantMessage.querySelector("strong")));
+      const logger = vi.fn();
+      const siteHost = definition.createHost({ document, logger, window });
 
-      expect(host().selection.capture()).toEqual({
+      expect(siteHost.selection.capture()).toEqual({
         reason: "anchor-unavailable",
         status: "unavailable",
       });
+      expect(logger).toHaveBeenCalledWith("[QuoteCue host] unavailable: anchor-unavailable");
     });
 
     it("rejects a selection spanning two assistant messages", () => {
@@ -449,11 +452,14 @@ export function runHostContractSuite(definition: HostContractDefinition) {
       detachedMessage.textContent = "Detached selection";
       const range = document.createRange();
       range.selectNodeContents(detachedMessage);
+      const logger = vi.fn();
+      const siteHost = definition.createHost({ document, logger, window });
 
-      expect(host().selection.reveal(range)).toEqual({
+      expect(siteHost.selection.reveal(range)).toEqual({
         reason: "selection-detached",
         status: "unavailable",
       });
+      expect(logger).toHaveBeenCalledWith("[QuoteCue host] unavailable: selection-detached");
     });
 
     it("centers an offscreen endpoint in the nearest scroll container", () => {

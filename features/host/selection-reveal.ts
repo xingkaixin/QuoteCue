@@ -7,13 +7,13 @@ import { available, unavailable, type HostContext, type HostResult } from "./hos
 const SCROLLABLE_OVERFLOW_PATTERN = /auto|overlay|scroll/;
 
 export function createSelectionReveal(context: HostContext) {
-  const { window: hostWindow } = context;
+  const { logger, window: hostWindow } = context;
 
   return function reveal(
     range: Range,
   ): HostResult<"scrolled" | "visible", SelectionRevealFailureReason> {
     if (!range.endContainer.isConnected) {
-      return unavailable("selection-detached");
+      return unavailable("selection-detached", logger);
     }
 
     const endpointRect = rangeEndpointRect(range);

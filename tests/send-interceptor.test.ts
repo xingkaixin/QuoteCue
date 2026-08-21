@@ -219,7 +219,6 @@ describe("registerSendInterceptor", () => {
       status: "unavailable",
       reason: "composer-unavailable",
     });
-    const reportUnavailable = vi.spyOn(host, "reportUnavailable");
     const onStateChange = vi.fn();
     const interceptor = createInterceptor(undefined, { host, onStateChange });
 
@@ -227,7 +226,6 @@ describe("registerSendInterceptor", () => {
       status: "failed",
       reason: "composer-unavailable",
     });
-    expect(reportUnavailable).toHaveBeenCalledWith("composer-unavailable");
     expect(onStateChange).toHaveBeenLastCalledWith({
       status: "failed",
       reason: "composer-unavailable",
