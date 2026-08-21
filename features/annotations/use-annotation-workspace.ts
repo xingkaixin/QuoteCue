@@ -22,6 +22,7 @@ export function useAnnotationWorkspace() {
   const conversationIdentity = useConversationIdentity();
   const {
     draft,
+    capacityExceeded,
     addAnnotation,
     updateAnnotation,
     discardAnnotations,
@@ -189,6 +190,7 @@ export function useAnnotationWorkspace() {
 
   return {
     draft: {
+      capacityExceeded,
       retry,
       state: draft,
     },

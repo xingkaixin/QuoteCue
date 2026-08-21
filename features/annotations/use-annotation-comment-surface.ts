@@ -4,6 +4,7 @@ import type { SecureTextFieldHandle } from "@/features/secure-field/SecureTextFi
 import type { SelectionRect } from "@/features/host-port/host-port";
 import type { FloatingElementSize } from "@/features/layout/floating-position";
 
+import { MAX_ANNOTATION_COMMENT_LENGTH } from "./draft-capacity";
 import { useAnnotationEditorPosition } from "./annotation-editor-position";
 import { useDismissalWarning } from "./use-dismissal-warning";
 import { useOutsideDiscard } from "./use-outside-discard";
@@ -57,6 +58,7 @@ export function useAnnotationCommentSurface({
 
   return {
     commentFieldProps: {
+      maxLength: MAX_ANNOTATION_COMMENT_LENGTH,
       name: "quotecue-annotation-comment",
       onCancel: onDismiss,
       onChange: changeComment,

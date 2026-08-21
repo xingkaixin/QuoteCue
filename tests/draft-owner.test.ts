@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { DraftAnnotation } from "@/features/annotations/annotation";
+import { MAX_ANNOTATION_COMMENT_LENGTH } from "@/features/annotations/draft-capacity";
 import { createDraftOwner } from "@/features/annotations/draft-owner";
 
 const extensionStorage = vi.hoisted(() => {
@@ -78,6 +79,20 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks());
 
 describe("draft storage", () => {
+  it("rejects oversized mutations before writing storage", async () => {
+    await expect(
+      draftStore.mutate(conversationA, {
+        kind: "add",
+        annotation: {
+          ...annotation,
+          comment: "x".repeat(MAX_ANNOTATION_COMMENT_LENGTH + 1),
+        },
+      }),
+    ).rejects.toThrow("Draft mutation exceeds QuoteCue capacity");
+
+    expect(extensionStorage.set).not.toHaveBeenCalled();
+  });
+
   it("scopes startup cleanup to each store instance", async () => {
     extensionStorage.reset({ [currentKey]: envelope });
     extensionStorage.getKeys.mockClear();

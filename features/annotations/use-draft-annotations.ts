@@ -4,6 +4,7 @@ import type { ConversationIdentity, IdentifiedConversation } from "@/features/ho
 
 import type { DraftAnnotation } from "./annotation";
 import { sameConversationIdentity } from "./conversation-identity";
+import { draftMutationExceedsCapacity } from "./draft-capacity";
 import { applyDraftMutation, type DraftMutation } from "./draft-mutation";
 import { useDraftStore } from "./DraftStoreProvider";
 
@@ -57,6 +58,7 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
   const [draftState, setRenderedDraftState] = useState<DraftLifecycleState>(() =>
     initialDraftState(conversationIdentity),
   );
+  const [capacityExceeded, setCapacityExceeded] = useState(false);
   const draftStateRef = useRef(draftState);
   const loadGeneration = useRef(0);
   const saveQueue = useRef<Promise<unknown>>(Promise.resolve());
@@ -69,6 +71,7 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
   const loadDraftState = useCallback(
     (identity: ConversationIdentity) => {
       const generation = ++loadGeneration.current;
+      setCapacityExceeded(false);
       if (identity.kind === "unidentified") {
         setDraftState(readyDraftState(identity));
         return;
@@ -160,11 +163,16 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
       if (!canMutateDraftState(current, conversationIdentity)) {
         return false;
       }
+      if (draftMutationExceedsCapacity(current.annotations, mutation)) {
+        setCapacityExceeded(true);
+        return false;
+      }
       const annotations = applyDraftMutation(current.annotations, mutation);
       if (annotations === null) {
         return false;
       }
       if (annotations === current.annotations) {
+        setCapacityExceeded(false);
         return true;
       }
       const next = {
@@ -173,6 +181,7 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
         revision: current.revision + 1,
       };
       setDraftState(next);
+      setCapacityExceeded(false);
       persistMutation(next, mutation);
       return true;
     },
@@ -187,6 +196,7 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
     : loadingDraftState(conversationIdentity);
 
   return {
+    capacityExceeded,
     draft: toPublicDraftState(visibleDraftState),
     addAnnotation: useCallback(
       (annotation: DraftAnnotation) => mutateAnnotations({ kind: "add", annotation }),

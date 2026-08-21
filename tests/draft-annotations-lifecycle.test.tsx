@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { DraftAnnotation } from "@/features/annotations/annotation";
+import { MAX_ANNOTATION_COMMENT_LENGTH } from "@/features/annotations/draft-capacity";
 import { applyDraftMutation, type DraftMutation } from "@/features/annotations/draft-mutation";
 import { DraftStoreProvider } from "@/features/annotations/DraftStoreProvider";
 import { canMutateDraft, useDraftAnnotations } from "@/features/annotations/use-draft-annotations";
@@ -147,6 +148,31 @@ describe("draft annotation lifecycle", () => {
     expect(didUpdate).toBe(false);
     expect(currentAnnotations()).toEqual([annotation]);
     expect(draftStoreFixture.store.mutate).not.toHaveBeenCalled();
+
+    await act(async () => root.unmount());
+  });
+
+  it("reports capacity failures without mutating the draft", async () => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    draftStoreFixture.store.load.mockResolvedValue([]);
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    await act(async () => root.render(<DraftHarness conversationIdentity={conversationA} />));
+    await act(async () =>
+      latestDrafts.addAnnotation({
+        ...annotation,
+        comment: "x".repeat(MAX_ANNOTATION_COMMENT_LENGTH + 1),
+      }),
+    );
+
+    expect(latestDrafts.capacityExceeded).toBe(true);
+    expect(currentAnnotations()).toEqual([]);
+    expect(draftStoreFixture.store.mutate).not.toHaveBeenCalled();
+
+    await act(async () => latestDrafts.addAnnotation(annotation));
+    expect(latestDrafts.capacityExceeded).toBe(false);
 
     await act(async () => root.unmount());
   });

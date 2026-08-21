@@ -13,6 +13,7 @@ export type Messages = {
   confirmClearAnnotations: string;
   deleteAnnotation: string;
   deleteNumberedAnnotation: (number: number) => string;
+  draftCapacityExceeded: string;
   editNumberedAnnotation: (number: number) => string;
   loadDraftFailed: string;
   loadingDraft: string;
@@ -27,6 +28,7 @@ export type Messages = {
   sendAnnotationsComposerUnavailable: string;
   sendAnnotationsConfirmationTimedOut: string;
   sendAnnotationsFailed: string;
+  sendAnnotationsPromptTooLong: string;
   sendingAnnotations: string;
   undo: string;
   userComment: string;
@@ -54,6 +56,7 @@ const ENGLISH: Messages = {
   confirmClearAnnotations: "Confirm clearing all annotations",
   deleteAnnotation: "Delete annotation",
   deleteNumberedAnnotation: (number) => `Delete annotation ${number}`,
+  draftCapacityExceeded: "This draft is full. Shorten or remove annotations to continue.",
   editNumberedAnnotation: (number) => `Edit annotation ${number}`,
   loadDraftFailed: "QuoteCue couldn't restore this draft.",
   loadingDraft: "Restoring QuoteCue draft…",
@@ -70,6 +73,8 @@ const ENGLISH: Messages = {
   sendAnnotationsConfirmationTimedOut:
     "Sending wasn't confirmed in time. Your annotation draft was kept.",
   sendAnnotationsFailed: "Sending wasn't confirmed. Your annotation draft was kept.",
+  sendAnnotationsPromptTooLong:
+    "This follow-up is too long to send. Shorten or remove annotations and try again.",
   sendingAnnotations: "Sending annotations…",
   undo: "Undo",
   userComment: "User comment:",
@@ -96,6 +101,7 @@ const SIMPLIFIED_CHINESE: Messages = {
   confirmClearAnnotations: "确认清空全部批注",
   deleteAnnotation: "删除批注",
   deleteNumberedAnnotation: (number) => `删除批注 ${number}`,
+  draftCapacityExceeded: "这份草稿已满，请缩短或删除批注后继续。",
   editNumberedAnnotation: (number) => `编辑批注 ${number}`,
   loadDraftFailed: "QuoteCue 无法恢复这份草稿。",
   loadingDraft: "正在恢复 QuoteCue 草稿…",
@@ -110,6 +116,7 @@ const SIMPLIFIED_CHINESE: Messages = {
   sendAnnotationsComposerUnavailable: "QuoteCue 无法访问消息输入框，批注草稿仍已保留。",
   sendAnnotationsConfirmationTimedOut: "未能及时确认发送，批注草稿仍已保留。",
   sendAnnotationsFailed: "未能确认发送，批注草稿仍已保留。",
+  sendAnnotationsPromptTooLong: "这次追问内容过长，请缩短或删除批注后重试。",
   sendingAnnotations: "正在发送批注…",
   undo: "撤销",
   userComment: "用户批注：",
@@ -136,6 +143,7 @@ const TRADITIONAL_CHINESE: Messages = {
   confirmClearAnnotations: "確認清除全部批註",
   deleteAnnotation: "刪除批註",
   deleteNumberedAnnotation: (number) => `刪除批註 ${number}`,
+  draftCapacityExceeded: "這份草稿已滿，請縮短或刪除批註後繼續。",
   editNumberedAnnotation: (number) => `編輯批註 ${number}`,
   loadDraftFailed: "QuoteCue 無法復原這份草稿。",
   loadingDraft: "正在復原 QuoteCue 草稿…",
@@ -150,6 +158,7 @@ const TRADITIONAL_CHINESE: Messages = {
   sendAnnotationsComposerUnavailable: "QuoteCue 無法存取訊息輸入框，批註草稿仍已保留。",
   sendAnnotationsConfirmationTimedOut: "未能及時確認傳送，批註草稿仍已保留。",
   sendAnnotationsFailed: "未能確認傳送，批註草稿仍已保留。",
+  sendAnnotationsPromptTooLong: "這次追問內容過長，請縮短或刪除批註後重試。",
   sendingAnnotations: "正在傳送批註…",
   undo: "復原",
   userComment: "使用者批註：",

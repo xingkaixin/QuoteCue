@@ -9,6 +9,7 @@ const TOKEN = "frame-token";
 const config = {
   ariaLabel: "Annotation content",
   kind: "textarea",
+  maxLength: 4_000,
   name: "quotecue-annotation-comment",
   placeholder: "Add a comment",
   theme: "dark",
@@ -80,6 +81,7 @@ describe("secure field frame", () => {
     expect(field).toMatchObject({
       ariaLabel: config.ariaLabel,
       name: config.name,
+      maxLength: config.maxLength,
       placeholder: config.placeholder,
       value: config.value,
     });

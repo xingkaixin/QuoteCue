@@ -10,6 +10,7 @@ import {
 const config = {
   ariaLabel: "Annotation content",
   kind: "textarea" as const,
+  maxLength: 4_000,
   name: "quotecue-annotation-comment",
   placeholder: "Add a comment",
   theme: "dark" as const,
@@ -27,6 +28,9 @@ describe("secure field protocol", () => {
         { ...message, config: { ...config, value: { exposed: true } } },
         "frame-token",
       ),
+    ).toBeNull();
+    expect(
+      decodeSecureFieldInit({ ...message, config: { ...config, maxLength: 0 } }, "frame-token"),
     ).toBeNull();
   });
 
