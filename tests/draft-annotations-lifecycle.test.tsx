@@ -426,6 +426,40 @@ describe("draft annotation lifecycle", () => {
     expect(draftStoreFixture.store.mutate).toHaveBeenCalledOnce();
   });
 
+  it("retries a failed confirmation cleanup after leaving its conversation", async () => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    draftStoreFixture.store.load.mockResolvedValue([]);
+    draftStoreFixture.store.mutate
+      .mockRejectedValueOnce(new Error("cleanup unavailable"))
+      .mockResolvedValue([]);
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    await act(async () => root.render(<DraftHarness conversationIdentity={conversationB} />));
+    await act(async () => {
+      latestDrafts.removeConfirmedAnnotations(conversationA, [annotation]);
+    });
+
+    await vi.waitFor(() =>
+      expect(consoleError).toHaveBeenCalledWith(
+        "[QuoteCue] Failed to save draft annotations",
+        expect.any(Error),
+      ),
+    );
+    expect(latestDrafts.draft).toMatchObject({ status: "error", operation: "save" });
+
+    await act(async () => latestDrafts.retry());
+    await vi.waitFor(() => expect(draftStoreFixture.store.mutate).toHaveBeenCalledTimes(2));
+    expect(latestDrafts.draft.status).toBe("ready");
+    expect(draftStoreFixture.store.mutate.mock.calls[1]).toEqual(
+      draftStoreFixture.store.mutate.mock.calls[0],
+    );
+
+    await act(async () => root.unmount());
+  });
+
   it("preserves newer edits while removing annotations that were sent unchanged", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     draftStoreFixture.store.load.mockResolvedValue([]);
