@@ -21,13 +21,6 @@ export interface DemoCopy {
   send: string;
   composerPrefix: string;
   clearConfirm: string;
-  compiledPrompt: {
-    intro: string;
-    annotation: string;
-    selection: string;
-    comment: string;
-    supplementalQuestion: string;
-  };
 }
 
 const links = {
@@ -96,13 +89,6 @@ const zh = {
     send: "发送批注",
     composerPrefix: "问问",
     clearConfirm: "再点一次清空",
-    compiledPrompt: {
-      intro: "请结合以下批注回答：",
-      annotation: "批注",
-      selection: "选中文本：",
-      comment: "我的批注：",
-      supplementalQuestion: "[补充问题]",
-    },
   } satisfies DemoCopy,
   features: {
     title: "它替你记住上下文",
@@ -250,13 +236,6 @@ const en = {
     send: "Send annotations",
     composerPrefix: "Ask",
     clearConfirm: "Click again to clear",
-    compiledPrompt: {
-      intro: "Please respond based on the following annotations:",
-      annotation: "Annotation",
-      selection: "Selected text: ",
-      comment: "My comment: ",
-      supplementalQuestion: "[Supplemental question]",
-    },
   } satisfies DemoCopy,
   features: {
     title: "It keeps the context for you",

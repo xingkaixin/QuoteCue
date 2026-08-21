@@ -1,4 +1,10 @@
-export type SupportedLocale = "en" | "zh-CN" | "zh-TW";
+import {
+  annotationPromptMessagesFor,
+  type AnnotationPromptLocale,
+} from "@/lib/annotation-prompt-messages";
+import type { AnnotationPromptMessages } from "@/lib/annotation-prompt";
+
+export type SupportedLocale = AnnotationPromptLocale;
 
 export type Messages = {
   addAnnotation: string;
@@ -33,13 +39,7 @@ export type Messages = {
   undo: string;
   userComment: string;
   viewAnnotation: (number: number) => string;
-  prompt: {
-    annotation: (number: number) => string;
-    comment: string;
-    introduction: string;
-    selectedText: string;
-    supplementalQuestion: string;
-  };
+  prompt: AnnotationPromptMessages;
 };
 
 const ENGLISH: Messages = {
@@ -79,13 +79,7 @@ const ENGLISH: Messages = {
   undo: "Undo",
   userComment: "User comment:",
   viewAnnotation: (number) => `View annotation ${number}`,
-  prompt: {
-    annotation: (number) => `[Annotation ${number}]`,
-    comment: "My comment: ",
-    introduction: "Please respond based on the following annotations:",
-    selectedText: "Selected text: ",
-    supplementalQuestion: "[Supplemental question]",
-  },
+  prompt: annotationPromptMessagesFor("en"),
 };
 
 const SIMPLIFIED_CHINESE: Messages = {
@@ -121,13 +115,7 @@ const SIMPLIFIED_CHINESE: Messages = {
   undo: "撤销",
   userComment: "用户批注：",
   viewAnnotation: (number) => `查看批注 ${number}`,
-  prompt: {
-    annotation: (number) => `[批注 ${number}]`,
-    comment: "我的批注：",
-    introduction: "请结合以下批注回答：",
-    selectedText: "选中文本：",
-    supplementalQuestion: "[补充问题]",
-  },
+  prompt: annotationPromptMessagesFor("zh-CN"),
 };
 
 const TRADITIONAL_CHINESE: Messages = {
@@ -163,13 +151,7 @@ const TRADITIONAL_CHINESE: Messages = {
   undo: "復原",
   userComment: "使用者批註：",
   viewAnnotation: (number) => `查看批註 ${number}`,
-  prompt: {
-    annotation: (number) => `[批註 ${number}]`,
-    comment: "我的批註：",
-    introduction: "請根據以下批註回答：",
-    selectedText: "選取文字：",
-    supplementalQuestion: "[補充問題]",
-  },
+  prompt: annotationPromptMessagesFor("zh-TW"),
 };
 
 const MESSAGES: Record<SupportedLocale, Messages> = {
