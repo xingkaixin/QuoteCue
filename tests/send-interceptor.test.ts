@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { numberAnnotations } from "@/features/annotations/annotation-projection";
-import { compileAnnotatedPrompt } from "@/features/annotations/prompt-compiler";
 import { MAX_COMPILED_PROMPT_LENGTH } from "@/features/annotations/draft-capacity";
 import {
   registerSendInterceptor,
@@ -72,16 +71,18 @@ describe("registerSendInterceptor", () => {
     const composer = installComposer("original question");
     const onSendConfirmed = vi.fn();
     let currentAnnotations = [annotation];
-    const interceptor = registerSendInterceptor({
-      annotations: () => numberAnnotations(currentAnnotations),
-      compilePrompt: compileAnnotatedPrompt,
-      conversationIdentity: () => ({
-        kind: "identified",
+    const getSendInput = vi.fn(() => ({
+      annotations: numberAnnotations(currentAnnotations),
+      conversationIdentity: {
+        kind: "identified" as const,
         id: "conversation-test",
-        siteId: "chatgpt",
-      }),
+        siteId: "chatgpt" as const,
+      },
+      locale: "en" as const,
+    }));
+    const interceptor = registerSendInterceptor({
+      getSendInput,
       host: createChatGptHost({ document, window }),
-      locale: () => "en",
       onSendConfirmed,
     });
     installSendButton(() => {
@@ -99,6 +100,7 @@ describe("registerSendInterceptor", () => {
         siteId: "chatgpt",
       }),
     );
+    expect(getSendInput).toHaveBeenCalledOnce();
     interceptor.dispose();
   });
 
@@ -304,8 +306,12 @@ describe("registerSendInterceptor", () => {
     host.elements.composer.textContent = "original question";
     const submit = vi.spyOn(host.composer, "submit");
     const onStateChange = vi.fn();
+    const oversizedAnnotation = {
+      ...annotation,
+      anchor: { ...annotation.anchor, quote: "x".repeat(MAX_COMPILED_PROMPT_LENGTH + 1) },
+    };
     const interceptor = createInterceptor(undefined, {
-      compilePrompt: () => "x".repeat(MAX_COMPILED_PROMPT_LENGTH + 1),
+      annotations: [oversizedAnnotation],
       host,
       onStateChange,
     });
@@ -530,15 +536,16 @@ describe("registerSendInterceptor", () => {
         }),
     );
     const interceptor = registerSendInterceptor({
-      annotations: () => numberAnnotations([annotation]),
-      compilePrompt: compileAnnotatedPrompt,
-      conversationIdentity: () => ({
-        kind: "identified",
-        id: "conversation-test",
-        siteId: "chatgpt",
+      getSendInput: () => ({
+        annotations: numberAnnotations([annotation]),
+        conversationIdentity: {
+          kind: "identified",
+          id: "conversation-test",
+          siteId: "chatgpt",
+        },
+        locale: "en",
       }),
       host,
-      locale: () => "en",
       onSendConfirmed: vi.fn(),
     });
 
@@ -587,15 +594,16 @@ describe("registerSendInterceptor", () => {
       message.textContent = "still short";
     });
     const interceptor = registerSendInterceptor({
-      annotations: () => numberAnnotations([annotation]),
-      compilePrompt: compileAnnotatedPrompt,
-      conversationIdentity: () => ({
-        kind: "identified",
-        id: "conversation-test",
-        siteId: "chatgpt",
+      getSendInput: () => ({
+        annotations: numberAnnotations([annotation]),
+        conversationIdentity: {
+          kind: "identified",
+          id: "conversation-test",
+          siteId: "chatgpt",
+        },
+        locale: "en",
       }),
       host,
-      locale: () => "en",
       onSendConfirmed: vi.fn(),
     });
 
@@ -676,7 +684,7 @@ describe("registerSendInterceptor", () => {
     expect(sentText).toContain("question from conversation A");
 
     identity = { kind: "identified", id: "conversation-b", siteId: "chatgpt" };
-    interceptor.conversationChanged();
+    interceptor.conversationChanged(identity);
     sentText = "";
 
     interceptor.submit();
@@ -709,7 +717,7 @@ describe("registerSendInterceptor", () => {
     );
 
     identity = { kind: "identified", id: "conversation-b", siteId: "chatgpt" };
-    interceptor.conversationChanged();
+    interceptor.conversationChanged(identity);
 
     expect(onStateChange).toHaveBeenLastCalledWith({ status: "idle" });
     interceptor.dispose();
@@ -725,7 +733,11 @@ describe("registerSendInterceptor", () => {
     interceptor.submit();
     await vi.advanceTimersByTimeAsync(15_001);
 
-    interceptor.conversationChanged();
+    interceptor.conversationChanged({
+      kind: "identified",
+      id: "conversation-test",
+      siteId: "chatgpt",
+    });
 
     expect(onStateChange).toHaveBeenLastCalledWith(
       expect.objectContaining({ status: "failed", reason: "confirmation-timeout" }),
@@ -803,7 +815,6 @@ describe("registerSendInterceptor", () => {
 
 type CreateInterceptorOptions = {
   annotations?: readonly (typeof annotation)[];
-  compilePrompt?: Parameters<typeof registerSendInterceptor>[0]["compilePrompt"];
   conversationIdentity?: () => ConversationIdentity;
   host?: Host;
   onStateChange?: (state: AnnotatedSendState) => void;
@@ -813,7 +824,6 @@ function createInterceptor(
   onSendConfirmed = vi.fn(),
   {
     annotations = [annotation],
-    compilePrompt = compileAnnotatedPrompt,
     conversationIdentity = () =>
       ({ kind: "identified", id: "conversation-test", siteId: "chatgpt" }) as const,
     host = createChatGptHost({ document, window }),
@@ -821,11 +831,12 @@ function createInterceptor(
   }: CreateInterceptorOptions = {},
 ) {
   return registerSendInterceptor({
-    annotations: () => numberAnnotations(annotations),
-    compilePrompt,
-    conversationIdentity,
+    getSendInput: () => ({
+      annotations: numberAnnotations(annotations),
+      conversationIdentity: conversationIdentity(),
+      locale: "en",
+    }),
     host,
-    locale: () => "en",
     onSendConfirmed,
     onStateChange,
   });

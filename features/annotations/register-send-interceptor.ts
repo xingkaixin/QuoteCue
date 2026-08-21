@@ -12,6 +12,7 @@ import type { DraftAnnotation } from "./annotation";
 import type { NumberedAnnotation } from "./annotation-projection";
 import { sameConversationIdentity } from "./conversation-identity";
 import { compiledPromptExceedsCapacity } from "./draft-capacity";
+import { compileAnnotatedPrompt } from "./prompt-compiler";
 
 export type AnnotatedSendFailureReason =
   | "composer-unavailable"
@@ -31,20 +32,19 @@ export type AnnotatedSendState =
   | AnnotatedSendFailure;
 
 type SendInterceptorOptions = {
-  annotations: () => readonly NumberedAnnotation[];
-  compilePrompt: (
-    annotations: readonly NumberedAnnotation[],
-    originalText: string,
-    locale: SupportedLocale,
-  ) => string;
-  conversationIdentity: () => ConversationIdentity;
+  getSendInput: () => SendAttemptInput;
   host: Host;
-  locale: () => SupportedLocale;
   onSendConfirmed: (
     annotations: readonly DraftAnnotation[],
     conversationIdentity: ConversationIdentity,
   ) => void;
   onStateChange?: (state: AnnotatedSendState) => void;
+};
+
+type SendAttemptInput = {
+  readonly annotations: readonly NumberedAnnotation[];
+  readonly conversationIdentity: ConversationIdentity;
+  readonly locale: SupportedLocale;
 };
 
 type SendAttempt = {
@@ -156,7 +156,8 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
       return true;
     }
 
-    const annotations = snapshotAnnotations(options.annotations());
+    const sendInput = options.getSendInput();
+    const annotations = snapshotAnnotations(sendInput.annotations);
     if (annotations.length === 0) {
       return false;
     }
@@ -176,14 +177,14 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
     const originalText =
       retryOriginalText && snapshot.text.trim().length === 0 ? retryOriginalText : snapshot.text;
     const ownedSnapshot = { ...snapshot, text: originalText };
-    const compiledPrompt = options.compilePrompt(annotations, originalText, options.locale());
+    const compiledPrompt = compileAnnotatedPrompt(annotations, originalText, sendInput.locale);
     if (compiledPromptExceedsCapacity(compiledPrompt)) {
       const result = { status: "failed", reason: "prompt-too-long" } as const;
       setState(result);
       return true;
     }
     const attempt = createAttempt(
-      options.conversationIdentity(),
+      sendInput.conversationIdentity,
       ownedSnapshot,
       compiledPrompt,
       annotations,
@@ -213,13 +214,10 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
     },
     // A failed attempt's question belongs to the conversation that produced it. An active attempt
     // keeps running so it can still confirm after navigation.
-    conversationChanged() {
+    conversationChanged(conversationIdentity: ConversationIdentity) {
       if (
         !failedSendSnapshot ||
-        sameConversationIdentity(
-          failedSendSnapshot.conversationIdentity,
-          options.conversationIdentity(),
-        )
+        sameConversationIdentity(failedSendSnapshot.conversationIdentity, conversationIdentity)
       ) {
         return;
       }

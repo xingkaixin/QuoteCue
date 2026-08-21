@@ -4,7 +4,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { DraftAnnotation } from "@/features/annotations/annotation";
 import { numberAnnotations } from "@/features/annotations/annotation-projection";
-import { compileAnnotatedPrompt } from "@/features/annotations/prompt-compiler";
 import { createChatGptHost } from "@/features/chatgpt/chatgpt-host";
 import { registerSendInterceptor } from "@/features/annotations/register-send-interceptor";
 import { useAnnotatedComposerLayout } from "@/features/host/use-annotated-composer-layout";
@@ -172,15 +171,16 @@ describe("ChatGPT host contract", () => {
       appendUserMessage("user-one", sentText);
     });
     const interceptor = registerSendInterceptor({
-      annotations: () => numberAnnotations(annotations),
-      compilePrompt: compileAnnotatedPrompt,
-      conversationIdentity: () => ({
-        kind: "identified",
-        id: "conversation-test",
-        siteId: "chatgpt",
+      getSendInput: () => ({
+        annotations: numberAnnotations(annotations),
+        conversationIdentity: {
+          kind: "identified",
+          id: "conversation-test",
+          siteId: "chatgpt",
+        },
+        locale: "en",
       }),
       host,
-      locale: () => "en",
       onSendConfirmed,
     });
 
@@ -400,15 +400,16 @@ describe("ChatGPT host contract", () => {
     };
     const onStateChange = vi.fn();
     const interceptor = registerSendInterceptor({
-      annotations: () => numberAnnotations([privateAnnotation]),
-      compilePrompt: compileAnnotatedPrompt,
-      conversationIdentity: () => ({
-        kind: "identified",
-        id: "conversation-test",
-        siteId: "chatgpt",
+      getSendInput: () => ({
+        annotations: numberAnnotations([privateAnnotation]),
+        conversationIdentity: {
+          kind: "identified",
+          id: "conversation-test",
+          siteId: "chatgpt",
+        },
+        locale: "en",
       }),
       host,
-      locale: () => "en",
       onSendConfirmed: vi.fn(),
       onStateChange,
     });

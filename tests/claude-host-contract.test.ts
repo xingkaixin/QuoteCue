@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { DraftAnnotation } from "@/features/annotations/annotation";
 import { numberAnnotations } from "@/features/annotations/annotation-projection";
-import { compileAnnotatedPrompt } from "@/features/annotations/prompt-compiler";
 import { createClaudeHost } from "@/features/claude/claude-host";
 import { registerSendInterceptor } from "@/features/annotations/register-send-interceptor";
 import { QUOTECUE_NATIVE_ACTION_SELECTOR } from "@/lib/dom-identity";
@@ -64,15 +63,16 @@ describe("Claude host contract", () => {
     });
     const onSendConfirmed = vi.fn();
     const interceptor = registerSendInterceptor({
-      annotations: () => numberAnnotations([annotation()]),
-      compilePrompt: compileAnnotatedPrompt,
-      conversationIdentity: () => ({
-        kind: "identified",
-        id: "conversation-test",
-        siteId: "claude",
+      getSendInput: () => ({
+        annotations: numberAnnotations([annotation()]),
+        conversationIdentity: {
+          kind: "identified",
+          id: "conversation-test",
+          siteId: "claude",
+        },
+        locale: "en",
       }),
       host,
-      locale: () => "en",
       onSendConfirmed,
     });
 

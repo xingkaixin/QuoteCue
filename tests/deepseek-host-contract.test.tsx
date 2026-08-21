@@ -4,7 +4,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { DraftAnnotation } from "@/features/annotations/annotation";
 import { numberAnnotations } from "@/features/annotations/annotation-projection";
-import { compileAnnotatedPrompt } from "@/features/annotations/prompt-compiler";
 import { SelectionPresentation } from "@/features/annotations/SelectionPresentation";
 import { createDeepSeekHost } from "@/features/deepseek/deepseek-host";
 import { registerSendInterceptor } from "@/features/annotations/register-send-interceptor";
@@ -68,15 +67,16 @@ describe("DeepSeek host contract", () => {
       appendUserMessageItem("user-two", fixture.composer.value);
     });
     const interceptor = registerSendInterceptor({
-      annotations: () => numberAnnotations(annotations),
-      compilePrompt: compileAnnotatedPrompt,
-      conversationIdentity: () => ({
-        kind: "identified",
-        id: "conversation-test",
-        siteId: "deepseek",
+      getSendInput: () => ({
+        annotations: numberAnnotations(annotations),
+        conversationIdentity: {
+          kind: "identified",
+          id: "conversation-test",
+          siteId: "deepseek",
+        },
+        locale: "en",
       }),
       host,
-      locale: () => "en",
       onSendConfirmed,
     });
 
@@ -113,18 +113,18 @@ describe("DeepSeek host contract", () => {
     });
     const onSendConfirmed = vi.fn();
     const interceptor = registerSendInterceptor({
-      annotations: () =>
-        numberAnnotations([
+      getSendInput: () => ({
+        annotations: numberAnnotations([
           { id: "annotation-one", anchor: emptyAnchor(), comment: "Explain the tradeoff" },
         ]),
-      compilePrompt: compileAnnotatedPrompt,
-      conversationIdentity: () => ({
-        kind: "identified",
-        id: "conversation-test",
-        siteId: "deepseek",
+        conversationIdentity: {
+          kind: "identified",
+          id: "conversation-test",
+          siteId: "deepseek",
+        },
+        locale: "en",
       }),
       host,
-      locale: () => "en",
       onSendConfirmed,
     });
 
@@ -157,18 +157,18 @@ describe("DeepSeek host contract", () => {
       assistant.textContent = "streaming response";
     });
     const interceptor = registerSendInterceptor({
-      annotations: () =>
-        numberAnnotations([
+      getSendInput: () => ({
+        annotations: numberAnnotations([
           { id: "annotation-one", anchor: emptyAnchor(), comment: "Explain the tradeoff" },
         ]),
-      compilePrompt: compileAnnotatedPrompt,
-      conversationIdentity: () => ({
-        kind: "identified",
-        id: "conversation-test",
-        siteId: "deepseek",
+        conversationIdentity: {
+          kind: "identified",
+          id: "conversation-test",
+          siteId: "deepseek",
+        },
+        locale: "en",
       }),
       host,
-      locale: () => "en",
       onSendConfirmed: vi.fn(),
     });
 

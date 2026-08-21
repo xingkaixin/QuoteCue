@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { DraftAnnotation } from "@/features/annotations/annotation";
 import { numberAnnotations } from "@/features/annotations/annotation-projection";
-import { compileAnnotatedPrompt } from "@/features/annotations/prompt-compiler";
 import { registerSendInterceptor } from "@/features/annotations/register-send-interceptor";
 import type { Host, HostEnvironment, HostResult } from "@/features/host/dom-host";
 import { QUOTECUE_NATIVE_ACTION_SELECTOR } from "@/lib/dom-identity";
@@ -531,15 +530,16 @@ export function runHostContractSuite(definition: HostContractDefinition) {
       };
       const onSendConfirmed = vi.fn();
       const interceptor = registerSendInterceptor({
-        annotations: () => numberAnnotations([annotation]),
-        compilePrompt: compileAnnotatedPrompt,
-        conversationIdentity: () => ({
-          kind: "identified",
-          id: "conversation-test",
-          siteId: definition.siteId,
+        getSendInput: () => ({
+          annotations: numberAnnotations([annotation]),
+          conversationIdentity: {
+            kind: "identified",
+            id: "conversation-test",
+            siteId: definition.siteId,
+          },
+          locale: "en",
         }),
         host: siteHost,
-        locale: () => "en",
         onSendConfirmed,
       });
 
@@ -565,18 +565,18 @@ export function runHostContractSuite(definition: HostContractDefinition) {
       const onSendConfirmed = vi.fn();
       const onStateChange = vi.fn();
       const interceptor = registerSendInterceptor({
-        annotations: () =>
-          numberAnnotations([
+        getSendInput: () => ({
+          annotations: numberAnnotations([
             { anchor, comment: "Explain the tradeoff", id: "annotation-contract" },
           ]),
-        compilePrompt: compileAnnotatedPrompt,
-        conversationIdentity: () => ({
-          kind: "identified",
-          id: "conversation-test",
-          siteId: definition.siteId,
+          conversationIdentity: {
+            kind: "identified",
+            id: "conversation-test",
+            siteId: definition.siteId,
+          },
+          locale: "en",
         }),
         host: siteHost,
-        locale: () => "en",
         onSendConfirmed,
         onStateChange,
       });

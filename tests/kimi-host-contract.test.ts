@@ -40,15 +40,8 @@ describe("Kimi host contract", () => {
     });
     const onSendConfirmed = vi.fn();
     const interceptor = registerSendInterceptor({
-      annotations: () => numberAnnotations([annotation()]),
-      compilePrompt: compileAnnotatedPrompt,
-      conversationIdentity: () => ({
-        kind: "identified",
-        id: "conversation-test",
-        siteId: "kimi",
-      }),
+      getSendInput: kimiSendInput,
       host,
-      locale: () => "zh-CN",
       onSendConfirmed,
     });
 
@@ -80,15 +73,8 @@ describe("Kimi host contract", () => {
     });
     const onSendConfirmed = vi.fn();
     const interceptor = registerSendInterceptor({
-      annotations: () => numberAnnotations([annotation()]),
-      compilePrompt: compileAnnotatedPrompt,
-      conversationIdentity: () => ({
-        kind: "identified",
-        id: "conversation-test",
-        siteId: "kimi",
-      }),
+      getSendInput: kimiSendInput,
       host: createKimiHost({ document, window }),
-      locale: () => "zh-CN",
       onSendConfirmed,
     });
 
@@ -113,15 +99,8 @@ describe("Kimi host contract", () => {
     });
     const onSendConfirmed = vi.fn();
     const interceptor = registerSendInterceptor({
-      annotations: () => numberAnnotations([annotation()]),
-      compilePrompt: compileAnnotatedPrompt,
-      conversationIdentity: () => ({
-        kind: "identified",
-        id: "conversation-test",
-        siteId: "kimi",
-      }),
+      getSendInput: kimiSendInput,
       host: createKimiHost({ document, window }),
-      locale: () => "zh-CN",
       onSendConfirmed,
     });
 
@@ -147,15 +126,8 @@ describe("Kimi host contract", () => {
     });
     const onSendConfirmed = vi.fn();
     const interceptor = registerSendInterceptor({
-      annotations: () => numberAnnotations([annotation()]),
-      compilePrompt: compileAnnotatedPrompt,
-      conversationIdentity: () => ({
-        kind: "identified",
-        id: "conversation-test",
-        siteId: "kimi",
-      }),
+      getSendInput: kimiSendInput,
       host,
-      locale: () => "zh-CN",
       onSendConfirmed,
     });
 
@@ -174,15 +146,8 @@ describe("Kimi host contract", () => {
     appendKimiUserMessage(undefined, compiled);
     const onStateChange = vi.fn();
     const interceptor = registerSendInterceptor({
-      annotations: () => numberAnnotations([annotation()]),
-      compilePrompt: compileAnnotatedPrompt,
-      conversationIdentity: () => ({
-        kind: "identified",
-        id: "conversation-test",
-        siteId: "kimi",
-      }),
+      getSendInput: kimiSendInput,
       host,
-      locale: () => "zh-CN",
       onSendConfirmed: vi.fn(),
       onStateChange,
     });
@@ -211,15 +176,8 @@ describe("Kimi host contract", () => {
     });
     const onSendConfirmed = vi.fn();
     const interceptor = registerSendInterceptor({
-      annotations: () => numberAnnotations([annotation()]),
-      compilePrompt: compileAnnotatedPrompt,
-      conversationIdentity: () => ({
-        kind: "identified",
-        id: "conversation-test",
-        siteId: "kimi",
-      }),
+      getSendInput: kimiSendInput,
       host,
-      locale: () => "zh-CN",
       onSendConfirmed,
     });
 
@@ -248,6 +206,18 @@ function installSyntheticPasteSupport() {
   }
   vi.stubGlobal("DataTransfer", FakeDataTransfer);
   vi.stubGlobal("ClipboardEvent", FakeClipboardEvent);
+}
+
+function kimiSendInput() {
+  return {
+    annotations: numberAnnotations([annotation()]),
+    conversationIdentity: {
+      kind: "identified",
+      id: "conversation-test",
+      siteId: "kimi",
+    } as const,
+    locale: "zh-CN" as const,
+  };
 }
 
 function annotation(): DraftAnnotation {
