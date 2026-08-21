@@ -6,6 +6,7 @@ import { rangeEndpointRect } from "@/features/host-port/range-geometry";
 import { toSelectionRect } from "@/features/host-port/selection-rect";
 import { clampPositionToViewport } from "@/features/layout/floating-position";
 import { currentVisualViewportBounds } from "@/features/layout/use-visual-viewport";
+import { sameTextAnchor } from "@/lib/text-anchor";
 
 import type { DraftAnnotation } from "./annotation";
 import {
@@ -20,12 +21,14 @@ const FULL_REANCHOR_INTERVAL_MS = 5_000;
 const PENDING_RESOLUTION: AnnotationResolution = { resolution: "pending" };
 const UNRESOLVED_RESOLUTION: SettledAnnotationResolution = { resolution: "unresolved" };
 const EMPTY_RESOLUTIONS = new Map<string, SettledAnnotationResolution>();
+type AnnotationProjectionInput = Pick<DraftAnnotation, "anchor" | "id">;
 
 export function useAnnotationProjection(
   annotations: readonly DraftAnnotation[],
   activeAnnotationId: string | null,
 ) {
   const host = useHost();
+  const projectionInputs = useStableProjectionInputs(annotations);
   const [resolutionByAnnotationId, setResolutionByAnnotationId] =
     useState<ReadonlyMap<string, SettledAnnotationResolution>>(EMPTY_RESOLUTIONS);
   const resolutionRef =
@@ -46,7 +49,7 @@ export function useAnnotationProjection(
     activeProjection?.resolution === "resolved" ? activeProjection.geometry.range : null;
 
   useEffect(() => {
-    if (annotations.length === 0) {
+    if (projectionInputs.length === 0) {
       commitResolutions(EMPTY_RESOLUTIONS);
       return;
     }
@@ -74,7 +77,7 @@ export function useAnnotationProjection(
             lastFullResolutionAt = Date.now();
           }
           rangeByAnnotationId = resolveAnnotationRanges(
-            annotations,
+            projectionInputs,
             host,
             rangeByAnnotationId,
             dirtyMessageIds,
@@ -82,7 +85,7 @@ export function useAnnotationProjection(
         }
         commitResolutions(
           projectAnnotationResolutions(
-            annotations,
+            projectionInputs,
             host,
             rangeByAnnotationId,
             resolutionRef.current,
@@ -107,7 +110,7 @@ export function useAnnotationProjection(
       resolutionRef.current = next;
       setResolutionByAnnotationId(next);
     }
-  }, [annotations, host]);
+  }, [host, projectionInputs]);
 
   useEffect(() => {
     host.selection.highlight(activeRange);
@@ -117,8 +120,33 @@ export function useAnnotationProjection(
   return projectedAnnotations;
 }
 
-function resolveAnnotationRanges(
+function useStableProjectionInputs(annotations: readonly DraftAnnotation[]) {
+  const inputsRef = useRef<readonly AnnotationProjectionInput[]>([]);
+  if (!sameProjectionInputs(inputsRef.current, annotations)) {
+    inputsRef.current = annotations.map(({ anchor, id }) => ({ anchor, id }));
+  }
+  return inputsRef.current;
+}
+
+function sameProjectionInputs(
+  current: readonly AnnotationProjectionInput[],
   annotations: readonly DraftAnnotation[],
+) {
+  return (
+    current.length === annotations.length &&
+    current.every((input, index) => {
+      const candidate = annotations[index];
+      return (
+        candidate !== undefined &&
+        input.id === candidate.id &&
+        sameTextAnchor(input.anchor, candidate.anchor)
+      );
+    })
+  );
+}
+
+function resolveAnnotationRanges(
+  annotations: readonly AnnotationProjectionInput[],
   host: Host,
   currentRanges: ReadonlyMap<string, Range | null>,
   dirtyMessageIds: ReadonlySet<string> | "all",
@@ -177,7 +205,7 @@ function mergeInvalidations(
 }
 
 function projectAnnotationResolutions(
-  annotations: readonly DraftAnnotation[],
+  annotations: readonly AnnotationProjectionInput[],
   host: Host,
   rangeByAnnotationId: ReadonlyMap<string, Range | null>,
   previousResolutions: ReadonlyMap<string, SettledAnnotationResolution>,

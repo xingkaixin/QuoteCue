@@ -52,6 +52,64 @@ describe("annotation projection complexity", () => {
     await act(async () => root.unmount());
   });
 
+  it("updates a comment without restarting anchor projection", async () => {
+    vi.useFakeTimers();
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    Object.defineProperty(globalThis, "CSS", { configurable: true, value: {} });
+    Object.defineProperties(Range.prototype, {
+      getBoundingClientRect: { configurable: true, value: () => new DOMRect() },
+      getClientRects: { configurable: true, value: () => [] },
+    });
+    appendAssistantMessage("message-1", "selected text");
+    const host = createChatGptHost({ document, window });
+    const messageIndex = vi.spyOn(host.selection, "messageIndex");
+    const observeInvalidation = vi.spyOn(host.selection, "observeInvalidation");
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    const initial = { ...annotation(0), comment: "initial comment" };
+
+    await act(async () => root.render(<ProjectionHarness annotations={[initial]} host={host} />));
+    await act(async () => vi.advanceTimersByTimeAsync(17));
+    messageIndex.mockClear();
+    observeInvalidation.mockClear();
+
+    await act(async () =>
+      root.render(
+        <ProjectionHarness
+          annotations={[{ ...initial, anchor: { ...initial.anchor }, comment: "updated comment" }]}
+          host={host}
+        />,
+      ),
+    );
+    await act(async () => vi.advanceTimersByTimeAsync(17));
+
+    expect(container.textContent).toBe("updated comment");
+    expect(observeInvalidation).not.toHaveBeenCalled();
+    expect(messageIndex).not.toHaveBeenCalled();
+
+    await act(async () =>
+      root.render(
+        <ProjectionHarness
+          annotations={[
+            {
+              ...initial,
+              anchor: { ...initial.anchor, end: 8, quote: "selected" },
+              comment: "anchor updated",
+            },
+          ]}
+          host={host}
+        />,
+      ),
+    );
+    await act(async () => vi.advanceTimersByTimeAsync(17));
+
+    expect(container.textContent).toBe("anchor updated");
+    expect(observeInvalidation).toHaveBeenCalledOnce();
+    expect(messageIndex).toHaveBeenCalledOnce();
+    await act(async () => root.unmount());
+  });
+
   it("does not observe the page when annotations are empty", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     Object.defineProperty(globalThis, "CSS", { configurable: true, value: {} });
@@ -188,8 +246,8 @@ function ProjectionHarness({ annotations, host }: { annotations: DraftAnnotation
 }
 
 function Projection({ annotations }: { annotations: DraftAnnotation[] }) {
-  useAnnotationProjection(annotations, null);
-  return null;
+  const projectedAnnotations = useAnnotationProjection(annotations, null);
+  return projectedAnnotations.map((entry) => entry.annotation.comment).join("|");
 }
 
 function annotation(index: number): DraftAnnotation {
