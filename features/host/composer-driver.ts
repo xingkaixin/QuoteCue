@@ -5,18 +5,17 @@ import {
   type HostContext,
   type HostResult,
 } from "./host-context";
-import type { TextNormalizer } from "./text-normalizer";
 
-export function createComposerDriver(context: HostContext, textNormalizer: TextNormalizer) {
+export function createComposerDriver(context: HostContext) {
   const { adapter, document: hostDocument, logger } = context;
-  const { composerText, normalize, normalizedComposerText } = textNormalizer;
+  const composerAccess = adapter.composer;
 
   const current = () => hostDocument.querySelector<HTMLElement>(adapter.composer.selector);
 
   function snapshot(): HostResult<ComposerSnapshot> {
     const element = current();
     return element
-      ? available({ element, text: composerText(element) })
+      ? available({ element, text: composerAccess.read(element) })
       : unavailable("composer-unavailable", logger);
   }
 
@@ -32,7 +31,8 @@ export function createComposerDriver(context: HostContext, textNormalizer: TextN
   function restoreText(composerSnapshot: ComposerSnapshot, expectedText: string) {
     if (
       current() !== composerSnapshot.element ||
-      normalizedComposerText(composerSnapshot.element) !== normalize(expectedText)
+      composerAccess.normalize(composerAccess.read(composerSnapshot.element)) !==
+        composerAccess.normalize(expectedText)
     ) {
       return false;
     }

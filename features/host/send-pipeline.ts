@@ -4,6 +4,7 @@ import type {
   ComposerSubmitOptions,
   ComposerSubmitResult,
 } from "@/features/host-port/host-port";
+import { readRenderedText } from "@/lib/rendered-text";
 
 import {
   available,
@@ -14,7 +15,6 @@ import {
   type HostResult,
 } from "./host-context";
 import type { ComposerDriver } from "./composer-driver";
-import type { TextNormalizer } from "./text-normalizer";
 
 const SEND_CONFIRM_TIMEOUT_MS = 15_000;
 const SEND_BUTTON_APPEAR_TIMEOUT_MS = 2_000;
@@ -26,13 +26,13 @@ type ConfirmedSendWatcherOptions = {
   signal: AbortSignal;
 };
 
-export function createSendPipeline(
-  context: HostContext,
-  textNormalizer: TextNormalizer,
-  composerDriver: ComposerDriver,
-) {
+export function createSendPipeline(context: HostContext, composerDriver: ComposerDriver) {
   const { adapter, document: hostDocument, logger, signals, window: hostWindow } = context;
-  const { normalizedRenderedText } = textNormalizer;
+
+  function normalizedRenderedText(value: HTMLElement | string) {
+    const text = typeof value === "string" ? value : readRenderedText(value);
+    return adapter.composer.normalize(text);
+  }
 
   const currentSendButton = () =>
     hostDocument.querySelector<HTMLElement>(adapter.sendControl.selector);

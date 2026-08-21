@@ -4,7 +4,6 @@ import { createComposerDriver } from "@/features/host/composer-driver";
 import { richTextComposer, textareaComposer } from "@/features/host/composer-access";
 import { createHostContext } from "@/features/host/host-context";
 import { type ComposerAccess, type SiteAdapter } from "@/features/host/site-adapter";
-import { createTextNormalizer } from "@/features/host/text-normalizer";
 
 afterEach(() => {
   document.body.replaceChildren();
@@ -66,10 +65,7 @@ describe("composer driver", () => {
 
 function driver(composer = richTextComposer("[contenteditable]")) {
   const hostAdapter = adapter(composer);
-  return createComposerDriver(
-    createHostContext({ document, window }, hostAdapter),
-    createTextNormalizer(hostAdapter.composer),
-  );
+  return createComposerDriver(createHostContext({ document, window }, hostAdapter));
 }
 
 function installComposer(text = "") {
