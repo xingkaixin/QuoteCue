@@ -213,7 +213,7 @@ describe("registerSendInterceptor", () => {
     interceptor.dispose();
   });
 
-  it("models composer access failure before an attempt without a nullable id", async () => {
+  it("reports composer access failure without creating a send attempt", async () => {
     const host = createFakeHost();
     vi.spyOn(host.composer, "snapshot").mockReturnValue({
       status: "unavailable",
@@ -229,7 +229,7 @@ describe("registerSendInterceptor", () => {
     });
     expect(reportUnavailable).toHaveBeenCalledWith("composer-unavailable");
     expect(onStateChange).toHaveBeenLastCalledWith({
-      status: "failed-before-attempt",
+      status: "failed",
       reason: "composer-unavailable",
     });
     interceptor.dispose();
@@ -253,10 +253,11 @@ describe("registerSendInterceptor", () => {
       status: "confirmed",
       annotationIds: ["annotation-1"],
     });
-    expect(onStateChange).toHaveBeenLastCalledWith({
-      status: "confirmed",
-      attemptId: expect.any(String),
-    });
+    expect(onStateChange.mock.calls.map(([state]) => state)).toEqual([
+      { status: "idle" },
+      { status: "sending" },
+      { status: "confirmed" },
+    ]);
     expect(consoleError).toHaveBeenCalledWith("[QuoteCue] Failed to apply confirmed annotations");
     interceptor.dispose();
   });
@@ -342,7 +343,6 @@ describe("registerSendInterceptor", () => {
     });
     expect(onStateChange).toHaveBeenLastCalledWith({
       status: "confirmed",
-      attemptId: expect.any(String),
     });
     interceptor.dispose();
   });
@@ -372,9 +372,7 @@ describe("registerSendInterceptor", () => {
     const interceptor = createInterceptor(undefined, { onStateChange });
 
     const result = interceptor.submit();
-    expect(onStateChange).toHaveBeenLastCalledWith(
-      expect.objectContaining({ status: "replaying" }),
-    );
+    expect(onStateChange).toHaveBeenLastCalledWith(expect.objectContaining({ status: "sending" }));
     await vi.advanceTimersByTimeAsync(2_001);
 
     await expect(result).resolves.toEqual({ status: "failed", reason: "send-unavailable" });

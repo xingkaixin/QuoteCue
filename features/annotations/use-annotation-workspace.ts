@@ -181,7 +181,7 @@ export function useAnnotationWorkspace() {
     if (!controller) {
       return;
     }
-    if (sendState.status === "failed" || sendState.status === "failed-before-attempt") {
+    if (sendState.status === "failed") {
       void controller.retry();
       return;
     }

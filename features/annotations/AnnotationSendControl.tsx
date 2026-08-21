@@ -16,12 +16,8 @@ type AnnotationSendControlProps = {
 
 export function AnnotationSendControl({ onSend, position, state }: AnnotationSendControlProps) {
   const { messages } = useI18n();
-  const isPending =
-    state.status === "preparing" ||
-    state.status === "replaying" ||
-    state.status === "awaiting-confirmation";
-  const failureReason =
-    state.status === "failed" || state.status === "failed-before-attempt" ? state.reason : null;
+  const isPending = state.status === "sending";
+  const failureReason = state.status === "failed" ? state.reason : null;
   const statusMessage = isPending
     ? messages.sendingAnnotations
     : failureReason
