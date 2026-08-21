@@ -10,6 +10,7 @@ import {
 const config = {
   ariaLabel: "Annotation content",
   kind: "textarea" as const,
+  lang: "en",
   maxLength: 4_000,
   name: "quotecue-annotation-comment",
   placeholder: "Add a comment",
@@ -36,16 +37,23 @@ describe("secure field protocol", () => {
 
   it("rejects malformed commands and field events", () => {
     expect(decodeSecureFieldCommand({ type: "focus" })).toEqual({ type: "focus" });
-    expect(decodeSecureFieldCommand({ type: "set-value", value: "next" })).toEqual({
-      type: "set-value",
-      value: "next",
-    });
-    expect(decodeSecureFieldCommand({ type: "set-theme", theme: "dark" })).toEqual({
-      type: "set-theme",
+    const update = {
+      ariaLabel: "批注内容",
+      lang: "zh-CN",
+      placeholder: "添加批注",
       theme: "dark",
+      value: "下一条",
+    } as const;
+    expect(decodeSecureFieldCommand({ type: "update", update })).toEqual({
+      type: "update",
+      update,
     });
-    expect(decodeSecureFieldCommand({ type: "set-theme", theme: "sepia" })).toBeNull();
-    expect(decodeSecureFieldCommand({ type: "set-value", value: 1 })).toBeNull();
+    expect(
+      decodeSecureFieldCommand({ type: "update", update: { ...update, theme: "sepia" } }),
+    ).toBeNull();
+    expect(
+      decodeSecureFieldCommand({ type: "update", update: { ...update, value: 1 } }),
+    ).toBeNull();
     expect(decodeSecureFieldEvent({ type: "save", value: "comment" })).toEqual({
       type: "save",
       value: "comment",

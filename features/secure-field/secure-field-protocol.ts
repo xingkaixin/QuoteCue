@@ -5,6 +5,7 @@ export const SECURE_FIELD_INIT = "quotecue:secure-field:init";
 export type SecureFieldConfig = {
   ariaLabel: string;
   kind: "input" | "textarea";
+  lang: string;
   maxLength?: number;
   name: string;
   placeholder: string;
@@ -12,16 +13,18 @@ export type SecureFieldConfig = {
   value: string;
 };
 
+export type SecureFieldUpdate = Pick<
+  SecureFieldConfig,
+  "ariaLabel" | "lang" | "placeholder" | "theme" | "value"
+>;
+
 export type SecureFieldInitMessage = {
   type: typeof SECURE_FIELD_INIT;
   token: string;
   config: SecureFieldConfig;
 };
 
-export type SecureFieldCommand =
-  | { type: "focus" }
-  | { type: "set-theme"; theme: "dark" | "light" }
-  | { type: "set-value"; value: string };
+export type SecureFieldCommand = { type: "focus" } | { type: "update"; update: SecureFieldUpdate };
 
 export type SecureFieldEvent =
   | { type: "cancel" }
@@ -47,12 +50,8 @@ export function decodeSecureFieldCommand(value: unknown): SecureFieldCommand | n
   if (value.type === "focus") {
     return { type: "focus" };
   }
-  if (value.type === "set-theme" && (value.theme === "dark" || value.theme === "light")) {
-    return { type: "set-theme", theme: value.theme };
-  }
-  return value.type === "set-value" && typeof value.value === "string"
-    ? { type: "set-value", value: value.value }
-    : null;
+  const update = value.type === "update" ? decodeUpdate(value.update) : null;
+  return update ? { type: "update", update } : null;
 }
 
 export function decodeSecureFieldEvent(value: unknown): SecureFieldEvent | null {
@@ -69,12 +68,29 @@ export function decodeSecureFieldEvent(value: unknown): SecureFieldEvent | null 
 }
 
 function decodeConfig(value: unknown): SecureFieldConfig | null {
+  const update = decodeUpdate(value);
   if (
     !isRecord(value) ||
+    !update ||
     (value.kind !== "input" && value.kind !== "textarea") ||
-    typeof value.ariaLabel !== "string" ||
     (value.maxLength !== undefined && !isPositiveSafeInteger(value.maxLength)) ||
-    typeof value.name !== "string" ||
+    typeof value.name !== "string"
+  ) {
+    return null;
+  }
+  return {
+    ...update,
+    kind: value.kind,
+    ...(value.maxLength === undefined ? {} : { maxLength: value.maxLength }),
+    name: value.name,
+  };
+}
+
+function decodeUpdate(value: unknown): SecureFieldUpdate | null {
+  if (
+    !isRecord(value) ||
+    typeof value.ariaLabel !== "string" ||
+    typeof value.lang !== "string" ||
     typeof value.placeholder !== "string" ||
     (value.theme !== "dark" && value.theme !== "light") ||
     typeof value.value !== "string"
@@ -83,9 +99,7 @@ function decodeConfig(value: unknown): SecureFieldConfig | null {
   }
   return {
     ariaLabel: value.ariaLabel,
-    kind: value.kind,
-    ...(value.maxLength === undefined ? {} : { maxLength: value.maxLength }),
-    name: value.name,
+    lang: value.lang,
     placeholder: value.placeholder,
     theme: value.theme,
     value: value.value,

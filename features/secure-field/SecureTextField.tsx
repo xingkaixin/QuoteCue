@@ -1,7 +1,16 @@
 /* oxlint-disable react/iframe-missing-sandbox -- Extension-origin modules require their origin; the parent page remains cross-origin. */
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { browser } from "wxt/browser";
 
+import { useI18n } from "@/features/i18n/I18nProvider";
 import { useHostTheme } from "@/features/theme/HostThemeProvider";
 
 import {
@@ -9,13 +18,14 @@ import {
   SECURE_FIELD_INIT,
   type SecureFieldConfig,
   type SecureFieldEvent,
+  type SecureFieldUpdate,
 } from "./secure-field-protocol";
 
 export type SecureTextFieldHandle = {
   focus: () => void;
 };
 
-type SecureTextFieldProps = Omit<SecureFieldConfig, "theme"> & {
+type SecureTextFieldProps = Omit<SecureFieldConfig, "lang" | "theme"> & {
   className?: string;
   onCancel: () => void;
   onChange: (value: string) => void;
@@ -27,6 +37,7 @@ export const SecureTextField = forwardRef<SecureTextFieldHandle, SecureTextField
     { ariaLabel, className, kind, maxLength, name, onCancel, onChange, onSave, placeholder, value },
     ref,
   ) {
+    const { locale } = useI18n();
     const theme = useHostTheme();
     const [token] = useState(() => crypto.randomUUID());
     const frameUrl = browser.runtime.getURL(`/secure-field.html#${encodeURIComponent(token)}`);
@@ -35,6 +46,7 @@ export const SecureTextField = forwardRef<SecureTextFieldHandle, SecureTextField
     const configRef = useRef<SecureFieldConfig>({
       ariaLabel,
       kind,
+      lang: locale,
       maxLength,
       name,
       placeholder,
@@ -43,7 +55,11 @@ export const SecureTextField = forwardRef<SecureTextFieldHandle, SecureTextField
     });
     const handlersRef = useRef({ onCancel, onChange, onSave });
 
-    configRef.current = { ariaLabel, kind, maxLength, name, placeholder, theme, value };
+    const update = useMemo<SecureFieldUpdate>(
+      () => ({ ariaLabel, lang: locale, placeholder, theme, value }),
+      [ariaLabel, locale, placeholder, theme, value],
+    );
+    configRef.current = { ...update, kind, maxLength, name };
     handlersRef.current = { onCancel, onChange, onSave };
 
     const handleFieldEvent = useCallback((event: MessageEvent<unknown>) => {
@@ -73,12 +89,8 @@ export const SecureTextField = forwardRef<SecureTextFieldHandle, SecureTextField
     }, [frameUrl, handleFieldEvent, token]);
 
     useEffect(() => {
-      portRef.current?.postMessage({ type: "set-value", value });
-    }, [value]);
-
-    useEffect(() => {
-      portRef.current?.postMessage({ type: "set-theme", theme });
-    }, [theme]);
+      portRef.current?.postMessage({ type: "update", update });
+    }, [update]);
 
     useEffect(
       () => () => {
@@ -102,6 +114,7 @@ export const SecureTextField = forwardRef<SecureTextFieldHandle, SecureTextField
       <iframe
         aria-label={ariaLabel}
         className={className}
+        lang={locale}
         onLoad={connect}
         ref={frameRef}
         referrerPolicy="no-referrer"

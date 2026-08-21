@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SecureTextField } from "@/features/secure-field/SecureTextField";
+import { I18nProvider, useI18n } from "@/features/i18n/I18nProvider";
 
 vi.mock("wxt/browser", () => ({
   browser: {
@@ -16,6 +17,7 @@ const originalMessageChannel = globalThis.MessageChannel;
 
 beforeEach(() => {
   FakeMessageChannel.instances = [];
+  document.documentElement.lang = "";
   Object.defineProperty(globalThis, "MessageChannel", {
     configurable: true,
     value: FakeMessageChannel,
@@ -28,6 +30,7 @@ afterEach(() => {
     value: originalMessageChannel,
   });
   document.body.replaceChildren();
+  document.documentElement.lang = "";
   vi.restoreAllMocks();
 });
 
@@ -90,7 +93,70 @@ describe("SecureTextField", () => {
     window.removeEventListener("message", onWindowMessage);
     await act(async () => root.unmount());
   });
+
+  it("updates the isolated field when the host language changes", async () => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    await act(async () => root.render(<LocalizedSecureTextField />));
+    const iframe = container.querySelector("iframe");
+    if (!iframe?.contentWindow) {
+      throw new Error("Expected secure field iframe");
+    }
+    vi.spyOn(iframe.contentWindow, "postMessage").mockImplementation(() => {});
+    await act(async () => iframe.dispatchEvent(new Event("load")));
+
+    const channel = FakeMessageChannel.instances[0];
+    const receive = vi.fn();
+    if (!channel) {
+      throw new Error("Expected secure field channel");
+    }
+    channel.port2.onmessage = (event) => receive(event.data);
+
+    await act(async () => {
+      document.documentElement.lang = "zh-CN";
+      await Promise.resolve();
+    });
+
+    expect(iframe.lang).toBe("zh-CN");
+    expect(receive).toHaveBeenCalledWith({
+      type: "update",
+      update: expect.objectContaining({
+        ariaLabel: "批注内容",
+        lang: "zh-CN",
+        placeholder: "添加可选批注…",
+      }),
+    });
+
+    await act(async () => root.unmount());
+  });
 });
+
+function LocalizedSecureTextField() {
+  return (
+    <I18nProvider>
+      <LocalizedField />
+    </I18nProvider>
+  );
+}
+
+function LocalizedField() {
+  const { messages } = useI18n();
+  return (
+    <SecureTextField
+      ariaLabel={messages.annotationContent}
+      kind="textarea"
+      name="quotecue-annotation-comment"
+      onCancel={vi.fn()}
+      onChange={vi.fn()}
+      onSave={vi.fn()}
+      placeholder={messages.optionalComment}
+      value=""
+    />
+  );
+}
 
 class FakeMessagePort {
   onmessage: ((event: MessageEvent<unknown>) => void) | null = null;
