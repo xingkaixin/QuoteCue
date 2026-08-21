@@ -3,8 +3,8 @@ import { browser } from "wxt/browser";
 import type { DraftAnnotation } from "./annotation";
 import {
   DRAFT_OWNER_MESSAGE,
+  isDraftOwnerResponse,
   type DraftOwnerRequest,
-  type DraftOwnerResponse,
 } from "./draft-owner-protocol";
 import type { DraftStore } from "./draft-store";
 
@@ -25,12 +25,4 @@ async function request(message: DraftOwnerRequest): Promise<DraftAnnotation[]> {
     throw new Error(response.message);
   }
   return response.annotations;
-}
-
-function isDraftOwnerResponse(value: unknown): value is DraftOwnerResponse {
-  if (typeof value !== "object" || value === null || !("status" in value)) {
-    return false;
-  }
-  const status = (value as { status: unknown }).status;
-  return status === "ok" || status === "error";
 }
