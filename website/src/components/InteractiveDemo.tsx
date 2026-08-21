@@ -3,6 +3,7 @@ import { useReducer, useRef, useState, type CSSProperties } from "react";
 
 import { Button } from "@/components/ui/button";
 import type { DemoCopy } from "@/i18n/content";
+import { SUPPORTED_SITES, type SupportedSiteName } from "../../../lib/supported-sites";
 
 import { compileDemoPrompt } from "./interactive-demo-prompt";
 import {
@@ -13,7 +14,7 @@ import {
 import { useInteractiveDemoProjection } from "./use-interactive-demo-projection";
 import { useInteractiveDemoStatusTimer } from "./use-interactive-demo-status-timer";
 
-const sites = ["ChatGPT", "Claude", "DeepSeek", "Kimi"] as const;
+const siteNames = SUPPORTED_SITES.map(({ name }) => name);
 
 interface InteractiveDemoProps {
   copy: DemoCopy;
@@ -32,7 +33,7 @@ function formatRemovedNotice(copy: DemoCopy, remaining: number) {
 export function InteractiveDemo({ copy }: InteractiveDemoProps) {
   const sequenceRef = useRef(0);
 
-  const [site, setSite] = useState<(typeof sites)[number]>("ChatGPT");
+  const [site, setSite] = useState<SupportedSiteName>(siteNames[0]);
   const [demo, dispatch] = useReducer(reduceInteractiveDemo, initialInteractiveDemoState);
 
   const { annotations, editor, sentPrompt, status, summaryOpen } = demo;
@@ -124,7 +125,7 @@ export function InteractiveDemo({ copy }: InteractiveDemoProps) {
             <span className="size-2.5 rounded-full bg-line" />
           </div>
           <div className="font-mono flex min-w-0 gap-0.5 overflow-x-auto sm:ml-2">
-            {sites.map((name) => (
+            {siteNames.map((name) => (
               <Button
                 className={
                   name === site
