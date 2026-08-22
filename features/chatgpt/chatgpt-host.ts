@@ -1,5 +1,5 @@
 import { createHostEngine, type HostEnvironment } from "@/features/host/dom-host";
-import { richTextComposer } from "@/features/host/composer-access";
+import { pasteFirstDomFallbackComposer } from "@/features/host/rich-text-composer";
 import {
   composerLayout,
   messageAccess,
@@ -8,7 +8,7 @@ import {
 } from "@/features/host/site-adapter";
 
 const CHATGPT_ADAPTER: SiteAdapter = {
-  composer: richTextComposer("#prompt-textarea[contenteditable='true']"),
+  composer: pasteFirstDomFallbackComposer("#prompt-textarea[contenteditable='true']"),
   conversationId: (pathname) => pathname.match(/^\/(?:c|g\/[^/?#]+\/c)\/([^/?#]+)/)?.[1] ?? null,
   layout: composerLayout("button", "form > div:has(#prompt-textarea)", {
     boundarySelector: "form",

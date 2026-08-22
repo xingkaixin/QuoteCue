@@ -1,5 +1,5 @@
 import { createHostEngine, type HostEnvironment } from "@/features/host/dom-host";
-import { richTextComposer } from "@/features/host/composer-access";
+import { pasteFirstDomFallbackComposer } from "@/features/host/rich-text-composer";
 import {
   composerLayout,
   messageAccess,
@@ -12,7 +12,7 @@ const USER_MESSAGE_MARKER = "[data-testid='user-message']";
 const MESSAGE_INDEX_SELECTOR = "[data-rs-index]";
 
 const CLAUDE_ADAPTER: SiteAdapter = {
-  composer: richTextComposer("[data-testid='chat-input'][contenteditable='true']"),
+  composer: pasteFirstDomFallbackComposer("[data-testid='chat-input'][contenteditable='true']"),
   conversationId: (pathname) => pathname.match(/^\/chat\/([^/?#]+)/)?.[1] ?? null,
   layout: composerLayout("button", "div:has([data-testid=chat-input])"),
   messages: messageAccess({

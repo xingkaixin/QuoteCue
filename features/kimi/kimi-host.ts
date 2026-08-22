@@ -1,5 +1,5 @@
 import { createHostEngine, type HostEnvironment } from "@/features/host/dom-host";
-import { richTextComposer } from "@/features/host/composer-access";
+import { pasteFirstDomFallbackComposer } from "@/features/host/rich-text-composer";
 import {
   composerLayout,
   messageAccess,
@@ -10,8 +10,10 @@ import {
 const MESSAGE_ITEM_SELECTOR = ".chat-content-item";
 
 const KIMI_ADAPTER: SiteAdapter = {
-  composer: richTextComposer('[data-lexical-editor="true"][contenteditable="true"]', (text) =>
-    text.replace(/\s/g, ""),
+  // Lexical can duplicate command insertion and collapse line breaks, so paste must run first.
+  composer: pasteFirstDomFallbackComposer(
+    '[data-lexical-editor="true"][contenteditable="true"]',
+    (text) => text.replace(/\s/g, ""),
   ),
   conversationId: (pathname) => pathname.match(/^\/chat\/([^/?#]+)/)?.[1] ?? null,
   layout: composerLayout(".send-button-container", ".chat-editor-content"),
