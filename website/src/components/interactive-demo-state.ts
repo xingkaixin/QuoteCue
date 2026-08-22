@@ -33,8 +33,7 @@ export type InteractiveDemoAction =
   | { type: "cancel-editor" }
   | { type: "remove-annotation"; annotationId: number }
   | { type: "undo-removal" }
-  | { type: "arm-clear" }
-  | { type: "confirm-clear" }
+  | { type: "request-clear" }
   | { type: "expire-clear" }
   | { type: "expire-undo" }
   | { type: "start-send"; prompt: string }
@@ -140,11 +139,10 @@ export function reduceInteractiveDemo(
       annotations.splice(state.status.index, 0, state.status.annotation);
       return { ...state, annotations, status: { kind: "idle" } };
     }
-    case "arm-clear":
-      return state.annotations.length > 0 && state.status.kind !== "sending"
-        ? { ...state, status: { kind: "clear-armed" } }
-        : state;
-    case "confirm-clear":
+    case "request-clear":
+      if (state.annotations.length === 0 || state.status.kind === "sending") {
+        return state;
+      }
       return state.status.kind === "clear-armed"
         ? {
             ...state,
@@ -153,7 +151,7 @@ export function reduceInteractiveDemo(
             status: { kind: "idle" },
             summaryOpen: false,
           }
-        : state;
+        : { ...state, status: { kind: "clear-armed" } };
     case "expire-clear":
       return state.status.kind === "clear-armed" ? { ...state, status: { kind: "idle" } } : state;
     case "expire-undo":
@@ -179,6 +177,6 @@ export function reduceInteractiveDemo(
           }
         : state;
     case "set-summary-open":
-      return { ...state, summaryOpen: action.isOpen };
+      return state.status.kind === "sending" ? state : { ...state, summaryOpen: action.isOpen };
   }
 }
