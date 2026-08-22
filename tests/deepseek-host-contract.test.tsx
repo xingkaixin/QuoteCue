@@ -65,6 +65,8 @@ describe("DeepSeek host contract", () => {
     const onSendConfirmed = vi.fn(() => {
       annotations = [];
     });
+    const onStop = vi.fn();
+    fixture.stopButton.addEventListener("click", onStop);
     fixture.sendButton.addEventListener("click", () => {
       appendUserMessageItem("user-two", fixture.composer.value);
     });
@@ -91,6 +93,7 @@ describe("DeepSeek host contract", () => {
       }),
     );
     expect(annotations).toEqual([]);
+    expect(onStop).not.toHaveBeenCalled();
 
     interceptor.dispose();
   });
