@@ -426,7 +426,7 @@ describe("draft annotation lifecycle", () => {
     expect(draftStoreFixture.store.mutate).toHaveBeenCalledOnce();
   });
 
-  it("retries a failed confirmation cleanup after leaving its conversation", async () => {
+  it("scopes a failed confirmation cleanup to its source conversation", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     draftStoreFixture.store.load.mockResolvedValue([]);
     draftStoreFixture.store.mutate
@@ -448,6 +448,9 @@ describe("draft annotation lifecycle", () => {
         expect.any(Error),
       ),
     );
+    expect(latestDrafts.draft.status).toBe("ready");
+
+    await act(async () => root.render(<DraftHarness conversationIdentity={conversationA} />));
     expect(latestDrafts.draft).toMatchObject({ status: "error", operation: "save" });
 
     await act(async () => latestDrafts.retry());

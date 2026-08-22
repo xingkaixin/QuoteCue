@@ -52,7 +52,8 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
     initialDraftState(conversationIdentity),
   );
   const [capacityExceeded, setCapacityExceeded] = useState(false);
-  const [saveFailed, setSaveFailed] = useState(false);
+  const [failedSaveConversation, setFailedSaveConversation] =
+    useState<IdentifiedConversation | null>(null);
   const draftStateRef = useRef(draftState);
   const loadGeneration = useRef(0);
   const activeSave = useRef<Promise<void> | null>(null);
@@ -122,7 +123,6 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
       while (true) {
         const snapshot = pendingSaves.current[0];
         if (!snapshot) {
-          setSaveFailed(false);
           return;
         }
         const conversation = snapshot.conversationIdentity;
@@ -132,9 +132,14 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
           annotations = await draftStore.mutate(conversation, snapshot.mutations);
         } catch (error: unknown) {
           console.error("[QuoteCue] Failed to save draft annotations", error);
-          setSaveFailed(true);
+          setFailedSaveConversation(conversation);
           return;
         }
+        setFailedSaveConversation((failedConversation) =>
+          failedConversation && sameConversationIdentity(failedConversation, conversation)
+            ? null
+            : failedConversation,
+        );
 
         const pendingIndex = pendingSaves.current.findIndex(
           ({ conversationIdentity: pendingConversation }) =>
@@ -229,10 +234,13 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
   )
     ? draftState
     : loadingDraftState(conversationIdentity);
+  const visibleSaveFailed =
+    failedSaveConversation !== null &&
+    sameConversationIdentity(failedSaveConversation, conversationIdentity);
 
   return {
     capacityExceeded,
-    draft: toPublicDraftState(visibleDraftState, saveFailed),
+    draft: toPublicDraftState(visibleDraftState, visibleSaveFailed),
     addAnnotation: useCallback(
       (annotation: DraftAnnotation) => mutateAnnotations({ kind: "add", annotation }),
       [mutateAnnotations],
@@ -275,14 +283,14 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
         loadDraftState(conversationIdentity);
         return;
       }
-      if (saveFailed) {
+      if (visibleSaveFailed) {
         persistPendingMutations();
       }
     }, [
       conversationIdentity,
       loadDraftState,
       persistPendingMutations,
-      saveFailed,
+      visibleSaveFailed,
       visibleDraftState,
     ]),
   };
