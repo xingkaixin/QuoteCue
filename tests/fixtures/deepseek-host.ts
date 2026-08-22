@@ -1,13 +1,13 @@
-import { DEEPSEEK_SEND_ICON_PATH_PREFIX } from "@/features/deepseek/deepseek-host";
-
 import { requiredElement, setElementRect } from "./fixture-utils";
 
-const DEEPSEEK_SEND_ICON_PATH = `${DEEPSEEK_SEND_ICON_PATH_PREFIX}C8.66767 1.0545`;
+const DEEPSEEK_SEND_ICON_PATH = "M8.3125 0.981587C8.66767 1.0545";
+const DEEPSEEK_STOP_ICON_PATH = "M3 3H13V13H3Z";
 
 export type DeepSeekHostFixture = {
   assistantContent: HTMLElement;
   composer: HTMLTextAreaElement;
   sendButton: HTMLElement;
+  stopButton: HTMLElement;
   surface: HTMLElement;
   thinkContent: HTMLElement;
   userMessage: HTMLElement;
@@ -31,6 +31,9 @@ export function installDeepSeekHostFixture(): DeepSeekHostFixture {
       </div>
       <div data-fixture="composer-surface" style="background-color: white; border-radius: 22px; border-top-left-radius: 22px; padding-top: 5px">
         <textarea name="search">Original question</textarea>
+        <div class="ds-button ds-button--circle" data-fixture="stop-control" role="button">
+          <svg viewBox="0 0 16 16"><path d="${DEEPSEEK_STOP_ICON_PATH}"></path></svg>
+        </div>
         <div class="ds-button ds-button--circle" role="button">
           <svg viewBox="0 0 16 16"><path d="${DEEPSEEK_SEND_ICON_PATH}"></path></svg>
         </div>
@@ -40,7 +43,10 @@ export function installDeepSeekHostFixture(): DeepSeekHostFixture {
 
   const assistantContent = requiredElement<HTMLElement>(".ds-assistant-message-main-content");
   const composer = requiredElement<HTMLTextAreaElement>('textarea[name="search"]');
-  const sendButton = requiredElement<HTMLElement>(".ds-button--circle");
+  const sendButton = requiredElement<HTMLElement>(
+    `.ds-button--circle:has(path[d="${DEEPSEEK_SEND_ICON_PATH}"])`,
+  );
+  const stopButton = requiredElement<HTMLElement>('[data-fixture="stop-control"]');
   const surface = requiredElement<HTMLElement>('[data-fixture="composer-surface"]');
   const thinkContent = requiredElement<HTMLElement>(".ds-think-content");
   const userMessage = requiredElement<HTMLElement>('[data-virtual-list-item-key="user-one"]');
@@ -48,7 +54,7 @@ export function installDeepSeekHostFixture(): DeepSeekHostFixture {
   setElementRect(surface, new DOMRect(100, 700, 400, 92));
   setElementRect(sendButton, new DOMRect(458, 750, 34, 34));
 
-  return { assistantContent, composer, sendButton, surface, thinkContent, userMessage };
+  return { assistantContent, composer, sendButton, stopButton, surface, thinkContent, userMessage };
 }
 
 export function appendUserMessageItem(itemKey: string, text: string) {
