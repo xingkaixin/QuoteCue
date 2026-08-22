@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, expectTypeOf, it } from "vitest";
 
-import { richTextComposer } from "@/features/host/composer-access";
+import { pasteFirstDomFallbackComposer } from "@/features/host/rich-text-composer";
 import { createHostEngine } from "@/features/host/dom-host";
 import {
   composerLayout,
@@ -100,7 +100,7 @@ function adapter(
   overrides: Partial<Pick<SiteAdapter, "layout" | "selectionPresentation">>,
 ): SiteAdapter {
   return {
-    composer: richTextComposer("#composer"),
+    composer: pasteFirstDomFallbackComposer("#composer"),
     conversationId: (pathname) => pathname.match(/^\/conversation\/([^/]+)/)?.[1] ?? null,
     layout: composerLayout("button", "[data-composer-surface]"),
     messages: {

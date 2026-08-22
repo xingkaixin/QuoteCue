@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { richTextComposer, textareaComposer } from "@/features/host/composer-access";
+import { textareaComposer } from "@/features/host/composer-access";
+import { pasteFirstDomFallbackComposer } from "@/features/host/rich-text-composer";
 
 describe("composer access", () => {
   it("reads textarea values instead of their child text", () => {
@@ -12,13 +13,15 @@ describe("composer access", () => {
   });
 
   it("collapses host-reflowed whitespace for exact full-text comparison", () => {
-    const composer = richTextComposer("[contenteditable]");
+    const composer = pasteFirstDomFallbackComposer("[contenteditable]");
 
     expect(composer.normalize("  first\n\nsecond\tthird  ")).toBe("first second third");
   });
 
   it("applies site-specific text normalization", () => {
-    const composer = richTextComposer("[contenteditable]", (text) => text.replaceAll("\u200b", ""));
+    const composer = pasteFirstDomFallbackComposer("[contenteditable]", (text) =>
+      text.replaceAll("\u200b", ""),
+    );
 
     expect(composer.normalize("first\u200bsecond")).toBe("firstsecond");
   });

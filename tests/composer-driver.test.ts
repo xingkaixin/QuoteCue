@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createComposerDriver } from "@/features/host/composer-driver";
-import { richTextComposer, textareaComposer } from "@/features/host/composer-access";
+import { textareaComposer } from "@/features/host/composer-access";
 import { createHostContext } from "@/features/host/host-context";
+import { pasteFirstDomFallbackComposer } from "@/features/host/rich-text-composer";
 import { type ComposerAccess, type SiteAdapter } from "@/features/host/site-adapter";
 
 afterEach(() => {
@@ -63,7 +64,7 @@ describe("composer driver", () => {
   });
 });
 
-function driver(composer = richTextComposer("[contenteditable]")) {
+function driver(composer = pasteFirstDomFallbackComposer("[contenteditable]")) {
   const hostAdapter = adapter(composer);
   return createComposerDriver(createHostContext({ document, window }, hostAdapter));
 }
