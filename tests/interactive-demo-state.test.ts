@@ -28,7 +28,7 @@ describe("interactive demo state", () => {
     const state = reduce([
       { type: "add-annotation", annotation: annotation() },
       { type: "save-editor" },
-      { type: "arm-clear" },
+      { type: "request-clear" },
       { type: "start-send", prompt },
       { type: "complete-send" },
     ]);
@@ -85,13 +85,28 @@ describe("interactive demo state", () => {
       { type: "add-annotation", annotation: annotation() },
       { type: "save-editor" },
       { type: "start-send", prompt },
-      { type: "arm-clear" },
+      { type: "request-clear" },
       { type: "add-annotation", annotation: annotation(2) },
       { type: "remove-annotation", annotationId: 1 },
+      { type: "set-summary-open", isOpen: true },
     ]);
 
     expect(state.annotations).toHaveLength(1);
     expect(state.status).toEqual({ kind: "sending", prompt });
+    expect(state.summaryOpen).toBe(false);
+  });
+
+  it("owns the two-step clear transition", () => {
+    const armed = reduce([
+      { type: "add-annotation", annotation: annotation() },
+      { type: "save-editor" },
+      { type: "request-clear" },
+    ]);
+    const cleared = reduceInteractiveDemo(armed, { type: "request-clear" });
+
+    expect(armed.status).toEqual({ kind: "clear-armed" });
+    expect(cleared.annotations).toEqual([]);
+    expect(cleared.status).toEqual({ kind: "idle" });
   });
 });
 
