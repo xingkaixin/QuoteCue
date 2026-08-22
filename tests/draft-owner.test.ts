@@ -145,6 +145,30 @@ describe("draft storage", () => {
     expect(consoleInfo).toHaveBeenCalledWith("[QuoteCue] Removed 1 expired annotation draft");
   });
 
+  it("loads different conversations independently", async () => {
+    const conversationB = { ...conversationA, id: "B" };
+    const keyB = "quotecue:draft:chatgpt:B";
+    let resolveA: (value: Record<string, unknown>) => void = () => undefined;
+    extensionStorage.get
+      .mockImplementationOnce(
+        () =>
+          new Promise<Record<string, unknown>>((resolve) => {
+            resolveA = resolve;
+          }),
+      )
+      .mockResolvedValueOnce({});
+    const owner = createDraftOwner();
+
+    const loadingA = owner.load(conversationA);
+    const loadingB = owner.load(conversationB);
+
+    await expect(loadingB).resolves.toEqual([]);
+    expect(extensionStorage.get).toHaveBeenCalledWith([keyB, "quotecue:draft:B", "askgpt:draft:B"]);
+
+    resolveA({});
+    await loadingA;
+  });
+
   it("loads the current versioned envelope", async () => {
     extensionStorage.reset({ [currentKey]: envelope });
 

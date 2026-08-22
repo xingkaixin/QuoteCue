@@ -59,47 +59,62 @@ function scopedDraftStorageKey(conversation: IdentifiedConversation) {
 
 /**
  * The single writer for draft storage. Extension contexts share `storage.local`, so a queue that
- * lives in one content script cannot order writes made by another. Every read-modify-write and the
- * retention sweep run on one chain here, which is what makes "no silent lost update" and a
- * TOCTOU-free cleanup possible.
+ * lives in one content script cannot order writes made by another. Read-modify-write operations
+ * are ordered per conversation, while startup cleanup briefly coordinates all conversations.
  */
 export function createDraftOwner() {
-  let chain: Promise<unknown> = Promise.resolve();
-  let hasSweptExpiredDrafts = false;
+  const conversationChains = new Map<string, Promise<unknown>>();
+  let cleanup: Promise<void> | null = null;
+  let cleanupScheduled = false;
   // A conversation loaded during this owner's life has a context open on it, so retention must
   // not delete it out from under that context even once it looks expired.
   const openConversationKeys = new Set<string>();
 
-  function serialize<T>(operation: () => Promise<T>): Promise<T> {
-    const result = chain.then(operation, operation);
-    chain = result.catch(() => undefined);
+  function serialize<T>(conversation: IdentifiedConversation, operation: () => Promise<T>) {
+    const key = scopedDraftStorageKey(conversation);
+    const previous = conversationChains.get(key) ?? Promise.resolve();
+    const run = async () => {
+      await cleanup;
+      return operation();
+    };
+    const result = previous.then(run, run);
+    const settled = result.catch(() => undefined);
+    conversationChains.set(key, settled);
+    void settled.finally(() => {
+      if (conversationChains.get(key) === settled) {
+        conversationChains.delete(key);
+      }
+    });
     return result;
   }
 
-  async function sweepOnce() {
-    if (hasSweptExpiredDrafts) {
+  function scheduleCleanup(after: Promise<unknown>) {
+    if (cleanupScheduled) {
       return;
     }
-    hasSweptExpiredDrafts = true;
-    try {
-      await removeStoredDrafts(openConversationKeys);
-    } catch (error: unknown) {
-      console.error("[QuoteCue] Failed to clean stored drafts", error);
-    }
+    cleanupScheduled = true;
+    const startCleanup = () => {
+      cleanup = removeStoredDrafts(openConversationKeys)
+        .catch((error: unknown) => {
+          console.error("[QuoteCue] Failed to clean stored drafts", error);
+        })
+        .finally(() => {
+          cleanup = null;
+        });
+    };
+    void after.then(startCleanup, startCleanup);
   }
 
   return {
     load(conversation: IdentifiedConversation) {
       openConversationKeys.add(scopedDraftStorageKey(conversation));
-      const draft = serialize(() => readDraft(conversation));
-      // Queued behind this load so the sweep never delays it, but still on the one chain, so it
-      // cannot observe a stale expiry and then delete a draft another context just refreshed.
-      void serialize(sweepOnce);
+      const draft = serialize(conversation, () => readDraft(conversation));
+      scheduleCleanup(draft);
       return draft;
     },
     mutate(conversation: IdentifiedConversation, mutations: readonly DraftMutation[]) {
       openConversationKeys.add(scopedDraftStorageKey(conversation));
-      return serialize(async () => {
+      return serialize(conversation, async () => {
         const current = await readDraft(conversation);
         let next: readonly DraftAnnotation[] = current;
         for (const mutation of mutations) {
