@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { DraftAnnotation } from "@/features/annotations/annotation";
+import { sameConversationIdentity } from "@/features/annotations/conversation-identity";
 import { MAX_ANNOTATION_COMMENT_LENGTH } from "@/features/annotations/draft-capacity";
 import { applyDraftMutation, type DraftMutation } from "@/features/annotations/draft-mutation";
 import { DraftStoreProvider } from "@/features/annotations/DraftStoreProvider";
@@ -84,6 +85,71 @@ describe("draft annotation lifecycle", () => {
 
     expect(draftStoreFixture.store.mutate).not.toHaveBeenCalled();
 
+    await act(async () => root.unmount());
+  });
+
+  it("loads B without waiting for an in-flight A save", async () => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    let resolveSave: (annotations: DraftAnnotation[]) => void = () => undefined;
+    draftStoreFixture.store.load.mockResolvedValue([]);
+    draftStoreFixture.store.mutate.mockImplementation(
+      () =>
+        new Promise<DraftAnnotation[]>((resolve) => {
+          resolveSave = resolve;
+        }),
+    );
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    await act(async () => root.render(<DraftHarness conversationIdentity={conversationA} />));
+    await act(async () => latestDrafts.addAnnotation(annotation));
+    await act(async () => root.render(<DraftHarness conversationIdentity={conversationB} />));
+
+    await vi.waitFor(() =>
+      expect(draftStoreFixture.store.load).toHaveBeenCalledWith(conversationB),
+    );
+    expect(latestDrafts.draft).toEqual({ status: "ready", annotations: [] });
+
+    await act(async () => resolveSave([annotation]));
+    await act(async () => root.unmount());
+  });
+
+  it("saves B independently after an A save fails", async () => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    draftStoreFixture.store.load.mockResolvedValue([]);
+    draftStoreFixture.store.mutate.mockImplementation(async (conversation, mutations) => {
+      if (sameConversationIdentity(conversation, conversationA)) {
+        throw new Error("A storage unavailable");
+      }
+      return mutations.reduce<DraftAnnotation[]>(
+        (annotations, mutation) => [...(applyDraftMutation(annotations, mutation) ?? annotations)],
+        [],
+      );
+    });
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const annotationB = { ...annotation, id: "annotation-b", comment: "draft B" };
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    await act(async () => root.render(<DraftHarness conversationIdentity={conversationA} />));
+    await act(async () => latestDrafts.addAnnotation(annotation));
+    await vi.waitFor(() =>
+      expect(latestDrafts.draft).toMatchObject({ status: "error", operation: "save" }),
+    );
+
+    await act(async () => root.render(<DraftHarness conversationIdentity={conversationB} />));
+    await act(async () => latestDrafts.addAnnotation(annotationB));
+
+    await vi.waitFor(() =>
+      expect(draftStoreFixture.store.mutate).toHaveBeenCalledWith(conversationB, [
+        { kind: "add", annotation: annotationB },
+      ]),
+    );
+    expect(latestDrafts.draft).toEqual({ status: "ready", annotations: [annotationB] });
+
+    consoleError.mockRestore();
     await act(async () => root.unmount());
   });
 

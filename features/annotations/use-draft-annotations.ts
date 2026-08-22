@@ -6,7 +6,7 @@ import type { DraftAnnotation } from "./annotation";
 import { sameConversationIdentity } from "./conversation-identity";
 import { draftMutationExceedsCapacity } from "./draft-capacity";
 import { applyDraftMutation, type DraftMutation } from "./draft-mutation";
-import { useDraftStore } from "./DraftStoreProvider";
+import { useDraftPersistence } from "./DraftStoreProvider";
 
 type DraftLifecycleState =
   | { status: "loading"; conversationIdentity: ConversationIdentity }
@@ -21,11 +21,6 @@ type DraftLifecycleState =
       annotations: DraftAnnotation[];
       operation: "load";
     };
-
-type PendingDraftSave = {
-  conversationIdentity: IdentifiedConversation;
-  mutations: readonly DraftMutation[];
-};
 
 type MutableDraftLifecycleState = Extract<DraftLifecycleState, { status: "ready" }>;
 
@@ -47,17 +42,16 @@ export function canMutateDraft(draft: DraftState): draft is MutableDraftState {
 }
 
 export function useDraftAnnotations(conversationIdentity: ConversationIdentity) {
-  const draftStore = useDraftStore();
+  const draftPersistence = useDraftPersistence();
   const [draftState, setRenderedDraftState] = useState<DraftLifecycleState>(() =>
     initialDraftState(conversationIdentity),
   );
   const [capacityExceeded, setCapacityExceeded] = useState(false);
-  const [failedSaveConversation, setFailedSaveConversation] =
-    useState<IdentifiedConversation | null>(null);
+  const [failedSaveConversations, setFailedSaveConversations] = useState<IdentifiedConversation[]>(
+    [],
+  );
   const draftStateRef = useRef(draftState);
   const loadGeneration = useRef(0);
-  const activeSave = useRef<Promise<void> | null>(null);
-  const pendingSaves = useRef<PendingDraftSave[]>([]);
 
   const setDraftState = useCallback((nextState: DraftLifecycleState) => {
     draftStateRef.current = nextState;
@@ -75,8 +69,8 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
 
       setDraftState(loadingDraftState(identity));
 
-      void (activeSave.current ?? Promise.resolve())
-        .then(() => draftStore.load(identity))
+      void draftPersistence
+        .load(identity)
         .then((annotations) => {
           if (generation !== loadGeneration.current) {
             return;
@@ -100,92 +94,32 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
           });
         });
     },
-    [draftStore, setDraftState],
+    [draftPersistence, setDraftState],
   );
 
-  const persistPendingMutations = useCallback(() => {
-    if (activeSave.current) {
-      return;
-    }
-    const initial = pendingSaves.current[0];
-    if (!initial) {
-      return;
-    }
-
-    const save = drainPendingMutations().finally(() => {
-      if (activeSave.current === save) {
-        activeSave.current = null;
-      }
-    });
-    activeSave.current = save;
-
-    async function drainPendingMutations() {
-      while (true) {
-        const snapshot = pendingSaves.current[0];
-        if (!snapshot) {
+  useEffect(
+    () =>
+      draftPersistence.subscribe((event) => {
+        if (event.status === "failed") {
+          console.error("[QuoteCue] Failed to save draft annotations", event.error);
+          setFailedSaveConversations((failedConversations) =>
+            addConversation(failedConversations, event.conversationIdentity),
+          );
           return;
         }
-        const conversation = snapshot.conversationIdentity;
-        const confirmedMutationCount = snapshot.mutations.length;
-        let annotations: DraftAnnotation[];
-        try {
-          annotations = await draftStore.mutate(conversation, snapshot.mutations);
-        } catch (error: unknown) {
-          console.error("[QuoteCue] Failed to save draft annotations", error);
-          setFailedSaveConversation(conversation);
-          return;
-        }
-        setFailedSaveConversation((failedConversation) =>
-          failedConversation && sameConversationIdentity(failedConversation, conversation)
-            ? null
-            : failedConversation,
+        setFailedSaveConversations((failedConversations) =>
+          removeConversation(failedConversations, event.conversationIdentity),
         );
-
-        const pendingIndex = pendingSaves.current.findIndex(
-          ({ conversationIdentity: pendingConversation }) =>
-            sameConversationIdentity(pendingConversation, conversation),
-        );
-        const currentPending = pendingSaves.current[pendingIndex];
-        if (!currentPending) {
-          return;
-        }
-        const remainingMutations = currentPending.mutations.slice(confirmedMutationCount);
-        pendingSaves.current =
-          remainingMutations.length > 0
-            ? pendingSaves.current.map((pending, index) =>
-                index === pendingIndex
-                  ? { conversationIdentity: conversation, mutations: remainingMutations }
-                  : pending,
-              )
-            : pendingSaves.current.filter((_, index) => index !== pendingIndex);
         const current = draftStateRef.current;
-        if (canMutateDraftState(current, conversation)) {
+        if (canMutateDraftState(current, event.conversationIdentity)) {
           setDraftState({
             status: "ready",
             conversationIdentity: current.conversationIdentity,
-            annotations: applyDraftMutations(annotations, remainingMutations),
+            annotations: applyDraftMutations(event.annotations, event.pendingMutations),
           });
         }
-      }
-    }
-  }, [draftStore, setDraftState]);
-
-  const enqueuePendingMutation = useCallback(
-    (conversation: IdentifiedConversation, mutation: DraftMutation) => {
-      const pendingIndex = pendingSaves.current.findIndex(
-        ({ conversationIdentity: pendingConversation }) =>
-          sameConversationIdentity(pendingConversation, conversation),
-      );
-      const pending = pendingSaves.current[pendingIndex];
-      pendingSaves.current = pending
-        ? pendingSaves.current.map((entry, index) =>
-            index === pendingIndex
-              ? { ...entry, mutations: [...entry.mutations, mutation] }
-              : entry,
-          )
-        : [...pendingSaves.current, { conversationIdentity: conversation, mutations: [mutation] }];
-    },
-    [],
+      }),
+    [draftPersistence, setDraftState],
   );
 
   useEffect(() => {
@@ -218,14 +152,13 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
         annotations: [...annotations],
       };
       if (current.conversationIdentity.kind === "identified") {
-        enqueuePendingMutation(current.conversationIdentity, mutation);
+        draftPersistence.enqueue(current.conversationIdentity, mutation);
       }
       setDraftState(next);
       setCapacityExceeded(false);
-      persistPendingMutations();
       return true;
     },
-    [conversationIdentity, enqueuePendingMutation, persistPendingMutations, setDraftState],
+    [conversationIdentity, draftPersistence, setDraftState],
   );
 
   const visibleDraftState = sameConversationIdentity(
@@ -234,9 +167,9 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
   )
     ? draftState
     : loadingDraftState(conversationIdentity);
-  const visibleSaveFailed =
-    failedSaveConversation !== null &&
-    sameConversationIdentity(failedSaveConversation, conversationIdentity);
+  const visibleSaveFailed = failedSaveConversations.some((failedConversation) =>
+    sameConversationIdentity(failedConversation, conversationIdentity),
+  );
 
   return {
     capacityExceeded,
@@ -268,11 +201,10 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
         if (conversation.kind === "unidentified") {
           return false;
         }
-        enqueuePendingMutation(conversation, mutation);
-        persistPendingMutations();
+        draftPersistence.enqueue(conversation, mutation);
         return true;
       },
-      [conversationIdentity, enqueuePendingMutation, mutateAnnotations, persistPendingMutations],
+      [conversationIdentity, draftPersistence, mutateAnnotations],
     ),
     discardAllAnnotations: useCallback(
       () => mutateAnnotations({ kind: "clear" }),
@@ -283,17 +215,33 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
         loadDraftState(conversationIdentity);
         return;
       }
-      if (visibleSaveFailed) {
-        persistPendingMutations();
+      if (visibleSaveFailed && conversationIdentity.kind === "identified") {
+        draftPersistence.retry(conversationIdentity);
       }
     }, [
       conversationIdentity,
+      draftPersistence,
       loadDraftState,
-      persistPendingMutations,
       visibleSaveFailed,
       visibleDraftState,
     ]),
   };
+}
+
+function addConversation(
+  conversations: IdentifiedConversation[],
+  conversation: IdentifiedConversation,
+) {
+  return conversations.some((candidate) => sameConversationIdentity(candidate, conversation))
+    ? conversations
+    : [...conversations, conversation];
+}
+
+function removeConversation(
+  conversations: IdentifiedConversation[],
+  conversation: IdentifiedConversation,
+) {
+  return conversations.filter((candidate) => !sameConversationIdentity(candidate, conversation));
 }
 
 function toPublicDraftState(state: DraftLifecycleState, saveFailed: boolean): DraftState {

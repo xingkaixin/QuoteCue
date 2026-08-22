@@ -1,0 +1,128 @@
+import type { IdentifiedConversation } from "@/features/host-port/host-port";
+
+import type { DraftAnnotation } from "./annotation";
+import type { DraftMutation } from "./draft-mutation";
+import type { DraftStore } from "./draft-store";
+
+type DraftPersistenceEvent =
+  | {
+      status: "failed";
+      conversationIdentity: IdentifiedConversation;
+      error: unknown;
+    }
+  | {
+      status: "saved";
+      conversationIdentity: IdentifiedConversation;
+      annotations: DraftAnnotation[];
+      pendingMutations: readonly DraftMutation[];
+    };
+
+type PendingDraftSave = {
+  activeSave: Promise<void> | null;
+  conversationIdentity: IdentifiedConversation;
+  mutations: DraftMutation[];
+};
+
+type DraftPersistenceListener = (event: DraftPersistenceEvent) => void;
+
+export function createDraftPersistence(draftStore: DraftStore) {
+  const pendingSaves = new Map<string, PendingDraftSave>();
+  const listeners = new Set<DraftPersistenceListener>();
+
+  function load(conversation: IdentifiedConversation) {
+    const activeSave = pendingSaves.get(conversationKey(conversation))?.activeSave;
+    return (activeSave ?? Promise.resolve()).then(() => draftStore.load(conversation));
+  }
+
+  function enqueue(conversation: IdentifiedConversation, mutation: DraftMutation) {
+    const pending = pendingSave(conversation);
+    pending.mutations.push(mutation);
+    persist(pending);
+  }
+
+  function retry(conversation: IdentifiedConversation) {
+    const pending = pendingSaves.get(conversationKey(conversation));
+    if (pending) {
+      persist(pending);
+    }
+  }
+
+  function subscribe(listener: DraftPersistenceListener) {
+    listeners.add(listener);
+    return () => {
+      listeners.delete(listener);
+    };
+  }
+
+  function pendingSave(conversation: IdentifiedConversation) {
+    const key = conversationKey(conversation);
+    const existing = pendingSaves.get(key);
+    if (existing) {
+      return existing;
+    }
+    const pending = {
+      activeSave: null,
+      conversationIdentity: conversation,
+      mutations: [],
+    };
+    pendingSaves.set(key, pending);
+    return pending;
+  }
+
+  function persist(pending: PendingDraftSave) {
+    if (pending.activeSave || pending.mutations.length === 0) {
+      return;
+    }
+    const activeSave = drain(pending).finally(() => {
+      if (pending.activeSave !== activeSave) {
+        return;
+      }
+      pending.activeSave = null;
+      if (pending.mutations.length === 0) {
+        pendingSaves.delete(conversationKey(pending.conversationIdentity));
+      }
+    });
+    pending.activeSave = activeSave;
+  }
+
+  async function drain(pending: PendingDraftSave) {
+    while (pending.mutations.length > 0) {
+      const mutationCount = pending.mutations.length;
+      let annotations: DraftAnnotation[];
+      try {
+        annotations = await draftStore.mutate(
+          pending.conversationIdentity,
+          pending.mutations.slice(0, mutationCount),
+        );
+      } catch (error: unknown) {
+        notify({
+          status: "failed",
+          conversationIdentity: pending.conversationIdentity,
+          error,
+        });
+        return;
+      }
+      pending.mutations.splice(0, mutationCount);
+      notify({
+        status: "saved",
+        conversationIdentity: pending.conversationIdentity,
+        annotations,
+        pendingMutations: [...pending.mutations],
+      });
+    }
+  }
+
+  function notify(event: DraftPersistenceEvent) {
+    for (const listener of [...listeners]) {
+      listener(event);
+    }
+  }
+
+  return { enqueue, load, retry, subscribe };
+}
+
+export type DraftPersistence = ReturnType<typeof createDraftPersistence>;
+
+function conversationKey(conversation: IdentifiedConversation) {
+  return `${conversation.siteId}:${conversation.id}`;
+}

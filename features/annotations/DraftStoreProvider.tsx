@@ -1,8 +1,9 @@
-import { createContext, type ReactNode, useContext } from "react";
+import { createContext, type ReactNode, useContext, useMemo } from "react";
 
+import { createDraftPersistence, type DraftPersistence } from "./draft-persistence";
 import type { DraftStore } from "./draft-store";
 
-const DraftStoreContext = createContext<DraftStore | null>(null);
+const DraftPersistenceContext = createContext<DraftPersistence | null>(null);
 
 type DraftStoreProviderProps = {
   children: ReactNode;
@@ -10,13 +11,18 @@ type DraftStoreProviderProps = {
 };
 
 export function DraftStoreProvider({ children, store }: DraftStoreProviderProps) {
-  return <DraftStoreContext.Provider value={store}>{children}</DraftStoreContext.Provider>;
+  const persistence = useMemo(() => createDraftPersistence(store), [store]);
+  return (
+    <DraftPersistenceContext.Provider value={persistence}>
+      {children}
+    </DraftPersistenceContext.Provider>
+  );
 }
 
-export function useDraftStore() {
-  const store = useContext(DraftStoreContext);
-  if (!store) {
+export function useDraftPersistence() {
+  const persistence = useContext(DraftPersistenceContext);
+  if (!persistence) {
     throw new Error("DraftStoreProvider is missing");
   }
-  return store;
+  return persistence;
 }
