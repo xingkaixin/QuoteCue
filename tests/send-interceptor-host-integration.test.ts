@@ -121,12 +121,17 @@ describe("annotated send host integration", () => {
     expect(logger).toHaveBeenCalledWith("[QuoteCue host] send dispatch failed", error);
   });
 
-  it("coalesces confirmation scans to one per animation frame", async () => {
+  it("checks only changed user messages and coalesces them by animation frame", async () => {
     vi.useFakeTimers();
     const fixture = installChatGptHostFixture();
     fixture.action.disabled = false;
-    const host = createChatGptHost({ document, window });
+    for (let index = 0; index < 200; index += 1) {
+      installUserMessage(`existing-${index}`, `old message ${index}`);
+    }
+    const logger = vi.fn();
+    const host = createChatGptHost({ document, logger, window });
     const querySelectorAll = vi.spyOn(document, "querySelectorAll");
+    const requestAnimationFrame = vi.spyOn(window, "requestAnimationFrame");
     const controller = new AbortController();
     const result = host.composer.submit({
       restoreTo: availableComposer(host),
@@ -135,6 +140,8 @@ describe("annotated send host integration", () => {
     });
     await Promise.resolve();
     querySelectorAll.mockClear();
+    requestAnimationFrame.mockClear();
+    logger.mockClear();
     const userMessageScanCount = () =>
       querySelectorAll.mock.calls.filter(
         ([selector]) => selector === '[data-message-author-role="user"][data-message-id]',
@@ -146,8 +153,22 @@ describe("annotated send host integration", () => {
     }
 
     expect(userMessageScanCount()).toBe(0);
+    expect(requestAnimationFrame).not.toHaveBeenCalled();
+
+    const candidate = installUserMessage("candidate", "short");
+    await Promise.resolve();
+    candidate.textContent = "still short";
+    await Promise.resolve();
+    candidate.textContent = "not the expected message";
+    await Promise.resolve();
+
+    expect(requestAnimationFrame).toHaveBeenCalledOnce();
     await vi.advanceTimersByTimeAsync(17);
-    expect(userMessageScanCount()).toBe(1);
+    expect(userMessageScanCount()).toBe(0);
+    expect(logger).toHaveBeenCalledTimes(1);
+    expect(logger).toHaveBeenCalledWith(
+      "[QuoteCue host] send confirmation observed: candidates=1, matched=false",
+    );
 
     document.body.append(document.createElement("div"));
     await Promise.resolve();
@@ -157,7 +178,7 @@ describe("annotated send host integration", () => {
       status: "unavailable",
     });
     await vi.advanceTimersByTimeAsync(17);
-    expect(userMessageScanCount()).toBe(1);
+    expect(userMessageScanCount()).toBe(0);
   });
 
   it("does not register send work for an already aborted signal", async () => {
@@ -283,7 +304,7 @@ describe("annotated send host integration", () => {
     interceptor.submit();
     await vi.waitFor(() =>
       expect(logger).toHaveBeenCalledWith(
-        "[QuoteCue host] send confirmation observed: total=1, matched=false",
+        "[QuoteCue host] send confirmation observed: candidates=1, matched=false",
       ),
     );
     expect(messageInnerTextReads).toBe(0);

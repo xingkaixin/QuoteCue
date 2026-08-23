@@ -119,6 +119,7 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
     };
     const expectedText = normalizedRenderedText(options.expectedText);
     logger?.(`[QuoteCue host] send confirmation started: existing=${initialMessages.length}`);
+    const candidateMessages = new Set<HTMLElement>();
     let confirmationFrame: number | undefined;
     let stopObserving: () => void = () => undefined;
     let timeout: number | undefined;
@@ -133,8 +134,12 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
       options.signal.removeEventListener("abort", cleanup);
     });
     const findConfirmedMessage = () => {
-      const messages = userMessages();
+      const messages = [...candidateMessages];
+      candidateMessages.clear();
       const confirmedMessage = messages.find((message) => {
+        if (!message.isConnected || !message.matches(adapter.messages.userSelector)) {
+          return false;
+        }
         if (!isNewMessage(message)) {
           return false;
         }
@@ -145,7 +150,7 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
       });
       if (logger) {
         logger(
-          `[QuoteCue host] send confirmation observed: total=${messages.length}, matched=${Boolean(confirmedMessage)}`,
+          `[QuoteCue host] send confirmation observed: candidates=${messages.length}, matched=${Boolean(confirmedMessage)}`,
         );
       }
       if (confirmedMessage) {
@@ -153,7 +158,11 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
         options.onConfirmed();
       }
     };
-    const scheduleConfirmationScan = () => {
+    const scheduleConfirmationScan = (records: readonly MutationRecord[]) => {
+      collectUserMessageCandidates(records, candidateMessages);
+      if (candidateMessages.size === 0) {
+        return;
+      }
       if (confirmationFrame !== undefined) {
         return;
       }
@@ -323,6 +332,39 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
 
   function userMessages() {
     return Array.from(hostDocument.querySelectorAll<HTMLElement>(adapter.messages.userSelector));
+  }
+
+  function collectUserMessageCandidates(
+    records: readonly MutationRecord[],
+    candidates: Set<HTMLElement>,
+  ) {
+    const selector = adapter.messages.userSelector;
+    const collectContainingMessage = (node: Node) => {
+      const element = node instanceof Element ? node : node.parentElement;
+      const containingMessage = element?.closest<HTMLElement>(selector);
+      if (containingMessage) {
+        candidates.add(containingMessage);
+      }
+    };
+    const collectAddedMessages = (node: Node) => {
+      collectContainingMessage(node);
+      if (!(node instanceof Element)) {
+        return;
+      }
+      for (const message of node.querySelectorAll<HTMLElement>(selector)) {
+        candidates.add(message);
+      }
+    };
+
+    for (const record of records) {
+      collectContainingMessage(record.target);
+      if (record.type !== "childList") {
+        continue;
+      }
+      for (const node of record.addedNodes) {
+        collectAddedMessages(node);
+      }
+    }
   }
 
   function sendControlObservationRoot(button: HTMLElement | null) {
