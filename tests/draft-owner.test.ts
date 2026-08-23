@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { DraftAnnotation } from "@/features/annotations/annotation";
-import { MAX_ANNOTATION_COMMENT_LENGTH } from "@/features/annotations/draft-capacity";
+import {
+  MAX_ANNOTATION_COMMENT_LENGTH,
+  MAX_DRAFT_ANNOTATIONS,
+} from "@/features/annotations/draft-capacity";
 import { createDraftOwner } from "@/features/annotations/draft-owner";
 
 const extensionStorage = vi.hoisted(() => {
@@ -423,6 +426,21 @@ describe("draft storage", () => {
       annotation,
     ]);
     expect(extensionStorage.snapshot()).toEqual({ [currentKey]: envelope });
+  });
+
+  it("ignores a duplicate add when the authoritative draft is at capacity", async () => {
+    const annotations = [
+      annotation,
+      ...Array.from({ length: MAX_DRAFT_ANNOTATIONS - 1 }, (_, index) => ({
+        ...annotation,
+        id: `annotation-${index}`,
+      })),
+    ];
+    extensionStorage.reset({ [currentKey]: { ...envelope, annotations } });
+
+    await expect(draftStore.mutate(conversationA, [{ kind: "add", annotation }])).resolves.toEqual(
+      annotations,
+    );
   });
 
   it("applies an ordered mutation batch against one authoritative draft", async () => {

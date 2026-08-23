@@ -13,6 +13,9 @@ export function draftMutationExceedsCapacity(
   mutation: DraftMutation,
 ) {
   if (mutation.kind === "add") {
+    if (annotations.some(({ id }) => id === mutation.annotation.id)) {
+      return false;
+    }
     return (
       annotations.length >= MAX_DRAFT_ANNOTATIONS || !annotationFitsCapacity(mutation.annotation)
     );
