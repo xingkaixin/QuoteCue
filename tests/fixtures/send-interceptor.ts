@@ -40,16 +40,24 @@ export function createInterceptor(
     onStateChange,
   }: CreateInterceptorOptions = {},
 ) {
-  return registerSendInterceptor({
+  let interceptor: ReturnType<typeof registerSendInterceptor> | null = null;
+  const getConversationIdentity = () => conversationIdentity();
+  interceptor = registerSendInterceptor({
     getSendInput: () => ({
       annotations: numberAnnotations(annotations),
-      conversationIdentity: conversationIdentity(),
+      conversationIdentity: getConversationIdentity(),
       locale: "en",
     }),
     host,
+    onChange: () => {
+      if (interceptor) {
+        onStateChange?.(interceptor.state(getConversationIdentity()));
+      }
+    },
     onSendConfirmed,
-    onStateChange,
   });
+  onStateChange?.(interceptor.state(getConversationIdentity()));
+  return interceptor;
 }
 
 export function availableComposer(host: Host) {

@@ -115,8 +115,8 @@ export function runSendHostContract(definition: HostContractDefinition) {
           locale: "en",
         }),
         host: siteHost,
+        onChange: onStateChange,
         onSendConfirmed,
-        onStateChange,
       });
       const composerText = availableValue(siteHost.composer.snapshot()).text;
       onStateChange.mockClear();

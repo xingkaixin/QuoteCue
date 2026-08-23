@@ -378,7 +378,6 @@ describe("annotated send host integration", () => {
     expect(sentText).toContain("question from conversation A");
 
     identity = { kind: "identified", id: "conversation-b", siteId: "chatgpt" };
-    interceptor.conversationChanged(identity);
     sentText = "";
 
     interceptor.submit();
@@ -411,9 +410,8 @@ describe("annotated send host integration", () => {
     );
 
     identity = { kind: "identified", id: "conversation-b", siteId: "chatgpt" };
-    interceptor.conversationChanged(identity);
 
-    expect(onStateChange).toHaveBeenLastCalledWith({ status: "idle" });
+    expect(interceptor.state(identity)).toEqual({ status: "idle" });
     interceptor.dispose();
   });
 
@@ -427,15 +425,16 @@ describe("annotated send host integration", () => {
     interceptor.submit();
     await vi.advanceTimersByTimeAsync(15_001);
 
-    interceptor.conversationChanged({
+    const identity = {
       kind: "identified",
       id: "conversation-test",
       siteId: "chatgpt",
-    });
+    } as const;
 
-    expect(onStateChange).toHaveBeenLastCalledWith(
-      expect.objectContaining({ status: "failed", reason: "confirmation-timeout" }),
-    );
+    expect(interceptor.state(identity)).toEqual({
+      status: "failed",
+      reason: "confirmation-timeout",
+    });
     interceptor.dispose();
   });
 

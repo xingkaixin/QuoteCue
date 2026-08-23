@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 
 import { useHost } from "@/features/host-port/HostProvider";
 
@@ -7,7 +7,7 @@ import { useI18n } from "@/features/i18n/I18nProvider";
 import type { AnchoredSelection, AnnotationEditorState, DraftAnnotation } from "./annotation";
 import type { ProjectedAnnotation } from "./annotation-projection";
 import { sameConversationIdentity } from "@/features/conversation/conversation-identity";
-import { registerSendInterceptor, type AnnotatedSendState } from "./register-send-interceptor";
+import { registerSendInterceptor } from "./register-send-interceptor";
 import { useAnnotationProjection } from "./use-annotation-projection";
 import { useConversationIdentity } from "./use-conversation-identity";
 import { useDeferredAnnotationDeletion } from "./use-deferred-annotation-deletion";
@@ -31,7 +31,7 @@ export function useAnnotationWorkspace() {
   } = useDraftAnnotations(conversationIdentity);
   const annotations = draft.status === "loading" ? [] : draft.annotations;
   const isDraftMutable = canMutateDraft(draft);
-  const [sendState, setSendState] = useState<AnnotatedSendState>({ status: "idle" });
+  const [, notifySendChange] = useReducer((version: number) => version + 1, 0);
   const [editorState, setEditorState] = useState<AnnotationEditorState>({ status: "hidden" });
   const {
     discardPendingDeletions,
@@ -73,6 +73,7 @@ export function useAnnotationWorkspace() {
     const controller = registerSendInterceptor({
       getSendInput: () => sendInputRef.current,
       host,
+      onChange: notifySendChange,
       onSendConfirmed: (sentAnnotations, sentConversationIdentity) => {
         removeConfirmedAnnotationsRef.current(sentConversationIdentity, sentAnnotations);
         if (
@@ -84,7 +85,6 @@ export function useAnnotationWorkspace() {
           closeEditor();
         }
       },
-      onStateChange: setSendState,
     });
     sendControllerRef.current = controller;
 
@@ -98,7 +98,6 @@ export function useAnnotationWorkspace() {
 
   useEffect(() => {
     closeEditor();
-    sendControllerRef.current?.conversationChanged(conversationIdentity);
   }, [closeEditor, conversationIdentity]);
 
   useEffect(() => {
@@ -186,6 +185,7 @@ export function useAnnotationWorkspace() {
   const send = useCallback(() => {
     sendControllerRef.current?.submit();
   }, []);
+  const sendState = sendControllerRef.current?.state(conversationIdentity) ?? { status: "idle" };
 
   return {
     draft: {
