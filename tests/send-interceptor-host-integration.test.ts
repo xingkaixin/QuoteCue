@@ -101,6 +101,26 @@ describe("annotated send host integration", () => {
     ).toHaveLength(1);
   });
 
+  it("logs the underlying send dispatch error", async () => {
+    const fixture = installChatGptHostFixture();
+    fixture.action.disabled = false;
+    const error = new Error("host click failed");
+    fixture.action.click = () => {
+      throw error;
+    };
+    const logger = vi.fn();
+    const host = createChatGptHost({ document, logger, window });
+
+    await expect(
+      host.composer.submit({
+        restoreTo: availableComposer(host),
+        signal: new AbortController().signal,
+        text: "compiled prompt",
+      }),
+    ).resolves.toEqual({ reason: "send-unavailable", status: "unavailable" });
+    expect(logger).toHaveBeenCalledWith("[QuoteCue host] send dispatch failed", error);
+  });
+
   it("coalesces confirmation scans to one per animation frame", async () => {
     vi.useFakeTimers();
     const fixture = installChatGptHostFixture();

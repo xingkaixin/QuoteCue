@@ -185,7 +185,6 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
       return failure("send-unavailable");
     }
     if (!replaceComposer(options)) {
-      logger?.("[QuoteCue host] composer replacement failed");
       restoreComposer(options);
       return failure("send-unavailable");
     }
@@ -197,7 +196,8 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
         sendButtonResult.status === "available" && !options.signal.aborted
           ? await dispatchAndConfirm(sendButtonResult.value, options)
           : failure("send-unavailable");
-    } catch {
+    } catch (error: unknown) {
+      logger?.("[QuoteCue host] send submission failed", error);
       result = failure("send-unavailable");
     }
 
@@ -209,8 +209,13 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
 
   function replaceComposer(options: ComposerSubmitOptions) {
     try {
-      return composerDriver.replaceText(options.restoreTo.element, options.text);
-    } catch {
+      const replaced = composerDriver.replaceText(options.restoreTo.element, options.text);
+      if (!replaced) {
+        logger?.("[QuoteCue host] composer replacement failed");
+      }
+      return replaced;
+    } catch (error: unknown) {
+      logger?.("[QuoteCue host] composer replacement failed", error);
       return false;
     }
   }
@@ -218,8 +223,8 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
   function restoreComposer(options: ComposerSubmitOptions) {
     try {
       composerDriver.restoreText(options.restoreTo, options.text);
-    } catch {
-      logger?.("[QuoteCue host] composer restore failed");
+    } catch (error: unknown) {
+      logger?.("[QuoteCue host] composer restore failed", error);
     }
   }
 
@@ -230,7 +235,8 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
     const confirmation = createConfirmation(options.text, options.signal);
     try {
       sendButton.click();
-    } catch {
+    } catch (error: unknown) {
+      logger?.("[QuoteCue host] send dispatch failed", error);
       confirmation.cancel();
     }
     return confirmation.result;
