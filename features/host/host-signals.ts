@@ -256,18 +256,9 @@ function matchesMutationInterest(summary: MutationSummary, interest: MutationInt
 function subscribeNavigation(hostWindow: Window, callback: () => void) {
   const navigation = navigationEventSource(hostWindow);
   if (navigation) {
-    let active = true;
-    const notifyAfterCommit = () => {
-      hostWindow.queueMicrotask(() => {
-        if (active) {
-          callback();
-        }
-      });
-    };
-    navigation.addEventListener("navigate", notifyAfterCommit);
+    navigation.addEventListener("currententrychange", callback);
     return once(() => {
-      active = false;
-      navigation.removeEventListener("navigate", notifyAfterCommit);
+      navigation.removeEventListener("currententrychange", callback);
     });
   }
 
