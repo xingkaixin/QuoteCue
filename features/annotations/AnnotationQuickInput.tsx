@@ -8,7 +8,7 @@ import { QUOTECUE_INTERACTIVE_CLASS } from "@/lib/dom-identity";
 import { useAnnotationCommentSurface } from "./use-annotation-comment-surface";
 
 type AnnotationQuickInputProps = {
-  bindSession?: (requestDismissal: (() => boolean) | null) => void;
+  bindSession: (requestDismissal: (() => boolean) | null) => void;
   onClose: () => void;
   onSave: (comment: string) => void;
   rect: SelectionRect;

@@ -10,7 +10,7 @@ import { useDismissalWarning } from "./use-dismissal-warning";
 import { useOutsideDiscard } from "./use-outside-discard";
 
 type UseAnnotationCommentSurfaceOptions = {
-  bindSession?: (requestDismissal: (() => boolean) | null) => void;
+  bindSession: (requestDismissal: (() => boolean) | null) => void;
   initialComment: string;
   onDismiss: () => void;
   onSave: (comment: string) => void;
@@ -52,8 +52,8 @@ export function useAnnotationCommentSurface({
   // Lets an owner ask this session for permission before replacing it with another target,
   // so switching runs through the same dismissal decision as any other outside interaction.
   useEffect(() => {
-    bindSession?.(requestDismissal);
-    return () => bindSession?.(null);
+    bindSession(requestDismissal);
+    return () => bindSession(null);
   }, [bindSession, requestDismissal]);
 
   return {

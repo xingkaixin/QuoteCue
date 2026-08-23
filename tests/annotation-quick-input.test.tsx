@@ -153,7 +153,12 @@ async function renderQuickInput(onClose: () => void, onSave: (comment: string) =
   await act(async () => {
     root.render(
       <HostTestProvider>
-        <AnnotationQuickInput onClose={onClose} onSave={onSave} rect={draft.rect} />
+        <AnnotationQuickInput
+          bindSession={() => undefined}
+          onClose={onClose}
+          onSave={onSave}
+          rect={draft.rect}
+        />
       </HostTestProvider>,
     );
   });

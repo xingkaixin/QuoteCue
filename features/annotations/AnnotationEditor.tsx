@@ -11,7 +11,7 @@ import { useAnnotationCommentSurface } from "./use-annotation-comment-surface";
 
 type AnnotationEditorProps = {
   annotation: DraftAnnotation;
-  bindSession?: (requestDismissal: (() => boolean) | null) => void;
+  bindSession: (requestDismissal: (() => boolean) | null) => void;
   onCancel: () => void;
   onDelete: () => void;
   onSave: (comment: string) => void;
