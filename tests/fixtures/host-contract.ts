@@ -1,6 +1,6 @@
 import { vi } from "vitest";
 
-import type { HostResult } from "@/features/host/dom-host";
+import type { HostResult } from "@/features/host-port/host-port";
 
 export function availableValue<T>(result: HostResult<T>) {
   if (result.status === "unavailable") {

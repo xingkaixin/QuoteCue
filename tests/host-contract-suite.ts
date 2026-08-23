@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, vi } from "vitest";
 
-import type { Host, HostEnvironment } from "@/features/host/dom-host";
+import type { Host } from "@/features/host-port/host-port";
+import type { HostEnvironment } from "@/features/host/host-environment";
 import type { SupportedSiteId } from "@/lib/supported-sites";
 
 import { runCoreHostContract } from "./host-contract/core";

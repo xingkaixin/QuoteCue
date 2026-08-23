@@ -1,7 +1,9 @@
 import { rangeEndpointRect } from "@/features/host-port/range-geometry";
+import type { HostResult } from "@/features/host-port/host-port";
 import { currentVisualViewportBounds } from "@/features/layout/use-visual-viewport";
 
-import { available, unavailable, type HostContext, type HostResult } from "./host-context";
+import type { HostContext } from "./host-context";
+import { available, unavailable } from "./host-result";
 
 const SCROLLABLE_OVERFLOW_PATTERN = /auto|overlay|scroll/;
 
