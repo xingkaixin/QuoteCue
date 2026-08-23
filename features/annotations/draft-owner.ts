@@ -144,6 +144,10 @@ async function readDraft(conversation: IdentifiedConversation) {
   const storedDraft = result[key];
 
   if (storedDraft !== undefined) {
+    if (isExpiredDraftEnvelope(storedDraft, Date.now() - DRAFT_RETENTION_MS)) {
+      await writeDraft(conversation, []);
+      return [];
+    }
     const decoded = decodeStoredDraft(storedDraft);
     if (decoded.needsMigration && !decoded.hasUnreadableAnnotations) {
       await browser.storage.local.set({ [key]: draftEnvelope(decoded.annotations) });

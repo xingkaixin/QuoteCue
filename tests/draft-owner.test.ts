@@ -107,7 +107,7 @@ describe("draft storage", () => {
     await vi.waitFor(() => expect(extensionStorage.getKeys).toHaveBeenCalledTimes(2));
   });
 
-  it("loads without waiting for conservative background cleanup", async () => {
+  it("expires the loaded draft before conservative background cleanup", async () => {
     const expiredKey = "quotecue:draft:expired";
     const recentKey = "quotecue:draft:recent";
     const unmarkedKey = "quotecue:draft:without-updated-at";
@@ -128,13 +128,12 @@ describe("draft storage", () => {
     );
     const consoleInfo = vi.spyOn(console, "info").mockImplementation(() => undefined);
 
-    await expect(draftStore.load(conversationA)).resolves.toEqual([annotation]);
-    expect(extensionStorage.remove).not.toHaveBeenCalled();
+    await expect(draftStore.load(conversationA)).resolves.toEqual([]);
+    expect(extensionStorage.snapshot()).not.toHaveProperty(currentKey);
 
     resolveKeys(extensionStorage.keys());
     await vi.waitFor(() => {
       expect(extensionStorage.snapshot()).toEqual({
-        [currentKey]: staleEnvelope,
         [recentKey]: { ...envelope, updatedAt: NOW - 29 * DAY_MS },
         [unmarkedKey]: unmarkedEnvelope,
         "unrelated-key": "preserved",
