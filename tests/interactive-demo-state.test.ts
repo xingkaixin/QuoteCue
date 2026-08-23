@@ -35,9 +35,11 @@ describe("interactive demo state", () => {
 
     expect(state).toMatchObject({
       annotations: [],
+      clearArmed: false,
       editor: null,
+      pendingRemovals: [],
+      send: { kind: "idle" },
       sentPrompt: prompt,
-      status: { kind: "idle" },
       summaryOpen: false,
     });
   });
@@ -76,7 +78,61 @@ describe("interactive demo state", () => {
     ]);
 
     expect(state.annotations).toEqual([first, second]);
-    expect(state.status).toEqual({ kind: "idle" });
+    expect(state.pendingRemovals).toEqual([]);
+  });
+
+  it("keeps a pending removal undoable while clear confirmation is armed", () => {
+    const first = annotation(1);
+    const second = annotation(2);
+    const clearArmed = reduce([
+      { type: "add-annotation", annotation: first },
+      { type: "save-editor" },
+      { type: "add-annotation", annotation: second },
+      { type: "save-editor" },
+      { type: "remove-annotation", annotationId: first.id },
+      { type: "request-clear" },
+    ]);
+    const restored = reduceInteractiveDemo(clearArmed, { type: "undo-removal" });
+
+    expect(restored.annotations).toEqual([first, second]);
+    expect(restored.clearArmed).toBe(true);
+  });
+
+  it("keeps a pending removal undoable after the remaining annotations are sent", () => {
+    const first = annotation(1);
+    const second = annotation(2);
+    const sent = reduce([
+      { type: "add-annotation", annotation: first },
+      { type: "save-editor" },
+      { type: "add-annotation", annotation: second },
+      { type: "save-editor" },
+      { type: "remove-annotation", annotationId: first.id },
+      { type: "start-send", prompt: "compiled prompt" },
+      { type: "complete-send" },
+    ]);
+    const restored = reduceInteractiveDemo(sent, { type: "undo-removal" });
+
+    expect(restored.annotations).toEqual([first]);
+    expect(restored.sentPrompt).toBe("compiled prompt");
+  });
+
+  it("restores consecutive removals in their original order", () => {
+    const first = annotation(1);
+    const second = annotation(2);
+    const third = annotation(3);
+    const state = reduce([
+      { type: "add-annotation", annotation: first },
+      { type: "save-editor" },
+      { type: "add-annotation", annotation: second },
+      { type: "save-editor" },
+      { type: "add-annotation", annotation: third },
+      { type: "save-editor" },
+      { type: "remove-annotation", annotationId: first.id },
+      { type: "remove-annotation", annotationId: second.id },
+      { type: "undo-removal" },
+    ]);
+
+    expect(state.annotations).toEqual([first, second, third]);
   });
 
   it("keeps sending authoritative until it completes", () => {
@@ -92,7 +148,7 @@ describe("interactive demo state", () => {
     ]);
 
     expect(state.annotations).toHaveLength(1);
-    expect(state.status).toEqual({ kind: "sending", prompt });
+    expect(state.send).toEqual({ kind: "sending", prompt });
     expect(state.summaryOpen).toBe(false);
   });
 
@@ -104,9 +160,9 @@ describe("interactive demo state", () => {
     ]);
     const cleared = reduceInteractiveDemo(armed, { type: "request-clear" });
 
-    expect(armed.status).toEqual({ kind: "clear-armed" });
+    expect(armed.clearArmed).toBe(true);
     expect(cleared.annotations).toEqual([]);
-    expect(cleared.status).toEqual({ kind: "idle" });
+    expect(cleared.clearArmed).toBe(false);
   });
 });
 

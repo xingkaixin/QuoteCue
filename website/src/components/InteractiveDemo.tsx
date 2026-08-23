@@ -22,14 +22,14 @@ interface InteractiveDemoProps {
   copy: DemoCopy;
 }
 
-function formatRemovedNotice(copy: DemoCopy, remaining: number) {
+function formatRemovedNotice(copy: DemoCopy, removed: number, remaining: number) {
   switch (copy.locale) {
     case "zh-CN":
-      return `批注已删除，还剩 ${remaining} 条。`;
+      return `已删除 ${removed} 条批注，还剩 ${remaining} 条。`;
     case "ja":
-      return `注釈を削除しました。残り ${remaining} 件です。`;
+      return `${removed} 件の注釈を削除しました。残り ${remaining} 件です。`;
     case "en":
-      return `Annotation removed. ${remaining} ${remaining === 1 ? "annotation" : "annotations"} remaining.`;
+      return `${removed === 1 ? "Annotation" : `${removed} annotations`} removed. ${remaining} remaining.`;
   }
 }
 
@@ -39,12 +39,10 @@ export function InteractiveDemo({ copy }: InteractiveDemoProps) {
   const [site, setSite] = useState<SupportedSiteName>(siteNames[0]);
   const [demo, dispatch] = useReducer(reduceInteractiveDemo, initialInteractiveDemoState);
 
-  const { annotations, editor, sentPrompt, status, summaryOpen } = demo;
+  const { annotations, clearArmed, editor, pendingRemovals, send, sentPrompt, summaryOpen } = demo;
   const editingId = editor?.annotationId ?? null;
   const editorComment = editor?.comment ?? "";
-  const sending = status.kind === "sending";
-  const clearArmed = status.kind === "clear-armed";
-  const undoBuffer = status.kind === "undo" ? status : null;
+  const sending = send.kind === "sending";
   const {
     candidate,
     captureSelection,
@@ -55,7 +53,7 @@ export function InteractiveDemo({ copy }: InteractiveDemoProps) {
     stageRef,
     transcriptRef,
   } = useInteractiveDemoProjection(annotations, editingId);
-  useInteractiveDemoStatusTimer(status, dispatch);
+  useInteractiveDemoStatusTimer({ clearArmed, pendingRemovals, send }, dispatch);
 
   function createAnnotation() {
     if (!candidate) return;
@@ -208,13 +206,13 @@ export function InteractiveDemo({ copy }: InteractiveDemoProps) {
           />
         </div>
 
-        {undoBuffer && (
+        {pendingRemovals.length > 0 && (
           <div
             aria-live="polite"
             className="absolute right-4 bottom-[5.75rem] z-40 flex max-w-[calc(100%-2rem)] items-center gap-2 overflow-hidden rounded-lg border border-line bg-panel px-2.5 py-1.5 text-xs shadow-[var(--surface-shadow)]"
             role="status"
           >
-            <span>{formatRemovedNotice(copy, annotations.length)}</span>
+            <span>{formatRemovedNotice(copy, pendingRemovals.length, annotations.length)}</span>
             <button
               className="cursor-pointer border-0 bg-transparent px-1.5 py-0.5 font-semibold text-accent outline-none focus-visible:ring-2 focus-visible:ring-ring"
               onClick={undoRemoval}

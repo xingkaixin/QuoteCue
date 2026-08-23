@@ -11,17 +11,20 @@ type DemoEditorSession = {
   removeOnCancel: boolean;
 };
 
-export type DemoStatus =
-  | { kind: "idle" }
-  | { kind: "clear-armed" }
-  | { kind: "sending"; prompt: string }
-  | { kind: "undo"; annotation: DemoAnnotation; index: number };
+export type DemoSendState = { kind: "idle" } | { kind: "sending"; prompt: string };
+
+export type PendingDemoRemoval = {
+  annotation: DemoAnnotation;
+  index: number;
+};
 
 export type InteractiveDemoState = {
   annotations: DemoAnnotation[];
+  clearArmed: boolean;
   editor: DemoEditorSession | null;
+  pendingRemovals: readonly PendingDemoRemoval[];
+  send: DemoSendState;
   sentPrompt: string;
-  status: DemoStatus;
   summaryOpen: boolean;
 };
 
@@ -42,9 +45,11 @@ export type InteractiveDemoAction =
 
 export const initialInteractiveDemoState: InteractiveDemoState = {
   annotations: [],
+  clearArmed: false,
   editor: null,
+  pendingRemovals: [],
+  send: { kind: "idle" },
   sentPrompt: "",
-  status: { kind: "idle" },
   summaryOpen: false,
 };
 
@@ -54,21 +59,21 @@ export function reduceInteractiveDemo(
 ): InteractiveDemoState {
   switch (action.type) {
     case "add-annotation":
-      return state.status.kind === "sending"
+      return state.send.kind === "sending"
         ? state
         : {
             ...state,
             annotations: [...state.annotations, action.annotation],
+            clearArmed: false,
             editor: {
               annotationId: action.annotation.id,
               comment: "",
               removeOnCancel: true,
             },
             sentPrompt: "",
-            status: { kind: "idle" },
           };
     case "open-editor": {
-      if (state.status.kind === "sending") {
+      if (state.send.kind === "sending") {
         return state;
       }
       const annotation = state.annotations.find(({ id }) => id === action.annotationId);
@@ -111,7 +116,7 @@ export function reduceInteractiveDemo(
           }
         : state;
     case "remove-annotation": {
-      if (state.status.kind === "sending") {
+      if (state.send.kind === "sending") {
         return state;
       }
       const index = state.annotations.findIndex(({ id }) => id === action.annotationId);
@@ -126,57 +131,62 @@ export function reduceInteractiveDemo(
       return {
         ...state,
         annotations,
+        clearArmed: false,
         editor: null,
-        status: { kind: "undo", annotation, index },
+        pendingRemovals: [...state.pendingRemovals, { annotation, index }],
         summaryOpen: annotations.length > 0 && state.summaryOpen,
       };
     }
     case "undo-removal": {
-      if (state.status.kind !== "undo") {
+      if (state.pendingRemovals.length === 0) {
         return state;
       }
       const annotations = [...state.annotations];
-      annotations.splice(state.status.index, 0, state.status.annotation);
-      return { ...state, annotations, status: { kind: "idle" } };
+      for (const removal of state.pendingRemovals.toReversed()) {
+        annotations.splice(removal.index, 0, removal.annotation);
+      }
+      return { ...state, annotations, pendingRemovals: [] };
     }
     case "request-clear":
-      if (state.annotations.length === 0 || state.status.kind === "sending") {
+      if (state.annotations.length === 0 || state.send.kind === "sending") {
         return state;
       }
-      return state.status.kind === "clear-armed"
+      return state.clearArmed
         ? {
             ...state,
             annotations: [],
+            clearArmed: false,
             editor: null,
-            status: { kind: "idle" },
+            pendingRemovals: [],
             summaryOpen: false,
           }
-        : { ...state, status: { kind: "clear-armed" } };
+        : { ...state, clearArmed: true };
     case "expire-clear":
-      return state.status.kind === "clear-armed" ? { ...state, status: { kind: "idle" } } : state;
+      return state.clearArmed ? { ...state, clearArmed: false } : state;
     case "expire-undo":
-      return state.status.kind === "undo" ? { ...state, status: { kind: "idle" } } : state;
+      return state.pendingRemovals.length > 0 ? { ...state, pendingRemovals: [] } : state;
     case "start-send":
-      return state.annotations.length > 0 && state.status.kind !== "sending"
+      return state.annotations.length > 0 && state.send.kind !== "sending"
         ? {
             ...state,
             editor: null,
-            status: { kind: "sending", prompt: action.prompt },
+            send: { kind: "sending", prompt: action.prompt },
             summaryOpen: false,
           }
         : state;
     case "complete-send":
-      return state.status.kind === "sending"
+      return state.send.kind === "sending"
         ? {
             ...state,
             annotations: [],
+            clearArmed: false,
             editor: null,
-            sentPrompt: state.status.prompt,
-            status: { kind: "idle" },
+            send: { kind: "idle" },
+            sentPrompt: state.send.prompt,
             summaryOpen: false,
           }
         : state;
     case "set-summary-open":
-      return state.status.kind === "sending" ? state : { ...state, summaryOpen: action.isOpen };
+      return state.send.kind === "sending" ? state : { ...state, summaryOpen: action.isOpen };
   }
 }
