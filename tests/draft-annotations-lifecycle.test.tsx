@@ -220,6 +220,75 @@ describe("draft annotation lifecycle", () => {
     await act(async () => root.unmount());
   });
 
+  it("adopts an unidentified draft when the conversation becomes identified", async () => {
+    const root = await mountUnidentifiedDraft();
+    expect(currentAnnotations()).toEqual([annotation]);
+
+    await act(async () => root.render(<DraftHarness conversationIdentity={conversationA} />));
+
+    expect(currentAnnotations()).toEqual([annotation]);
+    expect(draftStoreFixture.store.mutate).toHaveBeenCalledWith(conversationA, [
+      { kind: "add", annotation },
+    ]);
+
+    await act(async () => root.unmount());
+  });
+
+  it("merges an unidentified draft into an existing identified draft", async () => {
+    const existing = { ...annotation, id: "annotation-existing", comment: "stored draft" };
+    await draftStoreFixture.store.mutate(conversationA, [{ kind: "add", annotation: existing }]);
+    draftStoreFixture.store.mutate.mockClear();
+    const root = await mountUnidentifiedDraft();
+    await act(async () => root.render(<DraftHarness conversationIdentity={conversationA} />));
+
+    expect(currentAnnotations()).toEqual([existing, annotation]);
+    expect(draftStoreFixture.store.mutate).toHaveBeenCalledWith(conversationA, [
+      { kind: "add", annotation },
+    ]);
+
+    await act(async () => root.unmount());
+  });
+
+  it("retains an unidentified draft when adoption cannot be loaded", async () => {
+    draftStoreFixture.store.load.mockRejectedValueOnce(new Error("storage unavailable"));
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const root = await mountUnidentifiedDraft();
+    await act(async () => root.render(<DraftHarness conversationIdentity={conversationA} />));
+
+    expect(latestDrafts.draft).toEqual({
+      status: "error",
+      operation: "load",
+      annotations: [annotation],
+    });
+
+    await act(async () => latestDrafts.retry());
+    expect(latestDrafts.draft).toEqual({ status: "ready", annotations: [annotation] });
+
+    consoleError.mockRestore();
+    await act(async () => root.unmount());
+  });
+
+  it("retains an unidentified draft when adoption cannot be saved", async () => {
+    draftStoreFixture.store.mutate.mockRejectedValueOnce(new Error("storage unavailable"));
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const root = await mountUnidentifiedDraft();
+    await act(async () => root.render(<DraftHarness conversationIdentity={conversationA} />));
+
+    expect(latestDrafts.draft).toEqual({
+      status: "error",
+      operation: "save",
+      annotations: [annotation],
+    });
+
+    await act(async () => latestDrafts.retry());
+    await vi.waitFor(() =>
+      expect(latestDrafts.draft).toEqual({ status: "ready", annotations: [annotation] }),
+    );
+
+    consoleError.mockRestore();
+    await act(async () => root.unmount());
+  });
+
   it("rejects updates for unknown annotations without saving", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     draftStoreFixture.store.load.mockResolvedValue([annotation]);
@@ -618,6 +687,20 @@ function DraftProbe({ conversationIdentity }: { conversationIdentity: Conversati
 
 function currentAnnotations() {
   return latestDrafts.draft.status === "loading" ? [] : latestDrafts.draft.annotations;
+}
+
+async function mountUnidentifiedDraft() {
+  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  await act(async () =>
+    root.render(
+      <DraftHarness conversationIdentity={{ kind: "unidentified", sessionKey: "session-a" }} />,
+    ),
+  );
+  await act(async () => latestDrafts.addAnnotation(annotation));
+  return root;
 }
 
 function identifiedConversation(id: string): IdentifiedConversation {
