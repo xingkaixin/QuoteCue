@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { DraftAnnotation, AnchoredSelection } from "@/features/annotations/annotation";
-import { DraftPersistenceProvider } from "@/features/annotations/DraftPersistenceProvider";
+import { DraftRuntimeProvider } from "@/features/annotations/DraftRuntimeProvider";
 import { useAnnotationWorkspace } from "@/features/annotations/use-annotation-workspace";
 import { HostProvider } from "@/features/host-port/HostProvider";
 import { I18nProvider } from "@/features/i18n/I18nProvider";
@@ -184,13 +184,13 @@ async function mountWorkspace(
   const root = createRoot(container);
   await act(async () =>
     root.render(
-      <DraftPersistenceProvider store={draftStoreFixture.store}>
+      <DraftRuntimeProvider store={draftStoreFixture.store}>
         <HostProvider host={providedHost}>
           <I18nProvider>
             <WorkspaceProbe />
           </I18nProvider>
         </HostProvider>
-      </DraftPersistenceProvider>,
+      </DraftRuntimeProvider>,
     ),
   );
   return { host: providedHost, root };
