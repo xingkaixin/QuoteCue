@@ -1,12 +1,5 @@
 import { sameTextAnchor, type TextAnchor } from "@/lib/text-anchor";
 
-export type {
-  AnchoredSelection,
-  SelectionCapture,
-  SelectionRect,
-} from "@/features/host-port/host-port";
-export type { TextAnchor } from "@/lib/text-anchor";
-
 export type DraftAnnotation = {
   id: string;
   anchor: TextAnchor;
@@ -20,8 +13,3 @@ export function sameAnnotationSnapshot(current: DraftAnnotation, other: DraftAnn
     sameTextAnchor(current.anchor, other.anchor)
   );
 }
-
-export type AnnotationEditorState =
-  | { status: "hidden" }
-  | { status: "quick"; annotationId: string }
-  | { status: "expanded"; annotationId: string };
