@@ -6,14 +6,14 @@ export type { TextAnchor } from "@/lib/text-anchor";
 export type HostResult<T> = { status: "available"; value: T } | { status: "unavailable" };
 
 export type ComposerSnapshot = {
-  element: HTMLElement;
-  text: string;
+  readonly text: string;
 };
 
 export type ComposerSubmitFailureReason = "confirmation-timeout" | "send-unavailable";
 
 export type ComposerSubmitOptions = {
   restoreTo: ComposerSnapshot;
+  restoreText?: string;
   signal: AbortSignal;
   text: string;
 };

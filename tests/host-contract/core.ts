@@ -147,11 +147,25 @@ export function runCoreHostContract(definition: HostContractDefinition) {
     });
 
     it("snapshots the configured composer", () => {
-      const fixture = definition.installFixture();
+      definition.installFixture();
       const siteHost = host();
       const original = availableValue(siteHost.composer.snapshot());
 
-      expect(original).toEqual({ element: fixture.composer, text: "Original question" });
+      expect(original).toEqual({ text: "Original question" });
+    });
+
+    it("rejects a composer snapshot not created by the host", async () => {
+      const fixture = definition.installFixture();
+      const siteHost = host();
+
+      await expect(
+        siteHost.composer.submit({
+          restoreTo: { text: "Original question" },
+          signal: new AbortController().signal,
+          text: "Replacement question",
+        }),
+      ).resolves.toEqual({ reason: "send-unavailable", status: "unavailable" });
+      expect(fixture.composer.textContent).toBe("Original question");
     });
 
     it("owns composer replacement, dispatch, confirmation, and replay suppression", async () => {

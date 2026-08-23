@@ -25,7 +25,8 @@ describe("composer driver", () => {
     const composer = installComposer();
     composer.addEventListener("paste", (event) => event.preventDefault());
 
-    expect(driver().replaceText(composer, "replacement")).toBe(true);
+    const composerDriver = driver();
+    expect(composerDriver.replaceText(availableSnapshot(composerDriver), "replacement")).toBe(true);
     expect(execCommand).not.toHaveBeenCalled();
   });
 
@@ -35,7 +36,8 @@ describe("composer driver", () => {
     vi.stubGlobal("DataTransfer", undefined);
     const composer = installComposer("original");
 
-    expect(driver().replaceText(composer, "replacement")).toBe(true);
+    const composerDriver = driver();
+    expect(composerDriver.replaceText(availableSnapshot(composerDriver), "replacement")).toBe(true);
     expect(execCommand).toHaveBeenCalledWith("insertText", false, "replacement");
     expect(composer.textContent).toBe("original");
   });
@@ -48,7 +50,8 @@ describe("composer driver", () => {
     const onInput = vi.fn();
     composer.addEventListener("input", onInput);
 
-    expect(driver().replaceText(composer, "replacement")).toBe(true);
+    const composerDriver = driver();
+    expect(composerDriver.replaceText(availableSnapshot(composerDriver), "replacement")).toBe(true);
     expect(composer.innerHTML).toBe("<p>replacement</p>");
     expect(onInput).toHaveBeenCalledOnce();
   });
@@ -58,7 +61,8 @@ describe("composer driver", () => {
     const composer = document.createElement("textarea");
     document.body.append(composer);
 
-    expect(driver(textareaComposer("textarea")).replaceText(composer, "replacement")).toBe(true);
+    const composerDriver = driver(textareaComposer("textarea"));
+    expect(composerDriver.replaceText(availableSnapshot(composerDriver), "replacement")).toBe(true);
     expect(composer.value).toBe("replacement");
     expect(execCommand).not.toHaveBeenCalled();
   });
@@ -67,6 +71,14 @@ describe("composer driver", () => {
 function driver(composer = pasteFirstDomFallbackComposer("[contenteditable]")) {
   const hostAdapter = adapter(composer);
   return createComposerDriver(createHostContext({ document, window }, hostAdapter));
+}
+
+function availableSnapshot(composerDriver: ReturnType<typeof createComposerDriver>) {
+  const result = composerDriver.snapshot();
+  if (result.status === "unavailable") {
+    throw new Error("Expected an available composer snapshot");
+  }
+  return result.value;
 }
 
 function installComposer(text = "") {

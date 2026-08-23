@@ -45,6 +45,7 @@ type SendAttemptInput = {
 type SendAttempt = {
   conversationIdentity: ConversationIdentity;
   snapshot: ComposerSnapshot;
+  restoreText: string;
   compiledPrompt: string;
   annotations: readonly NumberedAnnotation[];
   controller: AbortController;
@@ -151,6 +152,7 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
     try {
       submission = host.composer.submit({
         restoreTo: attempt.snapshot,
+        restoreText: attempt.restoreText,
         signal: attempt.controller.signal,
         text: attempt.compiledPrompt,
       });
@@ -212,7 +214,6 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
       retryOriginalText !== undefined && snapshot.text.trim().length === 0
         ? retryOriginalText
         : snapshot.text;
-    const ownedSnapshot = { ...snapshot, text: originalText };
     const compiledPrompt = compileAnnotatedPrompt(annotations, originalText, sendInput.locale);
     if (compiledPromptExceedsCapacity(compiledPrompt)) {
       recordFailure(sendInput.conversationIdentity, "prompt-too-long");
@@ -220,7 +221,8 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
     }
     const attempt = createAttempt(
       sendInput.conversationIdentity,
-      ownedSnapshot,
+      snapshot,
+      originalText,
       compiledPrompt,
       annotations,
     );
@@ -263,12 +265,14 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
 function createAttempt(
   conversationIdentity: ConversationIdentity,
   snapshot: ComposerSnapshot,
+  restoreText: string,
   compiledPrompt: string,
   annotations: readonly NumberedAnnotation[],
 ): SendAttempt {
   return {
     conversationIdentity,
     snapshot,
+    restoreText,
     compiledPrompt,
     annotations,
     controller: new AbortController(),
