@@ -1,14 +1,24 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type TouchEvent } from "react";
 
 import type { DemoAnnotation } from "./interactive-demo-state";
+import {
+  captureDemoTextAnchor,
+  restoreDemoTextAnchor,
+  type DemoTextAnchor,
+} from "./interactive-demo-text-anchor";
 
 const highlightName = "quotecue-demo";
 const useClientLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 interface SelectionCandidate {
-  text: string;
+  anchor: DemoTextAnchor;
   range: Range;
 }
+
+type ResolvedDemoAnnotation = {
+  annotation: DemoAnnotation;
+  range: Range;
+};
 
 interface Point {
   left: number;
@@ -67,7 +77,10 @@ export function useInteractiveDemoProjection(
     const { Highlight, registry } = getHighlightApi();
     if (!Highlight || !registry) return;
 
-    const ranges = annotations.map((annotation) => annotation.range);
+    const transcript = transcriptRef.current;
+    const ranges = transcript
+      ? resolveAnnotations(transcript, annotations).map(({ range }) => range)
+      : [];
     if (candidate) ranges.push(candidate.range);
     if (ranges.length === 0) {
       registry.delete(highlightName);
@@ -78,8 +91,10 @@ export function useInteractiveDemoProjection(
   }, [annotations, candidate]);
 
   useClientLayoutEffect(() => {
-    if (!stageRef.current) return;
-    setGeometry(measureGeometry(stageRef.current, candidate, annotations, editingId));
+    if (!stageRef.current || !transcriptRef.current) return;
+    setGeometry(
+      measureGeometry(stageRef.current, transcriptRef.current, candidate, annotations, editingId),
+    );
   }, [annotations, candidate, editingId, layoutVersion]);
 
   useEffect(() => {
@@ -95,13 +110,14 @@ export function useInteractiveDemoProjection(
     }
 
     const range = selection.getRangeAt(0);
-    const text = selection.toString().trim();
-    if (!transcript.contains(range.commonAncestorContainer) || text.length < 2) {
+    const anchor = captureDemoTextAnchor(transcript, range);
+    if (!anchor || anchor.quote.length < 2) {
       setCandidate(null);
       return;
     }
 
-    setCandidate({ range: range.cloneRange(), text });
+    const anchoredRange = restoreDemoTextAnchor(transcript, anchor);
+    setCandidate(anchoredRange ? { anchor, range: anchoredRange } : null);
   }, []);
 
   const captureTouchSelection = useCallback(
@@ -140,6 +156,7 @@ function getLastRect(range: Range) {
 
 function measureGeometry(
   stage: HTMLDivElement,
+  transcript: HTMLDivElement,
   candidate: SelectionCandidate | null,
   annotations: DemoAnnotation[],
   editingId: number | null,
@@ -160,8 +177,9 @@ function measureGeometry(
     };
   }
 
-  const badges = annotations.flatMap((annotation) => {
-    const rect = getLastRect(annotation.range);
+  const resolvedAnnotations = resolveAnnotations(transcript, annotations);
+  const badges = resolvedAnnotations.flatMap(({ annotation, range }) => {
+    const rect = getLastRect(range);
     if (rect.width === 0) return [];
     const point = toStagePoint(rect);
     return [
@@ -174,7 +192,7 @@ function measureGeometry(
   });
 
   let editor: Point | null = null;
-  const editing = annotations.find((annotation) => annotation.id === editingId);
+  const editing = resolvedAnnotations.find(({ annotation }) => annotation.id === editingId);
   if (editing) {
     const rectangles = Array.from(editing.range.getClientRects());
     const firstRect = rectangles[0] ?? editing.range.getBoundingClientRect();
@@ -193,6 +211,16 @@ function measureGeometry(
   }
 
   return { action, badges, editor };
+}
+
+function resolveAnnotations(
+  transcript: HTMLElement,
+  annotations: readonly DemoAnnotation[],
+): ResolvedDemoAnnotation[] {
+  return annotations.flatMap((annotation) => {
+    const range = restoreDemoTextAnchor(transcript, annotation.anchor);
+    return range ? [{ annotation, range }] : [];
+  });
 }
 
 function getHighlightApi() {

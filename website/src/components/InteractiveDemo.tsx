@@ -47,10 +47,9 @@ export function InteractiveDemo({ copy }: InteractiveDemoProps) {
   function createAnnotation() {
     if (!candidate) return;
     const annotation: DemoAnnotation = {
+      anchor: candidate.anchor,
       id: ++sequenceRef.current,
-      text: candidate.text,
       comment: "",
-      range: candidate.range,
     };
     dispatch({ type: "add-annotation", annotation });
     clearCandidate();

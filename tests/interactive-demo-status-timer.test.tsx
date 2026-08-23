@@ -11,10 +11,9 @@ import {
 import { useInteractiveDemoStatusTimer } from "../website/src/components/use-interactive-demo-status-timer";
 
 const annotation: DemoAnnotation = {
+  anchor: { end: 15, quote: "selected", start: 7 },
   id: 1,
   comment: "",
-  range: document.createRange(),
-  text: "selected answer",
 };
 
 beforeEach(() => {

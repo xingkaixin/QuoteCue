@@ -10,7 +10,7 @@ export function compileDemoPrompt(annotations: readonly DemoAnnotation[], copy: 
     annotations.map((annotation, index) => ({
       comment: annotation.comment,
       ordinal: index + 1,
-      selectedText: annotation.text,
+      selectedText: annotation.anchor.quote,
     })),
     "",
     annotationPromptMessagesFor(copy.locale),
