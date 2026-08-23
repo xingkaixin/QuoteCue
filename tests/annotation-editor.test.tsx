@@ -375,6 +375,7 @@ function editor(
     <HostTestProvider host={host}>
       <AnnotationEditor
         annotation={annotation}
+        bindSession={() => undefined}
         onCancel={onCancel}
         onDelete={actions.onDelete}
         onSave={actions.onSave}
