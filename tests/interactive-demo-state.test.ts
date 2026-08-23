@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 
+import {
+  formatDemoAnnotationCount,
+  formatDemoRemovedNotice,
+} from "../website/src/components/interactive-demo-copy";
 import { compileDemoPrompt } from "../website/src/components/interactive-demo-prompt";
 import {
   initialInteractiveDemoState,
@@ -7,7 +11,7 @@ import {
   type DemoAnnotation,
   type InteractiveDemoAction,
 } from "../website/src/components/interactive-demo-state";
-import { getCopy } from "../website/src/i18n/content";
+import { getCopy, type DemoCopy } from "../website/src/i18n/content";
 
 function annotation(id = 1, comment = ""): DemoAnnotation {
   return {
@@ -176,24 +180,24 @@ describe("interactive demo prompt", () => {
 });
 
 describe("interactive demo copy", () => {
-  it("owns annotation count and removal grammar for each locale", () => {
-    const zh = getCopy("zh-CN").demo;
-    const ja = getCopy("ja").demo;
-    const en = getCopy("en").demo;
+  it("formats serialized annotation counts and removal grammar for each locale", () => {
+    const zh = JSON.parse(JSON.stringify(getCopy("zh-CN").demo)) as DemoCopy;
+    const ja = JSON.parse(JSON.stringify(getCopy("ja").demo)) as DemoCopy;
+    const en = JSON.parse(JSON.stringify(getCopy("en").demo)) as DemoCopy;
 
-    expect([zh.formatAnnotationCount(1), zh.formatRemovedNotice(2, 0)]).toEqual([
+    expect([formatDemoAnnotationCount(zh, 1), formatDemoRemovedNotice(zh, 2, 0)]).toEqual([
       "1 条批注",
       "已删除 2 条批注，还剩 0 条。",
     ]);
-    expect([ja.formatAnnotationCount(1), ja.formatRemovedNotice(2, 0)]).toEqual([
+    expect([formatDemoAnnotationCount(ja, 1), formatDemoRemovedNotice(ja, 2, 0)]).toEqual([
       "1 件の注釈",
       "2 件の注釈を削除しました。残り 0 件です。",
     ]);
     expect([
-      en.formatAnnotationCount(1),
-      en.formatAnnotationCount(2),
-      en.formatRemovedNotice(1, 1),
-      en.formatRemovedNotice(2, 0),
+      formatDemoAnnotationCount(en, 1),
+      formatDemoAnnotationCount(en, 2),
+      formatDemoRemovedNotice(en, 1, 1),
+      formatDemoRemovedNotice(en, 2, 0),
     ]).toEqual([
       "1 annotation",
       "2 annotations",
