@@ -9,9 +9,15 @@ import { createClaudeHost } from "@/features/claude/claude-host";
 
 const host = createChatGptHost({ document, window });
 const claudeHost = createClaudeHost({ document, window });
+const navigationDescriptor = Object.getOwnPropertyDescriptor(window, "navigation");
 
 afterEach(() => {
   window.history.replaceState({}, "", "/");
+  if (navigationDescriptor) {
+    Object.defineProperty(window, "navigation", navigationDescriptor);
+  } else {
+    Reflect.deleteProperty(window, "navigation");
+  }
   vi.restoreAllMocks();
 });
 
@@ -66,20 +72,24 @@ describe("conversation identities", () => {
     });
   });
 
-  it("subscribes to history navigation without observing DOM changes", () => {
+  it("subscribes to history navigation without observing DOM changes", async () => {
     const observe = vi.spyOn(MutationObserver.prototype, "observe");
     const onNavigation = vi.fn();
+    const navigation = new EventTarget();
+    Object.defineProperty(window, "navigation", { configurable: true, value: navigation });
     const stop = host.conversation.subscribe(onNavigation);
 
+    navigation.dispatchEvent(new Event("navigate"));
     window.history.pushState({}, "", "/c/conversation-b");
-    window.history.replaceState({}, "", "/c/conversation-c");
-    window.dispatchEvent(new PopStateEvent("popstate"));
+    await Promise.resolve();
 
-    expect(onNavigation).toHaveBeenCalledTimes(3);
+    expect(onNavigation).toHaveBeenCalledOnce();
     expect(observe).not.toHaveBeenCalled();
 
     stop();
+    navigation.dispatchEvent(new Event("navigate"));
     window.history.pushState({}, "", "/c/conversation-d");
-    expect(onNavigation).toHaveBeenCalledTimes(3);
+    await Promise.resolve();
+    expect(onNavigation).toHaveBeenCalledOnce();
   });
 });

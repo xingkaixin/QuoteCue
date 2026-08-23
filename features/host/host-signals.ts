@@ -1,16 +1,6 @@
 import type { MessageAccess } from "./site-adapter";
 
-const HISTORY_CHANGE_EVENT = "quotecue:history-change";
-const HISTORY_PATCH_STATE_PROPERTY = "quotecue:history-change:patch";
-
-type HistoryMethod = History["pushState"];
-type HistoryMethodName = "pushState" | "replaceState";
-
-type HistoryPatchState = {
-  original: Record<HistoryMethodName, HistoryMethod>;
-  subscriberCount: number;
-  wrapped: Record<HistoryMethodName, HistoryMethod>;
-};
+const LOCATION_POLL_INTERVAL_MS = 1_000;
 
 type MutationInterest = {
   characterData?: boolean;
@@ -211,15 +201,7 @@ export function createHostSignals(
       });
     },
     subscribeNavigation(callback: () => void) {
-      const releaseHistoryPatch = acquireHistoryPatch(hostWindow);
-      hostWindow.addEventListener(HISTORY_CHANGE_EVENT, callback);
-      hostWindow.addEventListener("popstate", callback);
-
-      return once(() => {
-        hostWindow.removeEventListener(HISTORY_CHANGE_EVENT, callback);
-        hostWindow.removeEventListener("popstate", callback);
-        releaseHistoryPatch();
-      });
+      return subscribeNavigation(hostWindow, callback);
     },
   };
 }
@@ -271,62 +253,49 @@ function matchesMutationInterest(summary: MutationSummary, interest: MutationInt
   );
 }
 
-function acquireHistoryPatch(hostWindow: Window) {
-  const patch = currentHistoryPatch(hostWindow) ?? installHistoryPatch(hostWindow);
-  patch.subscriberCount += 1;
+function subscribeNavigation(hostWindow: Window, callback: () => void) {
+  const navigation = navigationEventSource(hostWindow);
+  if (navigation) {
+    let active = true;
+    const notifyAfterCommit = () => {
+      hostWindow.queueMicrotask(() => {
+        if (active) {
+          callback();
+        }
+      });
+    };
+    navigation.addEventListener("navigate", notifyAfterCommit);
+    return once(() => {
+      active = false;
+      navigation.removeEventListener("navigate", notifyAfterCommit);
+    });
+  }
 
-  return once(() => {
-    patch.subscriberCount -= 1;
-    if (patch.subscriberCount > 0) {
+  let lastUrl = hostWindow.location.href;
+  const notifyIfChanged = () => {
+    const nextUrl = hostWindow.location.href;
+    if (nextUrl === lastUrl) {
       return;
     }
-
-    restoreHistoryMethod(hostWindow, patch, "pushState");
-    restoreHistoryMethod(hostWindow, patch, "replaceState");
+    lastUrl = nextUrl;
+    callback();
+  };
+  const interval = hostWindow.setInterval(notifyIfChanged, LOCATION_POLL_INTERVAL_MS);
+  hostWindow.addEventListener("popstate", notifyIfChanged);
+  return once(() => {
+    hostWindow.clearInterval(interval);
+    hostWindow.removeEventListener("popstate", notifyIfChanged);
   });
 }
 
-function currentHistoryPatch(hostWindow: Window) {
-  const pushStatePatch = historyPatchFor(hostWindow.history.pushState);
-  const replaceStatePatch = historyPatchFor(hostWindow.history.replaceState);
-  return pushStatePatch === replaceStatePatch ? pushStatePatch : undefined;
-}
-
-function historyPatchFor(method: HistoryMethod) {
-  return Reflect.get(method, HISTORY_PATCH_STATE_PROPERTY) as HistoryPatchState | undefined;
-}
-
-function installHistoryPatch(hostWindow: Window): HistoryPatchState {
-  const original = {
-    pushState: hostWindow.history.pushState,
-    replaceState: hostWindow.history.replaceState,
-  };
-  const wrapped = {
-    pushState: wrapHistoryMethod(hostWindow, original.pushState),
-    replaceState: wrapHistoryMethod(hostWindow, original.replaceState),
-  };
-  const patch = { original, subscriberCount: 0, wrapped };
-
-  Object.defineProperty(wrapped.pushState, HISTORY_PATCH_STATE_PROPERTY, { value: patch });
-  Object.defineProperty(wrapped.replaceState, HISTORY_PATCH_STATE_PROPERTY, { value: patch });
-  hostWindow.history.pushState = wrapped.pushState;
-  hostWindow.history.replaceState = wrapped.replaceState;
-  return patch;
-}
-
-function restoreHistoryMethod(
-  hostWindow: Window,
-  patch: HistoryPatchState,
-  method: HistoryMethodName,
-) {
-  if (hostWindow.history[method] === patch.wrapped[method]) {
-    hostWindow.history[method] = patch.original[method];
-  }
-}
-
-function wrapHistoryMethod(hostWindow: Window, original: HistoryMethod): HistoryMethod {
-  return function (this: History, data: unknown, unused: string, url?: string | URL | null) {
-    original.call(this, data, unused, url);
-    hostWindow.dispatchEvent(new Event(HISTORY_CHANGE_EVENT));
-  };
+function navigationEventSource(hostWindow: Window): EventTarget | null {
+  const navigation: unknown = Reflect.get(hostWindow, "navigation");
+  return navigation !== null &&
+    typeof navigation === "object" &&
+    "addEventListener" in navigation &&
+    typeof navigation.addEventListener === "function" &&
+    "removeEventListener" in navigation &&
+    typeof navigation.removeEventListener === "function"
+    ? (navigation as EventTarget)
+    : null;
 }
