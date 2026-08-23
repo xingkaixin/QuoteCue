@@ -78,8 +78,9 @@ describe("useAnnotatedComposerLayout", () => {
     await act(async () => root.unmount());
   });
 
-  it("measures the composer once per refresh window, not once per raw signal", async () => {
+  it("ignores document mutations outside the composer surface", async () => {
     vi.useFakeTimers();
+    stubPassiveResizeObserver();
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     installChatGptHostFixture();
     const host = createChatGptHost({ document, window });
@@ -93,20 +94,46 @@ describe("useAnnotatedComposerLayout", () => {
         </HostTestProvider>,
       ),
     );
+    await act(async () => vi.advanceTimersByTimeAsync(80));
 
     const getComputedStyle = vi.spyOn(window, "getComputedStyle");
     const querySelector = vi.spyOn(document, "querySelector");
-    const rawSignals = 10;
-    for (let index = 0; index < rawSignals; index += 1) {
+    for (let index = 0; index < 10; index += 1) {
       const node = document.createElement("div");
       document.body.append(node);
       await act(async () => vi.advanceTimersByTimeAsync(20));
     }
     await act(async () => vi.advanceTimersByTimeAsync(80));
 
-    // 10 signals across 200ms fall into ~3 throttle windows plus a trailing refresh.
-    expect(querySelector.mock.calls.length).toBeLessThan(rawSignals);
-    expect(getComputedStyle.mock.calls.length).toBeLessThan(rawSignals);
+    expect(querySelector).not.toHaveBeenCalled();
+    expect(getComputedStyle).not.toHaveBeenCalled();
+
+    await act(async () => root.unmount());
+  });
+
+  it("refreshes after a composer surface mutation", async () => {
+    vi.useFakeTimers();
+    stubPassiveResizeObserver();
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    const { surface } = installChatGptHostFixture();
+    const host = createChatGptHost({ document, window });
+    const currentLayout = vi.spyOn(host.layout, "current");
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    await act(async () =>
+      root.render(
+        <HostTestProvider host={host}>
+          <LayoutProbe />
+        </HostTestProvider>,
+      ),
+    );
+    currentLayout.mockClear();
+
+    surface.append(document.createElement("span"));
+    await act(async () => vi.advanceTimersByTimeAsync(80));
+
+    expect(currentLayout).toHaveBeenCalledOnce();
 
     await act(async () => root.unmount());
   });
@@ -153,3 +180,13 @@ describe("useAnnotatedComposerLayout", () => {
     expect(nextAction.style.visibility).toBe("");
   });
 });
+
+function stubPassiveResizeObserver() {
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      disconnect() {}
+      observe() {}
+    },
+  );
+}

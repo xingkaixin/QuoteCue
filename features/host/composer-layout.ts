@@ -133,9 +133,14 @@ export function createComposerLayout(
   function startObservation() {
     resizeObserver =
       typeof ResizeObserver === "undefined" ? null : new ResizeObserver(notifySubscribers);
-    const stopMutationObservation = signals.observeMutations(notifySubscribers, {
-      childList: true,
-    });
+    const stopMutationObservation = signals.observeMutations(
+      (records) => {
+        if (mutationsAffectComposer(records)) {
+          notifySubscribers();
+        }
+      },
+      { childList: true },
+    );
     const stopViewportObservation = signals.observeViewport(notifySubscribers);
     stopSignalObservation = () => {
       stopMutationObservation();
@@ -155,6 +160,21 @@ export function createComposerLayout(
     for (const subscriber of [...layoutSubscribers]) {
       subscriber();
     }
+  }
+
+  function mutationsAffectComposer(records: readonly MutationRecord[]) {
+    const surface = observedSurface;
+    if (!surface?.isConnected) {
+      return true;
+    }
+
+    return records.some(
+      (record) =>
+        surface.contains(record.target) ||
+        [...record.addedNodes, ...record.removedNodes].some(
+          (node) => node === surface || (node instanceof Element && node.contains(surface)),
+        ),
+    );
   }
 
   function reconcileReservation(elements: ComposerLayoutElements | null) {
