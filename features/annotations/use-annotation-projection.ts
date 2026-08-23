@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useHost } from "@/features/host-port/HostProvider";
-import type { Host, SelectionInvalidation, SelectionRect } from "@/features/host-port/host-port";
+import type {
+  HostSelection,
+  SelectionInvalidation,
+  SelectionRect,
+} from "@/features/host-port/host-port";
 import { rangeEndpointRect } from "@/features/host-port/range-geometry";
 import { toSelectionRect } from "@/features/host-port/selection-rect";
 import { clampPositionToViewport } from "@/features/layout/floating-position";
@@ -22,12 +26,16 @@ const PENDING_RESOLUTION: AnnotationResolution = { resolution: "pending" };
 const UNRESOLVED_RESOLUTION: SettledAnnotationResolution = { resolution: "unresolved" };
 const EMPTY_RESOLUTIONS = new Map<string, SettledAnnotationResolution>();
 type AnnotationProjectionInput = Pick<DraftAnnotation, "anchor" | "id">;
+type ProjectionSelection = Pick<
+  HostSelection,
+  "highlight" | "isObscured" | "messageIndex" | "observeInvalidation"
+>;
 
 export function useAnnotationProjection(
   annotations: readonly DraftAnnotation[],
   activeAnnotationId: string | null,
 ) {
-  const host = useHost();
+  const selection = useHost().selection;
   const projectionInputs = useStableProjectionInputs(annotations);
   const [resolutionByAnnotationId, setResolutionByAnnotationId] =
     useState<ReadonlyMap<string, SettledAnnotationResolution>>(EMPTY_RESOLUTIONS);
@@ -78,7 +86,7 @@ export function useAnnotationProjection(
           }
           rangeByAnnotationId = resolveAnnotationRanges(
             projectionInputs,
-            host,
+            selection,
             rangeByAnnotationId,
             dirtyMessageIds,
           );
@@ -86,14 +94,14 @@ export function useAnnotationProjection(
         commitResolutions(
           projectAnnotationResolutions(
             projectionInputs,
-            host,
+            selection,
             rangeByAnnotationId,
             resolutionRef.current,
           ),
         );
       });
     };
-    const stopObserving = host.selection.observeInvalidation(scheduleProjection);
+    const stopObserving = selection.observeInvalidation(scheduleProjection);
     scheduleProjection({ dirtyMessageIds: "all", reason: "content" });
 
     return () => {
@@ -110,12 +118,12 @@ export function useAnnotationProjection(
       resolutionRef.current = next;
       setResolutionByAnnotationId(next);
     }
-  }, [host, projectionInputs]);
+  }, [projectionInputs, selection]);
 
   useEffect(() => {
-    host.selection.highlight(activeRange);
-    return () => host.selection.highlight(null);
-  }, [activeRange, host]);
+    selection.highlight(activeRange);
+    return () => selection.highlight(null);
+  }, [activeRange, selection]);
 
   return projectedAnnotations;
 }
@@ -147,7 +155,7 @@ function sameProjectionInputs(
 
 function resolveAnnotationRanges(
   annotations: readonly AnnotationProjectionInput[],
-  host: Host,
+  selection: ProjectionSelection,
   currentRanges: ReadonlyMap<string, Range | null>,
   dirtyMessageIds: ReadonlySet<string> | "all",
 ) {
@@ -169,7 +177,7 @@ function resolveAnnotationRanges(
   const messageIndex =
     annotationIdsToResolve.size === 0
       ? new Map<string, HTMLElement>()
-      : host.selection.messageIndex(dirtyMessageIds === "all" ? undefined : messageIdsToResolve);
+      : selection.messageIndex(dirtyMessageIds === "all" ? undefined : messageIdsToResolve);
   const messageTextCache = new Map<HTMLElement, string>();
   return new Map(
     annotations.map((annotation) => {
@@ -206,7 +214,7 @@ function mergeInvalidations(
 
 function projectAnnotationResolutions(
   annotations: readonly AnnotationProjectionInput[],
-  host: Host,
+  selection: ProjectionSelection,
   rangeByAnnotationId: ReadonlyMap<string, Range | null>,
   previousResolutions: ReadonlyMap<string, SettledAnnotationResolution>,
 ) {
@@ -228,7 +236,7 @@ function projectAnnotationResolutions(
     resolutions.set(annotation.id, {
       resolution: "resolved",
       geometry: {
-        badge: badgePosition(host, range, rect),
+        badge: badgePosition(selection, range, rect),
         range,
         rect,
       },
@@ -237,13 +245,13 @@ function projectAnnotationResolutions(
   return resolutions;
 }
 
-function badgePosition(host: Host, range: Range, rect: SelectionRect) {
+function badgePosition(selection: ProjectionSelection, range: Range, rect: SelectionRect) {
   const viewport = currentVisualViewportBounds();
 
   if (rect.width === 0 || rect.bottom < viewport.top || rect.top > viewport.top + viewport.height) {
     return null;
   }
-  if (host.selection.isObscured(range, rect)) {
+  if (selection.isObscured(range, rect)) {
     return null;
   }
   return clampPositionToViewport(
