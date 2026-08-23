@@ -101,6 +101,12 @@ export function useAnnotationWorkspace() {
     sendControllerRef.current?.conversationChanged(conversationIdentity);
   }, [closeEditor, conversationIdentity]);
 
+  useEffect(() => {
+    if (draft.status !== "loading" && annotations.length === 0) {
+      sendControllerRef.current?.draftEmptied(conversationIdentity);
+    }
+  }, [annotations.length, conversationIdentity, draft.status]);
+
   const startAnnotation = useCallback(
     (selection: AnchoredSelection) => {
       const annotation: DraftAnnotation = {
