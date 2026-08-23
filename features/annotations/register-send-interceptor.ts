@@ -117,8 +117,13 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
     reason: AnnotatedSendFailureReason,
     originalText?: string,
   ) => {
-    sendSessions.set(conversationIdentityKey(conversationIdentity), {
-      ...(originalText === undefined ? {} : { originalText }),
+    const key = conversationIdentityKey(conversationIdentity);
+    const previousSession = sendSessions.get(key);
+    const retryText =
+      originalText ??
+      (previousSession?.status === "failed" ? previousSession.originalText : undefined);
+    sendSessions.set(key, {
+      ...(retryText === undefined ? {} : { originalText: retryText }),
       reason,
       status: "failed",
     });
@@ -219,7 +224,7 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
         : snapshot.text;
     const compiledPrompt = compileAnnotatedPrompt(annotations, originalText, sendInput.locale);
     if (compiledPromptExceedsCapacity(compiledPrompt)) {
-      recordFailure(sendInput.conversationIdentity, "prompt-too-long");
+      recordFailure(sendInput.conversationIdentity, "prompt-too-long", originalText);
       return true;
     }
     const attempt = createAttempt(
