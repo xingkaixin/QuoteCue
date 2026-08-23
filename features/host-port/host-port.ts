@@ -5,7 +5,10 @@ export type { TextAnchor } from "@/lib/text-anchor";
 
 export type HostResult<T> = { status: "available"; value: T } | { status: "unavailable" };
 
+declare const composerSnapshotIdentity: unique symbol;
+
 export type ComposerSnapshot = {
+  readonly [composerSnapshotIdentity]: true;
   readonly text: string;
 };
 

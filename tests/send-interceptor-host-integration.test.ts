@@ -11,7 +11,7 @@ import {
   appendUserMessage as installUserMessage,
   installChatGptHostFixture,
 } from "./fixtures/chatgpt-host";
-import { createFakeHost } from "./fixtures/fake-host";
+import { createFakeHost, fakeComposerSnapshot } from "./fixtures/fake-host";
 import { annotation, availableComposer, createInterceptor } from "./fixtures/send-interceptor";
 
 beforeEach(() => {
@@ -215,7 +215,7 @@ describe("annotated send host integration", () => {
     const host = createFakeHost();
     vi.spyOn(host.composer, "snapshot").mockReturnValue({
       status: "available",
-      value: { text: "original question" },
+      value: fakeComposerSnapshot("original question"),
     });
     let submittedSignal: AbortSignal | undefined;
     const submit = vi.spyOn(host.composer, "submit").mockImplementation(
