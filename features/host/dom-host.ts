@@ -12,21 +12,6 @@ import { createSelectionVisuals } from "./selection-visuals";
 import type { SiteAdapter } from "./site-adapter";
 import { createSendPipeline } from "./send-pipeline";
 
-export type {
-  AnchoredSelection,
-  ComposerSnapshot,
-  ConversationIdentity,
-  Host,
-  HostLayout,
-  HostResult,
-  SelectionCapture,
-  SelectionCaptureIntent,
-  SelectionInvalidation,
-  SelectionRect,
-  TextAnchor,
-} from "@/features/host-port/host-port";
-export type { HostEnvironment } from "./host-environment";
-
 export function createHostEngine(
   environment: HostEnvironment,
   adapter: SiteAdapter,

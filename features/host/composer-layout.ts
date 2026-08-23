@@ -1,7 +1,9 @@
-import type { HostLayout, SelectionRect } from "@/features/host-port/host-port";
+import type { HostLayout, HostResult, SelectionRect } from "@/features/host-port/host-port";
 import { toSelectionRect } from "@/features/host-port/selection-rect";
 
-import { available, once, unavailable, type HostContext, type HostResult } from "./host-context";
+import type { HostContext } from "./host-context";
+import { available, unavailable } from "./host-result";
+import { once } from "./host-signals";
 
 type ComposerLayoutElements = {
   action: HTMLElement | null;

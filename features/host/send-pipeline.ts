@@ -3,18 +3,14 @@ import type {
   ComposerSubmitIntent,
   ComposerSubmitOptions,
   ComposerSubmitResult,
+  HostResult,
 } from "@/features/host-port/host-port";
 import { readRenderedText } from "@/lib/rendered-text";
 
-import {
-  available,
-  failure,
-  once,
-  unavailable,
-  type HostContext,
-  type HostResult,
-} from "./host-context";
 import type { ComposerDriver } from "./composer-driver";
+import type { HostContext } from "./host-context";
+import { available, failure, unavailable } from "./host-result";
+import { once } from "./host-signals";
 
 const SEND_CONFIRM_TIMEOUT_MS = 15_000;
 const SEND_BUTTON_APPEAR_TIMEOUT_MS = 2_000;

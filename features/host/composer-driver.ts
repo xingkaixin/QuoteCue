@@ -1,10 +1,7 @@
-import {
-  available,
-  unavailable,
-  type ComposerSnapshot,
-  type HostContext,
-  type HostResult,
-} from "./host-context";
+import type { ComposerSnapshot, HostResult } from "@/features/host-port/host-port";
+
+import type { HostContext } from "./host-context";
+import { available, unavailable } from "./host-result";
 
 export function createComposerDriver(context: HostContext) {
   const { adapter, document: hostDocument, logger } = context;

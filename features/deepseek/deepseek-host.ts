@@ -1,4 +1,5 @@
-import { createHostEngine, type HostEnvironment } from "@/features/host/dom-host";
+import { createHostEngine } from "@/features/host/dom-host";
+import type { HostEnvironment } from "@/features/host/host-environment";
 import { textareaComposer } from "@/features/host/composer-access";
 import {
   composerLayout,

@@ -1,17 +1,16 @@
-import type { SelectionCapture } from "@/features/host-port/host-port";
+import type {
+  HostResult,
+  SelectionCapture,
+  SelectionCaptureIntent,
+  SelectionInvalidation,
+} from "@/features/host-port/host-port";
 import { rangeEndpointRect } from "@/features/host-port/range-geometry";
 import { toSelectionRect } from "@/features/host-port/selection-rect";
 import { isQuoteCueEvent } from "@/lib/dom-identity";
 import { parseTextAnchor } from "@/lib/text-anchor";
 
-import {
-  available,
-  unavailable,
-  type HostContext,
-  type HostResult,
-  type SelectionCaptureIntent,
-  type SelectionInvalidation,
-} from "./host-context";
+import type { HostContext } from "./host-context";
+import { available, unavailable } from "./host-result";
 
 const CONTEXT_LENGTH = 48;
 
