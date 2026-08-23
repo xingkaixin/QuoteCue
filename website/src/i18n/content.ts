@@ -21,8 +21,14 @@ export interface DemoCopy {
   send: string;
   composerPrefix: string;
   clearConfirm: string;
-  formatAnnotationCount: (count: number) => string;
-  formatRemovedNotice: (removed: number, remaining: number) => string;
+  annotationCount: {
+    one: string;
+    other: string;
+  };
+  removedNotice: {
+    one: string;
+    other: string;
+  };
 }
 
 const links = {
@@ -91,8 +97,14 @@ const zh = {
     send: "发送批注",
     composerPrefix: "问问",
     clearConfirm: "再点一次清空",
-    formatAnnotationCount: (count) => `${count} 条批注`,
-    formatRemovedNotice: (removed, remaining) => `已删除 ${removed} 条批注，还剩 ${remaining} 条。`,
+    annotationCount: {
+      one: "{count} 条批注",
+      other: "{count} 条批注",
+    },
+    removedNotice: {
+      one: "已删除 {removed} 条批注，还剩 {remaining} 条。",
+      other: "已删除 {removed} 条批注，还剩 {remaining} 条。",
+    },
   } satisfies DemoCopy,
   features: {
     title: "它替你记住上下文",
@@ -240,9 +252,14 @@ const ja = {
     send: "注釈を送信",
     composerPrefix: "質問先：",
     clearConfirm: "もう一度クリックして削除",
-    formatAnnotationCount: (count) => `${count} 件の注釈`,
-    formatRemovedNotice: (removed, remaining) =>
-      `${removed} 件の注釈を削除しました。残り ${remaining} 件です。`,
+    annotationCount: {
+      one: "{count} 件の注釈",
+      other: "{count} 件の注釈",
+    },
+    removedNotice: {
+      one: "{removed} 件の注釈を削除しました。残り {remaining} 件です。",
+      other: "{removed} 件の注釈を削除しました。残り {remaining} 件です。",
+    },
   } satisfies DemoCopy,
   features: {
     title: "文脈は QuoteCue が覚えておきます",
@@ -391,9 +408,14 @@ const en = {
     send: "Send annotations",
     composerPrefix: "Ask",
     clearConfirm: "Click again to clear",
-    formatAnnotationCount: (count) => `${count} ${count === 1 ? "annotation" : "annotations"}`,
-    formatRemovedNotice: (removed, remaining) =>
-      `${removed === 1 ? "Annotation" : `${removed} annotations`} removed. ${remaining} remaining.`,
+    annotationCount: {
+      one: "{count} annotation",
+      other: "{count} annotations",
+    },
+    removedNotice: {
+      one: "Annotation removed. {remaining} remaining.",
+      other: "{removed} annotations removed. {remaining} remaining.",
+    },
   } satisfies DemoCopy,
   features: {
     title: "It keeps the context for you",

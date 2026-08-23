@@ -2,6 +2,7 @@ import { MessageSquareText, Pencil, Trash2, X } from "lucide-react";
 
 import type { DemoCopy } from "@/i18n/content";
 
+import { formatDemoAnnotationCount } from "./interactive-demo-copy";
 import type { DemoAnnotation } from "./interactive-demo-state";
 
 type InteractiveDemoSummaryProps = {
@@ -39,7 +40,7 @@ export function InteractiveDemoSummary({
           type="button"
         >
           <MessageSquareText aria-hidden="true" className="text-accent" size={16} />
-          {copy.formatAnnotationCount(annotations.length)}
+          {formatDemoAnnotationCount(copy, annotations.length)}
         </button>
         <button
           aria-label={copy.clear}
@@ -54,7 +55,7 @@ export function InteractiveDemoSummary({
 
       {isOpen && (
         <div
-          aria-label={copy.formatAnnotationCount(annotations.length)}
+          aria-label={formatDemoAnnotationCount(copy, annotations.length)}
           className="absolute bottom-[calc(100%+0.375rem)] left-0 w-[min(24rem,calc(100vw-3.5rem))] overflow-hidden rounded-2xl border border-line bg-panel shadow-[var(--surface-shadow)]"
           role="dialog"
         >

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import type { DemoCopy } from "@/i18n/content";
 import { SUPPORTED_SITES, type SupportedSiteName } from "@quotecue/shared/supported-sites";
 
+import { formatDemoRemovedNotice } from "./interactive-demo-copy";
 import { compileDemoPrompt } from "./interactive-demo-prompt";
 import { InteractiveDemoEditor } from "./InteractiveDemoEditor";
 import { InteractiveDemoSummary } from "./InteractiveDemoSummary";
@@ -200,7 +201,7 @@ export function InteractiveDemo({ copy }: InteractiveDemoProps) {
             className="absolute right-4 bottom-[5.75rem] z-40 flex max-w-[calc(100%-2rem)] items-center gap-2 overflow-hidden rounded-lg border border-line bg-panel px-2.5 py-1.5 text-xs shadow-[var(--surface-shadow)]"
             role="status"
           >
-            <span>{copy.formatRemovedNotice(pendingRemovals.length, annotations.length)}</span>
+            <span>{formatDemoRemovedNotice(copy, pendingRemovals.length, annotations.length)}</span>
             <button
               className="cursor-pointer border-0 bg-transparent px-1.5 py-0.5 font-semibold text-accent outline-none focus-visible:ring-2 focus-visible:ring-ring"
               onClick={undoRemoval}
