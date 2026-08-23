@@ -42,13 +42,6 @@ type DecodedAnnotations = {
   hasUnreadableAnnotations: boolean;
 };
 
-class DraftStorageFormatError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "DraftStorageFormatError";
-  }
-}
-
 function draftStorageKey(prefix: string, conversationId: string) {
   return `${prefix}${conversationId}`;
 }
@@ -216,10 +209,10 @@ function decodeStoredDraft(value: unknown): DecodedDraft {
     };
   }
   if (!isRecord(value) || !isDraftStorageVersion(value.version)) {
-    throw new DraftStorageFormatError("Unsupported draft storage version");
+    throw new Error("Unsupported draft storage version");
   }
   if (!Array.isArray(value.annotations)) {
-    throw new DraftStorageFormatError("Draft annotations must be an array");
+    throw new Error("Draft annotations must be an array");
   }
 
   const decoded = decodeAnnotations(value.annotations, value.version);
@@ -251,7 +244,7 @@ function decodeAnnotations(values: unknown[], version: DraftStorageVersion): Dec
   }
 
   if (values.length > 0 && annotations.length === 0) {
-    throw new DraftStorageFormatError("Draft contains no valid annotations");
+    throw new Error("Draft contains no valid annotations");
   }
   return { annotations, hasDuplicateAnnotations, hasUnreadableAnnotations };
 }
