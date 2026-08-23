@@ -57,6 +57,17 @@ export function applyDraftMutation(
   }
 }
 
+export function applyDraftMutations(
+  annotations: readonly DraftAnnotation[],
+  mutations: readonly DraftMutation[],
+) {
+  let current = annotations;
+  for (const mutation of mutations) {
+    current = applyDraftMutation(current, mutation) ?? current;
+  }
+  return [...current];
+}
+
 function keepIfUnchanged(
   annotations: readonly DraftAnnotation[],
   filtered: DraftAnnotation[],
