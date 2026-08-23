@@ -386,4 +386,52 @@ describe("registerSendInterceptor", () => {
     expect(onStateChange).toHaveBeenLastCalledWith({ status: "idle" });
     interceptor.dispose();
   });
+
+  it("forgets failed input after the draft is cleared", async () => {
+    const host = createFakeHost();
+    const identity = {
+      kind: "identified" as const,
+      id: "conversation-test",
+      siteId: "chatgpt" as const,
+    };
+    let annotations = [annotation];
+    host.elements.composer.textContent = "obsolete question";
+    const submit = vi
+      .spyOn(host.composer, "submit")
+      .mockResolvedValueOnce({ reason: "send-unavailable", status: "unavailable" })
+      .mockResolvedValueOnce({ status: "available", value: "confirmed" });
+    const onSendConfirmed = vi.fn();
+    const onStateChange = vi.fn();
+    const interceptor = registerSendInterceptor({
+      getSendInput: () => ({
+        annotations: numberAnnotations(annotations),
+        conversationIdentity: identity,
+        locale: "en",
+      }),
+      host,
+      onSendConfirmed,
+      onStateChange,
+    });
+
+    interceptor.submit();
+    await vi.waitFor(() =>
+      expect(onStateChange).toHaveBeenLastCalledWith({
+        status: "failed",
+        reason: "send-unavailable",
+      }),
+    );
+
+    annotations = [];
+    interceptor.draftEmptied(identity);
+    expect(onStateChange).toHaveBeenLastCalledWith({ status: "idle" });
+
+    annotations = [{ ...annotation, id: "replacement-annotation" }];
+    host.elements.composer.textContent = "";
+    interceptor.submit();
+    await vi.waitFor(() => expect(onSendConfirmed).toHaveBeenCalledOnce());
+
+    const retriedText = submit.mock.calls[1]?.[0].text ?? "";
+    expect(retriedText).not.toContain("obsolete question");
+    interceptor.dispose();
+  });
 });

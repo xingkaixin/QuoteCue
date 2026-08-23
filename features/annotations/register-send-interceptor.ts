@@ -242,6 +242,14 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
 
   return {
     submit: () => beginSend(undefined, "custom"),
+    draftEmptied(conversationIdentity: ConversationIdentity) {
+      const key = conversationIdentityKey(conversationIdentity);
+      if (sendSessions.get(key)?.status !== "failed") {
+        return;
+      }
+      sendSessions.delete(key);
+      setConversationState(conversationIdentity, { status: "idle" });
+    },
     conversationChanged(conversationIdentity: ConversationIdentity) {
       currentConversationIdentity = conversationIdentity;
       setState(stateForConversation(conversationIdentity));

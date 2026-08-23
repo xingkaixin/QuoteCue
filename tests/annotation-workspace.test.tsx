@@ -153,6 +153,25 @@ describe("annotation workspace", () => {
 
     await act(async () => mounted.root.unmount());
   });
+
+  it("clears failed send state when the draft is cleared", async () => {
+    draftStoreFixture.store.load.mockResolvedValue([annotation]);
+    const host = createWorkspaceHost();
+    vi.spyOn(host.composer, "submit").mockResolvedValue({
+      reason: "send-unavailable",
+      status: "unavailable",
+    });
+    const mounted = await mountWorkspace(host);
+    await act(async () => new Promise(requestAnimationFrame));
+
+    await act(async () => workspace.summary.send());
+    await vi.waitFor(() => expect(workspace.summary.sendState.status).toBe("failed"));
+
+    await act(async () => workspace.summary.clear());
+    await vi.waitFor(() => expect(workspace.summary.sendState.status).toBe("idle"));
+
+    await act(async () => mounted.root.unmount());
+  });
 });
 
 async function mountWorkspace(
