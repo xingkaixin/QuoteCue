@@ -170,6 +170,7 @@ export function reduceInteractiveDemo(
         ? {
             ...state,
             editor: null,
+            pendingRemovals: [],
             send: { kind: "sending", prompt: action.prompt },
             summaryOpen: false,
           }

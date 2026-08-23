@@ -98,7 +98,7 @@ describe("interactive demo state", () => {
     expect(restored.clearArmed).toBe(true);
   });
 
-  it("keeps a pending removal undoable after the remaining annotations are sent", () => {
+  it("commits pending removals when the remaining annotations are sent", () => {
     const first = annotation(1);
     const second = annotation(2);
     const sent = reduce([
@@ -112,7 +112,9 @@ describe("interactive demo state", () => {
     ]);
     const restored = reduceInteractiveDemo(sent, { type: "undo-removal" });
 
-    expect(restored.annotations).toEqual([first]);
+    expect(restored).toBe(sent);
+    expect(restored.annotations).toEqual([]);
+    expect(restored.pendingRemovals).toEqual([]);
     expect(restored.sentPrompt).toBe("compiled prompt");
   });
 
