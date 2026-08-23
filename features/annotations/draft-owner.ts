@@ -110,18 +110,30 @@ export function createDraftOwner() {
       openConversationKeys.add(scopedDraftStorageKey(conversation));
       const draft = serialize(conversation, () => readDraft(conversation));
       scheduleCleanup(draft);
-      return draft;
+      return draft.then(({ annotations }) => annotations);
     },
     mutate(conversation: IdentifiedConversation, mutations: readonly DraftMutation[]) {
       openConversationKeys.add(scopedDraftStorageKey(conversation));
       return serialize(conversation, async () => {
-        const current = await readDraft(conversation);
+        const decoded = await readDraft(conversation);
+        const current = decoded.annotations;
         let next: readonly DraftAnnotation[] = current;
+        let hasUnreadableAnnotations = decoded.hasUnreadableAnnotations;
         for (const mutation of mutations) {
           if (draftMutationExceedsCapacity(next, mutation)) {
             throw new RangeError("Draft mutation exceeds QuoteCue capacity");
           }
-          next = applyDraftMutation(next, mutation) ?? next;
+          const mutated = applyDraftMutation(next, mutation);
+          if (mutated === null || mutated === next) {
+            continue;
+          }
+          if (hasUnreadableAnnotations && mutation.kind !== "clear") {
+            throw new Error("Draft contains unreadable annotations");
+          }
+          next = mutated;
+          if (mutation.kind === "clear") {
+            hasUnreadableAnnotations = false;
+          }
         }
         if (next === current) {
           return current;
@@ -146,7 +158,7 @@ async function readDraft(conversation: IdentifiedConversation) {
   if (storedDraft !== undefined) {
     if (isExpiredDraftEnvelope(storedDraft, Date.now() - DRAFT_RETENTION_MS)) {
       await writeDraft(conversation, []);
-      return [];
+      return emptyDecodedDraft();
     }
     const decoded = decodeStoredDraft(storedDraft);
     if (decoded.needsMigration && !decoded.hasUnreadableAnnotations) {
@@ -155,21 +167,25 @@ async function readDraft(conversation: IdentifiedConversation) {
     if (result[unscopedKey] !== undefined || result[legacyKey] !== undefined) {
       await removeMigratedDraftKeys([unscopedKey, legacyKey]);
     }
-    return decoded.annotations;
+    return decoded;
   }
 
   const legacyDraft = result[unscopedKey] ?? result[legacyKey];
   if (legacyDraft === undefined) {
-    return [];
+    return emptyDecodedDraft();
   }
 
   const decoded = decodeStoredDraft(legacyDraft);
   if (decoded.hasUnreadableAnnotations) {
-    return decoded.annotations;
+    return decoded;
   }
   await browser.storage.local.set({ [key]: draftEnvelope(decoded.annotations) });
   await removeMigratedDraftKeys([unscopedKey, legacyKey]);
-  return decoded.annotations;
+  return decoded;
+}
+
+function emptyDecodedDraft(): DecodedDraft {
+  return { annotations: [], hasUnreadableAnnotations: false, needsMigration: false };
 }
 
 async function writeDraft(conversation: IdentifiedConversation, annotations: DraftAnnotation[]) {

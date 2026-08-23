@@ -365,6 +365,58 @@ describe("draft storage", () => {
     expect(extensionStorage.snapshot()).toEqual({ [currentKey]: storedEnvelope });
   });
 
+  it("rejects mutations that would overwrite an unreadable annotation", async () => {
+    const unreadableAnnotation = {
+      ...unmarkedAnnotation,
+      id: "unreadable",
+      anchor: { ...unmarkedAnchor, format: "unknown" },
+    };
+    const storedEnvelope = {
+      version: 3,
+      annotations: [annotation, unreadableAnnotation],
+    };
+    extensionStorage.reset({ [currentKey]: storedEnvelope });
+
+    await expect(
+      draftStore.mutate(conversationA, [
+        { kind: "update", annotationId: annotation.id, comment: "unsafe update" },
+      ]),
+    ).rejects.toThrow("Draft contains unreadable annotations");
+    expect(extensionStorage.snapshot()).toEqual({ [currentKey]: storedEnvelope });
+  });
+
+  it("allows idempotent mutations without rewriting unreadable annotations", async () => {
+    const unreadableAnnotation = {
+      ...unmarkedAnnotation,
+      id: "unreadable",
+      anchor: { ...unmarkedAnchor, format: "unknown" },
+    };
+    const storedEnvelope = {
+      version: 3,
+      annotations: [annotation, unreadableAnnotation],
+    };
+    extensionStorage.reset({ [currentKey]: storedEnvelope });
+
+    await expect(draftStore.mutate(conversationA, [{ kind: "add", annotation }])).resolves.toEqual([
+      annotation,
+    ]);
+    expect(extensionStorage.snapshot()).toEqual({ [currentKey]: storedEnvelope });
+  });
+
+  it("allows an explicit clear to remove unreadable annotations", async () => {
+    const unreadableAnnotation = {
+      ...unmarkedAnnotation,
+      id: "unreadable",
+      anchor: { ...unmarkedAnchor, format: "unknown" },
+    };
+    extensionStorage.reset({
+      [currentKey]: { version: 3, annotations: [annotation, unreadableAnnotation] },
+    });
+
+    await expect(draftStore.mutate(conversationA, [{ kind: "clear" }])).resolves.toEqual([]);
+    expect(extensionStorage.snapshot()).toEqual({});
+  });
+
   it("does not overwrite unreadable anchors during migration", async () => {
     const emptyMessageId = {
       ...unmarkedAnnotation,
