@@ -43,6 +43,12 @@ describe("draft capacity", () => {
         annotation: { ...annotation, id: "overflow" },
       }),
     ).toBe(true);
+    expect(
+      draftMutationExceedsCapacity([...annotations, annotation], {
+        kind: "add",
+        annotation,
+      }),
+    ).toBe(false);
   });
 
   it("rejects oversized comments and selections", () => {
