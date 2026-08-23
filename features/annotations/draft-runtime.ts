@@ -16,11 +16,14 @@ import {
 import { applyDraftMutation, applyDraftMutations, type DraftMutation } from "./draft-mutation";
 import type { DraftPersistence, DraftPersistenceEvent } from "./draft-persistence";
 
+type DraftRuntimeSnapshot = {
+  capacityExceeded: boolean;
+  draftState: DraftLifecycleState | null;
+};
+
 export function createDraftRuntime(draftPersistence: DraftPersistence) {
-  let capacityExceeded = false;
-  let draftState: DraftLifecycleState | null = null;
+  let snapshot: DraftRuntimeSnapshot = { capacityExceeded: false, draftState: null };
   let loadGeneration = 0;
-  let revision = 0;
   let unsubscribePersistence: (() => void) | null = null;
   const listeners = new Set<() => void>();
 
@@ -38,20 +41,20 @@ export function createDraftRuntime(draftPersistence: DraftPersistence) {
   }
 
   function dispatch(action: DraftLifecycleAction) {
-    const current = draftState ?? initialDraftLifecycleState(action.conversationIdentity);
+    const current = snapshot.draftState ?? initialDraftLifecycleState(action.conversationIdentity);
     const next = reduceDraftLifecycle(current, action);
-    if (draftState === next) {
+    if (snapshot.draftState === next) {
       return next;
     }
-    draftState = next;
+    snapshot = { ...snapshot, draftState: next };
     notify();
     return next;
   }
 
   function activate(conversationIdentity: ConversationIdentity) {
     if (
-      draftState &&
-      sameConversationIdentity(draftState.conversationIdentity, conversationIdentity)
+      snapshot.draftState &&
+      sameConversationIdentity(snapshot.draftState.conversationIdentity, conversationIdentity)
     ) {
       return;
     }
@@ -60,8 +63,8 @@ export function createDraftRuntime(draftPersistence: DraftPersistence) {
 
   function load(conversationIdentity: ConversationIdentity) {
     const generation = ++loadGeneration;
-    const annotationsToAdopt = draftState
-      ? draftAnnotationsToAdopt(draftState, conversationIdentity)
+    const annotationsToAdopt = snapshot.draftState
+      ? draftAnnotationsToAdopt(snapshot.draftState, conversationIdentity)
       : [];
     setCapacityExceeded(false);
     dispatch({ type: "load-started", conversationIdentity });
@@ -103,7 +106,7 @@ export function createDraftRuntime(draftPersistence: DraftPersistence) {
   }
 
   function mutate(conversationIdentity: ConversationIdentity, mutation: DraftMutation) {
-    const current = draftState;
+    const current = snapshot.draftState;
     if (!current || !canMutateDraftLifecycle(current, conversationIdentity)) {
       return false;
     }
@@ -148,10 +151,10 @@ export function createDraftRuntime(draftPersistence: DraftPersistence) {
   }
 
   function retry(conversationIdentity: ConversationIdentity) {
-    if (!draftState) {
+    if (!snapshot.draftState) {
       return;
     }
-    const visible = visibleDraftLifecycleState(draftState, conversationIdentity);
+    const visible = visibleDraftLifecycleState(snapshot.draftState, conversationIdentity);
     if (visible.status !== "error") {
       return;
     }
@@ -162,24 +165,11 @@ export function createDraftRuntime(draftPersistence: DraftPersistence) {
     }
   }
 
-  function snapshot(conversationIdentity: ConversationIdentity) {
-    const state = draftState
-      ? visibleDraftLifecycleState(draftState, conversationIdentity)
-      : initialDraftLifecycleState(conversationIdentity);
-    return {
-      capacityExceeded:
-        draftState !== null &&
-        sameConversationIdentity(draftState.conversationIdentity, conversationIdentity) &&
-        capacityExceeded,
-      draft: publicDraftState(state),
-    };
-  }
-
   function setCapacityExceeded(next: boolean) {
-    if (capacityExceeded === next) {
+    if (snapshot.capacityExceeded === next) {
       return;
     }
-    capacityExceeded = next;
+    snapshot = { ...snapshot, capacityExceeded: next };
     notify();
   }
 
@@ -196,17 +186,32 @@ export function createDraftRuntime(draftPersistence: DraftPersistence) {
   }
 
   function notify() {
-    revision += 1;
     for (const listener of [...listeners]) {
       listener();
     }
   }
 
-  function getRevision() {
-    return revision;
+  function getSnapshot() {
+    return snapshot;
   }
 
-  return { activate, getRevision, mutate, removeConfirmed, retry, snapshot, subscribe };
+  return { activate, getSnapshot, mutate, removeConfirmed, retry, subscribe };
 }
 
 export type DraftRuntime = ReturnType<typeof createDraftRuntime>;
+
+export function visibleDraftSnapshot(
+  snapshot: DraftRuntimeSnapshot,
+  conversationIdentity: ConversationIdentity,
+) {
+  const state = snapshot.draftState
+    ? visibleDraftLifecycleState(snapshot.draftState, conversationIdentity)
+    : initialDraftLifecycleState(conversationIdentity);
+  return {
+    capacityExceeded:
+      snapshot.draftState !== null &&
+      sameConversationIdentity(snapshot.draftState.conversationIdentity, conversationIdentity) &&
+      snapshot.capacityExceeded,
+    draft: publicDraftState(state),
+  };
+}
