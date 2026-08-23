@@ -5,7 +5,7 @@ import { createShadowRootUi } from "wxt/utils/content-script-ui/shadow-root";
 
 import { PortalContainerProvider } from "@/components/ui/portal-container";
 import { createBrowserDraftStore } from "@/features/annotations/draft-store-client";
-import { DraftPersistenceProvider } from "@/features/annotations/DraftPersistenceProvider";
+import { DraftRuntimeProvider } from "@/features/annotations/DraftRuntimeProvider";
 import { resolveActiveHost } from "@/features/host/active-host";
 import { SITE_URL_PATTERNS } from "@/features/host/site-urls";
 import { HostProvider } from "@/features/host-port/HostProvider";
@@ -73,7 +73,7 @@ export default defineContentScript({
 
         const root = ReactDOM.createRoot(app);
         root.render(
-          <DraftPersistenceProvider store={draftStore}>
+          <DraftRuntimeProvider store={draftStore}>
             <HostProvider host={host}>
               <PortalContainerProvider container={container}>
                 <HostThemeProvider accentTokens={site.accentTokens} container={container}>
@@ -83,7 +83,7 @@ export default defineContentScript({
                 </HostThemeProvider>
               </PortalContainerProvider>
             </HostProvider>
-          </DraftPersistenceProvider>,
+          </DraftRuntimeProvider>,
         );
         return root;
       },

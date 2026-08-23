@@ -6,7 +6,7 @@ import type { DraftAnnotation } from "@/features/annotations/annotation";
 import { sameConversationIdentity } from "@/features/annotations/conversation-identity";
 import { MAX_ANNOTATION_COMMENT_LENGTH } from "@/features/annotations/draft-capacity";
 import { applyDraftMutation, type DraftMutation } from "@/features/annotations/draft-mutation";
-import { DraftPersistenceProvider } from "@/features/annotations/DraftPersistenceProvider";
+import { DraftRuntimeProvider } from "@/features/annotations/DraftRuntimeProvider";
 import { canMutateDraft, useDraftAnnotations } from "@/features/annotations/use-draft-annotations";
 import type { ConversationIdentity, IdentifiedConversation } from "@/features/host-port/host-port";
 
@@ -702,9 +702,9 @@ describe("draft annotation lifecycle", () => {
 
 function DraftHarness({ conversationIdentity }: { conversationIdentity: ConversationIdentity }) {
   return (
-    <DraftPersistenceProvider store={draftStoreFixture.store}>
+    <DraftRuntimeProvider store={draftStoreFixture.store}>
       <DraftProbe conversationIdentity={conversationIdentity} />
-    </DraftPersistenceProvider>
+    </DraftRuntimeProvider>
   );
 }
 

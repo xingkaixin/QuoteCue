@@ -4,7 +4,7 @@ import type { DraftAnnotation } from "./annotation";
 import { applyDraftMutations, type DraftMutation } from "./draft-mutation";
 import type { DraftStore } from "./draft-store";
 
-type DraftPersistenceEvent =
+export type DraftPersistenceEvent =
   | {
       status: "failed";
       conversationIdentity: IdentifiedConversation;
