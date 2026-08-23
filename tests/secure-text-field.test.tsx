@@ -90,6 +90,43 @@ describe("SecureTextField", () => {
     expect(onSave).toHaveBeenCalledWith("updated annotation");
     expect(onWindowMessage).not.toHaveBeenCalled();
 
+    await act(async () => {
+      root.render(
+        <SecureTextField
+          ariaLabel="Renamed field"
+          kind="input"
+          maxLength={32}
+          name="renamed-field"
+          onCancel={vi.fn()}
+          onChange={onChange}
+          onSave={onSave}
+          placeholder="Updated placeholder"
+          value="updated annotation"
+        />,
+      );
+    });
+    const updatedIframe = container.querySelector("iframe");
+    if (!updatedIframe?.contentWindow) {
+      throw new Error("Expected updated secure field iframe");
+    }
+    const updatedPostMessage = vi
+      .spyOn(updatedIframe.contentWindow, "postMessage")
+      .mockImplementation(() => {});
+    await act(async () => updatedIframe.dispatchEvent(new Event("load")));
+
+    expect(updatedIframe).not.toBe(iframe);
+    expect(updatedPostMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        config: expect.objectContaining({
+          kind: "input",
+          maxLength: 32,
+          name: "renamed-field",
+        }),
+      }),
+      "https://extension.test",
+      [FakeMessageChannel.instances[1]?.port2],
+    );
+
     window.removeEventListener("message", onWindowMessage);
     await act(async () => root.unmount());
   });

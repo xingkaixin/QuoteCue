@@ -41,6 +41,7 @@ export const SecureTextField = forwardRef<SecureTextFieldHandle, SecureTextField
     const theme = useHostTheme();
     const [token] = useState(() => crypto.randomUUID());
     const frameUrl = browser.runtime.getURL(`/secure-field.html#${encodeURIComponent(token)}`);
+    const frameKey = JSON.stringify([kind, maxLength ?? null, name]);
     const frameRef = useRef<HTMLIFrameElement>(null);
     const portRef = useRef<MessagePort | null>(null);
     const configRef = useRef<SecureFieldConfig>({
@@ -97,7 +98,7 @@ export const SecureTextField = forwardRef<SecureTextFieldHandle, SecureTextField
         portRef.current?.close();
         portRef.current = null;
       },
-      [],
+      [frameKey],
     );
 
     useImperativeHandle(
@@ -114,6 +115,7 @@ export const SecureTextField = forwardRef<SecureTextFieldHandle, SecureTextField
       <iframe
         aria-label={ariaLabel}
         className={className}
+        key={frameKey}
         lang={locale}
         onLoad={connect}
         ref={frameRef}
