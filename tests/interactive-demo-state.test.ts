@@ -173,3 +173,31 @@ describe("interactive demo prompt", () => {
     );
   });
 });
+
+describe("interactive demo copy", () => {
+  it("owns annotation count and removal grammar for each locale", () => {
+    const zh = getCopy("zh-CN").demo;
+    const ja = getCopy("ja").demo;
+    const en = getCopy("en").demo;
+
+    expect([zh.formatAnnotationCount(1), zh.formatRemovedNotice(2, 0)]).toEqual([
+      "1 条批注",
+      "已删除 2 条批注，还剩 0 条。",
+    ]);
+    expect([ja.formatAnnotationCount(1), ja.formatRemovedNotice(2, 0)]).toEqual([
+      "1 件の注釈",
+      "2 件の注釈を削除しました。残り 0 件です。",
+    ]);
+    expect([
+      en.formatAnnotationCount(1),
+      en.formatAnnotationCount(2),
+      en.formatRemovedNotice(1, 1),
+      en.formatRemovedNotice(2, 0),
+    ]).toEqual([
+      "1 annotation",
+      "2 annotations",
+      "Annotation removed. 1 remaining.",
+      "2 annotations removed. 0 remaining.",
+    ]);
+  });
+});
