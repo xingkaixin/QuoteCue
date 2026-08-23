@@ -13,6 +13,7 @@ QuoteCue 是一个 Chrome 扩展，用于在 ChatGPT、Claude、DeepSeek 和 Kim
 ```bash
 corepack enable
 pnpm install --frozen-lockfile
+pnpm exec playwright install chromium
 ```
 
 ## 开发
@@ -38,8 +39,8 @@ Cloudflare Workers 部署、Web Analytics 与 SEO 配置见
 
 ## 验证与打包
 
-`pnpm check` 是本仓库代码的唯一质量门禁，包含格式检查、lint、类型检查、测试以及一次生产
-构建，并且完全离线运行。
+`pnpm check` 是本仓库代码的唯一质量门禁，包含格式检查、lint、类型检查、jsdom 与 Chromium
+测试以及一次生产构建。完成上述浏览器安装后，门禁可以完全离线运行。
 
 ```bash
 pnpm check

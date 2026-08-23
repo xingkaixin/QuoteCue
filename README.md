@@ -13,6 +13,7 @@ With Corepack available, install the pinned package manager and dependencies wit
 ```bash
 corepack enable
 pnpm install --frozen-lockfile
+pnpm exec playwright install chromium
 ```
 
 ## Development
@@ -40,7 +41,8 @@ SEO configuration.
 ## Validation and packaging
 
 `pnpm check` is the single quality gate for the code in this repository. It checks formatting,
-lint, types, tests, and a production build, and it runs entirely offline.
+lint, types, jsdom and Chromium tests, and a production build. After the browser installation above,
+the gate runs entirely offline.
 
 ```bash
 pnpm check
