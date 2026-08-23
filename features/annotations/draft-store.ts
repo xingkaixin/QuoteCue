@@ -1,4 +1,4 @@
-import type { IdentifiedConversation } from "@/features/host-port/host-port";
+import type { IdentifiedConversation } from "@/features/conversation/conversation-identity";
 
 import type { DraftAnnotation } from "./annotation";
 import type { DraftMutation } from "./draft-mutation";

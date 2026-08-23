@@ -1,4 +1,4 @@
-import type { SupportedSiteId } from "@quotecue/shared/supported-sites";
+import type { ConversationIdentity } from "@/features/conversation/conversation-identity";
 import type { TextAnchor } from "@/lib/text-anchor";
 
 export type { TextAnchor } from "@/lib/text-anchor";
@@ -30,19 +30,6 @@ export type ComposerSubmitIntent = {
 };
 
 export type ComposerSubmitDecision = "claim" | "pass-through";
-
-export type IdentifiedConversation = {
-  kind: "identified";
-  id: string;
-  siteId: SupportedSiteId;
-};
-
-export type UnidentifiedConversation = {
-  kind: "unidentified";
-  sessionKey: string;
-};
-
-export type ConversationIdentity = IdentifiedConversation | UnidentifiedConversation;
 
 export type SelectionInvalidation =
   | { reason: "layout" }

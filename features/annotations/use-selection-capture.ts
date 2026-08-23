@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
+import type { ConversationIdentity } from "@/features/conversation/conversation-identity";
 import { useHost } from "@/features/host-port/HostProvider";
-import type { ConversationIdentity } from "@/features/host-port/host-port";
 
 import type { AnchoredSelection, SelectionCapture } from "./annotation";
 

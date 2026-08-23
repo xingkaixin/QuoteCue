@@ -3,12 +3,15 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { DraftAnnotation } from "@/features/annotations/annotation";
-import { sameConversationIdentity } from "@/features/annotations/conversation-identity";
+import {
+  sameConversationIdentity,
+  type ConversationIdentity,
+  type IdentifiedConversation,
+} from "@/features/conversation/conversation-identity";
 import { MAX_ANNOTATION_COMMENT_LENGTH } from "@/features/annotations/draft-capacity";
 import { applyDraftMutation, type DraftMutation } from "@/features/annotations/draft-mutation";
 import { DraftRuntimeProvider } from "@/features/annotations/DraftRuntimeProvider";
 import { canMutateDraft, useDraftAnnotations } from "@/features/annotations/use-draft-annotations";
-import type { ConversationIdentity, IdentifiedConversation } from "@/features/host-port/host-port";
 
 import { createDraftStoreDouble } from "./fixtures/memory-draft-store";
 

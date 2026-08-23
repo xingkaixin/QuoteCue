@@ -4,8 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import App from "@/entrypoints/content/App";
 import type { DraftAnnotation, AnchoredSelection } from "@/features/annotations/annotation";
+import type { IdentifiedConversation } from "@/features/conversation/conversation-identity";
 import { DraftRuntimeProvider } from "@/features/annotations/DraftRuntimeProvider";
-import type { IdentifiedConversation } from "@/features/host-port/host-port";
 import { HostProvider } from "@/features/host-port/HostProvider";
 import { I18nProvider } from "@/features/i18n/I18nProvider";
 

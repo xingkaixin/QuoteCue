@@ -3,8 +3,8 @@ import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { DraftAnnotation } from "@/features/annotations/annotation";
+import type { ConversationIdentity } from "@/features/conversation/conversation-identity";
 import { useDeferredAnnotationDeletion } from "@/features/annotations/use-deferred-annotation-deletion";
-import type { ConversationIdentity } from "@/features/host-port/host-port";
 
 const annotations: DraftAnnotation[] = [
   {

@@ -1,4 +1,4 @@
-import type { IdentifiedConversation } from "@/features/host-port/host-port";
+import type { IdentifiedConversation } from "@/features/conversation/conversation-identity";
 
 export const DRAFT_KEY_PREFIX = "quotecue:draft:";
 export const LEGACY_DRAFT_KEY_PREFIX = "askgpt:draft:";

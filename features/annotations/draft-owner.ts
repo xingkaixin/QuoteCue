@@ -1,6 +1,6 @@
 import { browser } from "wxt/browser";
 
-import type { IdentifiedConversation } from "@/features/host-port/host-port";
+import type { IdentifiedConversation } from "@/features/conversation/conversation-identity";
 
 import type { DraftAnnotation } from "./annotation";
 import { draftMutationExceedsCapacity } from "./draft-capacity";

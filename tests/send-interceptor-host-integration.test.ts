@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { numberAnnotations } from "@/features/annotations/annotation-projection";
+import type { ConversationIdentity } from "@/features/conversation/conversation-identity";
 import { registerSendInterceptor } from "@/features/annotations/register-send-interceptor";
 import { createChatGptHost } from "@/features/chatgpt/chatgpt-host";
-import type { ConversationIdentity } from "@/features/host-port/host-port";
 
 import {
   appendComposer as installComposer,

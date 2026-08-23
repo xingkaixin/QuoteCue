@@ -1,8 +1,8 @@
+import type { ConversationIdentity } from "@/features/conversation/conversation-identity";
 import type {
   ComposerSubmitDecision,
   ComposerSubmitIntent,
   ComposerSnapshot,
-  ConversationIdentity,
   Host,
   HostLayout,
   HostResult,
