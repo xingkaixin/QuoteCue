@@ -1,4 +1,4 @@
-import type { SupportedSiteId } from "@/lib/supported-sites";
+import type { SupportedSiteId } from "@quotecue/shared/supported-sites";
 import type { TextAnchor } from "@/lib/text-anchor";
 
 export type { TextAnchor } from "@/lib/text-anchor";

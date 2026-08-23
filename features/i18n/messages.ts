@@ -1,8 +1,8 @@
 import {
   annotationPromptMessagesFor,
   type AnnotationPromptLocale,
-} from "@/lib/annotation-prompt-messages";
-import type { AnnotationPromptMessages } from "@/lib/annotation-prompt";
+} from "@quotecue/shared/annotation-prompt-messages";
+import type { AnnotationPromptMessages } from "@quotecue/shared/annotation-prompt";
 
 export type SupportedLocale = AnnotationPromptLocale;
 
