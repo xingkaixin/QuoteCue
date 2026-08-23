@@ -1,54 +1,88 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-let originalPushState: History["pushState"];
-let originalReplaceState: History["replaceState"];
+import { createChatGptHost } from "@/features/chatgpt/chatgpt-host";
+
+let navigationDescriptor: PropertyDescriptor | undefined;
 
 beforeEach(() => {
-  originalPushState = window.history.pushState;
-  originalReplaceState = window.history.replaceState;
+  navigationDescriptor = Object.getOwnPropertyDescriptor(window, "navigation");
+  window.history.replaceState({}, "", "/");
 });
 
 afterEach(() => {
-  window.history.pushState = originalPushState;
-  window.history.replaceState = originalReplaceState;
-  vi.resetModules();
+  vi.useRealTimers();
+  window.history.replaceState({}, "", "/");
+  if (navigationDescriptor) {
+    Object.defineProperty(window, "navigation", navigationDescriptor);
+  } else {
+    Reflect.deleteProperty(window, "navigation");
+  }
 });
 
 describe("host navigation signals", () => {
-  it("shares one reversible history patch across module instances", async () => {
-    const firstModule = await import("@/features/chatgpt/chatgpt-host");
-    const firstHost = firstModule.createChatGptHost({ document, window });
-    const firstCallback = vi.fn();
-    const stopFirst = firstHost.conversation.subscribe(firstCallback);
+  it("reads the committed conversation after a Navigation API event", async () => {
+    const navigation = installNavigationSource();
+    const host = createChatGptHost({ document, window });
+    const identities = vi.fn(() => host.conversation.identity("session"));
+    const stop = host.conversation.subscribe(identities);
 
-    vi.resetModules();
-    const secondModule = await import("@/features/chatgpt/chatgpt-host");
-    const secondHost = secondModule.createChatGptHost({ document, window });
-    const secondCallback = vi.fn();
-    const stopSecond = secondHost.conversation.subscribe(secondCallback);
-
+    navigation.dispatchEvent(new Event("navigate"));
     window.history.pushState({}, "", "/c/conversation-a");
+    expect(identities).not.toHaveBeenCalled();
+    await Promise.resolve();
 
+    expect(identities).toHaveReturnedWith({
+      kind: "identified",
+      id: "conversation-a",
+      siteId: "chatgpt",
+    });
+    stop();
+  });
+
+  it("keeps Navigation API subscriptions independent", async () => {
+    const navigation = installNavigationSource();
+    const host = createChatGptHost({ document, window });
+    const firstCallback = vi.fn();
+    const secondCallback = vi.fn();
+    const stopFirst = host.conversation.subscribe(firstCallback);
+    const stopSecond = host.conversation.subscribe(secondCallback);
+
+    navigation.dispatchEvent(new Event("navigate"));
+    await Promise.resolve();
     expect(firstCallback).toHaveBeenCalledOnce();
     expect(secondCallback).toHaveBeenCalledOnce();
 
     stopFirst();
-    expect(window.history.pushState).not.toBe(originalPushState);
+    navigation.dispatchEvent(new Event("navigate"));
+    await Promise.resolve();
+    expect(firstCallback).toHaveBeenCalledOnce();
+    expect(secondCallback).toHaveBeenCalledTimes(2);
+
     stopSecond();
-    expect(window.history.pushState).toBe(originalPushState);
-    expect(window.history.replaceState).toBe(originalReplaceState);
   });
 
-  it("does not overwrite a history method changed by another owner", async () => {
-    const { createChatGptHost } = await import("@/features/chatgpt/chatgpt-host");
+  it("polls URL changes when the Navigation API is unavailable", async () => {
+    vi.useFakeTimers();
+    Reflect.deleteProperty(window, "navigation");
     const host = createChatGptHost({ document, window });
-    const stop = host.conversation.subscribe(vi.fn());
-    const thirdPartyPushState = vi.fn();
+    const callback = vi.fn();
+    const stop = host.conversation.subscribe(callback);
 
-    window.history.pushState = thirdPartyPushState;
+    window.history.pushState({}, "", "/c/conversation-a");
+    await vi.advanceTimersByTimeAsync(999);
+    expect(callback).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(callback).toHaveBeenCalledOnce();
+
     stop();
-
-    expect(window.history.pushState).toBe(thirdPartyPushState);
-    expect(window.history.replaceState).toBe(originalReplaceState);
+    window.history.pushState({}, "", "/c/conversation-b");
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(callback).toHaveBeenCalledOnce();
   });
 });
+
+function installNavigationSource() {
+  const navigation = new EventTarget();
+  Object.defineProperty(window, "navigation", { configurable: true, value: navigation });
+  return navigation;
+}
