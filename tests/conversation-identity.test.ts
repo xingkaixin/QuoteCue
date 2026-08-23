@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { sameConversationIdentity } from "@/features/annotations/conversation-identity";
+import {
+  conversationIdentityKey,
+  sameConversationIdentity,
+} from "@/features/annotations/conversation-identity";
 import { createChatGptHost } from "@/features/chatgpt/chatgpt-host";
 import { createClaudeHost } from "@/features/claude/claude-host";
 
@@ -42,6 +45,9 @@ describe("conversation identities", () => {
     expect(chatGptIdentity).toMatchObject({ kind: "identified", id: "shared-id" });
     expect(claudeIdentity).toMatchObject({ kind: "identified", id: "shared-id" });
     expect(sameConversationIdentity(chatGptIdentity, claudeIdentity)).toBe(false);
+    expect(conversationIdentityKey(chatGptIdentity)).not.toBe(
+      conversationIdentityKey(claudeIdentity),
+    );
   });
 
   it("keeps unidentified sessions distinct without a magic prefix", () => {

@@ -9,7 +9,7 @@ import type {
 
 import type { DraftAnnotation } from "./annotation";
 import type { NumberedAnnotation } from "./annotation-projection";
-import { sameConversationIdentity } from "./conversation-identity";
+import { conversationIdentityKey, sameConversationIdentity } from "./conversation-identity";
 import { compiledPromptExceedsCapacity } from "./draft-capacity";
 import { compileAnnotatedPrompt } from "./prompt-compiler";
 
@@ -50,15 +50,14 @@ type SendAttempt = {
   controller: AbortController;
 };
 
-type FailedSendSnapshot = {
-  conversationIdentity: ConversationIdentity;
-  originalText: string;
-};
+type SendSession =
+  | { status: "sending"; attempt: SendAttempt }
+  | (AnnotatedSendFailure & { originalText?: string });
 
 export function registerSendInterceptor(options: SendInterceptorOptions) {
   const host = options.host;
-  let activeAttempt: SendAttempt | null = null;
-  let failedSendSnapshot: FailedSendSnapshot | null = null;
+  const sendSessions = new Map<string, SendSession>();
+  let currentConversationIdentity: ConversationIdentity | null = null;
   let isDisposed = false;
 
   const reportError = (message: string) => {
@@ -82,31 +81,65 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
     runSafely("Failed to stop annotated send work", () => attempt.controller.abort());
   };
 
+  const setConversationState = (
+    conversationIdentity: ConversationIdentity,
+    state: AnnotatedSendState,
+  ) => {
+    if (
+      currentConversationIdentity &&
+      sameConversationIdentity(currentConversationIdentity, conversationIdentity)
+    ) {
+      setState(state);
+    }
+  };
+
+  const stateForConversation = (conversationIdentity: ConversationIdentity): AnnotatedSendState => {
+    const session = sendSessions.get(conversationIdentityKey(conversationIdentity));
+    if (!session) {
+      return { status: "idle" };
+    }
+    if (session.status === "sending") {
+      return { status: "sending" };
+    }
+    return { status: "failed", reason: session.reason };
+  };
+
+  const recordFailure = (
+    conversationIdentity: ConversationIdentity,
+    reason: AnnotatedSendFailureReason,
+    originalText?: string,
+  ) => {
+    sendSessions.set(conversationIdentityKey(conversationIdentity), {
+      ...(originalText === undefined ? {} : { originalText }),
+      reason,
+      status: "failed",
+    });
+    setConversationState(conversationIdentity, { status: "failed", reason });
+  };
+
   const finishConfirmed = (attempt: SendAttempt) => {
-    if (activeAttempt !== attempt) {
+    const key = conversationIdentityKey(attempt.conversationIdentity);
+    const session = sendSessions.get(key);
+    if (session?.status !== "sending" || session.attempt !== attempt) {
       return;
     }
-    activeAttempt = null;
-    failedSendSnapshot = null;
+    sendSessions.delete(key);
     const sentAnnotations = attempt.annotations.map(({ annotation }) => annotation);
     abortAttempt(attempt);
-    setState({ status: "idle" });
+    setConversationState(attempt.conversationIdentity, { status: "idle" });
     runSafely("Failed to apply confirmed annotations", () =>
       options.onSendConfirmed(sentAnnotations, attempt.conversationIdentity),
     );
   };
 
   const finishFailed = (attempt: SendAttempt, reason: AnnotatedSendFailureReason) => {
-    if (activeAttempt !== attempt) {
+    const key = conversationIdentityKey(attempt.conversationIdentity);
+    const session = sendSessions.get(key);
+    if (session?.status !== "sending" || session.attempt !== attempt) {
       return;
     }
-    activeAttempt = null;
-    failedSendSnapshot = {
-      conversationIdentity: attempt.conversationIdentity,
-      originalText: attempt.snapshot.text,
-    };
     abortAttempt(attempt);
-    setState({ status: "failed", reason });
+    recordFailure(attempt.conversationIdentity, reason, attempt.snapshot.text);
   };
 
   const replaySend = (attempt: SendAttempt) => {
@@ -124,9 +157,6 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
     }
     void submission
       .then((result) => {
-        if (activeAttempt !== attempt) {
-          return;
-        }
         if (result.status === "available") {
           finishConfirmed(attempt);
         } else {
@@ -139,19 +169,18 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
       });
   };
 
-  const beginSend = (
-    isSendAvailable: boolean | undefined,
-    source: "custom" | "native",
-    retryOriginalText?: string,
-  ) => {
+  const beginSend = (isSendAvailable: boolean | undefined, source: "custom" | "native") => {
     if (isDisposed) {
       return false;
     }
-    if (activeAttempt) {
-      return true;
-    }
 
     const sendInput = options.getSendInput();
+    currentConversationIdentity = sendInput.conversationIdentity;
+    const conversationKey = conversationIdentityKey(sendInput.conversationIdentity);
+    const currentSession = sendSessions.get(conversationKey);
+    if (currentSession?.status === "sending") {
+      return true;
+    }
     const annotations = snapshotAnnotations(sendInput.annotations);
     if (annotations.length === 0) {
       return false;
@@ -159,7 +188,9 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
 
     const snapshotResult = host.composer.snapshot();
     if (snapshotResult.status === "unavailable") {
-      reportPreflightFailure("composer-unavailable", source, setState);
+      if (source === "custom") {
+        recordFailure(sendInput.conversationIdentity, "composer-unavailable");
+      }
       return false;
     }
     const snapshot = snapshotResult.value;
@@ -169,13 +200,18 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
     if (source === "native" && !isSendAvailable && !isRecoverableBySend) {
       return false;
     }
+    const retryOriginalText =
+      source === "custom" && currentSession?.status === "failed"
+        ? currentSession.originalText
+        : undefined;
     const originalText =
-      retryOriginalText && snapshot.text.trim().length === 0 ? retryOriginalText : snapshot.text;
+      retryOriginalText !== undefined && snapshot.text.trim().length === 0
+        ? retryOriginalText
+        : snapshot.text;
     const ownedSnapshot = { ...snapshot, text: originalText };
     const compiledPrompt = compileAnnotatedPrompt(annotations, originalText, sendInput.locale);
     if (compiledPromptExceedsCapacity(compiledPrompt)) {
-      const result = { status: "failed", reason: "prompt-too-long" } as const;
-      setState(result);
+      recordFailure(sendInput.conversationIdentity, "prompt-too-long");
       return true;
     }
     const attempt = createAttempt(
@@ -184,8 +220,7 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
       compiledPrompt,
       annotations,
     );
-    activeAttempt = attempt;
-    failedSendSnapshot = null;
+    sendSessions.set(conversationKey, { status: "sending", attempt });
     setState({ status: "sending" });
 
     replaySend(attempt);
@@ -193,10 +228,6 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
   };
 
   const prepareNativeSend = ({ isSendAvailable }: ComposerSubmitIntent): ComposerSubmitDecision => {
-    if (activeAttempt) {
-      return "claim";
-    }
-
     return beginSend(isSendAvailable, "native") ? "claim" : "pass-through";
   };
 
@@ -204,22 +235,10 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
   setState({ status: "idle" });
 
   return {
-    submit: () => {
-      beginSend(undefined, "custom", failedSendSnapshot?.originalText);
-    },
-    // A failed attempt's question belongs to the conversation that produced it. An active attempt
-    // keeps running so it can still confirm after navigation.
+    submit: () => beginSend(undefined, "custom"),
     conversationChanged(conversationIdentity: ConversationIdentity) {
-      if (
-        !failedSendSnapshot ||
-        sameConversationIdentity(failedSendSnapshot.conversationIdentity, conversationIdentity)
-      ) {
-        return;
-      }
-      failedSendSnapshot = null;
-      if (!activeAttempt) {
-        setState({ status: "idle" });
-      }
+      currentConversationIdentity = conversationIdentity;
+      setState(stateForConversation(conversationIdentity));
     },
     dispose() {
       if (isDisposed) {
@@ -227,9 +246,12 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
       }
       isDisposed = true;
       stopListening();
-      if (activeAttempt) {
-        abortAttempt(activeAttempt);
+      for (const session of sendSessions.values()) {
+        if (session.status === "sending") {
+          abortAttempt(session.attempt);
+        }
       }
+      sendSessions.clear();
     },
   };
 }
@@ -257,14 +279,4 @@ function snapshotAnnotations(annotations: readonly NumberedAnnotation[]): Number
     },
     ordinal,
   }));
-}
-
-function reportPreflightFailure(
-  reason: AnnotatedSendFailureReason,
-  source: "custom" | "native",
-  setState: (state: AnnotatedSendState) => void,
-) {
-  if (source === "custom") {
-    setState({ status: "failed", reason });
-  }
 }
