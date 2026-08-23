@@ -221,7 +221,8 @@ describe("registerSendInterceptor", () => {
 
   it("settles a failed attempt when the host submission rejects", async () => {
     const host = createFakeHost();
-    vi.spyOn(host.composer, "submit").mockRejectedValue(new Error("host submit failed"));
+    const error = new Error("host submit failed");
+    vi.spyOn(host.composer, "submit").mockRejectedValue(error);
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const onStateChange = vi.fn();
     const interceptor = createInterceptor(undefined, { host, onStateChange });
@@ -236,7 +237,7 @@ describe("registerSendInterceptor", () => {
     expect(onStateChange).toHaveBeenLastCalledWith(
       expect.objectContaining({ status: "failed", reason: "send-unavailable" }),
     );
-    expect(consoleError).toHaveBeenCalledWith("[QuoteCue] Failed to replay annotated send");
+    expect(consoleError).toHaveBeenCalledWith("[QuoteCue] Failed to replay annotated send", error);
     interceptor.dispose();
   });
 
@@ -258,8 +259,9 @@ describe("registerSendInterceptor", () => {
 
   it("settles a confirmed attempt when its completion callback throws", async () => {
     const composer = installComposer("original question");
+    const error = new Error("confirmation callback failed");
     const onSendConfirmed = vi.fn(() => {
-      throw new Error("confirmation callback failed");
+      throw error;
     });
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const onStateChange = vi.fn();
@@ -277,7 +279,10 @@ describe("registerSendInterceptor", () => {
       { status: "sending" },
       { status: "idle" },
     ]);
-    expect(consoleError).toHaveBeenCalledWith("[QuoteCue] Failed to apply confirmed annotations");
+    expect(consoleError).toHaveBeenCalledWith(
+      "[QuoteCue] Failed to apply confirmed annotations",
+      error,
+    );
     interceptor.dispose();
   });
 

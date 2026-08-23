@@ -22,7 +22,10 @@ export default defineContentScript({
   async main(context) {
     const active = resolveActiveHost(window.location.hostname, {
       document,
-      logger: import.meta.env.DEV ? (message) => console.debug(message) : undefined,
+      logger: import.meta.env.DEV
+        ? (message, error) =>
+            error === undefined ? console.debug(message) : console.debug(message, error)
+        : undefined,
       window,
     });
     if (!active) {

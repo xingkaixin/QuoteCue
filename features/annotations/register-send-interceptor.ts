@@ -60,14 +60,18 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
   let currentConversationIdentity: ConversationIdentity | null = null;
   let isDisposed = false;
 
-  const reportError = (message: string) => {
-    console.error(`[QuoteCue] ${message}`);
+  const reportError = (message: string, error?: unknown) => {
+    if (error === undefined) {
+      console.error(`[QuoteCue] ${message}`);
+      return;
+    }
+    console.error(`[QuoteCue] ${message}`, error);
   };
   const runSafely = (failureMessage: string, operation: () => void) => {
     try {
       operation();
-    } catch {
-      reportError(failureMessage);
+    } catch (error: unknown) {
+      reportError(failureMessage, error);
     }
   };
 
@@ -150,8 +154,8 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
         signal: attempt.controller.signal,
         text: attempt.compiledPrompt,
       });
-    } catch {
-      reportError("Failed to replay annotated send");
+    } catch (error: unknown) {
+      reportError("Failed to replay annotated send", error);
       finishFailed(attempt, "send-unavailable");
       return;
     }
@@ -163,8 +167,8 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
           finishFailed(attempt, result.reason);
         }
       })
-      .catch(() => {
-        reportError("Failed to replay annotated send");
+      .catch((error: unknown) => {
+        reportError("Failed to replay annotated send", error);
         finishFailed(attempt, "send-unavailable");
       });
   };
