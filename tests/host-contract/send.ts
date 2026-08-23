@@ -54,9 +54,10 @@ export function runSendHostContract(definition: HostContractDefinition) {
       fixture.composer.addEventListener("input", () => {
         definition.setSendDisabled(fixture.sendControl, false);
       });
+      let sentText = "";
       fixture.sendControl.addEventListener("click", () => {
-        const text = availableValue(siteHost.composer.snapshot()).text;
-        definition.appendUserMessage(text);
+        sentText = availableValue(siteHost.composer.snapshot()).text;
+        definition.appendUserMessage(sentText);
       });
       const annotation: DraftAnnotation = {
         anchor,
@@ -86,6 +87,8 @@ export function runSendHostContract(definition: HostContractDefinition) {
           siteId: definition.siteId,
         }),
       );
+      expect(sentText).toContain("[Annotation 1]");
+      expect(sentText).not.toContain("[Supplemental question]");
       interceptor.dispose();
     });
 

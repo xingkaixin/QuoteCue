@@ -176,6 +176,7 @@ export function runPresentationHostContract(definition: HostContractDefinition) 
 
     it("centers an offscreen endpoint in the nearest scroll container", () => {
       const fixture = definition.installFixture();
+      const endpointTop = { value: 900 };
       const scrollContainer = document.createElement("div");
       scrollContainer.style.overflowY = "auto";
       Object.defineProperties(scrollContainer, {
@@ -193,12 +194,19 @@ export function runPresentationHostContract(definition: HostContractDefinition) 
       range.selectNodeContents(fixture.assistantMessage);
       Object.defineProperty(range, "getClientRects", {
         configurable: true,
-        value: () => [new DOMRect(100, 900, 160, 20)],
+        value: () => [new DOMRect(100, endpointTop.value, 160, 20)],
       });
 
       expect(host().selection.reveal(range)).toEqual({
         status: "available",
         value: "scrolled",
+      });
+      expect(scrollContainer.scrollTop).toBe(660);
+
+      endpointTop.value = 200;
+      expect(host().selection.reveal(range)).toEqual({
+        status: "available",
+        value: "visible",
       });
       expect(scrollContainer.scrollTop).toBe(660);
     });
