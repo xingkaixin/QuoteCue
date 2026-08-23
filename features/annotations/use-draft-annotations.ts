@@ -3,6 +3,7 @@ import { useCallback, useEffect, useSyncExternalStore } from "react";
 import type { ConversationIdentity } from "@/features/host-port/host-port";
 
 import type { DraftAnnotation } from "./annotation";
+import { visibleDraftSnapshot } from "./draft-runtime";
 import { useDraftRuntime } from "./DraftRuntimeProvider";
 
 export { canMutateDraft } from "./draft-lifecycle";
@@ -10,13 +11,17 @@ export type { DraftState } from "./draft-lifecycle";
 
 export function useDraftAnnotations(conversationIdentity: ConversationIdentity) {
   const runtime = useDraftRuntime();
-  useSyncExternalStore(runtime.subscribe, runtime.getRevision, runtime.getRevision);
+  const snapshot = useSyncExternalStore(
+    runtime.subscribe,
+    runtime.getSnapshot,
+    runtime.getSnapshot,
+  );
 
   useEffect(() => {
     runtime.activate(conversationIdentity);
   }, [conversationIdentity, runtime]);
 
-  const { capacityExceeded, draft } = runtime.snapshot(conversationIdentity);
+  const { capacityExceeded, draft } = visibleDraftSnapshot(snapshot, conversationIdentity);
   const mutate = useCallback(
     (mutation: Parameters<typeof runtime.mutate>[1]) =>
       runtime.mutate(conversationIdentity, mutation),
