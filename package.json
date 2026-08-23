@@ -17,8 +17,9 @@
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
     "test": "vitest run",
+    "test:e2e": "pnpm build && playwright test",
     "verify:manifest": "node scripts/verify-manifest.ts",
-    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm site:check && pnpm build && pnpm verify:manifest",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm site:check && pnpm test:e2e && pnpm verify:manifest",
     "audit:high": "pnpm audit --audit-level high"
   },
   "dependencies": {
@@ -32,6 +33,7 @@
     "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/vite": "^4.3.3",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",

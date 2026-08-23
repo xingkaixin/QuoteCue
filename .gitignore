@@ -5,6 +5,7 @@ website/.astro/
 website/dist/
 website/.wrangler/
 coverage/
+test-results/
 tmp/
 
 .env
