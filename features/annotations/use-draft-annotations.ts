@@ -5,7 +5,7 @@ import type { ConversationIdentity, IdentifiedConversation } from "@/features/ho
 import type { DraftAnnotation } from "./annotation";
 import { sameConversationIdentity } from "./conversation-identity";
 import { draftMutationExceedsCapacity } from "./draft-capacity";
-import { applyDraftMutation, type DraftMutation } from "./draft-mutation";
+import { applyDraftMutation, applyDraftMutations, type DraftMutation } from "./draft-mutation";
 import { useDraftPersistence } from "./DraftStoreProvider";
 
 type DraftLifecycleState =
@@ -307,14 +307,4 @@ function draftAnnotationsToAdopt(state: DraftLifecycleState, nextIdentity: Conve
     sameConversationIdentity(state.conversationIdentity, nextIdentity)
     ? state.annotations
     : [];
-}
-
-function applyDraftMutations(
-  annotations: readonly DraftAnnotation[],
-  mutations: readonly DraftMutation[],
-) {
-  return mutations.reduce<DraftAnnotation[]>(
-    (current, mutation) => [...(applyDraftMutation(current, mutation) ?? current)],
-    [...annotations],
-  );
 }

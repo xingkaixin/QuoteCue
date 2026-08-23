@@ -1,7 +1,7 @@
 import type { IdentifiedConversation } from "@/features/host-port/host-port";
 
 import type { DraftAnnotation } from "./annotation";
-import type { DraftMutation } from "./draft-mutation";
+import { applyDraftMutations, type DraftMutation } from "./draft-mutation";
 import type { DraftStore } from "./draft-store";
 
 type DraftPersistenceEvent =
@@ -29,9 +29,14 @@ export function createDraftPersistence(draftStore: DraftStore) {
   const pendingSaves = new Map<string, PendingDraftSave>();
   const listeners = new Set<DraftPersistenceListener>();
 
-  function load(conversation: IdentifiedConversation) {
-    const activeSave = pendingSaves.get(conversationKey(conversation))?.activeSave;
-    return (activeSave ?? Promise.resolve()).then(() => draftStore.load(conversation));
+  async function load(conversation: IdentifiedConversation) {
+    const key = conversationKey(conversation);
+    await pendingSaves.get(key)?.activeSave;
+    const annotations = await draftStore.load(conversation);
+    const pendingMutations = pendingSaves.get(key)?.mutations ?? [];
+    return pendingMutations.length > 0
+      ? applyDraftMutations(annotations, pendingMutations)
+      : annotations;
   }
 
   function enqueue(conversation: IdentifiedConversation, mutation: DraftMutation) {

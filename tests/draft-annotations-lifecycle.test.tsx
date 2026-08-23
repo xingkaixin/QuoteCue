@@ -505,6 +505,34 @@ describe("draft annotation lifecycle", () => {
     await act(async () => root.unmount());
   });
 
+  it("keeps failed unsaved annotations visible after returning to a conversation", async () => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    draftStoreFixture.store.load.mockResolvedValue([]);
+    draftStoreFixture.store.mutate.mockRejectedValue(new Error("storage unavailable"));
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    await act(async () => root.render(<DraftHarness conversationIdentity={conversationA} />));
+    await act(async () => latestDrafts.addAnnotation(annotation));
+    await vi.waitFor(() =>
+      expect(latestDrafts.draft).toMatchObject({ status: "error", operation: "save" }),
+    );
+
+    await act(async () => root.render(<DraftHarness conversationIdentity={conversationB} />));
+    await act(async () => root.render(<DraftHarness conversationIdentity={conversationA} />));
+
+    expect(latestDrafts.draft).toEqual({
+      status: "error",
+      operation: "save",
+      annotations: [annotation],
+    });
+
+    consoleError.mockRestore();
+    await act(async () => root.unmount());
+  });
+
   it("preserves a failed edit when a later mutation saves successfully", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     const storedAnnotations = [annotation];
