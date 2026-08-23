@@ -75,9 +75,13 @@ test("sends an annotation through the loaded extension", async ({ context, exten
   await expect
     .poll(() => storedAnnotationCount(extensionWorker, draftKey("conversation-send")))
     .toBe(1);
+  await expect
+    .poll(() =>
+      page.locator("[data-testid=send-button]").evaluate((element) => element.style.visibility),
+    )
+    .toBe("hidden");
 
-  await page.locator("#prompt-textarea").focus();
-  await page.keyboard.press("Enter");
+  await page.locator("#prompt-textarea").press("Enter");
 
   const sentMessage = page.locator('[data-message-author-role="user"]');
   await expect(sentMessage).toContainText("[Annotation 1]");
@@ -129,18 +133,20 @@ async function openConversation(context: BrowserContext, conversationId: string)
 
 async function addAnnotation(page: Page) {
   const action = page.locator("[data-quotecue-native-action]");
-  const paragraph = page.locator('[data-message-author-role="assistant"] p');
-  const bounds = await paragraph.boundingBox();
-  if (!bounds) {
-    throw new Error("Missing assistant text bounds");
-  }
   await expect(async () => {
-    const y = bounds.y + bounds.height / 2;
-    await page.mouse.move(bounds.x + 2, y);
-    await page.mouse.down();
-    await page.mouse.move(bounds.x + bounds.width - 2, y, { steps: 10 });
-    await page.mouse.up();
-    await expect(action).toBeVisible({ timeout: 500 });
+    await page.evaluate(() => {
+      const paragraph = document.querySelector('[data-message-author-role="assistant"] p');
+      if (!paragraph) {
+        throw new Error("Missing assistant text");
+      }
+      const range = document.createRange();
+      range.selectNodeContents(paragraph);
+      const selection = window.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+    });
+    await page.keyboard.press("Shift");
+    await expect(action).toBeVisible({ timeout: 1_000 });
   }).toPass({ timeout: 10_000 });
   await action.click();
 }
