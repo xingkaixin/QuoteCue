@@ -1,7 +1,6 @@
 import type { SupportedLocale } from "@/features/i18n/messages";
 import {
   conversationIdentityKey,
-  sameConversationIdentity,
   type ConversationIdentity,
 } from "@/features/conversation/conversation-identity";
 import type {
@@ -32,11 +31,11 @@ export type AnnotatedSendState = { status: "idle" } | { status: "sending" } | An
 type SendInterceptorOptions = {
   getSendInput: () => SendAttemptInput;
   host: Pick<Host, "composer">;
+  onChange?: () => void;
   onSendConfirmed: (
     annotations: readonly DraftAnnotation[],
     conversationIdentity: ConversationIdentity,
   ) => void;
-  onStateChange?: (state: AnnotatedSendState) => void;
 };
 
 type SendAttemptInput = {
@@ -61,7 +60,6 @@ type SendSession =
 export function registerSendInterceptor(options: SendInterceptorOptions) {
   const host = options.host;
   const sendSessions = new Map<string, SendSession>();
-  let currentConversationIdentity: ConversationIdentity | null = null;
   let isDisposed = false;
 
   const reportError = (message: string, error?: unknown) => {
@@ -79,9 +77,9 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
     }
   };
 
-  const setState = (nextState: AnnotatedSendState) => {
+  const notifyChange = () => {
     if (!isDisposed) {
-      runSafely("Failed to report annotated send state", () => options.onStateChange?.(nextState));
+      runSafely("Failed to report annotated send state", () => options.onChange?.());
     }
   };
 
@@ -89,19 +87,19 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
     runSafely("Failed to stop annotated send work", () => attempt.controller.abort());
   };
 
-  const setConversationState = (
-    conversationIdentity: ConversationIdentity,
-    state: AnnotatedSendState,
-  ) => {
-    if (
-      currentConversationIdentity &&
-      sameConversationIdentity(currentConversationIdentity, conversationIdentity)
-    ) {
-      setState(state);
+  const setSession = (conversationIdentity: ConversationIdentity, session: SendSession) => {
+    sendSessions.set(conversationIdentityKey(conversationIdentity), session);
+    notifyChange();
+  };
+
+  const deleteSession = (conversationIdentity: ConversationIdentity) => {
+    const deleted = sendSessions.delete(conversationIdentityKey(conversationIdentity));
+    if (deleted) {
+      notifyChange();
     }
   };
 
-  const stateForConversation = (conversationIdentity: ConversationIdentity): AnnotatedSendState => {
+  const state = (conversationIdentity: ConversationIdentity): AnnotatedSendState => {
     const session = sendSessions.get(conversationIdentityKey(conversationIdentity));
     if (!session) {
       return { status: "idle" };
@@ -122,12 +120,11 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
     const retryText =
       originalText ??
       (previousSession?.status === "failed" ? previousSession.originalText : undefined);
-    sendSessions.set(key, {
+    setSession(conversationIdentity, {
       ...(retryText === undefined ? {} : { originalText: retryText }),
       reason,
       status: "failed",
     });
-    setConversationState(conversationIdentity, { status: "failed", reason });
   };
 
   const finishConfirmed = (attempt: SendAttempt) => {
@@ -136,10 +133,9 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
     if (session?.status !== "sending" || session.attempt !== attempt) {
       return;
     }
-    sendSessions.delete(key);
+    deleteSession(attempt.conversationIdentity);
     const sentAnnotations = attempt.annotations.map(({ annotation }) => annotation);
     abortAttempt(attempt);
-    setConversationState(attempt.conversationIdentity, { status: "idle" });
     runSafely("Failed to apply confirmed annotations", () =>
       options.onSendConfirmed(sentAnnotations, attempt.conversationIdentity),
     );
@@ -189,7 +185,6 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
     }
 
     const sendInput = options.getSendInput();
-    currentConversationIdentity = sendInput.conversationIdentity;
     const conversationKey = conversationIdentityKey(sendInput.conversationIdentity);
     const currentSession = sendSessions.get(conversationKey);
     if (currentSession?.status === "sending") {
@@ -234,8 +229,7 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
       compiledPrompt,
       annotations,
     );
-    sendSessions.set(conversationKey, { status: "sending", attempt });
-    setState({ status: "sending" });
+    setSession(sendInput.conversationIdentity, { status: "sending", attempt });
 
     replaySend(attempt);
     return true;
@@ -246,21 +240,17 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
   };
 
   const stopListening = host.composer.subscribeToSubmit(prepareNativeSend);
-  setState({ status: "idle" });
+  notifyChange();
 
   return {
+    state,
     submit: () => beginSend(undefined, "custom"),
     draftEmptied(conversationIdentity: ConversationIdentity) {
       const key = conversationIdentityKey(conversationIdentity);
       if (sendSessions.get(key)?.status !== "failed") {
         return;
       }
-      sendSessions.delete(key);
-      setConversationState(conversationIdentity, { status: "idle" });
-    },
-    conversationChanged(conversationIdentity: ConversationIdentity) {
-      currentConversationIdentity = conversationIdentity;
-      setState(stateForConversation(conversationIdentity));
+      deleteSession(conversationIdentity);
     },
     dispose() {
       if (isDisposed) {

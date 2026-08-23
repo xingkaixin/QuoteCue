@@ -337,12 +337,14 @@ describe("ChatGPT host contract", () => {
         locale: "en",
       }),
       host,
+      onChange: onStateChange,
       onSendConfirmed: vi.fn(),
-      onStateChange,
     });
 
     interceptor.submit();
-    expect(onStateChange).toHaveBeenLastCalledWith({
+    expect(
+      interceptor.state({ kind: "identified", id: "conversation-test", siteId: "chatgpt" }),
+    ).toEqual({
       reason: "composer-unavailable",
       status: "failed",
     });

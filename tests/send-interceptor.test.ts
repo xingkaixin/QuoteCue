@@ -156,7 +156,6 @@ describe("registerSendInterceptor", () => {
 
     interceptor.submit();
     identity = { kind: "identified", id: "conversation-b", siteId: "chatgpt" };
-    interceptor.conversationChanged(identity);
     const decision = host.controls.emitSubmitIntent({ isSendAvailable: true });
 
     expect(decision).toBe("claim");
@@ -417,13 +416,13 @@ describe("registerSendInterceptor", () => {
         locale: "en",
       }),
       host,
+      onChange: onStateChange,
       onSendConfirmed,
-      onStateChange,
     });
 
     interceptor.submit();
     await vi.waitFor(() =>
-      expect(onStateChange).toHaveBeenLastCalledWith({
+      expect(interceptor.state(identity)).toEqual({
         status: "failed",
         reason: "confirmation-timeout",
       }),
@@ -439,7 +438,7 @@ describe("registerSendInterceptor", () => {
       },
     }));
     interceptor.submit();
-    expect(onStateChange).toHaveBeenLastCalledWith({
+    expect(interceptor.state(identity)).toEqual({
       status: "failed",
       reason: "prompt-too-long",
     });
@@ -477,13 +476,13 @@ describe("registerSendInterceptor", () => {
         locale: "en",
       }),
       host,
+      onChange: onStateChange,
       onSendConfirmed,
-      onStateChange,
     });
 
     interceptor.submit();
     await vi.waitFor(() =>
-      expect(onStateChange).toHaveBeenLastCalledWith({
+      expect(interceptor.state(identity)).toEqual({
         status: "failed",
         reason: "send-unavailable",
       }),
@@ -491,7 +490,7 @@ describe("registerSendInterceptor", () => {
 
     annotations = [];
     interceptor.draftEmptied(identity);
-    expect(onStateChange).toHaveBeenLastCalledWith({ status: "idle" });
+    expect(interceptor.state(identity)).toEqual({ status: "idle" });
 
     annotations = [{ ...annotation, id: "replacement-annotation" }];
     host.elements.composer.textContent = "";

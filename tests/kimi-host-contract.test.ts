@@ -116,15 +116,17 @@ describe("Kimi host contract", () => {
     const interceptor = registerSendInterceptor({
       getSendInput: kimiSendInput,
       host,
+      onChange: onStateChange,
       onSendConfirmed: vi.fn(),
-      onStateChange,
     });
 
     vi.useFakeTimers();
     interceptor.submit();
     await vi.advanceTimersByTimeAsync(15_001);
 
-    expect(onStateChange).toHaveBeenLastCalledWith({
+    expect(
+      interceptor.state({ kind: "identified", id: "conversation-test", siteId: "kimi" }),
+    ).toEqual({
       status: "failed",
       reason: "confirmation-timeout",
     });
