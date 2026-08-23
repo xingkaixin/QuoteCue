@@ -103,12 +103,17 @@ describe("DeepSeek host contract", () => {
     });
 
     interceptor.submit();
-    await vi.waitFor(() =>
-      expect(logger).toHaveBeenCalledWith(
-        "[QuoteCue host] send confirmation observed: total=1, matched=false",
-      ),
+    await new Promise<void>((resolve) =>
+      window.requestAnimationFrame(() => {
+        resolve();
+      }),
     );
     expect(assistantInnerTextReads).toBe(0);
+    expect(
+      logger.mock.calls.some(([message]) =>
+        String(message).startsWith("[QuoteCue host] send confirmation observed"),
+      ),
+    ).toBe(false);
 
     interceptor.dispose();
   });
