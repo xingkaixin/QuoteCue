@@ -39,7 +39,7 @@ export function InteractiveDemoSummary({
           type="button"
         >
           <MessageSquareText aria-hidden="true" className="text-accent" size={16} />
-          {formatAnnotationCount(copy, annotations.length)}
+          {copy.formatAnnotationCount(annotations.length)}
         </button>
         <button
           aria-label={copy.clear}
@@ -54,7 +54,7 @@ export function InteractiveDemoSummary({
 
       {isOpen && (
         <div
-          aria-label={formatAnnotationCount(copy, annotations.length)}
+          aria-label={copy.formatAnnotationCount(annotations.length)}
           className="absolute bottom-[calc(100%+0.375rem)] left-0 w-[min(24rem,calc(100vw-3.5rem))] overflow-hidden rounded-2xl border border-line bg-panel shadow-[var(--surface-shadow)]"
           role="dialog"
         >
@@ -102,15 +102,4 @@ export function InteractiveDemoSummary({
       )}
     </div>
   );
-}
-
-function formatAnnotationCount(copy: DemoCopy, count: number) {
-  switch (copy.locale) {
-    case "zh-CN":
-      return `${count} 条批注`;
-    case "ja":
-      return `${count} 件の注釈`;
-    case "en":
-      return `${count} ${count === 1 ? "annotation" : "annotations"}`;
-  }
 }

@@ -22,17 +22,6 @@ interface InteractiveDemoProps {
   copy: DemoCopy;
 }
 
-function formatRemovedNotice(copy: DemoCopy, removed: number, remaining: number) {
-  switch (copy.locale) {
-    case "zh-CN":
-      return `已删除 ${removed} 条批注，还剩 ${remaining} 条。`;
-    case "ja":
-      return `${removed} 件の注釈を削除しました。残り ${remaining} 件です。`;
-    case "en":
-      return `${removed === 1 ? "Annotation" : `${removed} annotations`} removed. ${remaining} remaining.`;
-  }
-}
-
 export function InteractiveDemo({ copy }: InteractiveDemoProps) {
   const sequenceRef = useRef(0);
 
@@ -212,7 +201,7 @@ export function InteractiveDemo({ copy }: InteractiveDemoProps) {
             className="absolute right-4 bottom-[5.75rem] z-40 flex max-w-[calc(100%-2rem)] items-center gap-2 overflow-hidden rounded-lg border border-line bg-panel px-2.5 py-1.5 text-xs shadow-[var(--surface-shadow)]"
             role="status"
           >
-            <span>{formatRemovedNotice(copy, pendingRemovals.length, annotations.length)}</span>
+            <span>{copy.formatRemovedNotice(pendingRemovals.length, annotations.length)}</span>
             <button
               className="cursor-pointer border-0 bg-transparent px-1.5 py-0.5 font-semibold text-accent outline-none focus-visible:ring-2 focus-visible:ring-ring"
               onClick={undoRemoval}
