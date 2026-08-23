@@ -29,9 +29,9 @@ export function createDraftOwner() {
   const conversationChains = new Map<string, Promise<unknown>>();
   let cleanup: Promise<void> | null = null;
   let cleanupScheduled = false;
-  // A conversation loaded during this owner's life has a context open on it, so retention must
-  // not delete it out from under that context even once it looks expired.
-  const openConversationKeys = new Set<string>();
+  // Operations started before cleanup settles must protect their conversation from expiry.
+  // Later operations wait for cleanup through serialize, so the set has no owner afterwards.
+  let cleanupProtectedConversationKeys: Set<string> | null = new Set();
 
   function serialize<T>(conversation: IdentifiedConversation, operation: () => Promise<T>) {
     const key = scopedDraftStorageKey(conversation);
@@ -52,16 +52,18 @@ export function createDraftOwner() {
   }
 
   function scheduleCleanup(after: Promise<unknown>) {
-    if (cleanupScheduled) {
+    const protectedConversationKeys = cleanupProtectedConversationKeys;
+    if (cleanupScheduled || !protectedConversationKeys) {
       return;
     }
     cleanupScheduled = true;
     const startCleanup = () => {
-      cleanup = removeStoredDrafts(openConversationKeys)
+      cleanup = removeStoredDrafts(protectedConversationKeys)
         .catch((error: unknown) => {
           console.error("[QuoteCue] Failed to clean stored drafts", error);
         })
         .finally(() => {
+          cleanupProtectedConversationKeys = null;
           cleanup = null;
         });
     };
@@ -70,13 +72,13 @@ export function createDraftOwner() {
 
   return {
     load(conversation: IdentifiedConversation) {
-      openConversationKeys.add(scopedDraftStorageKey(conversation));
+      cleanupProtectedConversationKeys?.add(scopedDraftStorageKey(conversation));
       const draft = serialize(conversation, () => readDraft(conversation));
       scheduleCleanup(draft);
       return draft.then(({ annotations }) => annotations);
     },
     mutate(conversation: IdentifiedConversation, mutations: readonly DraftMutation[]) {
-      openConversationKeys.add(scopedDraftStorageKey(conversation));
+      cleanupProtectedConversationKeys?.add(scopedDraftStorageKey(conversation));
       return serialize(conversation, async () => {
         const decoded = await readDraft(conversation);
         const current = decoded.annotations;
