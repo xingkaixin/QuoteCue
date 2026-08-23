@@ -1,8 +1,9 @@
+import type { DemoTextAnchor } from "./interactive-demo-text-anchor";
+
 export type DemoAnnotation = {
+  anchor: DemoTextAnchor;
   id: number;
-  text: string;
   comment: string;
-  range: Range;
 };
 
 type DemoEditorSession = {

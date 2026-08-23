@@ -69,7 +69,9 @@ export function InteractiveDemoSummary({
                 </span>
                 <div className="min-w-0 flex-1 pr-[4.75rem] text-xs leading-5">
                   <p className="m-0 text-muted">{copy.selectedText}</p>
-                  <p className="m-0 line-clamp-2 overflow-wrap-anywhere">{annotation.text}</p>
+                  <p className="m-0 line-clamp-2 overflow-wrap-anywhere">
+                    {annotation.anchor.quote}
+                  </p>
                   {annotation.comment && (
                     <>
                       <p className="mt-2 mb-0 text-muted">{copy.userComment}</p>

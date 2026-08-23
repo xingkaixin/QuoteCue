@@ -11,10 +11,9 @@ import { getCopy } from "../website/src/i18n/content";
 
 function annotation(id = 1, comment = ""): DemoAnnotation {
   return {
+    anchor: { end: 15, quote: "selected", start: 7 },
     id,
-    text: "selected answer",
     comment,
-    range: document.createRange(),
   };
 }
 
@@ -171,7 +170,7 @@ describe("interactive demo state", () => {
 describe("interactive demo prompt", () => {
   it("uses the same compiled format as the extension", () => {
     expect(compileDemoPrompt([annotation(1, "my note")], getCopy("en").demo)).toBe(
-      "Please respond based on the following annotations:\n\n[Annotation 1]\nSelected text: selected answer\nMy comment: my note",
+      "Please respond based on the following annotations:\n\n[Annotation 1]\nSelected text: selected\nMy comment: my note",
     );
   });
 });
