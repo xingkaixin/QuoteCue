@@ -9,3 +9,9 @@ export function sameConversationIdentity(left: ConversationIdentity, right: Conv
   }
   return false;
 }
+
+export function conversationIdentityKey(identity: ConversationIdentity) {
+  return identity.kind === "identified"
+    ? `identified:${identity.siteId}:${identity.id}`
+    : `unidentified:${identity.sessionKey}`;
+}

@@ -340,7 +340,7 @@ describe("App annotation workflow", () => {
     await act(async () => mounted.root.unmount());
   });
 
-  it("keeps an active send visible and alive when the conversation changes", async () => {
+  it("keeps an active send alive without exposing its state in another conversation", async () => {
     const mounted = await mountApp();
     const subscribeToSubmit = vi.spyOn(mounted.host.composer, "subscribeToSubmit");
     let pendingSubmit: Parameters<FakeHost["composer"]["submit"]>[0] | undefined;
@@ -370,8 +370,8 @@ describe("App annotation workflow", () => {
     );
     await vi.waitFor(() => {
       expect(mounted.container.querySelector('[data-testid="annotation-summary"]')).toBeNull();
+      expect(mounted.container.querySelector('[data-testid="send-annotations"]')).toBeNull();
     });
-    expect(sendControl(mounted.container).dataset.sendState).toBe("sending");
 
     await act(async () =>
       mounted.host.controls.setConversationIdentity({
@@ -382,7 +382,7 @@ describe("App annotation workflow", () => {
     );
     await vi.waitFor(() => expect(summary(mounted.container).dataset.count).toBe("1"));
 
-    expect(sendControl(mounted.container).dataset.sendState).toBe("sending");
+    expect(sendControl(mounted.container).dataset.sendState).toBe("idle");
     expect(pendingSubmit?.signal.aborted).toBe(false);
     expect(subscribeToSubmit).not.toHaveBeenCalled();
 

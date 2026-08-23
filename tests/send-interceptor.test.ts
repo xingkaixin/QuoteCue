@@ -4,6 +4,7 @@ import { numberAnnotations } from "@/features/annotations/annotation-projection"
 import { MAX_COMPILED_PROMPT_LENGTH } from "@/features/annotations/draft-capacity";
 import { registerSendInterceptor } from "@/features/annotations/register-send-interceptor";
 import { createChatGptHost } from "@/features/chatgpt/chatgpt-host";
+import type { ConversationIdentity } from "@/features/host-port/host-port";
 
 import {
   appendComposer as installComposer,
@@ -133,6 +134,32 @@ describe("registerSendInterceptor", () => {
 
     interceptor.dispose();
     await vi.waitFor(() => expect(composer.textContent).toBe("original question"));
+  });
+
+  it("allows another conversation to send while the first awaits confirmation", () => {
+    const host = createFakeHost();
+    let identity: ConversationIdentity = {
+      kind: "identified",
+      id: "conversation-a",
+      siteId: "chatgpt",
+    };
+    const submit = vi
+      .spyOn(host.composer, "submit")
+      .mockImplementation(() => new Promise(() => undefined));
+    const interceptor = createInterceptor(undefined, {
+      conversationIdentity: () => identity,
+      host,
+    });
+
+    interceptor.submit();
+    identity = { kind: "identified", id: "conversation-b", siteId: "chatgpt" };
+    interceptor.conversationChanged(identity);
+    const decision = host.controls.emitSubmitIntent({ isSendAvailable: true });
+
+    expect(decision).toBe("claim");
+    expect(submit).toHaveBeenCalledTimes(2);
+    interceptor.dispose();
+    expect(submit.mock.calls.every(([options]) => options.signal.aborted)).toBe(true);
   });
 
   it("retries failed attempts without nesting the compiled prompt", async () => {
