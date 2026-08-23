@@ -1,4 +1,17 @@
-import type { ConversationIdentity } from "@/features/host-port/host-port";
+import type { SupportedSiteId } from "@quotecue/shared/supported-sites";
+
+export type IdentifiedConversation = {
+  kind: "identified";
+  id: string;
+  siteId: SupportedSiteId;
+};
+
+export type UnidentifiedConversation = {
+  kind: "unidentified";
+  sessionKey: string;
+};
+
+export type ConversationIdentity = IdentifiedConversation | UnidentifiedConversation;
 
 export function sameConversationIdentity(left: ConversationIdentity, right: ConversationIdentity) {
   if (left.kind === "identified" && right.kind === "identified") {

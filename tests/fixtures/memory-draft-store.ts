@@ -1,9 +1,9 @@
 import { vi } from "vitest";
 
 import type { DraftAnnotation } from "@/features/annotations/annotation";
+import type { IdentifiedConversation } from "@/features/conversation/conversation-identity";
 import { applyDraftMutation } from "@/features/annotations/draft-mutation";
 import type { DraftStore } from "@/features/annotations/draft-store";
-import type { IdentifiedConversation } from "@/features/host-port/host-port";
 
 export function createMemoryDraftStore() {
   const drafts = new Map<string, DraftAnnotation[]>();

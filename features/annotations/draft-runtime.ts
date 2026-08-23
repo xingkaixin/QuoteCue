@@ -1,7 +1,9 @@
-import type { ConversationIdentity } from "@/features/host-port/host-port";
+import {
+  sameConversationIdentity,
+  type ConversationIdentity,
+} from "@/features/conversation/conversation-identity";
 
 import type { DraftAnnotation } from "./annotation";
-import { sameConversationIdentity } from "./conversation-identity";
 import { draftMutationExceedsCapacity } from "./draft-capacity";
 import {
   canMutateDraftLifecycle,

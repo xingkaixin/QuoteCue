@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   conversationIdentityKey,
   sameConversationIdentity,
-} from "@/features/annotations/conversation-identity";
+} from "@/features/conversation/conversation-identity";
 import { createChatGptHost } from "@/features/chatgpt/chatgpt-host";
 import { createClaudeHost } from "@/features/claude/claude-host";
 

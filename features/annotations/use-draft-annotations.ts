@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useSyncExternalStore } from "react";
 
-import type { ConversationIdentity } from "@/features/host-port/host-port";
+import type { ConversationIdentity } from "@/features/conversation/conversation-identity";
 
 import type { DraftAnnotation } from "./annotation";
 import { visibleDraftSnapshot } from "./draft-runtime";

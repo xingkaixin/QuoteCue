@@ -1,12 +1,13 @@
 import { vi } from "vitest";
 
 import { numberAnnotations } from "@/features/annotations/annotation-projection";
+import type { ConversationIdentity } from "@/features/conversation/conversation-identity";
 import {
   registerSendInterceptor,
   type AnnotatedSendState,
 } from "@/features/annotations/register-send-interceptor";
 import { createChatGptHost } from "@/features/chatgpt/chatgpt-host";
-import type { ConversationIdentity, Host } from "@/features/host-port/host-port";
+import type { Host } from "@/features/host-port/host-port";
 
 export const annotation = {
   id: "annotation-1",

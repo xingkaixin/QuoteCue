@@ -6,7 +6,7 @@ import { useI18n } from "@/features/i18n/I18nProvider";
 
 import type { AnchoredSelection, AnnotationEditorState, DraftAnnotation } from "./annotation";
 import type { ProjectedAnnotation } from "./annotation-projection";
-import { sameConversationIdentity } from "./conversation-identity";
+import { sameConversationIdentity } from "@/features/conversation/conversation-identity";
 import { registerSendInterceptor, type AnnotatedSendState } from "./register-send-interceptor";
 import { useAnnotationProjection } from "./use-annotation-projection";
 import { useConversationIdentity } from "./use-conversation-identity";

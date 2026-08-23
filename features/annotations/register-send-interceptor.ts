@@ -1,15 +1,18 @@
 import type { SupportedLocale } from "@/features/i18n/messages";
+import {
+  conversationIdentityKey,
+  sameConversationIdentity,
+  type ConversationIdentity,
+} from "@/features/conversation/conversation-identity";
 import type {
   ComposerSnapshot,
   ComposerSubmitDecision,
   ComposerSubmitIntent,
-  ConversationIdentity,
   Host,
 } from "@/features/host-port/host-port";
 
 import type { DraftAnnotation } from "./annotation";
 import type { NumberedAnnotation } from "./annotation-projection";
-import { conversationIdentityKey, sameConversationIdentity } from "./conversation-identity";
 import { compiledPromptExceedsCapacity } from "./draft-capacity";
 import { compileAnnotatedPrompt } from "./prompt-compiler";
 

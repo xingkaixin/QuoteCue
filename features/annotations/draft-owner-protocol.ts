@@ -1,7 +1,7 @@
-import type { IdentifiedConversation } from "@/features/host-port/host-port";
 import { isRecord } from "@/lib/is-record";
 import { isSupportedSiteId } from "@quotecue/shared/supported-sites";
 import { parseTextAnchor } from "@/lib/text-anchor";
+import type { IdentifiedConversation } from "@/features/conversation/conversation-identity";
 
 import type { DraftAnnotation } from "./annotation";
 import type { DraftMutation } from "./draft-mutation";

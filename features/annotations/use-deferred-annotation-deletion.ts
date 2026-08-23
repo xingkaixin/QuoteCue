@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import type { ConversationIdentity } from "@/features/host-port/host-port";
+import {
+  sameConversationIdentity,
+  type ConversationIdentity,
+} from "@/features/conversation/conversation-identity";
 
 import type { DraftAnnotation } from "./annotation";
-import { sameConversationIdentity } from "./conversation-identity";
 
 export const DELETE_UNDO_WINDOW_MS = 5_000;
 

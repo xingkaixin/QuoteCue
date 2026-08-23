@@ -1,7 +1,9 @@
-import type { ConversationIdentity, IdentifiedConversation } from "@/features/host-port/host-port";
-
 import type { DraftAnnotation } from "./annotation";
-import { sameConversationIdentity } from "./conversation-identity";
+import {
+  sameConversationIdentity,
+  type ConversationIdentity,
+  type IdentifiedConversation,
+} from "@/features/conversation/conversation-identity";
 
 export type DraftLifecycleState =
   | { status: "loading"; conversationIdentity: ConversationIdentity }

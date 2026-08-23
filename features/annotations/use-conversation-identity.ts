@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { useHost } from "@/features/host-port/HostProvider";
 
-import { sameConversationIdentity } from "./conversation-identity";
+import { sameConversationIdentity } from "@/features/conversation/conversation-identity";
 
 export function useConversationIdentity() {
   const host = useHost();
