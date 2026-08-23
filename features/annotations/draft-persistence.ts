@@ -1,4 +1,7 @@
-import type { IdentifiedConversation } from "@/features/conversation/conversation-identity";
+import {
+  conversationIdentityKey,
+  type IdentifiedConversation,
+} from "@/features/conversation/conversation-identity";
 
 import type { DraftAnnotation } from "./annotation";
 import { applyDraftMutations, type DraftMutation } from "./draft-mutation";
@@ -31,7 +34,7 @@ export function createDraftPersistence(draftStore: DraftStore) {
   const listeners = new Set<DraftPersistenceListener>();
 
   async function load(conversation: IdentifiedConversation) {
-    const key = conversationKey(conversation);
+    const key = conversationIdentityKey(conversation);
     await pendingSaves.get(key)?.activeSave;
     const annotations = await draftStore.load(conversation);
     const pending = pendingSaves.get(key);
@@ -52,7 +55,7 @@ export function createDraftPersistence(draftStore: DraftStore) {
   }
 
   function retry(conversation: IdentifiedConversation) {
-    const pending = pendingSaves.get(conversationKey(conversation));
+    const pending = pendingSaves.get(conversationIdentityKey(conversation));
     if (pending) {
       persist(pending);
     }
@@ -66,7 +69,7 @@ export function createDraftPersistence(draftStore: DraftStore) {
   }
 
   function pendingSave(conversation: IdentifiedConversation) {
-    const key = conversationKey(conversation);
+    const key = conversationIdentityKey(conversation);
     const existing = pendingSaves.get(key);
     if (existing) {
       return existing;
@@ -91,7 +94,7 @@ export function createDraftPersistence(draftStore: DraftStore) {
       }
       pending.activeSave = null;
       if (pending.mutations.length === 0) {
-        pendingSaves.delete(conversationKey(pending.conversationIdentity));
+        pendingSaves.delete(conversationIdentityKey(pending.conversationIdentity));
       }
     });
     pending.activeSave = activeSave;
@@ -136,7 +139,3 @@ export function createDraftPersistence(draftStore: DraftStore) {
 }
 
 export type DraftPersistence = ReturnType<typeof createDraftPersistence>;
-
-function conversationKey(conversation: IdentifiedConversation) {
-  return `${conversation.siteId}:${conversation.id}`;
-}

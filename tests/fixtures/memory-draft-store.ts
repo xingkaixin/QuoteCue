@@ -1,7 +1,7 @@
 import { vi } from "vitest";
 
 import type { DraftAnnotation } from "@/features/annotations/annotation";
-import type { IdentifiedConversation } from "@/features/conversation/conversation-identity";
+import { conversationIdentityKey } from "@/features/conversation/conversation-identity";
 import { applyDraftMutation } from "@/features/annotations/draft-mutation";
 import type { DraftStore } from "@/features/annotations/draft-store";
 
@@ -9,10 +9,10 @@ export function createMemoryDraftStore() {
   const drafts = new Map<string, DraftAnnotation[]>();
   const store: DraftStore = {
     async load(conversation) {
-      return cloneAnnotations(drafts.get(conversationKey(conversation)) ?? []);
+      return cloneAnnotations(drafts.get(conversationIdentityKey(conversation)) ?? []);
     },
     async mutate(conversation, mutations) {
-      const key = conversationKey(conversation);
+      const key = conversationIdentityKey(conversation);
       const current = drafts.get(key) ?? [];
       const annotations = cloneAnnotations(
         mutations.reduce<readonly DraftAnnotation[]>(
@@ -37,10 +37,6 @@ export function createDraftStoreDouble() {
       mutate: vi.fn(memory.store.mutate),
     },
   };
-}
-
-function conversationKey(conversation: IdentifiedConversation) {
-  return `${conversation.siteId}:${conversation.id}`;
 }
 
 function cloneAnnotations(annotations: readonly DraftAnnotation[]) {
