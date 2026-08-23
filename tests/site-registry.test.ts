@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { SITE_REGISTRY, siteForHostname } from "@/features/host/site-registry";
 import { SITE_URL_PATTERNS } from "@/features/host/site-urls";
-import { SUPPORTED_SITES } from "@/lib/supported-sites";
+import { SUPPORTED_SITES } from "@quotecue/shared/supported-sites";
 
 describe("site registry", () => {
   it("owns one registration per hostname", () => {

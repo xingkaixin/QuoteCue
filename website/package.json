@@ -17,6 +17,7 @@
     "@base-ui/react": "^1.7.0",
     "@fontsource-variable/jetbrains-mono": "^5.3.0",
     "@fontsource-variable/space-grotesk": "^5.3.0",
+    "@quotecue/shared": "workspace:*",
     "@tailwindcss/vite": "^4.3.3",
     "astro": "^7.2.4",
     "class-variance-authority": "^0.7.1",

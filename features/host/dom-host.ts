@@ -1,5 +1,5 @@
 import type { Host } from "@/features/host-port/host-port";
-import type { SupportedSiteId } from "@/lib/supported-sites";
+import type { SupportedSiteId } from "@quotecue/shared/supported-sites";
 
 import { createComposerDriver } from "./composer-driver";
 import { createComposerLayout } from "./composer-layout";

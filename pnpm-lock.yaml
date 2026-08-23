@@ -20,6 +20,9 @@ importers:
       '@base-ui/react':
         specifier: ^1.7.0
         version: 1.7.0(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@quotecue/shared':
+        specifier: workspace:*
+        version: link:packages/shared
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -73,6 +76,8 @@ importers:
         specifier: ^0.21.4
         version: 0.21.4(esbuild@0.28.2)(rolldown@1.2.5)(typescript@7.0.2)(vite@8.2.2(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
 
+  packages/shared: {}
+
   website:
     dependencies:
       '@astrojs/react':
@@ -90,6 +95,9 @@ importers:
       '@fontsource-variable/space-grotesk':
         specifier: ^5.3.0
         version: 5.3.0
+      '@quotecue/shared':
+        specifier: workspace:*
+        version: link:../packages/shared
       '@tailwindcss/vite':
         specifier: ^4.3.3
         version: 4.3.3(vite@8.2.2(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))

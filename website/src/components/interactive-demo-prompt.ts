@@ -1,5 +1,5 @@
-import { compileAnnotationPrompt } from "../../../lib/annotation-prompt";
-import { annotationPromptMessagesFor } from "../../../lib/annotation-prompt-messages";
+import { compileAnnotationPrompt } from "@quotecue/shared/annotation-prompt";
+import { annotationPromptMessagesFor } from "@quotecue/shared/annotation-prompt-messages";
 
 import type { DemoCopy } from "../i18n/content";
 

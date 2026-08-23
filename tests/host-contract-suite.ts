@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, vi } from "vitest";
 
 import type { Host } from "@/features/host-port/host-port";
 import type { HostEnvironment } from "@/features/host/host-environment";
-import type { SupportedSiteId } from "@/lib/supported-sites";
+import type { SupportedSiteId } from "@quotecue/shared/supported-sites";
 
 import { runCoreHostContract } from "./host-contract/core";
 import { runNativeActionHostContract } from "./host-contract/native-action";

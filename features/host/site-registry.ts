@@ -4,7 +4,11 @@ import { createDeepSeekHost } from "@/features/deepseek/deepseek-host";
 import { createKimiHost } from "@/features/kimi/kimi-host";
 import type { Host } from "@/features/host-port/host-port";
 import type { SiteAccentTokens } from "@/features/theme/accent-tokens";
-import { SUPPORTED_SITES, type SupportedSite, type SupportedSiteId } from "@/lib/supported-sites";
+import {
+  SUPPORTED_SITES,
+  type SupportedSite,
+  type SupportedSiteId,
+} from "@quotecue/shared/supported-sites";
 
 import type { HostEnvironment } from "./host-environment";
 

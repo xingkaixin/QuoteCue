@@ -3,7 +3,7 @@ import { useReducer, useRef, useState, type CSSProperties } from "react";
 
 import { Button } from "@/components/ui/button";
 import type { DemoCopy } from "@/i18n/content";
-import { SUPPORTED_SITES, type SupportedSiteName } from "../../../lib/supported-sites";
+import { SUPPORTED_SITES, type SupportedSiteName } from "@quotecue/shared/supported-sites";
 
 import { compileDemoPrompt } from "./interactive-demo-prompt";
 import { InteractiveDemoEditor } from "./InteractiveDemoEditor";
