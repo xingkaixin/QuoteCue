@@ -134,9 +134,6 @@ function dispatchFieldEvent(
     handlers.onCancel();
     return;
   }
-  if (event.type === "ready") {
-    return;
-  }
   if (event.type === "change") {
     handlers.onChange(event.value);
     return;

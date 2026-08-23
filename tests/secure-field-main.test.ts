@@ -48,7 +48,7 @@ describe("secure field frame", () => {
     const acceptedPort = new FakeMessagePort();
     dispatchInit(acceptedPort);
 
-    expect(acceptedPort.postMessage).toHaveBeenCalledWith({ type: "ready" });
+    expect(acceptedPort.start).toHaveBeenCalledOnce();
     expect(document.querySelector("textarea")).not.toBeNull();
   });
 
@@ -69,10 +69,10 @@ describe("secure field frame", () => {
 
     const acceptedPort = new FakeMessagePort();
     dispatchInit(acceptedPort);
-    expect(acceptedPort.postMessage).toHaveBeenCalledWith({ type: "ready" });
+    expect(acceptedPort.start).toHaveBeenCalledOnce();
   });
 
-  it("renders the configured field and announces readiness", async () => {
+  it("renders and focuses the configured field", async () => {
     await bootstrapSecureField();
     const port = new FakeMessagePort();
 
@@ -91,7 +91,6 @@ describe("secure field frame", () => {
     expect(document.documentElement.lang).toBe("en");
     expect(document.activeElement).toBe(field);
     expect(port.start).toHaveBeenCalledOnce();
-    expect(port.postMessage).toHaveBeenCalledWith({ type: "ready" });
   });
 
   it("sends change, cancel, and save events through the port", async () => {
@@ -119,7 +118,6 @@ describe("secure field frame", () => {
     expect(escape.defaultPrevented).toBe(true);
     expect(save.defaultPrevented).toBe(true);
     expect(port.postMessage.mock.calls.map(([message]) => message)).toEqual([
-      { type: "ready" },
       { type: "change", value: "updated annotation" },
       { type: "cancel" },
       { type: "save", value: "updated annotation" },
