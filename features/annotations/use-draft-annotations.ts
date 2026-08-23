@@ -61,6 +61,7 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
   const loadDraftState = useCallback(
     (identity: ConversationIdentity) => {
       const generation = ++loadGeneration.current;
+      const annotationsToAdopt = draftAnnotationsToAdopt(draftStateRef.current, identity);
       setCapacityExceeded(false);
       if (identity.kind === "unidentified") {
         setDraftState(readyDraftState(identity));
@@ -68,6 +69,9 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
       }
 
       setDraftState(loadingDraftState(identity));
+      for (const annotation of annotationsToAdopt) {
+        draftPersistence.enqueue(identity, { kind: "add", annotation });
+      }
 
       void draftPersistence
         .load(identity)
@@ -78,7 +82,10 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
           setDraftState({
             status: "ready",
             conversationIdentity: identity,
-            annotations,
+            annotations: applyDraftMutations(
+              annotations,
+              annotationsToAdopt.map((annotation) => ({ kind: "add", annotation })),
+            ),
           });
         })
         .catch((error: unknown) => {
@@ -89,7 +96,7 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
           setDraftState({
             status: "error",
             conversationIdentity: identity,
-            annotations: [],
+            annotations: annotationsToAdopt,
             operation: "load",
           });
         });
@@ -287,6 +294,19 @@ function canMutateDraftState(
     sameConversationIdentity(state.conversationIdentity, conversationIdentity) &&
     state.status === "ready"
   );
+}
+
+function draftAnnotationsToAdopt(state: DraftLifecycleState, nextIdentity: ConversationIdentity) {
+  if (nextIdentity.kind !== "identified" || state.status === "loading") {
+    return [];
+  }
+  if (state.conversationIdentity.kind === "unidentified") {
+    return state.annotations;
+  }
+  return state.status === "error" &&
+    sameConversationIdentity(state.conversationIdentity, nextIdentity)
+    ? state.annotations
+    : [];
 }
 
 function applyDraftMutations(
