@@ -1,61 +1,40 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import type { ConversationIdentity, IdentifiedConversation } from "@/features/host-port/host-port";
+import type { ConversationIdentity } from "@/features/host-port/host-port";
 
 import type { DraftAnnotation } from "./annotation";
 import { sameConversationIdentity } from "./conversation-identity";
 import { draftMutationExceedsCapacity } from "./draft-capacity";
+import {
+  canMutateDraftLifecycle,
+  draftAnnotationsToAdopt,
+  initialDraftLifecycleState,
+  publicDraftState,
+  reduceDraftLifecycle,
+  visibleDraftLifecycleState,
+  type DraftLifecycleAction,
+  type DraftLifecycleState,
+} from "./draft-lifecycle";
 import { applyDraftMutation, applyDraftMutations, type DraftMutation } from "./draft-mutation";
 import { useDraftPersistence } from "./DraftStoreProvider";
 
-type DraftLifecycleState =
-  | { status: "loading"; conversationIdentity: ConversationIdentity }
-  | {
-      status: "ready";
-      conversationIdentity: ConversationIdentity;
-      annotations: DraftAnnotation[];
-    }
-  | {
-      status: "error";
-      conversationIdentity: IdentifiedConversation;
-      annotations: DraftAnnotation[];
-      operation: "load";
-    };
-
-type MutableDraftLifecycleState = Extract<DraftLifecycleState, { status: "ready" }>;
-
-export type Draft = {
-  readonly annotations: readonly DraftAnnotation[];
-};
-
-export type DraftState =
-  | { readonly status: "loading" }
-  | (Draft & { readonly status: "ready" })
-  | (Draft & { readonly status: "error"; readonly operation: "load" | "save" });
-
-type MutableDraftState =
-  | Extract<DraftState, { status: "ready" }>
-  | (Extract<DraftState, { status: "error" }> & { operation: "save" });
-
-export function canMutateDraft(draft: DraftState): draft is MutableDraftState {
-  return draft.status === "ready" || (draft.status === "error" && draft.operation === "save");
-}
+export { canMutateDraft } from "./draft-lifecycle";
+export type { DraftState } from "./draft-lifecycle";
 
 export function useDraftAnnotations(conversationIdentity: ConversationIdentity) {
   const draftPersistence = useDraftPersistence();
   const [draftState, setRenderedDraftState] = useState<DraftLifecycleState>(() =>
-    initialDraftState(conversationIdentity),
+    initialDraftLifecycleState(conversationIdentity),
   );
   const [capacityExceeded, setCapacityExceeded] = useState(false);
-  const [failedSaveConversations, setFailedSaveConversations] = useState<IdentifiedConversation[]>(
-    [],
-  );
   const draftStateRef = useRef(draftState);
   const loadGeneration = useRef(0);
 
-  const setDraftState = useCallback((nextState: DraftLifecycleState) => {
+  const dispatchDraft = useCallback((action: DraftLifecycleAction) => {
+    const nextState = reduceDraftLifecycle(draftStateRef.current, action);
     draftStateRef.current = nextState;
     setRenderedDraftState(nextState);
+    return nextState;
   }, []);
 
   const loadDraftState = useCallback(
@@ -63,29 +42,30 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
       const generation = ++loadGeneration.current;
       const annotationsToAdopt = draftAnnotationsToAdopt(draftStateRef.current, identity);
       setCapacityExceeded(false);
+      dispatchDraft({ type: "load-started", conversationIdentity: identity });
       if (identity.kind === "unidentified") {
-        setDraftState(readyDraftState(identity));
         return;
       }
 
-      setDraftState(loadingDraftState(identity));
       for (const annotation of annotationsToAdopt) {
         draftPersistence.enqueue(identity, { kind: "add", annotation });
       }
 
       void draftPersistence
         .load(identity)
-        .then((annotations) => {
+        .then(({ annotations, hasFailedSave }) => {
           if (generation !== loadGeneration.current) {
             return;
           }
-          setDraftState({
-            status: "ready",
+          const nextAnnotations = applyDraftMutations(
+            annotations,
+            annotationsToAdopt.map((annotation) => ({ kind: "add", annotation })),
+          );
+          dispatchDraft({
+            type: "load-succeeded",
             conversationIdentity: identity,
-            annotations: applyDraftMutations(
-              annotations,
-              annotationsToAdopt.map((annotation) => ({ kind: "add", annotation })),
-            ),
+            annotations: nextAnnotations,
+            hasFailedSave,
           });
         })
         .catch((error: unknown) => {
@@ -93,15 +73,14 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
           if (generation !== loadGeneration.current) {
             return;
           }
-          setDraftState({
-            status: "error",
+          dispatchDraft({
+            type: "load-failed",
             conversationIdentity: identity,
             annotations: annotationsToAdopt,
-            operation: "load",
           });
         });
     },
-    [draftPersistence, setDraftState],
+    [dispatchDraft, draftPersistence],
   );
 
   useEffect(
@@ -109,24 +88,21 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
       draftPersistence.subscribe((event) => {
         if (event.status === "failed") {
           console.error("[QuoteCue] Failed to save draft annotations", event.error);
-          setFailedSaveConversations((failedConversations) =>
-            addConversation(failedConversations, event.conversationIdentity),
-          );
+        }
+        if (event.status === "failed") {
+          dispatchDraft({
+            type: "save-failed",
+            conversationIdentity: event.conversationIdentity,
+          });
           return;
         }
-        setFailedSaveConversations((failedConversations) =>
-          removeConversation(failedConversations, event.conversationIdentity),
-        );
-        const current = draftStateRef.current;
-        if (canMutateDraftState(current, event.conversationIdentity)) {
-          setDraftState({
-            status: "ready",
-            conversationIdentity: current.conversationIdentity,
-            annotations: applyDraftMutations(event.annotations, event.pendingMutations),
-          });
-        }
+        dispatchDraft({
+          type: "save-succeeded",
+          conversationIdentity: event.conversationIdentity,
+          annotations: applyDraftMutations(event.annotations, event.pendingMutations),
+        });
       }),
-    [draftPersistence, setDraftState],
+    [dispatchDraft, draftPersistence],
   );
 
   useEffect(() => {
@@ -139,7 +115,7 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
   const mutateAnnotations = useCallback(
     (mutation: DraftMutation) => {
       const current = draftStateRef.current;
-      if (!canMutateDraftState(current, conversationIdentity)) {
+      if (!canMutateDraftLifecycle(current, conversationIdentity)) {
         return false;
       }
       if (draftMutationExceedsCapacity(current.annotations, mutation)) {
@@ -154,33 +130,24 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
         setCapacityExceeded(false);
         return true;
       }
-      const next = {
-        ...current,
-        annotations: [...annotations],
-      };
       if (current.conversationIdentity.kind === "identified") {
         draftPersistence.enqueue(current.conversationIdentity, mutation);
       }
-      setDraftState(next);
+      dispatchDraft({
+        type: "mutated",
+        conversationIdentity,
+        annotations: [...annotations],
+      });
       setCapacityExceeded(false);
       return true;
     },
-    [conversationIdentity, draftPersistence, setDraftState],
+    [conversationIdentity, dispatchDraft, draftPersistence],
   );
 
-  const visibleDraftState = sameConversationIdentity(
-    draftState.conversationIdentity,
-    conversationIdentity,
-  )
-    ? draftState
-    : loadingDraftState(conversationIdentity);
-  const visibleSaveFailed = failedSaveConversations.some((failedConversation) =>
-    sameConversationIdentity(failedConversation, conversationIdentity),
-  );
-
+  const visibleDraftState = visibleDraftLifecycleState(draftState, conversationIdentity);
   return {
     capacityExceeded,
-    draft: toPublicDraftState(visibleDraftState, visibleSaveFailed),
+    draft: publicDraftState(visibleDraftState),
     addAnnotation: useCallback(
       (annotation: DraftAnnotation) => mutateAnnotations({ kind: "add", annotation }),
       [mutateAnnotations],
@@ -219,92 +186,12 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
     ),
     retry: useCallback(() => {
       if (visibleDraftState.status === "error") {
-        loadDraftState(conversationIdentity);
-        return;
+        if (visibleDraftState.operation === "load") {
+          loadDraftState(conversationIdentity);
+        } else {
+          draftPersistence.retry(visibleDraftState.conversationIdentity);
+        }
       }
-      if (visibleSaveFailed && conversationIdentity.kind === "identified") {
-        draftPersistence.retry(conversationIdentity);
-      }
-    }, [
-      conversationIdentity,
-      draftPersistence,
-      loadDraftState,
-      visibleSaveFailed,
-      visibleDraftState,
-    ]),
+    }, [conversationIdentity, draftPersistence, loadDraftState, visibleDraftState]),
   };
-}
-
-function addConversation(
-  conversations: IdentifiedConversation[],
-  conversation: IdentifiedConversation,
-) {
-  return conversations.some((candidate) => sameConversationIdentity(candidate, conversation))
-    ? conversations
-    : [...conversations, conversation];
-}
-
-function removeConversation(
-  conversations: IdentifiedConversation[],
-  conversation: IdentifiedConversation,
-) {
-  return conversations.filter((candidate) => !sameConversationIdentity(candidate, conversation));
-}
-
-function toPublicDraftState(state: DraftLifecycleState, saveFailed: boolean): DraftState {
-  switch (state.status) {
-    case "loading":
-      return { status: "loading" };
-    case "ready":
-      return saveFailed
-        ? { status: "error", annotations: state.annotations, operation: "save" }
-        : { status: "ready", annotations: state.annotations };
-    case "error":
-      return {
-        status: "error",
-        annotations: state.annotations,
-        operation: state.operation,
-      };
-  }
-}
-
-function initialDraftState(conversationIdentity: ConversationIdentity): DraftLifecycleState {
-  return conversationIdentity.kind === "identified"
-    ? loadingDraftState(conversationIdentity)
-    : readyDraftState(conversationIdentity);
-}
-
-function loadingDraftState(conversationIdentity: ConversationIdentity): DraftLifecycleState {
-  return { status: "loading", conversationIdentity };
-}
-
-function readyDraftState(conversationIdentity: ConversationIdentity): DraftLifecycleState {
-  return {
-    status: "ready",
-    conversationIdentity,
-    annotations: [],
-  };
-}
-
-function canMutateDraftState(
-  state: DraftLifecycleState,
-  conversationIdentity: ConversationIdentity,
-): state is MutableDraftLifecycleState {
-  return (
-    sameConversationIdentity(state.conversationIdentity, conversationIdentity) &&
-    state.status === "ready"
-  );
-}
-
-function draftAnnotationsToAdopt(state: DraftLifecycleState, nextIdentity: ConversationIdentity) {
-  if (nextIdentity.kind !== "identified" || state.status === "loading") {
-    return [];
-  }
-  if (state.conversationIdentity.kind === "unidentified") {
-    return state.annotations;
-  }
-  return state.status === "error" &&
-    sameConversationIdentity(state.conversationIdentity, nextIdentity)
-    ? state.annotations
-    : [];
 }
