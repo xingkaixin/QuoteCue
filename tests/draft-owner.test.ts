@@ -102,9 +102,12 @@ describe("draft storage", () => {
   it("scopes startup cleanup to each store instance", async () => {
     extensionStorage.reset({ [currentKey]: envelope });
     extensionStorage.getKeys.mockClear();
+    const firstOwner = createDraftOwner();
+    const conversationB = { ...conversationA, id: "B" };
 
-    await createDraftOwner().load(conversationA);
+    await firstOwner.load(conversationA);
     await vi.waitFor(() => expect(extensionStorage.getKeys).toHaveBeenCalledOnce());
+    await firstOwner.load(conversationB);
 
     await createDraftOwner().load(conversationA);
     await vi.waitFor(() => expect(extensionStorage.getKeys).toHaveBeenCalledTimes(2));
