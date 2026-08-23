@@ -5,12 +5,12 @@ import type { DraftStore } from "./draft-store";
 
 const DraftPersistenceContext = createContext<DraftPersistence | null>(null);
 
-type DraftStoreProviderProps = {
+type DraftPersistenceProviderProps = {
   children: ReactNode;
   store: DraftStore;
 };
 
-export function DraftStoreProvider({ children, store }: DraftStoreProviderProps) {
+export function DraftPersistenceProvider({ children, store }: DraftPersistenceProviderProps) {
   const persistence = useMemo(() => createDraftPersistence(store), [store]);
   return (
     <DraftPersistenceContext.Provider value={persistence}>
@@ -22,7 +22,7 @@ export function DraftStoreProvider({ children, store }: DraftStoreProviderProps)
 export function useDraftPersistence() {
   const persistence = useContext(DraftPersistenceContext);
   if (!persistence) {
-    throw new Error("DraftStoreProvider is missing");
+    throw new Error("DraftPersistenceProvider is missing");
   }
   return persistence;
 }

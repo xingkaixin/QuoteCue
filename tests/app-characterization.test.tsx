@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import App from "@/entrypoints/content/App";
 import type { DraftAnnotation, AnchoredSelection } from "@/features/annotations/annotation";
-import { DraftStoreProvider } from "@/features/annotations/DraftStoreProvider";
+import { DraftPersistenceProvider } from "@/features/annotations/DraftPersistenceProvider";
 import type { IdentifiedConversation } from "@/features/host-port/host-port";
 import { HostProvider } from "@/features/host-port/HostProvider";
 import { I18nProvider } from "@/features/i18n/I18nProvider";
@@ -443,13 +443,13 @@ async function mountApp() {
 
   await act(async () =>
     root.render(
-      <DraftStoreProvider store={draftStore}>
+      <DraftPersistenceProvider store={draftStore}>
         <HostProvider host={host}>
           <I18nProvider>
             <App />
           </I18nProvider>
         </HostProvider>
-      </DraftStoreProvider>,
+      </DraftPersistenceProvider>,
     ),
   );
   await vi.waitFor(() => {

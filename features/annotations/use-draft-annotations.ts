@@ -16,7 +16,7 @@ import {
   type DraftLifecycleState,
 } from "./draft-lifecycle";
 import { applyDraftMutation, applyDraftMutations, type DraftMutation } from "./draft-mutation";
-import { useDraftPersistence } from "./DraftStoreProvider";
+import { useDraftPersistence } from "./DraftPersistenceProvider";
 
 export { canMutateDraft } from "./draft-lifecycle";
 export type { DraftState } from "./draft-lifecycle";
