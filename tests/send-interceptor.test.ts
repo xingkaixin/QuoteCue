@@ -11,7 +11,7 @@ import {
   appendSendButton as installSendButton,
   appendUserMessage as installUserMessage,
 } from "./fixtures/chatgpt-host";
-import { createFakeHost } from "./fixtures/fake-host";
+import { createFakeHost, fakeComposerSnapshot } from "./fixtures/fake-host";
 import { annotation, createInterceptor } from "./fixtures/send-interceptor";
 
 beforeEach(() => {
@@ -197,7 +197,7 @@ describe("registerSendInterceptor", () => {
     const host = createFakeHost();
     vi.spyOn(host.composer, "snapshot").mockReturnValue({
       status: "available",
-      value: { text: "original question" },
+      value: fakeComposerSnapshot("original question"),
     });
     const submit = vi.spyOn(host.composer, "submit").mockResolvedValue({
       reason: "send-unavailable",
@@ -304,7 +304,7 @@ describe("registerSendInterceptor", () => {
     const host = createFakeHost();
     vi.spyOn(host.composer, "snapshot").mockReturnValue({
       status: "available",
-      value: { text: "original question" },
+      value: fakeComposerSnapshot("original question"),
     });
     const submit = vi.spyOn(host.composer, "submit");
     const interceptor = createInterceptor(undefined, { host });
@@ -355,7 +355,7 @@ describe("registerSendInterceptor", () => {
     const host = createFakeHost();
     vi.spyOn(host.composer, "snapshot").mockReturnValue({
       status: "available",
-      value: { text: "original question" },
+      value: fakeComposerSnapshot("original question"),
     });
     const submit = vi
       .spyOn(host.composer, "submit")

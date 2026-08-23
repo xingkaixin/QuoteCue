@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
+import type { ComposerSnapshot } from "@/features/host-port/host-port";
+
 import {
   availableValue,
   nextFrame,
@@ -160,7 +162,7 @@ export function runCoreHostContract(definition: HostContractDefinition) {
 
       await expect(
         siteHost.composer.submit({
-          restoreTo: { text: "Original question" },
+          restoreTo: { text: "Original question" } as ComposerSnapshot,
           signal: new AbortController().signal,
           text: "Replacement question",
         }),

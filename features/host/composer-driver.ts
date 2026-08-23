@@ -15,7 +15,7 @@ export function createComposerDriver(context: HostContext) {
     if (!element) {
       return unavailable("composer-unavailable", logger);
     }
-    const value = { text: composerAccess.read(element) };
+    const value = { text: composerAccess.read(element) } as ComposerSnapshot;
     composerBySnapshot.set(value, element);
     return available(value);
   }

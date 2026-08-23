@@ -1,6 +1,7 @@
 import type {
   ComposerSubmitDecision,
   ComposerSubmitIntent,
+  ComposerSnapshot,
   ConversationIdentity,
   Host,
   HostLayout,
@@ -33,6 +34,10 @@ export type FakeHost = Host & {
   };
 };
 
+export function fakeComposerSnapshot(text: string): ComposerSnapshot {
+  return { text } as ComposerSnapshot;
+}
+
 export function createFakeHost(overrides: FakeHostOverrides = {}): FakeHost {
   const composer = document.createElement("div");
   const sendControl = document.createElement("button");
@@ -60,7 +65,7 @@ export function createFakeHost(overrides: FakeHostOverrides = {}): FakeHost {
     composer: {
       snapshot: () => ({
         status: "available",
-        value: { text: composerText },
+        value: fakeComposerSnapshot(composerText),
       }),
       async submit({ restoreText, restoreTo, signal, text }) {
         const fallbackText = restoreText ?? restoreTo.text;
