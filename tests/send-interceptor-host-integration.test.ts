@@ -194,7 +194,7 @@ describe("annotated send host integration", () => {
     const host = createFakeHost();
     vi.spyOn(host.composer, "snapshot").mockReturnValue({
       status: "available",
-      value: { element: host.elements.composer, text: "original question" },
+      value: { text: "original question" },
     });
     let submittedSignal: AbortSignal | undefined;
     const submit = vi.spyOn(host.composer, "submit").mockImplementation(

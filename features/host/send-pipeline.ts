@@ -209,7 +209,7 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
 
   function replaceComposer(options: ComposerSubmitOptions) {
     try {
-      const replaced = composerDriver.replaceText(options.restoreTo.element, options.text);
+      const replaced = composerDriver.replaceText(options.restoreTo, options.text);
       if (!replaced) {
         logger?.("[QuoteCue host] composer replacement failed");
       }
@@ -222,7 +222,7 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
 
   function restoreComposer(options: ComposerSubmitOptions) {
     try {
-      composerDriver.restoreText(options.restoreTo, options.text);
+      composerDriver.restoreText(options.restoreTo, options.text, options.restoreText);
     } catch (error: unknown) {
       logger?.("[QuoteCue host] composer restore failed", error);
     }

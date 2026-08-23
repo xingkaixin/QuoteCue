@@ -60,9 +60,10 @@ export function createFakeHost(overrides: FakeHostOverrides = {}): FakeHost {
     composer: {
       snapshot: () => ({
         status: "available",
-        value: { element: composer, text: composerText },
+        value: { text: composerText },
       }),
-      async submit({ restoreTo, signal, text }) {
+      async submit({ restoreText, restoreTo, signal, text }) {
+        const fallbackText = restoreText ?? restoreTo.text;
         if (signal.aborted) {
           return { reason: "send-unavailable", status: "unavailable" };
         }
@@ -70,8 +71,8 @@ export function createFakeHost(overrides: FakeHostOverrides = {}): FakeHost {
         composer.textContent = text;
         await Promise.resolve();
         if (signal.aborted) {
-          composerText = restoreTo.text;
-          composer.textContent = restoreTo.text;
+          composerText = fallbackText;
+          composer.textContent = fallbackText;
           return { reason: "send-unavailable", status: "unavailable" };
         }
         return { status: "available", value: "confirmed" };

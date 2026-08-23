@@ -9,17 +9,26 @@ import {
 export function createComposerDriver(context: HostContext) {
   const { adapter, document: hostDocument, logger } = context;
   const composerAccess = adapter.composer;
+  const composerBySnapshot = new WeakMap<ComposerSnapshot, HTMLElement>();
 
   const current = () => hostDocument.querySelector<HTMLElement>(adapter.composer.selector);
 
   function snapshot(): HostResult<ComposerSnapshot> {
     const element = current();
-    return element
-      ? available({ element, text: composerAccess.read(element) })
-      : unavailable("composer-unavailable", logger);
+    if (!element) {
+      return unavailable("composer-unavailable", logger);
+    }
+    const value = { text: composerAccess.read(element) };
+    composerBySnapshot.set(value, element);
+    return available(value);
   }
 
-  function replaceText(composer: HTMLElement, text: string) {
+  function replaceText(composerSnapshot: ComposerSnapshot, text: string) {
+    const composer = composerBySnapshot.get(composerSnapshot);
+    return composer ? writeText(composer, text) : false;
+  }
+
+  function writeText(composer: HTMLElement, text: string) {
     if (!composer.isConnected) {
       return false;
     }
@@ -28,15 +37,21 @@ export function createComposerDriver(context: HostContext) {
     return adapter.composer.write(composer, text, context);
   }
 
-  function restoreText(composerSnapshot: ComposerSnapshot, expectedText: string) {
+  function restoreText(
+    composerSnapshot: ComposerSnapshot,
+    expectedText: string,
+    restoredText = composerSnapshot.text,
+  ) {
+    const composer = composerBySnapshot.get(composerSnapshot);
     if (
-      current() !== composerSnapshot.element ||
-      composerAccess.normalize(composerAccess.read(composerSnapshot.element)) !==
+      !composer ||
+      current() !== composer ||
+      composerAccess.normalize(composerAccess.read(composer)) !==
         composerAccess.normalize(expectedText)
     ) {
       return false;
     }
-    return replaceText(composerSnapshot.element, composerSnapshot.text);
+    return writeText(composer, restoredText);
   }
 
   return { current, replaceText, restoreText, snapshot };

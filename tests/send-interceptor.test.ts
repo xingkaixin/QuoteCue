@@ -197,7 +197,7 @@ describe("registerSendInterceptor", () => {
     const host = createFakeHost();
     vi.spyOn(host.composer, "snapshot").mockReturnValue({
       status: "available",
-      value: { element: host.elements.composer, text: "original question" },
+      value: { text: "original question" },
     });
     const submit = vi.spyOn(host.composer, "submit").mockResolvedValue({
       reason: "send-unavailable",
@@ -304,7 +304,7 @@ describe("registerSendInterceptor", () => {
     const host = createFakeHost();
     vi.spyOn(host.composer, "snapshot").mockReturnValue({
       status: "available",
-      value: { element: host.elements.composer, text: "original question" },
+      value: { text: "original question" },
     });
     const submit = vi.spyOn(host.composer, "submit");
     const interceptor = createInterceptor(undefined, { host });
@@ -355,7 +355,7 @@ describe("registerSendInterceptor", () => {
     const host = createFakeHost();
     vi.spyOn(host.composer, "snapshot").mockReturnValue({
       status: "available",
-      value: { element: host.elements.composer, text: "original question" },
+      value: { text: "original question" },
     });
     const submit = vi
       .spyOn(host.composer, "submit")
