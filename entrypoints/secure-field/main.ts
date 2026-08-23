@@ -45,7 +45,6 @@ function connect(event: MessageEvent<unknown>) {
     }
   });
   document.body.replaceChildren(field);
-  port.postMessage({ type: "ready" });
   requestAnimationFrame(() => field.focus());
 }
 

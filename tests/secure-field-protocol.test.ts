@@ -58,7 +58,7 @@ describe("secure field protocol", () => {
       type: "save",
       value: "comment",
     });
-    expect(decodeSecureFieldEvent({ type: "ready" })).toEqual({ type: "ready" });
+    expect(decodeSecureFieldEvent({ type: "ready" })).toBeNull();
     expect(decodeSecureFieldEvent({ type: "focus-change", focused: true })).toBeNull();
     expect(decodeSecureFieldEvent({ type: "save" })).toBeNull();
   });
