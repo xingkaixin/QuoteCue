@@ -2,7 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { numberAnnotations } from "@/features/annotations/annotation-projection";
 import type { ConversationIdentity } from "@/features/conversation/conversation-identity";
-import { MAX_COMPILED_PROMPT_LENGTH } from "@/features/annotations/draft-capacity";
+import {
+  MAX_COMPILED_PROMPT_LENGTH,
+  MAX_SELECTED_TEXT_LENGTH,
+} from "@/features/annotations/draft-capacity";
 import { registerSendInterceptor } from "@/features/annotations/register-send-interceptor";
 import { createChatGptHost } from "@/features/chatgpt/chatgpt-host";
 
@@ -384,6 +387,71 @@ describe("registerSendInterceptor", () => {
       siteId: "chatgpt",
     });
     expect(onStateChange).toHaveBeenLastCalledWith({ status: "idle" });
+    interceptor.dispose();
+  });
+
+  it("keeps the original question after an oversized retry", async () => {
+    const host = createFakeHost();
+    const identity = {
+      kind: "identified" as const,
+      id: "conversation-test",
+      siteId: "chatgpt" as const,
+    };
+    let annotations = [annotation];
+    vi.spyOn(host.composer, "snapshot")
+      .mockReturnValueOnce({
+        status: "available",
+        value: fakeComposerSnapshot("original question"),
+      })
+      .mockReturnValue({ status: "available", value: fakeComposerSnapshot("") });
+    const submit = vi
+      .spyOn(host.composer, "submit")
+      .mockResolvedValueOnce({ reason: "confirmation-timeout", status: "unavailable" })
+      .mockResolvedValueOnce({ status: "available", value: "confirmed" });
+    const onSendConfirmed = vi.fn();
+    const onStateChange = vi.fn();
+    const interceptor = registerSendInterceptor({
+      getSendInput: () => ({
+        annotations: numberAnnotations(annotations),
+        conversationIdentity: identity,
+        locale: "en",
+      }),
+      host,
+      onSendConfirmed,
+      onStateChange,
+    });
+
+    interceptor.submit();
+    await vi.waitFor(() =>
+      expect(onStateChange).toHaveBeenLastCalledWith({
+        status: "failed",
+        reason: "confirmation-timeout",
+      }),
+    );
+
+    annotations = Array.from({ length: 5 }, (_, index) => ({
+      ...annotation,
+      id: `oversized-${index}`,
+      anchor: {
+        ...annotation.anchor,
+        messageId: `oversized-message-${index}`,
+        quote: "x".repeat(MAX_SELECTED_TEXT_LENGTH),
+      },
+    }));
+    interceptor.submit();
+    expect(onStateChange).toHaveBeenLastCalledWith({
+      status: "failed",
+      reason: "prompt-too-long",
+    });
+    expect(submit).toHaveBeenCalledOnce();
+
+    annotations = [annotation];
+    interceptor.submit();
+    await vi.waitFor(() => expect(onSendConfirmed).toHaveBeenCalledOnce());
+
+    const retry = submit.mock.calls[1]?.[0];
+    expect(retry?.restoreText).toBe("original question");
+    expect(retry?.text).toContain("[Supplemental question]\noriginal question");
     interceptor.dispose();
   });
 
