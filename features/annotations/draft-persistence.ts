@@ -20,6 +20,7 @@ type DraftPersistenceEvent =
 type PendingDraftSave = {
   activeSave: Promise<void> | null;
   conversationIdentity: IdentifiedConversation;
+  hasFailed: boolean;
   mutations: DraftMutation[];
 };
 
@@ -33,10 +34,15 @@ export function createDraftPersistence(draftStore: DraftStore) {
     const key = conversationKey(conversation);
     await pendingSaves.get(key)?.activeSave;
     const annotations = await draftStore.load(conversation);
-    const pendingMutations = pendingSaves.get(key)?.mutations ?? [];
-    return pendingMutations.length > 0
-      ? applyDraftMutations(annotations, pendingMutations)
-      : annotations;
+    const pending = pendingSaves.get(key);
+    const pendingMutations = pending?.mutations ?? [];
+    return {
+      annotations:
+        pendingMutations.length > 0
+          ? applyDraftMutations(annotations, pendingMutations)
+          : annotations,
+      hasFailedSave: pending?.hasFailed ?? false,
+    };
   }
 
   function enqueue(conversation: IdentifiedConversation, mutation: DraftMutation) {
@@ -68,6 +74,7 @@ export function createDraftPersistence(draftStore: DraftStore) {
     const pending = {
       activeSave: null,
       conversationIdentity: conversation,
+      hasFailed: false,
       mutations: [],
     };
     pendingSaves.set(key, pending);
@@ -100,6 +107,7 @@ export function createDraftPersistence(draftStore: DraftStore) {
           pending.mutations.slice(0, mutationCount),
         );
       } catch (error: unknown) {
+        pending.hasFailed = true;
         notify({
           status: "failed",
           conversationIdentity: pending.conversationIdentity,
@@ -108,6 +116,7 @@ export function createDraftPersistence(draftStore: DraftStore) {
         return;
       }
       pending.mutations.splice(0, mutationCount);
+      pending.hasFailed = false;
       notify({
         status: "saved",
         conversationIdentity: pending.conversationIdentity,
