@@ -72,24 +72,22 @@ describe("conversation identities", () => {
     });
   });
 
-  it("subscribes to history navigation without observing DOM changes", async () => {
+  it("subscribes to committed history navigation without observing DOM changes", () => {
     const observe = vi.spyOn(MutationObserver.prototype, "observe");
     const onNavigation = vi.fn();
     const navigation = new EventTarget();
     Object.defineProperty(window, "navigation", { configurable: true, value: navigation });
     const stop = host.conversation.subscribe(onNavigation);
 
-    navigation.dispatchEvent(new Event("navigate"));
     window.history.pushState({}, "", "/c/conversation-b");
-    await Promise.resolve();
+    navigation.dispatchEvent(new Event("currententrychange"));
 
     expect(onNavigation).toHaveBeenCalledOnce();
     expect(observe).not.toHaveBeenCalled();
 
     stop();
-    navigation.dispatchEvent(new Event("navigate"));
     window.history.pushState({}, "", "/c/conversation-d");
-    await Promise.resolve();
+    navigation.dispatchEvent(new Event("currententrychange"));
     expect(onNavigation).toHaveBeenCalledOnce();
   });
 });

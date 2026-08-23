@@ -20,16 +20,14 @@ afterEach(() => {
 });
 
 describe("host navigation signals", () => {
-  it("reads the committed conversation after a Navigation API event", async () => {
+  it("reads the committed conversation after a Navigation API entry change", () => {
     const navigation = installNavigationSource();
     const host = createChatGptHost({ document, window });
     const identities = vi.fn(() => host.conversation.identity("session"));
     const stop = host.conversation.subscribe(identities);
 
-    navigation.dispatchEvent(new Event("navigate"));
     window.history.pushState({}, "", "/c/conversation-a");
-    expect(identities).not.toHaveBeenCalled();
-    await Promise.resolve();
+    navigation.dispatchEvent(new Event("currententrychange"));
 
     expect(identities).toHaveReturnedWith({
       kind: "identified",
@@ -39,7 +37,27 @@ describe("host navigation signals", () => {
     stop();
   });
 
-  it("keeps Navigation API subscriptions independent", async () => {
+  it("does not notify before a delayed navigation commits", () => {
+    const navigation = installNavigationSource();
+    const host = createChatGptHost({ document, window });
+    const identities = vi.fn(() => host.conversation.identity("session"));
+    const stop = host.conversation.subscribe(identities);
+
+    navigation.dispatchEvent(new Event("navigate"));
+    expect(identities).not.toHaveBeenCalled();
+
+    window.history.pushState({}, "", "/c/conversation-a");
+    navigation.dispatchEvent(new Event("currententrychange"));
+
+    expect(identities).toHaveReturnedWith({
+      kind: "identified",
+      id: "conversation-a",
+      siteId: "chatgpt",
+    });
+    stop();
+  });
+
+  it("keeps Navigation API subscriptions independent", () => {
     const navigation = installNavigationSource();
     const host = createChatGptHost({ document, window });
     const firstCallback = vi.fn();
@@ -47,14 +65,12 @@ describe("host navigation signals", () => {
     const stopFirst = host.conversation.subscribe(firstCallback);
     const stopSecond = host.conversation.subscribe(secondCallback);
 
-    navigation.dispatchEvent(new Event("navigate"));
-    await Promise.resolve();
+    navigation.dispatchEvent(new Event("currententrychange"));
     expect(firstCallback).toHaveBeenCalledOnce();
     expect(secondCallback).toHaveBeenCalledOnce();
 
     stopFirst();
-    navigation.dispatchEvent(new Event("navigate"));
-    await Promise.resolve();
+    navigation.dispatchEvent(new Event("currententrychange"));
     expect(firstCallback).toHaveBeenCalledOnce();
     expect(secondCallback).toHaveBeenCalledTimes(2);
 
