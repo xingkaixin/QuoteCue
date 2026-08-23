@@ -2,8 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import type { ConversationIdentity } from "@/features/conversation/conversation-identity";
 import { useHost } from "@/features/host-port/HostProvider";
-
-import type { AnchoredSelection, SelectionCapture } from "./annotation";
+import type { AnchoredSelection, SelectionCapture } from "@/features/host-port/host-port";
 
 export type SelectionCaptureOptions = {
   conversationIdentity: ConversationIdentity;

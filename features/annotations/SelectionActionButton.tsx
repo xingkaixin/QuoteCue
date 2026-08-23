@@ -1,11 +1,10 @@
 import { useLayoutEffect, useRef, useState } from "react";
 
 import { useI18n } from "@/features/i18n/I18nProvider";
+import type { SelectionCapture } from "@/features/host-port/host-port";
 import { positionAdjacentToRect } from "@/features/layout/floating-position";
 import { useVisualViewportBounds } from "@/features/layout/use-visual-viewport";
 import { QUOTECUE_INTERACTIVE_CLASS, Z_LAYER } from "@/lib/dom-identity";
-
-import type { SelectionCapture } from "./annotation";
 
 const BUTTON_HEIGHT = 32;
 const BUTTON_WIDTH = 96;

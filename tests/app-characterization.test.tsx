@@ -3,10 +3,11 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import App from "@/entrypoints/content/App";
-import type { DraftAnnotation, AnchoredSelection } from "@/features/annotations/annotation";
+import type { DraftAnnotation } from "@/features/annotations/annotation";
 import type { IdentifiedConversation } from "@/features/conversation/conversation-identity";
 import { DraftRuntimeProvider } from "@/features/annotations/DraftRuntimeProvider";
 import { HostProvider } from "@/features/host-port/HostProvider";
+import type { AnchoredSelection } from "@/features/host-port/host-port";
 import { I18nProvider } from "@/features/i18n/I18nProvider";
 
 import { createFakeHost, type FakeHost } from "./fixtures/fake-host";

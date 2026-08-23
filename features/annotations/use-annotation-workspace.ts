@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 
 import { useHost } from "@/features/host-port/HostProvider";
+import type { AnchoredSelection } from "@/features/host-port/host-port";
 
 import { useI18n } from "@/features/i18n/I18nProvider";
 
-import type { AnchoredSelection, AnnotationEditorState, DraftAnnotation } from "./annotation";
+import type { DraftAnnotation } from "./annotation";
 import type { ProjectedAnnotation } from "./annotation-projection";
 import { sameConversationIdentity } from "@/features/conversation/conversation-identity";
 import { registerSendInterceptor } from "./register-send-interceptor";
@@ -14,6 +15,10 @@ import { useDeferredAnnotationDeletion } from "./use-deferred-annotation-deletio
 import { canMutateDraft, useDraftAnnotations } from "./use-draft-annotations";
 
 type SendController = ReturnType<typeof registerSendInterceptor>;
+type AnnotationEditorState =
+  | { status: "hidden" }
+  | { status: "quick"; annotationId: string }
+  | { status: "expanded"; annotationId: string };
 
 export function useAnnotationWorkspace() {
   const host = useHost();

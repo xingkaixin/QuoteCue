@@ -7,7 +7,7 @@ import { SelectionPresentation } from "@/features/annotations/SelectionPresentat
 import { createDeepSeekHost } from "@/features/deepseek/deepseek-host";
 import { I18nProvider } from "@/features/i18n/I18nProvider";
 import { registerSendInterceptor } from "@/features/annotations/register-send-interceptor";
-import type { AnchoredSelection } from "@/features/annotations/annotation";
+import type { AnchoredSelection } from "@/features/host-port/host-port";
 
 import {
   appendAssistantMessageItem,
