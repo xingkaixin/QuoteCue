@@ -13,7 +13,6 @@ type HistoryPatchState = {
 };
 
 type MutationInterest = {
-  attributeFilter?: readonly string[];
   characterData?: boolean;
   childList?: boolean;
 };
@@ -24,13 +23,11 @@ type MutationSubscription = {
 };
 
 type MutationSummary = {
-  attributeNames: Set<string>;
   hasCharacterData: boolean;
   hasChildList: boolean;
 };
 
 type MutationObservationPlan = {
-  attributeFilter: Set<string>;
   observesCharacterData: boolean;
   observesChildList: boolean;
 };
@@ -126,9 +123,6 @@ export function createHostSignals(
     }
     mutationObservationPlan = nextPlan;
     mutationObserver.observe(hostDocument.body, {
-      ...(nextPlan.attributeFilter.size > 0
-        ? { attributeFilter: [...nextPlan.attributeFilter], attributes: true }
-        : {}),
       childList: nextPlan.observesChildList,
       subtree: true,
     });
@@ -233,18 +227,13 @@ export function createHostSignals(
 function createMutationObservationPlan(
   subscriptions: ReadonlySet<MutationSubscription>,
 ): MutationObservationPlan {
-  const attributeFilter = new Set<string>();
   let observesCharacterData = false;
   let observesChildList = false;
   for (const { interest } of subscriptions) {
-    for (const attribute of interest.attributeFilter ?? []) {
-      attributeFilter.add(attribute);
-    }
     observesCharacterData ||= interest.characterData === true;
     observesChildList ||= interest.childList === true;
   }
   return {
-    attributeFilter,
     observesCharacterData,
     observesChildList: observesCharacterData || observesChildList,
   };
@@ -256,22 +245,17 @@ function sameMutationObservationPlan(
 ) {
   return (
     current.observesCharacterData === next.observesCharacterData &&
-    current.observesChildList === next.observesChildList &&
-    current.attributeFilter.size === next.attributeFilter.size &&
-    [...current.attributeFilter].every((attribute) => next.attributeFilter.has(attribute))
+    current.observesChildList === next.observesChildList
   );
 }
 
 function summarizeMutations(records: MutationRecord[]): MutationSummary {
   const summary: MutationSummary = {
-    attributeNames: new Set(),
     hasCharacterData: false,
     hasChildList: false,
   };
   for (const record of records) {
-    if (record.type === "attributes" && record.attributeName !== null) {
-      summary.attributeNames.add(record.attributeName);
-    } else if (record.type === "characterData") {
+    if (record.type === "characterData") {
       summary.hasCharacterData = true;
     } else if (record.type === "childList") {
       summary.hasChildList = true;
@@ -283,8 +267,7 @@ function summarizeMutations(records: MutationRecord[]): MutationSummary {
 function matchesMutationInterest(summary: MutationSummary, interest: MutationInterest) {
   return (
     (interest.childList === true && summary.hasChildList) ||
-    (interest.characterData === true && summary.hasCharacterData) ||
-    interest.attributeFilter?.some((attribute) => summary.attributeNames.has(attribute)) === true
+    (interest.characterData === true && summary.hasCharacterData)
   );
 }
 
