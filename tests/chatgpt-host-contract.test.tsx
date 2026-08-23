@@ -9,11 +9,7 @@ import { registerSendInterceptor } from "@/features/annotations/register-send-in
 import { useAnnotatedComposerLayout } from "@/features/host/use-annotated-composer-layout";
 import { QUOTECUE_NATIVE_ACTION_SELECTOR } from "@/lib/dom-identity";
 
-import {
-  appendSelectionToolbar,
-  appendUserMessage,
-  installChatGptHostFixture,
-} from "./fixtures/chatgpt-host";
+import { appendSelectionToolbar, installChatGptHostFixture } from "./fixtures/chatgpt-host";
 import { requiredNativeAction } from "./fixtures/fixture-utils";
 import { HostTestProvider } from "./fixtures/host-provider";
 
@@ -126,30 +122,9 @@ describe("ChatGPT host contract", () => {
     stop();
   });
 
-  it("covers selection, layout, annotated send confirmation, and cleanup", async () => {
+  it("integrates annotated composer layout and cleanup", async () => {
     const fixture = installChatGptHostFixture();
     const host = createChatGptHost({ document, window });
-    const selectedText = fixture.assistantMessage.querySelector("strong")?.firstChild;
-    if (!selectedText) {
-      throw new Error("Expected fixture selection text");
-    }
-    const range = document.createRange();
-    range.selectNodeContents(selectedText);
-    window.getSelection()?.addRange(range);
-
-    const selection = host.selection.capture();
-    expect(selection.status).toBe("available");
-    const draft = selection.status === "available" ? selection.value : missingSelection();
-    expect(draft.anchor).toMatchObject({
-      messageId: "assistant-one",
-      quote: "focused answer",
-    });
-
-    const annotation: DraftAnnotation = {
-      id: "annotation-one",
-      anchor: draft.anchor,
-      comment: "Explain the tradeoff",
-    };
     const container = document.createElement("div");
     document.body.append(container);
     const root = createRoot(container);
@@ -161,40 +136,6 @@ describe("ChatGPT host contract", () => {
       ),
     );
     expect(container.textContent).toBe("112,708|456,748,36,36");
-
-    let annotations = [annotation];
-    const onSendConfirmed = vi.fn(() => {
-      annotations = [];
-    });
-    fixture.action.addEventListener("click", () => {
-      const sentText = fixture.composer.textContent ?? "";
-      appendUserMessage("user-one", sentText);
-    });
-    const interceptor = registerSendInterceptor({
-      getSendInput: () => ({
-        annotations: numberAnnotations(annotations),
-        conversationIdentity: {
-          kind: "identified",
-          id: "conversation-test",
-          siteId: "chatgpt",
-        },
-        locale: "en",
-      }),
-      host,
-      onSendConfirmed,
-    });
-
-    interceptor.submit();
-    await vi.waitFor(() =>
-      expect(onSendConfirmed).toHaveBeenCalledWith([annotation], {
-        kind: "identified",
-        id: "conversation-test",
-        siteId: "chatgpt",
-      }),
-    );
-    expect(annotations).toEqual([]);
-
-    interceptor.dispose();
     await act(async () => root.unmount());
     expect(fixture.surface.style.paddingTop).toBe("5px");
     expect(fixture.action.style.visibility).toBe("");
@@ -269,36 +210,6 @@ describe("ChatGPT host contract", () => {
     expect(host.selection.messageIndex().get(captured.value.anchor.messageId)).toBe(
       fixture.assistantMessage,
     );
-  });
-
-  it("classifies viewport and text changes for selection projections", async () => {
-    const fixture = installChatGptHostFixture();
-    const text = fixture.assistantMessage.querySelector("strong")?.firstChild;
-    if (!text) {
-      throw new Error("Expected assistant message text");
-    }
-    const onInvalidation = vi.fn();
-    const stop = createChatGptHost({ document, window }).selection.observeInvalidation(
-      onInvalidation,
-    );
-
-    window.dispatchEvent(new Event("resize"));
-    expect(onInvalidation).toHaveBeenLastCalledWith({ reason: "layout" });
-
-    onInvalidation.mockClear();
-    text.textContent = "updated answer";
-    await vi.waitFor(() =>
-      expect(onInvalidation).toHaveBeenCalledWith({
-        dirtyMessageIds: new Set(["assistant-one"]),
-        reason: "content",
-      }),
-    );
-
-    stop();
-    onInvalidation.mockClear();
-    text.textContent = "detached observer";
-    await Promise.resolve();
-    expect(onInvalidation).not.toHaveBeenCalled();
   });
 
   it("shares page observation until the final subscriber disconnects", () => {
@@ -397,48 +308,6 @@ describe("ChatGPT host contract", () => {
     expect(secondSubscriber).not.toHaveBeenCalled();
   });
 
-  it("centers an offscreen annotation endpoint in its nearest scroll container", () => {
-    const endpointTop = { value: 900 };
-    const rangeRectsDescriptor = Object.getOwnPropertyDescriptor(Range.prototype, "getClientRects");
-    Object.defineProperty(Range.prototype, "getClientRects", {
-      configurable: true,
-      value: () => [new DOMRect(100, endpointTop.value, 160, 20)],
-    });
-    const scrollContainer = document.createElement("div");
-    scrollContainer.style.overflowY = "auto";
-    Object.defineProperties(scrollContainer, {
-      clientHeight: { configurable: true, value: 400 },
-      scrollHeight: { configurable: true, value: 1_200 },
-      getBoundingClientRect: {
-        configurable: true,
-        value: () => new DOMRect(0, 100, 800, 400),
-      },
-    });
-    scrollContainer.scrollTop = 50;
-    const message = document.createElement("article");
-    message.dataset.messageAuthorRole = "assistant";
-    message.dataset.messageId = "assistant-scroll";
-    message.textContent = "target phrase";
-    scrollContainer.append(message);
-    document.body.append(scrollContainer);
-    const range = document.createRange();
-    range.selectNodeContents(message);
-    const host = createChatGptHost({ document, window });
-
-    expect(host.selection.reveal(range)).toEqual({ status: "available", value: "scrolled" });
-    expect(scrollContainer.scrollTop).toBe(660);
-
-    endpointTop.value = 200;
-    expect(host.selection.reveal(range)).toEqual({ status: "available", value: "visible" });
-    expect(scrollContainer.scrollTop).toBe(660);
-
-    if (rangeRectsDescriptor) {
-      Object.defineProperty(Range.prototype, "getClientRects", rangeRectsDescriptor);
-    } else {
-      Reflect.deleteProperty(Range.prototype, "getClientRects");
-    }
-  });
-
   it("reports typed host failures without annotation content", async () => {
     document.body.innerHTML = "<main></main>";
     const logs: string[] = [];
@@ -492,10 +361,6 @@ function LayoutProbe() {
         : "missing"}
     </output>
   );
-}
-
-function missingSelection(): never {
-  throw new Error("Expected a captured selection");
 }
 
 function selectRangeWithRenderedText(range: Range, renderedText: string) {

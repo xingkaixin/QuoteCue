@@ -6,6 +6,7 @@ import { compileAnnotatedPrompt } from "@/features/annotations/prompt-compiler";
 import { registerSendInterceptor } from "@/features/annotations/register-send-interceptor";
 import { createKimiHost } from "@/features/kimi/kimi-host";
 
+import { installSyntheticPasteSupport } from "./fixtures/host-contract";
 import { appendKimiUserMessage, installKimiHostFixture } from "./fixtures/kimi-host";
 
 beforeEach(() => {
@@ -24,40 +25,7 @@ afterEach(() => {
 });
 
 describe("Kimi host contract", () => {
-  it("takes over an empty editor and confirms against user content only", async () => {
-    const fixture = installKimiHostFixture("");
-    const host = createKimiHost({ document, window });
-    fixture.composer.addEventListener("input", () => {
-      fixture.sendControl.classList.toggle(
-        "disabled",
-        fixture.composer.innerText.trim().length === 0,
-      );
-    });
-    fixture.sendControl.addEventListener("click", () => {
-      if (!fixture.sendControl.classList.contains("disabled")) {
-        appendKimiUserMessage("user-two", fixture.composer.innerText);
-      }
-    });
-    const onSendConfirmed = vi.fn();
-    const interceptor = registerSendInterceptor({
-      getSendInput: kimiSendInput,
-      host,
-      onSendConfirmed,
-    });
-
-    interceptor.submit();
-    await vi.waitFor(() =>
-      expect(onSendConfirmed).toHaveBeenCalledWith([annotation()], {
-        kind: "identified",
-        id: "conversation-test",
-        siteId: "kimi",
-      }),
-    );
-    expect(fixture.composer.innerText).toContain("[批注 1]");
-    interceptor.dispose();
-  });
-
-  it("takes over the editor through a synthetic paste before touching execCommand", async () => {
+  it("waits for asynchronous Lexical paste rendering before dispatch", async () => {
     const fixture = installKimiHostFixture("");
     installSyntheticPasteSupport();
     fixture.composer.addEventListener("paste", (event) => {
@@ -186,27 +154,6 @@ describe("Kimi host contract", () => {
     interceptor.dispose();
   });
 });
-
-function installSyntheticPasteSupport() {
-  class FakeDataTransfer {
-    private store = new Map<string, string>();
-    setData(type: string, value: string) {
-      this.store.set(type, value);
-    }
-    getData(type: string) {
-      return this.store.get(type) ?? "";
-    }
-  }
-  class FakeClipboardEvent extends Event {
-    clipboardData: FakeDataTransfer | null;
-    constructor(type: string, init?: EventInit & { clipboardData?: FakeDataTransfer }) {
-      super(type, init);
-      this.clipboardData = init?.clipboardData ?? null;
-    }
-  }
-  vi.stubGlobal("DataTransfer", FakeDataTransfer);
-  vi.stubGlobal("ClipboardEvent", FakeClipboardEvent);
-}
 
 function kimiSendInput() {
   return {

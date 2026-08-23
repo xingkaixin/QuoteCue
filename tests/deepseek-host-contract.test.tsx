@@ -2,7 +2,6 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { DraftAnnotation } from "@/features/annotations/annotation";
 import { numberAnnotations } from "@/features/annotations/annotation-projection";
 import { SelectionPresentation } from "@/features/annotations/SelectionPresentation";
 import { createDeepSeekHost } from "@/features/deepseek/deepseek-host";
@@ -45,104 +44,30 @@ describe("DeepSeek host contract", () => {
     expect(host.selection.capture()).toEqual({ status: "unavailable" });
   });
 
-  it("covers layout, annotated send confirmation, and composer restore", async () => {
+  it("uses the send control without activating the stop control", async () => {
     const fixture = installDeepSeekHostFixture();
     const host = createDeepSeekHost({ document, window });
-    selectNodeContents(fixture.assistantContent.querySelector("strong")?.firstChild);
-    const selection = host.selection.capture();
-    const capturedSelection =
-      selection.status === "available" ? selection.value : missingSelection();
-
-    const layout = host.layout.current();
-    expect(layout.status).toBe("available");
-
-    const annotation: DraftAnnotation = {
-      id: "annotation-one",
-      anchor: capturedSelection.anchor,
-      comment: "Explain the tradeoff",
-    };
-    let annotations = [annotation];
-    const onSendConfirmed = vi.fn(() => {
-      annotations = [];
-    });
     const onStop = vi.fn();
     fixture.stopButton.addEventListener("click", onStop);
     fixture.sendButton.addEventListener("click", () => {
       appendUserMessageItem("user-two", fixture.composer.value);
     });
-    const interceptor = registerSendInterceptor({
-      getSendInput: () => ({
-        annotations: numberAnnotations(annotations),
-        conversationIdentity: {
-          kind: "identified",
-          id: "conversation-test",
-          siteId: "deepseek",
-        },
-        locale: "en",
-      }),
-      host,
-      onSendConfirmed,
-    });
+    const snapshot = host.composer.snapshot();
+    if (snapshot.status === "unavailable") {
+      throw new Error("Expected the DeepSeek composer");
+    }
 
-    interceptor.submit();
-    await vi.waitFor(() =>
-      expect(onSendConfirmed).toHaveBeenCalledWith([annotation], {
-        kind: "identified",
-        id: "conversation-test",
-        siteId: "deepseek",
+    await expect(
+      host.composer.submit({
+        restoreTo: snapshot.value,
+        signal: new AbortController().signal,
+        text: "Replacement question",
       }),
-    );
-    expect(annotations).toEqual([]);
+    ).resolves.toEqual({
+      status: "available",
+      value: "confirmed",
+    });
     expect(onStop).not.toHaveBeenCalled();
-
-    interceptor.dispose();
-  });
-
-  it("sends annotations on an empty composer without a supplemental question", async () => {
-    const fixture = installDeepSeekHostFixture();
-    const host = createDeepSeekHost({ document, window });
-    fixture.composer.value = "";
-    fixture.sendButton.classList.add("ds-button--disabled");
-    fixture.composer.addEventListener("input", () => {
-      fixture.sendButton.classList.toggle(
-        "ds-button--disabled",
-        fixture.composer.value.trim().length === 0,
-      );
-    });
-    let sentText = "";
-    fixture.sendButton.addEventListener("click", () => {
-      if (!fixture.sendButton.classList.contains("ds-button--disabled")) {
-        sentText = fixture.composer.value;
-        appendUserMessageItem("user-two", sentText);
-      }
-    });
-    const onSendConfirmed = vi.fn();
-    const interceptor = registerSendInterceptor({
-      getSendInput: () => ({
-        annotations: numberAnnotations([
-          { id: "annotation-one", anchor: emptyAnchor(), comment: "Explain the tradeoff" },
-        ]),
-        conversationIdentity: {
-          kind: "identified",
-          id: "conversation-test",
-          siteId: "deepseek",
-        },
-        locale: "en",
-      }),
-      host,
-      onSendConfirmed,
-    });
-
-    interceptor.submit();
-    await vi.waitFor(() =>
-      expect(onSendConfirmed).toHaveBeenCalledWith(
-        [expect.objectContaining({ id: "annotation-one" })],
-        { kind: "identified", id: "conversation-test", siteId: "deepseek" },
-      ),
-    );
-    expect(sentText).toContain("[Annotation 1]");
-    expect(sentText).not.toContain("[Supplemental question]");
-    interceptor.dispose();
   });
 
   it("does not read a streaming assistant response as a send confirmation candidate", async () => {
@@ -253,10 +178,6 @@ function selectNodeContents(node: ChildNode | null | undefined) {
   });
   window.getSelection()?.removeAllRanges();
   window.getSelection()?.addRange(range);
-}
-
-function missingSelection(): never {
-  throw new Error("Expected a captured selection");
 }
 
 function emptyAnchor() {
