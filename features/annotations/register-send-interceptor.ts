@@ -31,7 +31,7 @@ export type AnnotatedSendState = { status: "idle" } | { status: "sending" } | An
 
 type SendInterceptorOptions = {
   getSendInput: () => SendAttemptInput;
-  host: Host;
+  host: Pick<Host, "composer">;
   onSendConfirmed: (
     annotations: readonly DraftAnnotation[],
     conversationIdentity: ConversationIdentity,
