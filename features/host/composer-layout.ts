@@ -133,6 +133,7 @@ export function createComposerLayout(
   function startObservation() {
     resizeObserver =
       typeof ResizeObserver === "undefined" ? null : new ResizeObserver(notifySubscribers);
+    hostDocument.addEventListener("input", handleComposerInput, true);
     const stopMutationObservation = signals.observeMutations(
       (records) => {
         if (mutationsAffectComposer(records)) {
@@ -143,6 +144,7 @@ export function createComposerLayout(
     );
     const stopViewportObservation = signals.observeViewport(notifySubscribers);
     stopSignalObservation = () => {
+      hostDocument.removeEventListener("input", handleComposerInput, true);
       stopMutationObservation();
       stopViewportObservation();
     };
@@ -159,6 +161,13 @@ export function createComposerLayout(
   function notifySubscribers() {
     for (const subscriber of [...layoutSubscribers]) {
       subscriber();
+    }
+  }
+
+  function handleComposerInput(event: Event) {
+    const composer = currentComposer();
+    if (composer && event.target instanceof Node && composer.contains(event.target)) {
+      notifySubscribers();
     }
   }
 
@@ -257,6 +266,8 @@ export function createComposerLayout(
       const centerX = rect.left + rect.width / 2;
       const centerY = rect.top + rect.height / 2;
       if (
+        (adapter.layout.visibleActionsOnly &&
+          hostWindow.getComputedStyle(action).visibility === "hidden") ||
         rect.width <= 0 ||
         rect.height <= 0 ||
         centerX < surfaceRect.left ||

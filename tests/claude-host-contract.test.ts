@@ -11,6 +11,7 @@ import {
   appendClaudeUserMessage,
   enableClaudeSend,
   installClaudeHostFixture,
+  setClaudeComposerText,
 } from "./fixtures/claude-host";
 import { requiredNativeAction } from "./fixtures/fixture-utils";
 
@@ -29,7 +30,7 @@ afterEach(() => {
 });
 
 describe("Claude host contract", () => {
-  it("prepends QuoteCue to the native Reply action row", async () => {
+  it("prepends QuoteCue to the localized narrow native action row", async () => {
     const onActivate = vi.fn();
     const stop = requiredNativeAction(createClaudeHost({ document, window })).mount({
       label: "Add QuoteCue annotation",
@@ -87,6 +88,28 @@ describe("Claude host contract", () => {
     expect(fixture.composer.innerText).toContain("[Annotation 1]");
     expect(fixture.voiceButton.disabled).toBe(false);
     interceptor.dispose();
+  });
+
+  it("tracks Claude's visible composer action while annotations are active", () => {
+    const fixture = installClaudeHostFixture("");
+    const host = createClaudeHost({ document, window });
+    const refresh = vi.fn(() => host.layout.current());
+    const stop = host.layout.subscribe(refresh);
+    const release = host.layout.reserveAnnotationRow(40);
+
+    expect(fixture.voiceButton.style.visibility).toBe("hidden");
+    expect(fixture.sendButton.style.visibility).toBe("");
+
+    setClaudeComposerText("Japanese input");
+
+    expect(refresh).toHaveBeenCalledOnce();
+    expect(fixture.voiceButton.classList).toContain("claude-fixture-hidden");
+    expect(fixture.voiceButton.style.visibility).toBe("");
+    expect(fixture.sendButton.style.visibility).toBe("hidden");
+
+    release();
+    stop();
+    expect(fixture.sendButton.style.visibility).toBe("");
   });
 });
 

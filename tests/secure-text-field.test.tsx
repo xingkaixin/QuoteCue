@@ -35,7 +35,7 @@ afterEach(() => {
 });
 
 describe("SecureTextField", () => {
-  it("uses a transferred port instead of page window messages", async () => {
+  it("waits for the extension document before transferring a port", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     const onChange = vi.fn();
     const onSave = vi.fn();
@@ -64,7 +64,15 @@ describe("SecureTextField", () => {
       throw new Error("Expected secure field iframe");
     }
     const postMessage = vi.spyOn(iframe.contentWindow, "postMessage").mockImplementation(() => {});
+    iframe.setAttribute("srcdoc", "");
 
+    await act(async () => iframe.dispatchEvent(new Event("load")));
+
+    expect(iframe.hasAttribute("srcdoc")).toBe(false);
+    expect(postMessage).not.toHaveBeenCalled();
+    expect(FakeMessageChannel.instances).toHaveLength(0);
+
+    markExtensionFrameLoaded(iframe);
     await act(async () => iframe.dispatchEvent(new Event("load")));
 
     const channel = FakeMessageChannel.instances[0];
@@ -112,6 +120,7 @@ describe("SecureTextField", () => {
     const updatedPostMessage = vi
       .spyOn(updatedIframe.contentWindow, "postMessage")
       .mockImplementation(() => {});
+    markExtensionFrameLoaded(updatedIframe);
     await act(async () => updatedIframe.dispatchEvent(new Event("load")));
 
     expect(updatedIframe).not.toBe(iframe);
@@ -143,6 +152,7 @@ describe("SecureTextField", () => {
       throw new Error("Expected secure field iframe");
     }
     vi.spyOn(iframe.contentWindow, "postMessage").mockImplementation(() => {});
+    markExtensionFrameLoaded(iframe);
     await act(async () => iframe.dispatchEvent(new Event("load")));
 
     const channel = FakeMessageChannel.instances[0];
@@ -177,6 +187,10 @@ function LocalizedSecureTextField() {
       <LocalizedField />
     </I18nProvider>
   );
+}
+
+function markExtensionFrameLoaded(iframe: HTMLIFrameElement) {
+  Object.defineProperty(iframe, "contentDocument", { configurable: true, value: null });
 }
 
 function LocalizedField() {

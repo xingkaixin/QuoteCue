@@ -72,8 +72,15 @@ export const SecureTextField = forwardRef<SecureTextFieldHandle, SecureTextField
     }, []);
 
     const connect = useCallback(() => {
-      const contentWindow = frameRef.current?.contentWindow;
-      if (!contentWindow) {
+      const frame = frameRef.current;
+      const contentWindow = frame?.contentWindow;
+      if (frame?.hasAttribute("srcdoc")) {
+        // An injected empty srcdoc overrides src and leaves the isolated field on about:srcdoc.
+        frame.removeAttribute("srcdoc");
+        return;
+      }
+      // React can receive the inherited about:blank load before assigning the extension URL.
+      if (!contentWindow || frame.contentDocument) {
         return;
       }
 
