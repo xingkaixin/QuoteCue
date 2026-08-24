@@ -26,7 +26,7 @@ pnpm dev
 
 ## 产品落地页
 
-Astro 落地页位于 `website/`，为 `https://quotecue.xingkaixin.me` 生成中英文静态页面：
+Astro 落地页位于 `website/`，为 `https://quotecue.xingkaixin.me` 生成中文、英文和日文静态页面：
 
 ```bash
 pnpm site:dev

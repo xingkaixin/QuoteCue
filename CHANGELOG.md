@@ -2,6 +2,27 @@
 
 Notable changes to QuoteCue are documented in this file.
 
+## [0.3.0] - 2026-08-24
+
+### Added
+
+- Add Japanese localization across the extension and localized landing website.
+- Launch the QuoteCue website with an interactive demo, localized product guidance, and install links.
+- Bound draft size and expire inactive drafts after 30 days to keep local storage predictable.
+
+### Changed
+
+- Reduce host-page work by scoping message scans, composer layout refreshes, and anchor projection to the content that actually changed.
+- Strengthen automated release coverage with Chromium extension smoke tests and production manifest verification.
+
+### Fixed
+
+- Preserve pending edits, retry context, and unreadable data across failed saves and sends while keeping every attempt isolated to its site and conversation.
+- Track SPA navigation and new messages more reliably, rejecting duplicate message identities and stale conversation state.
+- Improve host compatibility, including Japanese annotations and stable send controls on Claude and stricter assistant-message filtering on DeepSeek.
+- Clear only the matching source draft after confirmation so concurrent conversations and retries cannot remove unrelated work.
+- Patch audited dependency vulnerabilities and stabilize the landing page demo across hydration, independent examples, and send/remove transitions.
+
 ## [0.2.0] - 2026-07-23
 
 ### Added
