@@ -2,6 +2,7 @@
 import { Faq } from "./Faq";
 import InstallActions from "./InstallActions.astro";
 import { InteractiveDemo } from "./InteractiveDemo";
+import { LanguageSwitcher } from "./LanguageSwitcher";
 import { ThemeToggle } from "./ThemeToggle";
 import { getCopy } from "../i18n/content";
 import { WEBSITE_LOCALE_CONFIG, WEBSITE_LOCALES, type Locale } from "../i18n/locales";
@@ -16,7 +17,6 @@ const { locale } = Astro.props;
 const copy = getCopy(locale);
 const pagePath = WEBSITE_LOCALE_CONFIG[locale].path;
 const pageUrl = new URL(pagePath, Astro.site).href;
-const alternateLocales = WEBSITE_LOCALES.filter((candidate) => candidate !== locale);
 const organizationId = new URL("/#organization", Astro.site).href;
 const softwareId = new URL("/#software", Astro.site).href;
 const websiteId = new URL("/#website", Astro.site).href;
@@ -139,24 +139,11 @@ const structuredData = {
       </nav>
 
       <div class="flex items-center gap-1.5">
-        <nav aria-label={copy.languageSwitcherLabel}>
-          <ul class="m-0 flex list-none gap-1.5 p-0">
-            {
-              alternateLocales.map((alternateLocale) => (
-                <li>
-                  <a
-                    class="font-mono flex h-8 items-center rounded-full border border-line px-3 text-[0.71875rem] text-muted outline-none transition-colors hover:border-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
-                    href={WEBSITE_LOCALE_CONFIG[alternateLocale].path}
-                    hreflang={alternateLocale}
-                    lang={alternateLocale}
-                  >
-                    {WEBSITE_LOCALE_CONFIG[alternateLocale].label}
-                  </a>
-                </li>
-              ))
-            }
-          </ul>
-        </nav>
+        <LanguageSwitcher
+          client:load
+          currentLocale={locale}
+          label={copy.languageSwitcherLabel}
+        />
         <ThemeToggle client:load label={copy.themeLabel} />
       </div>
     </div>
