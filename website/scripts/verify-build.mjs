@@ -49,6 +49,7 @@ for (const page of pages) {
   assert.match(html, /<link rel="alternate" hreflang="en"/);
   assert.match(html, /<link rel="alternate" hreflang="ja"/);
   assert.match(html, /<link rel="alternate" hreflang="x-default"/);
+  assert.match(html, /<link rel="sitemap" href="\/sitemap\.xml">/);
   assert.match(
     html,
     /<meta property="og:image" content="https:\/\/quotecue\.xingkaixin\.me\/og-cover\.png">/,
@@ -70,16 +71,18 @@ const notFound = await read("404.html");
 assert.match(notFound, /<meta name="robots" content="noindex, nofollow">/);
 assert.equal(occurrences(notFound, /<h1\b/g), 1);
 
-const sitemap = await read("sitemap-0.xml");
+const sitemap = await read("sitemap.xml");
 assert.match(sitemap, /<loc>https:\/\/quotecue\.xingkaixin\.me\/<\/loc>/);
 assert.match(sitemap, /<loc>https:\/\/quotecue\.xingkaixin\.me\/en\/<\/loc>/);
 assert.match(sitemap, /<loc>https:\/\/quotecue\.xingkaixin\.me\/ja\/<\/loc>/);
+assert.match(sitemap, /hreflang="x-default" href="https:\/\/quotecue\.xingkaixin\.me\/"/);
 assert.doesNotMatch(sitemap, /404/);
 assert.equal(occurrences(sitemap, /<url>/g), 3);
+assert.equal(occurrences(sitemap, /hreflang="x-default"/g), 3);
 
 const robots = await read("robots.txt");
 assert.match(robots, /^User-agent: \*\nAllow: \//);
-assert.match(robots, /Sitemap: https:\/\/quotecue\.xingkaixin\.me\/sitemap-index\.xml/);
+assert.match(robots, /Sitemap: https:\/\/quotecue\.xingkaixin\.me\/sitemap\.xml/);
 
 const manifest = JSON.parse(await read("site.webmanifest"));
 assert.equal(manifest.name, "QuoteCue");

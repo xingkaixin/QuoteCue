@@ -50,7 +50,7 @@ Cloudflare Workers Builds 可使用：
 ## SEO / AEO
 
 - 中英文分别输出静态 HTML，并配置 canonical、双向 hreflang 与 `x-default`。
-- sitemap 只包含两个 canonical 页面；404 返回独立页面并标记 `noindex`。
+- `/sitemap.xml` 只包含三个 canonical 页面；404 返回独立页面并标记 `noindex`。
 - JSON-LD 同步可见内容，包含 WebSite、Organization、SoftwareApplication、WebPage 和 FAQPage。
 - `llms.txt` 提供可独立引用的产品、支持范围与隐私事实。
 - Open Graph 与 Twitter Card 使用 1200×630 的品牌预览图。
