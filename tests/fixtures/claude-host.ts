@@ -22,13 +22,14 @@ export function installClaudeHostFixture(composerText = "Original question"): Cl
           <p>A <strong>focused answer</strong> for the contract fixture.</p>
         </article>
       </div>
-      <div data-fixture="composer-surface" style="background-color: white; border-radius: 20px; border-top-left-radius: 20px; padding-top: 6px">
-        <div data-testid="chat-input" contenteditable="true" role="textbox">${composerText}</div>
+      <style>.claude-fixture-hidden { visibility: hidden; }</style>
+      <fieldset data-fixture="composer-surface" style="background-color: white; border-radius: 20px; border-top-left-radius: 20px; padding-top: 6px">
+        <div><div data-testid="chat-input" contenteditable="true" role="textbox">${composerText}</div></div>
         <button type="button" aria-label="按住以录音"></button>
-        <button type="button" aria-label="使用语音模式"></button>
+        <button type="button" aria-label="使用语音模式" class="${composerText ? "claude-fixture-hidden" : ""}"></button>
         <button type="button" aria-label="停止回复"></button>
-        <button type="button" data-testid="chat-input-send" aria-label="发送消息" disabled></button>
-      </div>
+        <button type="button" data-testid="chat-input-send" aria-label="发送消息" class="${composerText ? "" : "claude-fixture-hidden"}" disabled></button>
+      </fieldset>
     </main>
   `;
 
@@ -44,7 +45,7 @@ export function installClaudeHostFixture(composerText = "Original question"): Cl
     get: () => composer.textContent ?? "",
   });
   setElementRect(surface, new DOMRect(100, 690, 768, 102));
-  setButtonRect(voiceButton, 788);
+  setButtonRect(voiceButton, 828);
   setButtonRect(requiredElement('button[aria-label="按住以录音"]'), 748);
   setButtonRect(requiredElement('button[aria-label="停止回复"]'), 708);
   setButtonRect(sendButton, 828);
@@ -60,6 +61,16 @@ export function enableClaudeSend(onSend: (text: string) => void) {
     onSend(composer.innerText);
   });
   return sendButton;
+}
+
+export function setClaudeComposerText(text: string) {
+  const composer = requiredElement<HTMLElement>('[data-testid="chat-input"]');
+  const voiceButton = requiredElement<HTMLButtonElement>('button[aria-label="使用语音模式"]');
+  const sendButton = requiredElement<HTMLButtonElement>('[data-testid="chat-input-send"]');
+  composer.textContent = text;
+  voiceButton.classList.toggle("claude-fixture-hidden", Boolean(text));
+  sendButton.classList.toggle("claude-fixture-hidden", !text);
+  composer.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText" }));
 }
 
 export function appendClaudeUserMessage(index: number, text: string) {

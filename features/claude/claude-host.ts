@@ -15,7 +15,9 @@ const MESSAGE_INDEX_SELECTOR = "[data-rs-index]";
 const CLAUDE_ADAPTER: SiteAdapter = {
   composer: pasteFirstDomFallbackComposer("[data-testid='chat-input'][contenteditable='true']"),
   conversationId: (pathname) => pathname.match(/^\/chat\/([^/?#]+)/)?.[1] ?? null,
-  layout: composerLayout("button", "div:has([data-testid=chat-input])"),
+  layout: composerLayout("button", "fieldset:has([data-testid=chat-input])", {
+    visibleActionsOnly: true,
+  }),
   messages: messageAccess({
     assistantSelector: MESSAGE_SELECTOR,
     id: (message) => message.closest<HTMLElement>(MESSAGE_INDEX_SELECTOR)?.dataset.rsIndex,
