@@ -18,7 +18,6 @@ export type SelectionToolbarBounds = {
   maxVerticalDistance: number;
   maxWidth: number;
   minHeight: number;
-  minWidth: number;
 };
 
 export type SelectionPresentationAccess =

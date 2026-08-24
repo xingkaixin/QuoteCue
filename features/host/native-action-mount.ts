@@ -10,7 +10,6 @@ const DEFAULT_SELECTION_TOOLBAR_BOUNDS: SelectionToolbarBounds = {
   maxVerticalDistance: 24,
   maxWidth: 480,
   minHeight: 28,
-  minWidth: 80,
 };
 
 type SelectionToolbarCandidate = {
@@ -131,7 +130,6 @@ export function createNativeActionMount(
       0,
     );
     const isNearbyToolbar =
-      rect.width >= toolbarBounds.minWidth &&
       rect.width <= toolbarBounds.maxWidth &&
       rect.height >= toolbarBounds.minHeight &&
       rect.height <= toolbarBounds.maxHeight &&

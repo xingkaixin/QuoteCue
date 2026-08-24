@@ -68,7 +68,6 @@ describe("site adapter discovery", () => {
             maxVerticalDistance: 20,
             maxWidth: 640,
             minHeight: 30,
-            minWidth: 500,
           },
         },
       }),

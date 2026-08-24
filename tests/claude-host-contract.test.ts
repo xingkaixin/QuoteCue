@@ -29,7 +29,7 @@ afterEach(() => {
 });
 
 describe("Claude host contract", () => {
-  it("prepends QuoteCue to the native Reply action row", async () => {
+  it("prepends QuoteCue to the localized narrow native action row", async () => {
     const onActivate = vi.fn();
     const stop = requiredNativeAction(createClaudeHost({ document, window })).mount({
       label: "Add QuoteCue annotation",

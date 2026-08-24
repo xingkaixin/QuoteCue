@@ -87,13 +87,13 @@ export function appendClaudeAssistantMessage(index: number, text: string) {
   return message;
 }
 
-export function appendClaudeSelectionToolbar(rect = new DOMRect(100, 150, 160, 36)) {
+export function appendClaudeSelectionToolbar(rect = new DOMRect(100, 150, 72, 34)) {
   const toolbar = document.createElement("div");
   toolbar.style.position = "fixed";
   const actionRow = document.createElement("div");
   const replyButton = document.createElement("button");
   replyButton.className = "claude-reply-action";
-  replyButton.textContent = "Reply";
+  replyButton.textContent = "返信";
   actionRow.append(replyButton);
   toolbar.append(actionRow);
   setElementRect(toolbar, rect);
