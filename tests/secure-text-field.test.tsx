@@ -64,9 +64,11 @@ describe("SecureTextField", () => {
       throw new Error("Expected secure field iframe");
     }
     const postMessage = vi.spyOn(iframe.contentWindow, "postMessage").mockImplementation(() => {});
+    iframe.setAttribute("srcdoc", "");
 
     await act(async () => iframe.dispatchEvent(new Event("load")));
 
+    expect(iframe.hasAttribute("srcdoc")).toBe(false);
     expect(postMessage).not.toHaveBeenCalled();
     expect(FakeMessageChannel.instances).toHaveLength(0);
 
