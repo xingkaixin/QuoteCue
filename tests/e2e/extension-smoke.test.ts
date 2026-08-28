@@ -2,6 +2,12 @@ import type { BrowserContext, Page, Worker } from "@playwright/test";
 
 import { expect, test } from "./extension-fixture";
 
+const DISPLAY_SETTINGS = [
+  { width: 1280, colorScheme: "light", reducedMotion: "no-preference", zoom: 1 },
+  { width: 360, colorScheme: "dark", reducedMotion: "reduce", zoom: 1 },
+  { width: 720, colorScheme: "light", reducedMotion: "reduce", zoom: 2 },
+] as const;
+
 const CHATGPT_FIXTURE = `<!doctype html>
 <html lang="en">
   <head>
@@ -188,15 +194,78 @@ async function openConversation(context: BrowserContext, conversationId: string)
   return page;
 }
 
+test("retains summary keyboard focus when the pointer leaves across display settings", async ({
+  context,
+}) => {
+  for (const { width, colorScheme, reducedMotion, zoom } of DISPLAY_SETTINGS) {
+    const page = await openConversation(context, `summary-${width}`);
+    await page.setViewportSize({ width, height: 800 });
+    await page.emulateMedia({ colorScheme, reducedMotion });
+    await page.evaluate((scale) => {
+      document.documentElement.style.zoom = String(scale);
+    }, zoom);
+    await addAnnotation(page);
+    await expect
+      .poll(() => page.frames().some((frame) => frame.url().includes("secure-field.html")))
+      .toBe(true);
+    const fieldFrame = page.frames().find((frame) => frame.url().includes("secure-field.html"))!;
+    await fieldFrame.locator("input, textarea").press("Escape");
+
+    const session = await context.newCDPSession(page);
+    let countButtonId: number | undefined;
+    await expect(async () => {
+      const { nodes } = await session.send("Accessibility.getFullAXTree");
+      countButtonId = nodes.find(
+        (node) => node.role?.value === "button" && node.name?.value === "1 annotation",
+      )?.backendDOMNodeId;
+      expect(countButtonId).toBeDefined();
+    }).toPass();
+    const { model } = await session.send("DOM.getBoxModel", { backendNodeId: countButtonId });
+    await page.mouse.move(
+      (model.content[0]! + model.content[4]!) / 2,
+      (model.content[1]! + model.content[5]!) / 2,
+    );
+    let editButtonId: number | undefined;
+    await expect(async () => {
+      const { nodes } = await session.send("Accessibility.getFullAXTree");
+      editButtonId = nodes.find(
+        (node) => node.role?.value === "button" && node.name?.value === "Edit annotation 1",
+      )?.backendDOMNodeId;
+      expect(editButtonId).toBeDefined();
+    }).toPass();
+    await session.send("DOM.focus", { backendNodeId: editButtonId });
+    await page.mouse.move(0, 0);
+    await expect(async () => {
+      const { nodes } = await session.send("Accessibility.getFullAXTree");
+      const edit = nodes.find((node) => node.backendDOMNodeId === editButtonId);
+      expect(edit?.properties?.find((property) => property.name === "focused")?.value.value).toBe(
+        true,
+      );
+    }).toPass();
+
+    await page.keyboard.press("Escape");
+    await expect(async () => {
+      const { nodes } = await session.send("Accessibility.getFullAXTree");
+      expect(nodes.some((node) => node.role?.value === "dialog")).toBe(false);
+      const count = nodes.find((node) => node.backendDOMNodeId === countButtonId);
+      expect(count?.properties?.find((property) => property.name === "focused")?.value.value).toBe(
+        true,
+      );
+    }).toPass();
+    await page.keyboard.press("Enter");
+    await expect(async () => {
+      const { nodes } = await session.send("Accessibility.getFullAXTree");
+      expect(nodes.some((node) => node.role?.value === "dialog")).toBe(true);
+    }).toPass();
+    await page.close();
+  }
+});
+
 test("clears unreadable drafts with the keyboard across display settings", async ({
   context,
   extensionWorker,
 }) => {
-  for (const { width, colorScheme, reducedMotion, zoom } of [
-    { width: 1280, colorScheme: "light", reducedMotion: "no-preference", zoom: 1 },
-    { width: 360, colorScheme: "dark", reducedMotion: "reduce", zoom: 1 },
-    { width: 720, colorScheme: "light", reducedMotion: "reduce", zoom: 2 },
-  ] as const) {
+  for (const { width, colorScheme, reducedMotion, zoom } of DISPLAY_SETTINGS) {
     const key = draftKey("unreadable");
     await extensionWorker.evaluate(async (storageKey) => {
       const extensionApi = Reflect.get(globalThis, "chrome") as {

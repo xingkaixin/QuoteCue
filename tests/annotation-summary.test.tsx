@@ -84,6 +84,32 @@ describe("AnnotationSummary", () => {
     await act(async () => root.unmount());
   });
 
+  it("keeps the popover and focus when the pointer leaves a focused control", async () => {
+    const { container, root, summary } = await mountSummary();
+    await hover(summary);
+    const editButton = container.querySelector<HTMLButtonElement>(
+      '[aria-label="Edit annotation 1"]',
+    );
+    await act(async () => editButton?.focus());
+    await leave(summary);
+    expect(container.querySelector('[role="dialog"]')).not.toBeNull();
+    expect(document.activeElement).toBe(editButton);
+
+    const outsideButton = document.createElement("button");
+    document.body.append(outsideButton);
+    await act(async () => outsideButton.focus());
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
+
+    await hover(summary);
+    await act(async () => findCountButton(container)?.focus());
+    await act(async () => outsideButton.focus());
+    expect(container.querySelector('[role="dialog"]')).not.toBeNull();
+    await leave(summary);
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
+
+    await act(async () => root.unmount());
+  });
+
   it("shows rendered selection text when DOM text omits layout separators", async () => {
     const tableAnnotation = {
       ...annotation,
@@ -127,6 +153,7 @@ describe("AnnotationSummary", () => {
     await act(async () => editButton?.click());
     expect(onEdit).toHaveBeenCalledWith(expect.objectContaining({ annotation }));
 
+    await hover(summary);
     await act(async () => {
       editButton?.focus();
       editButton?.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Escape" }));
@@ -135,6 +162,8 @@ describe("AnnotationSummary", () => {
     expect(document.activeElement).toBe(countButton);
 
     await leave(summary);
+    await act(async () => countButton?.click());
+    expect(container.querySelector('[role="dialog"]')).not.toBeNull();
     await act(async () => root.unmount());
   });
 

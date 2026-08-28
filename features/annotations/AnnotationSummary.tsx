@@ -32,8 +32,10 @@ export function AnnotationSummary({
 }: AnnotationSummaryProps) {
   const { messages } = useI18n();
   const countButtonRef = useRef<HTMLButtonElement>(null);
-  const [isOpen, setIsOpen] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const [hasFocusWithin, setHasFocusWithin] = useState(false);
   const [isConfirmingClear, setIsConfirmingClear] = useState(false);
+  const isOpen = isHovered || hasFocusWithin;
   const hasPendingDeletion = pendingDeletionCount > 0;
 
   useEffect(() => {
@@ -68,10 +70,10 @@ export function AnnotationSummary({
       className={`${QUOTECUE_INTERACTIVE_CLASS} group/summary fixed flex items-center gap-2`}
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget)) {
-          setIsOpen(false);
+          setHasFocusWithin(false);
         }
       }}
-      onFocus={() => setIsOpen(true)}
+      onFocus={() => setHasFocusWithin(true)}
       onKeyDown={(event) => {
         if (event.key !== "Escape" || !isOpen) {
           return;
@@ -79,10 +81,11 @@ export function AnnotationSummary({
         event.preventDefault();
         event.stopPropagation();
         countButtonRef.current?.focus();
-        setIsOpen(false);
+        setIsHovered(false);
+        setHasFocusWithin(false);
       }}
-      onMouseEnter={() => setIsOpen(true)}
-      onMouseLeave={() => setIsOpen(false)}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       style={position}
     >
       <div className="qc-surface qc-divider flex items-center rounded-lg border shadow-sm">
@@ -90,7 +93,7 @@ export function AnnotationSummary({
           aria-expanded={isOpen}
           aria-haspopup="dialog"
           className="qc-hover qc-focus qc-pressable flex h-8 cursor-pointer items-center gap-1.5 rounded-l-lg px-2.5 text-xs font-medium"
-          onClick={() => setIsOpen(true)}
+          onClick={() => setHasFocusWithin(true)}
           ref={countButtonRef}
           type="button"
         >
