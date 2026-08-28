@@ -1,5 +1,5 @@
 import { AlertTriangle, LoaderCircle, RotateCcw } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/features/i18n/I18nProvider";
@@ -12,16 +12,32 @@ type DraftPersistenceStatusProps =
   | (Extract<DraftState, { status: "ready" }> & { onClear: () => void })
   | (Extract<DraftState, { status: "error" }> & { onRetry: () => void });
 
+const LOADING_DELAY_MS = 200;
+
 export function DraftPersistenceStatus(props: DraftPersistenceStatusProps) {
   const { messages } = useI18n();
   const [isConfirmingClear, setIsConfirmingClear] = useState(false);
+  const [isLoadingVisible, setIsLoadingVisible] = useState(false);
   const isLoading = props.status === "loading";
+
+  useEffect(() => {
+    if (!isLoading) {
+      setIsLoadingVisible(false);
+      return;
+    }
+    const timer = window.setTimeout(() => setIsLoadingVisible(true), LOADING_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [isLoading]);
+
+  if (isLoading && !isLoadingVisible) {
+    return null;
+  }
 
   return (
     <div
-      aria-live="polite"
+      aria-live={isLoading ? undefined : "polite"}
       className={`${QUOTECUE_INTERACTIVE_CLASS} qc-surface qc-elevated fixed right-4 top-4 flex max-w-80 items-center gap-3 rounded-xl border px-3 py-2.5 text-sm`}
-      role="status"
+      role={isLoading ? undefined : "status"}
     >
       {isLoading ? (
         <LoaderCircle
