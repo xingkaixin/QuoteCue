@@ -53,6 +53,36 @@ afterEach(() => {
 });
 
 describe("annotation workspace", () => {
+  it("keeps the active annotation session when opening the same target", async () => {
+    draftStoreFixture.store.load.mockResolvedValue(draftResult([annotation]));
+    const mounted = await mountWorkspace();
+    await act(async () => new Promise(requestAnimationFrame));
+    const projection = workspace.summary.annotations[0]!;
+    await act(async () => workspace.summary.open(projection));
+    const request = vi.fn(() => {
+      workspace.editor.close();
+      return true;
+    });
+    act(() => workspace.editor.bindSession(request));
+    await act(async () => workspace.summary.open(projection));
+    expect(request).not.toHaveBeenCalled();
+    expect(workspace.editor.status).toBe("expanded");
+    await act(async () => mounted.root.unmount());
+  });
+
+  it("asks the active session before creating another annotation", async () => {
+    const mounted = await mountWorkspace();
+    await act(async () => workspace.selection.onActivate(anchoredSelection));
+    const original = workspace.editor.projection?.annotation.id;
+    const request = vi.fn(() => false);
+    act(() => workspace.editor.bindSession(request));
+    await act(async () => workspace.selection.onActivate(anchoredSelection));
+    expect(request).toHaveBeenCalledOnce();
+    expect(workspace.summary.annotations).toHaveLength(1);
+    expect(workspace.editor.projection?.annotation.id).toBe(original);
+    await act(async () => mounted.root.unmount());
+  });
+
   it("clears an adopted draft when the host navigates before confirming send", async () => {
     const host = createWorkspaceHost();
     host.conversation.identity = (sessionKey) => ({ kind: "unidentified", sessionKey });

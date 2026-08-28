@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { AnnotationEditor } from "@/features/annotations/AnnotationEditor";
 import { createChatGptHost } from "@/features/chatgpt/chatgpt-host";
 import type { Host } from "@/features/host-port/host-port";
-import { QUOTECUE_HOST_ATTR } from "@/lib/dom-identity";
+import { QUOTECUE_HOST_ATTR, QUOTECUE_NATIVE_ACTION_ATTR } from "@/lib/dom-identity";
 
 import { HostTestProvider } from "./fixtures/host-provider";
 
@@ -311,47 +311,79 @@ describe("AnnotationEditor", () => {
     await act(async () => root.unmount());
   });
 
-  it("distinguishes editor controls from other QuoteCue controls in a closed shadow", async () => {
-    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-    const animate = vi.fn();
-    Object.defineProperty(Element.prototype, "animate", { configurable: true, value: animate });
-    const onCancel = vi.fn();
-    const host = document.createElement("quotecue-ui");
-    host.setAttribute(QUOTECUE_HOST_ATTR, "");
-    const shadowRoot = host.attachShadow({ mode: "closed" });
-    const container = document.createElement("div");
-    const otherControl = document.createElement("button");
-    shadowRoot.append(container, otherControl);
-    document.body.append(host);
-    const root = createRoot(container);
+  it.each(["shadow", "native"])(
+    "asks once per gesture when switching through a %s control",
+    async (location) => {
+      Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+      const animate = vi.fn();
+      Object.defineProperty(Element.prototype, "animate", { configurable: true, value: animate });
+      const onCancel = vi.fn();
+      const host = document.createElement("quotecue-ui");
+      host.setAttribute(QUOTECUE_HOST_ATTR, "");
+      const shadowRoot = host.attachShadow({ mode: "closed" });
+      const container = document.createElement("div");
+      const otherControl = document.createElement("button");
+      shadowRoot.append(container);
+      if (location === "shadow") {
+        shadowRoot.append(otherControl);
+      } else {
+        otherControl.setAttribute(QUOTECUE_NATIVE_ACTION_ATTR, "");
+        document.body.append(otherControl);
+      }
+      document.body.append(host);
+      const root = createRoot(container);
 
-    await act(async () => root.render(editor(onCancel)));
-    const textarea = container.querySelector<HTMLTextAreaElement>("textarea");
-    await act(async () => changeTextarea(textarea, "changed comment"));
-    await act(async () => {
-      textarea?.dispatchEvent(
-        new MouseEvent("pointerdown", { bubbles: true, cancelable: true, composed: true }),
+      const session: { request: (() => boolean) | null } = { request: null };
+      otherControl.addEventListener("click", () => session.request?.());
+      await act(async () =>
+        root.render(
+          editor(onCancel, undefined, {
+            onDelete: vi.fn(),
+            onSave: vi.fn(),
+            bindSession: (request) => {
+              session.request = request;
+            },
+          }),
+        ),
       );
-    });
-    expect(animate).not.toHaveBeenCalled();
+      const textarea = container.querySelector<HTMLTextAreaElement>("textarea");
+      await act(async () => changeTextarea(textarea, "changed comment"));
+      await act(async () => {
+        textarea?.dispatchEvent(
+          new MouseEvent("pointerdown", { bubbles: true, cancelable: true, composed: true }),
+        );
+      });
+      expect(animate).not.toHaveBeenCalled();
 
-    const otherInteraction = new MouseEvent("pointerdown", {
-      bubbles: true,
-      cancelable: true,
-      composed: true,
-    });
-    await act(async () => otherControl.dispatchEvent(otherInteraction));
-    expect(otherInteraction.defaultPrevented).toBe(true);
-    expect(animate).toHaveBeenCalledOnce();
-    expect(onCancel).not.toHaveBeenCalled();
+      const otherInteraction = new MouseEvent("pointerdown", {
+        bubbles: true,
+        cancelable: true,
+        composed: true,
+      });
+      await act(async () => otherControl.dispatchEvent(otherInteraction));
+      expect(otherInteraction.defaultPrevented).toBe(false);
+      await act(async () => {
+        otherControl.focus();
+        await focusSettled();
+      });
+      expect(animate).not.toHaveBeenCalled();
+      await act(async () => otherControl.click());
+      expect(animate).toHaveBeenCalledOnce();
+      expect(onCancel).not.toHaveBeenCalled();
+      await act(async () => focusSettled());
+      expect(onCancel).not.toHaveBeenCalled();
+      await act(async () => otherControl.click());
+      expect(onCancel).toHaveBeenCalledOnce();
 
-    await act(async () => root.unmount());
-  });
+      await act(async () => root.unmount());
+    },
+  );
 });
 
 type EditorActions = {
   onDelete: () => void;
   onSave: (comment: string) => void;
+  bindSession?: (request: (() => boolean) | null) => void;
 };
 
 async function renderEditor(
@@ -375,7 +407,7 @@ function editor(
     <HostTestProvider host={host}>
       <AnnotationEditor
         annotation={annotation}
-        bindSession={() => undefined}
+        bindSession={actions.bindSession ?? (() => undefined)}
         onCancel={onCancel}
         onDelete={actions.onDelete}
         onSave={actions.onSave}

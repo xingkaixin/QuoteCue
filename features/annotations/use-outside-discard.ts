@@ -1,7 +1,7 @@
 import type { RefObject } from "react";
 import { useEffect } from "react";
 
-import { isQuoteCueEvent } from "@/lib/dom-identity";
+import { isQuoteCueEvent, QUOTECUE_BOUNDARY_SELECTOR } from "@/lib/dom-identity";
 
 export function useOutsideDiscard(
   rootRef: RefObject<HTMLElement | null>,
@@ -30,8 +30,21 @@ export function useOutsideDiscard(
         event.stopImmediatePropagation();
       }
     };
+    const isQuoteCueControl = (target: EventTarget | null) => {
+      const button = target instanceof Element ? target.closest("button") : null;
+      return (
+        button !== null &&
+        (shadowRoot?.contains(button) === true ||
+          button.closest(QUOTECUE_BOUNDARY_SELECTOR) !== null)
+      );
+    };
+    const handleShadowPointerDown = (event: Event) => {
+      if (!event.composedPath().some(isQuoteCueControl)) {
+        handleOutsidePointerDown(event);
+      }
+    };
     const handleDocumentPointerDown = (event: Event) => {
-      if (shadowRoot && isQuoteCueEvent(event)) {
+      if (isQuoteCueEvent(event)) {
         return;
       }
       handleOutsidePointerDown(event);
@@ -49,9 +62,12 @@ export function useOutsideDiscard(
           const currentRoot = currentEditor.getRootNode();
           const activeElement =
             currentRoot instanceof Document || currentRoot instanceof ShadowRoot
-              ? currentRoot.activeElement
+              ? (currentRoot.activeElement ?? document.activeElement)
               : null;
-          if (!activeElement || !currentEditor.contains(activeElement)) {
+          if (
+            !isQuoteCueControl(activeElement) &&
+            (!activeElement || !currentEditor.contains(activeElement))
+          ) {
             requestDiscard();
           }
         });
@@ -59,12 +75,12 @@ export function useOutsideDiscard(
     };
 
     document.addEventListener("pointerdown", handleDocumentPointerDown, true);
-    shadowRoot?.addEventListener("pointerdown", handleOutsidePointerDown, true);
+    shadowRoot?.addEventListener("pointerdown", handleShadowPointerDown, true);
     editor?.addEventListener("focusout", handleFocusOut);
     return () => {
       cancelFocusCheck();
       document.removeEventListener("pointerdown", handleDocumentPointerDown, true);
-      shadowRoot?.removeEventListener("pointerdown", handleOutsidePointerDown, true);
+      shadowRoot?.removeEventListener("pointerdown", handleShadowPointerDown, true);
       editor?.removeEventListener("focusout", handleFocusOut);
     };
   }, [requestDiscard, rootRef]);

@@ -123,6 +123,40 @@ test("keeps browser storage isolated by committed conversation", async ({
     .toBe(1);
 });
 
+test("protects an unsaved comment when a native action is activated by keyboard", async ({
+  context,
+  extensionWorker,
+}) => {
+  const page = await openConversation(context, "dirty-editor");
+  await page.setViewportSize({ width: 360, height: 800 });
+  await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
+  await addAnnotation(page);
+  await expect.poll(() => storedAnnotationCount(extensionWorker, draftKey("dirty-editor"))).toBe(1);
+  await expect
+    .poll(() => page.frames().some((candidate) => candidate.url().includes("secure-field.html")))
+    .toBe(true);
+  const frame = page.frames().find((candidate) => candidate.url().includes("secure-field.html"));
+  expect(frame).toBeDefined();
+  const field = frame!.locator("input, textarea");
+  await field.fill("Unsaved fixture comment");
+  await page.evaluate(() => {
+    const paragraph = document.querySelector('[data-message-author-role="assistant"] p')!;
+    const range = document.createRange();
+    range.selectNodeContents(paragraph);
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+    document.dispatchEvent(new KeyboardEvent("keyup", { bubbles: true, key: "Shift" }));
+  });
+  await page.locator("[data-quotecue-native-action]").press("Enter");
+  await expect(field).toHaveValue("Unsaved fixture comment");
+  expect(await storedAnnotationCount(extensionWorker, draftKey("dirty-editor"))).toBe(1);
+  await field.press("Escape");
+  await expect
+    .poll(() => page.frames().some((candidate) => candidate.url().includes("secure-field.html")))
+    .toBe(false);
+});
+
 async function openConversation(context: BrowserContext, conversationId: string) {
   const page = await context.newPage();
   await page.goto(`https://chatgpt.com/c/${conversationId}`);

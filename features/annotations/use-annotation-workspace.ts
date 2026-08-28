@@ -111,20 +111,27 @@ export function useAnnotationWorkspace() {
     }
   }, [annotations.length, conversationIdentity, draft.status]);
 
+  const replaceEditorSession = useCallback((replace: () => void) => {
+    if (requestSessionDismissalRef.current?.() !== false) {
+      replace();
+    }
+  }, []);
+
   const startAnnotation = useCallback(
-    (selection: AnchoredSelection) => {
-      const annotation: DraftAnnotation = {
-        id: crypto.randomUUID(),
-        anchor: selection.anchor,
-        comment: "",
-      };
-      if (!addAnnotation(annotation)) {
-        return;
-      }
-      setEditorState({ status: "quick", annotationId: annotation.id });
-      host.selection.clear();
-    },
-    [addAnnotation, host],
+    (selection: AnchoredSelection) =>
+      replaceEditorSession(() => {
+        const annotation: DraftAnnotation = {
+          id: crypto.randomUUID(),
+          anchor: selection.anchor,
+          comment: "",
+        };
+        if (!addAnnotation(annotation)) {
+          return;
+        }
+        setEditorState({ status: "quick", annotationId: annotation.id });
+        host.selection.clear();
+      }),
+    [addAnnotation, host, replaceEditorSession],
   );
 
   const saveActiveAnnotation = useCallback(
@@ -138,27 +145,28 @@ export function useAnnotationWorkspace() {
 
   const openEditor = useCallback(
     (projection: ProjectedAnnotation) => {
-      if (projection.resolution !== "resolved") {
+      if (
+        projection.resolution !== "resolved" ||
+        (editorState.status === "expanded" && editorState.annotationId === projection.annotation.id)
+      ) {
         return;
       }
-      // An open session owns its unsaved comment, so it decides whether it may be replaced.
-      if (requestSessionDismissalRef.current?.() === false) {
-        return;
-      }
-      const reveal = host.selection.reveal(projection.geometry.range);
-      if (reveal.status === "unavailable") {
-        return;
-      }
+      replaceEditorSession(() => {
+        const reveal = host.selection.reveal(projection.geometry.range);
+        if (reveal.status === "unavailable") {
+          return;
+        }
 
-      const showEditor = () =>
-        setEditorState({ status: "expanded", annotationId: projection.annotation.id });
-      if (reveal.value === "visible") {
-        showEditor();
-        return;
-      }
-      requestAnimationFrame(showEditor);
+        const showEditor = () =>
+          setEditorState({ status: "expanded", annotationId: projection.annotation.id });
+        if (reveal.value === "visible") {
+          showEditor();
+          return;
+        }
+        requestAnimationFrame(showEditor);
+      });
     },
-    [host],
+    [editorState, host, replaceEditorSession],
   );
 
   const deleteAnnotation = useCallback(
