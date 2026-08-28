@@ -3,6 +3,7 @@ import { browser } from "wxt/browser";
 import type { IdentifiedConversation } from "@/features/conversation/conversation-identity";
 
 import type { DraftAnnotation } from "./annotation";
+import type { DraftMutationResult, DraftRejectionReason } from "./draft-store";
 import { draftMutationExceedsCapacity } from "./draft-capacity";
 import { applyDraftMutation, type DraftMutation } from "./draft-mutation";
 import { removeStoredDrafts } from "./draft-retention";
@@ -75,37 +76,46 @@ export function createDraftOwner() {
       cleanupProtectedConversationKeys?.add(scopedDraftStorageKey(conversation));
       const draft = serialize(conversation, () => readDraft(conversation));
       scheduleCleanup(draft);
-      return draft.then(({ annotations }) => annotations);
+      return draft.then(({ annotations, hasUnreadableAnnotations }) => ({
+        annotations,
+        hasUnreadableAnnotations,
+      }));
     },
     mutate(conversation: IdentifiedConversation, mutations: readonly DraftMutation[]) {
       cleanupProtectedConversationKeys?.add(scopedDraftStorageKey(conversation));
-      return serialize(conversation, async () => {
+      return serialize(conversation, async (): Promise<DraftMutationResult> => {
         const decoded = await readDraft(conversation);
         const current = decoded.annotations;
         let next: readonly DraftAnnotation[] = current;
         let hasUnreadableAnnotations = decoded.hasUnreadableAnnotations;
+        let reason: DraftRejectionReason | undefined;
         for (const mutation of mutations) {
           if (draftMutationExceedsCapacity(next, mutation)) {
-            throw new RangeError("Draft mutation exceeds QuoteCue capacity");
+            reason = "capacity";
+            continue;
           }
           const mutated = applyDraftMutation(next, mutation);
-          if (mutated === null || mutated === next) {
+          if (
+            mutated === null ||
+            (mutated === next && !(hasUnreadableAnnotations && mutation.kind === "clear"))
+          ) {
             continue;
           }
           if (hasUnreadableAnnotations && mutation.kind !== "clear") {
-            throw new Error("Draft contains unreadable annotations");
+            reason = "unreadable";
+            continue;
           }
           next = mutated;
           if (mutation.kind === "clear") {
             hasUnreadableAnnotations = false;
           }
         }
-        if (next === current) {
-          return current;
-        }
         const annotations = [...next];
-        await writeDraft(conversation, annotations);
-        return annotations;
+        if (next !== current || hasUnreadableAnnotations !== decoded.hasUnreadableAnnotations) {
+          await writeDraft(conversation, annotations);
+        }
+        const snapshot = { annotations, hasUnreadableAnnotations };
+        return reason ? { ...snapshot, status: "rejected", reason } : { ...snapshot, status: "ok" };
       });
     },
   };

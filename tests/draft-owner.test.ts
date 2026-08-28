@@ -83,6 +83,38 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks());
 
 describe("draft storage", () => {
+  it("continues through a rejected mutation to an explicit clear in the same batch", async () => {
+    extensionStorage.reset({
+      [currentKey]: { ...envelope, annotations: [annotation, { id: "unreadable" }] },
+    });
+    await expect(
+      draftStore.mutate(conversationA, [
+        { kind: "add", annotation: { ...annotation, id: "new" } },
+        { kind: "clear" },
+      ]),
+    ).resolves.toEqual({
+      status: "rejected",
+      reason: "unreadable",
+      annotations: [],
+      hasUnreadableAnnotations: false,
+    });
+    expect(extensionStorage.snapshot()).toEqual({});
+  });
+
+  it("loads and explicitly clears a wholly unreadable draft", async () => {
+    extensionStorage.reset({ [currentKey]: { ...envelope, annotations: [{ id: "unreadable" }] } });
+    await expect(draftStore.load(conversationA)).resolves.toEqual({
+      annotations: [],
+      hasUnreadableAnnotations: true,
+    });
+    await expect(draftStore.mutate(conversationA, [{ kind: "clear" }])).resolves.toEqual({
+      status: "ok",
+      annotations: [],
+      hasUnreadableAnnotations: false,
+    });
+    expect(extensionStorage.snapshot()).toEqual({});
+  });
+
   it("rejects oversized mutations before writing storage", async () => {
     await expect(
       draftStore.mutate(conversationA, [
@@ -94,7 +126,7 @@ describe("draft storage", () => {
           },
         },
       ]),
-    ).rejects.toThrow("Draft mutation exceeds QuoteCue capacity");
+    ).resolves.toMatchObject({ status: "rejected", reason: "capacity", annotations: [] });
 
     expect(extensionStorage.set).not.toHaveBeenCalled();
   });
@@ -134,7 +166,7 @@ describe("draft storage", () => {
     );
     const consoleInfo = vi.spyOn(console, "info").mockImplementation(() => undefined);
 
-    await expect(draftStore.load(conversationA)).resolves.toEqual([]);
+    await expect(draftStore.load(conversationA)).resolves.toMatchObject({ annotations: [] });
     expect(extensionStorage.snapshot()).not.toHaveProperty(currentKey);
 
     resolveKeys(extensionStorage.keys());
@@ -167,7 +199,7 @@ describe("draft storage", () => {
     const loadingA = owner.load(conversationA);
     const loadingB = owner.load(conversationB);
 
-    await expect(loadingB).resolves.toEqual([]);
+    await expect(loadingB).resolves.toMatchObject({ annotations: [] });
     expect(extensionStorage.get).toHaveBeenCalledWith([keyB, "quotecue:draft:B", "askgpt:draft:B"]);
 
     resolveA({});
@@ -177,14 +209,18 @@ describe("draft storage", () => {
   it("loads the current versioned envelope", async () => {
     extensionStorage.reset({ [currentKey]: envelope });
 
-    await expect(draftStore.load(conversationA)).resolves.toEqual([annotation]);
+    await expect(draftStore.load(conversationA)).resolves.toMatchObject({
+      annotations: [annotation],
+    });
     expect(extensionStorage.snapshot()).toEqual({ [currentKey]: envelope });
   });
 
   it("migrates an unscoped draft into the current site", async () => {
     extensionStorage.reset({ [unscopedKey]: envelope });
 
-    await expect(draftStore.load(conversationA)).resolves.toEqual([annotation]);
+    await expect(draftStore.load(conversationA)).resolves.toMatchObject({
+      annotations: [annotation],
+    });
     expect(extensionStorage.snapshot()).toEqual({ [currentKey]: envelope });
   });
 
@@ -196,8 +232,10 @@ describe("draft storage", () => {
     await draftStore.mutate(conversationA, [{ kind: "add", annotation }]);
     await draftStore.mutate(claudeConversation, [{ kind: "add", annotation: claudeAnnotation }]);
 
-    expect(await draftStore.load(conversationA)).toEqual([annotation]);
-    expect(await draftStore.load(claudeConversation)).toEqual([claudeAnnotation]);
+    expect(await draftStore.load(conversationA)).toMatchObject({ annotations: [annotation] });
+    expect(await draftStore.load(claudeConversation)).toMatchObject({
+      annotations: [claudeAnnotation],
+    });
     expect(extensionStorage.snapshot()).toEqual({
       [currentKey]: envelope,
       [claudeKey]: { ...envelope, annotations: [claudeAnnotation] },
@@ -209,7 +247,9 @@ describe("draft storage", () => {
       [currentKey]: { version: 3, annotations: [annotation, annotation] },
     });
 
-    await expect(draftStore.load(conversationA)).resolves.toEqual([annotation]);
+    await expect(draftStore.load(conversationA)).resolves.toMatchObject({
+      annotations: [annotation],
+    });
     expect(extensionStorage.snapshot()).toEqual({ [currentKey]: envelope });
   });
 
@@ -231,11 +271,15 @@ describe("draft storage", () => {
       [currentKey]: { version: 1, annotations: [renderedAnnotation] },
     });
 
-    await expect(draftStore.load(conversationA)).resolves.toEqual([migratedAnnotation]);
+    await expect(draftStore.load(conversationA)).resolves.toMatchObject({
+      annotations: [migratedAnnotation],
+    });
     expect(extensionStorage.snapshot()).toEqual({ [currentKey]: migratedEnvelope });
 
     extensionStorage.set.mockClear();
-    await expect(draftStore.load(conversationA)).resolves.toEqual([migratedAnnotation]);
+    await expect(draftStore.load(conversationA)).resolves.toMatchObject({
+      annotations: [migratedAnnotation],
+    });
     expect(extensionStorage.set).not.toHaveBeenCalled();
   });
 
@@ -244,7 +288,9 @@ describe("draft storage", () => {
       [currentKey]: { version: 2, annotations: [unmarkedAnnotation] },
     });
 
-    await expect(draftStore.load(conversationA)).resolves.toEqual([legacyAnnotation]);
+    await expect(draftStore.load(conversationA)).resolves.toMatchObject({
+      annotations: [legacyAnnotation],
+    });
     expect(extensionStorage.snapshot()).toEqual({ [currentKey]: legacyEnvelope });
   });
 
@@ -266,7 +312,9 @@ describe("draft storage", () => {
       [currentKey]: { version: 2, annotations: [storedTableAnnotation] },
     });
 
-    await expect(draftStore.load(conversationA)).resolves.toEqual([tableAnnotation]);
+    await expect(draftStore.load(conversationA)).resolves.toMatchObject({
+      annotations: [tableAnnotation],
+    });
     expect(extensionStorage.snapshot()).toEqual({ [currentKey]: tableEnvelope });
   });
 
@@ -278,14 +326,18 @@ describe("draft storage", () => {
       ],
     });
 
-    await expect(draftStore.load(conversationA)).resolves.toEqual([legacyAnnotation]);
+    await expect(draftStore.load(conversationA)).resolves.toMatchObject({
+      annotations: [legacyAnnotation],
+    });
     expect(extensionStorage.snapshot()).toEqual({ [currentKey]: legacyEnvelope });
   });
 
   it("writes the new envelope before removing a legacy key", async () => {
     extensionStorage.reset({ [legacyKey]: [{ ...unmarkedAnnotation, createdAt: 1 }] });
 
-    await expect(draftStore.load(conversationA)).resolves.toEqual([legacyAnnotation]);
+    await expect(draftStore.load(conversationA)).resolves.toMatchObject({
+      annotations: [legacyAnnotation],
+    });
     expect(extensionStorage.snapshot()).toEqual({ [currentKey]: legacyEnvelope });
   });
 
@@ -304,12 +356,16 @@ describe("draft storage", () => {
     extensionStorage.remove.mockRejectedValueOnce(new Error("remove failed"));
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
 
-    await expect(draftStore.load(conversationA)).resolves.toEqual([legacyAnnotation]);
+    await expect(draftStore.load(conversationA)).resolves.toMatchObject({
+      annotations: [legacyAnnotation],
+    });
     expect(extensionStorage.snapshot()).toEqual({
       [currentKey]: legacyEnvelope,
       [legacyKey]: legacyDraft,
     });
-    await expect(draftStore.load(conversationA)).resolves.toEqual([legacyAnnotation]);
+    await expect(draftStore.load(conversationA)).resolves.toMatchObject({
+      annotations: [legacyAnnotation],
+    });
     expect(extensionStorage.snapshot()).toEqual({ [currentKey]: legacyEnvelope });
 
     consoleError.mockRestore();
@@ -326,9 +382,10 @@ describe("draft storage", () => {
 
     const malformedDraft = [{ id: 42, anchor: null }];
     extensionStorage.reset({ [currentKey]: malformedDraft });
-    await expect(draftStore.load(conversationA)).rejects.toThrow(
-      "Draft contains no valid annotations",
-    );
+    await expect(draftStore.load(conversationA)).resolves.toEqual({
+      annotations: [],
+      hasUnreadableAnnotations: true,
+    });
     expect(extensionStorage.snapshot()).toEqual({ [currentKey]: malformedDraft });
 
     const malformedDisplayQuote = {
@@ -336,9 +393,10 @@ describe("draft storage", () => {
       annotations: [{ ...unmarkedAnnotation, anchor: { ...unmarkedAnchor, displayQuote: 42 } }],
     };
     extensionStorage.reset({ [currentKey]: malformedDisplayQuote });
-    await expect(draftStore.load(conversationA)).rejects.toThrow(
-      "Draft contains no valid annotations",
-    );
+    await expect(draftStore.load(conversationA)).resolves.toEqual({
+      annotations: [],
+      hasUnreadableAnnotations: true,
+    });
     expect(extensionStorage.snapshot()).toEqual({ [currentKey]: malformedDisplayQuote });
 
     const missingFormat = {
@@ -346,9 +404,10 @@ describe("draft storage", () => {
       annotations: [unmarkedAnnotation],
     };
     extensionStorage.reset({ [currentKey]: missingFormat });
-    await expect(draftStore.load(conversationA)).rejects.toThrow(
-      "Draft contains no valid annotations",
-    );
+    await expect(draftStore.load(conversationA)).resolves.toEqual({
+      annotations: [],
+      hasUnreadableAnnotations: true,
+    });
     expect(extensionStorage.snapshot()).toEqual({ [currentKey]: missingFormat });
   });
 
@@ -364,7 +423,9 @@ describe("draft storage", () => {
     };
     extensionStorage.reset({ [currentKey]: storedEnvelope });
 
-    await expect(draftStore.load(conversationA)).resolves.toEqual([annotation]);
+    await expect(draftStore.load(conversationA)).resolves.toMatchObject({
+      annotations: [annotation],
+    });
     expect(extensionStorage.snapshot()).toEqual({ [currentKey]: storedEnvelope });
   });
 
@@ -384,7 +445,11 @@ describe("draft storage", () => {
       draftStore.mutate(conversationA, [
         { kind: "update", annotationId: annotation.id, comment: "unsafe update" },
       ]),
-    ).rejects.toThrow("Draft contains unreadable annotations");
+    ).resolves.toMatchObject({
+      status: "rejected",
+      reason: "unreadable",
+      annotations: [annotation],
+    });
     expect(extensionStorage.snapshot()).toEqual({ [currentKey]: storedEnvelope });
   });
 
@@ -400,9 +465,9 @@ describe("draft storage", () => {
     };
     extensionStorage.reset({ [currentKey]: storedEnvelope });
 
-    await expect(draftStore.mutate(conversationA, [{ kind: "add", annotation }])).resolves.toEqual([
-      annotation,
-    ]);
+    await expect(
+      draftStore.mutate(conversationA, [{ kind: "add", annotation }]),
+    ).resolves.toMatchObject({ annotations: [annotation] });
     expect(extensionStorage.snapshot()).toEqual({ [currentKey]: storedEnvelope });
   });
 
@@ -416,7 +481,9 @@ describe("draft storage", () => {
       [currentKey]: { version: 3, annotations: [annotation, unreadableAnnotation] },
     });
 
-    await expect(draftStore.mutate(conversationA, [{ kind: "clear" }])).resolves.toEqual([]);
+    await expect(draftStore.mutate(conversationA, [{ kind: "clear" }])).resolves.toMatchObject({
+      annotations: [],
+    });
     expect(extensionStorage.snapshot()).toEqual({});
   });
 
@@ -437,7 +504,9 @@ describe("draft storage", () => {
     };
     extensionStorage.reset({ [currentKey]: storedEnvelope });
 
-    await expect(draftStore.load(conversationA)).resolves.toEqual([legacyAnnotation]);
+    await expect(draftStore.load(conversationA)).resolves.toMatchObject({
+      annotations: [legacyAnnotation],
+    });
     expect(extensionStorage.snapshot()).toEqual({ [currentKey]: storedEnvelope });
   });
 
@@ -445,7 +514,9 @@ describe("draft storage", () => {
     const storedDraft = [{ id: 42, anchor: null }, unmarkedAnnotation];
     extensionStorage.reset({ [legacyKey]: storedDraft });
 
-    await expect(draftStore.load(conversationA)).resolves.toEqual([legacyAnnotation]);
+    await expect(draftStore.load(conversationA)).resolves.toMatchObject({
+      annotations: [legacyAnnotation],
+    });
     expect(extensionStorage.snapshot()).toEqual({ [legacyKey]: storedDraft });
   });
 
@@ -470,16 +541,18 @@ describe("draft storage", () => {
           comment: "edited after migration",
         },
       ]),
-    ).resolves.toEqual([{ ...legacyAnnotation, comment: "edited after migration" }]);
+    ).resolves.toMatchObject({
+      annotations: [{ ...legacyAnnotation, comment: "edited after migration" }],
+    });
     expect(extensionStorage.keys()).toEqual([currentKey]);
   });
 
   it("ignores a duplicate add so a retried message cannot double the annotation", async () => {
     extensionStorage.reset({ [currentKey]: envelope });
 
-    await expect(draftStore.mutate(conversationA, [{ kind: "add", annotation }])).resolves.toEqual([
-      annotation,
-    ]);
+    await expect(
+      draftStore.mutate(conversationA, [{ kind: "add", annotation }]),
+    ).resolves.toMatchObject({ annotations: [annotation] });
     expect(extensionStorage.snapshot()).toEqual({ [currentKey]: envelope });
   });
 
@@ -493,9 +566,9 @@ describe("draft storage", () => {
     ];
     extensionStorage.reset({ [currentKey]: { ...envelope, annotations } });
 
-    await expect(draftStore.mutate(conversationA, [{ kind: "add", annotation }])).resolves.toEqual(
-      annotations,
-    );
+    await expect(
+      draftStore.mutate(conversationA, [{ kind: "add", annotation }]),
+    ).resolves.toMatchObject({ annotations: annotations });
   });
 
   it("applies an ordered mutation batch against one authoritative draft", async () => {
@@ -507,7 +580,7 @@ describe("draft storage", () => {
         { kind: "update", annotationId: annotation.id, comment: "updated" },
         { kind: "add", annotation: second },
       ]),
-    ).resolves.toEqual([{ ...annotation, comment: "updated" }, second]);
+    ).resolves.toMatchObject({ annotations: [{ ...annotation, comment: "updated" }, second] });
     expect(extensionStorage.snapshot()[currentKey]).toMatchObject({
       annotations: [{ ...annotation, comment: "updated" }, second],
     });
@@ -523,8 +596,8 @@ describe("draft storage", () => {
       owner.mutate(conversationA, [{ kind: "add", annotation: second }]),
     ]);
 
-    expect(first).toEqual([annotation]);
-    expect(latest).toEqual([annotation, second]);
+    expect(first).toMatchObject({ annotations: [annotation] });
+    expect(latest).toMatchObject({ annotations: [annotation, second] });
   });
 
   it("orders concurrent updates so the last one wins and neither is dropped", async () => {
@@ -536,8 +609,10 @@ describe("draft storage", () => {
       owner.mutate(conversationA, [{ kind: "update", annotationId: annotation.id, comment: "B" }]),
     ]);
 
-    expect(latest).toEqual([{ ...annotation, comment: "B" }]);
-    expect(await owner.load(conversationA)).toEqual([{ ...annotation, comment: "B" }]);
+    expect(latest).toMatchObject({ annotations: [{ ...annotation, comment: "B" }] });
+    expect(await owner.load(conversationA)).toMatchObject({
+      annotations: [{ ...annotation, comment: "B" }],
+    });
   });
 
   it("applies a concurrent update and discard in issue order", async () => {
@@ -549,8 +624,8 @@ describe("draft storage", () => {
       owner.mutate(conversationA, [{ kind: "discard", annotationIds: [annotation.id] }]),
     ]);
 
-    expect(updated).toEqual([{ ...annotation, comment: "A" }]);
-    expect(discarded).toEqual([]);
+    expect(updated).toMatchObject({ annotations: [{ ...annotation, comment: "A" }] });
+    expect(discarded).toMatchObject({ annotations: [] });
     expect(extensionStorage.snapshot()).toEqual({});
   });
 
@@ -569,7 +644,9 @@ describe("draft storage", () => {
       owner.mutate(conversationA, [{ kind: "discard-confirmed", annotations: [annotation] }]),
     ]);
 
-    expect(remaining).toEqual([{ ...annotation, comment: "edited after the send was compiled" }]);
+    expect(remaining).toMatchObject({
+      annotations: [{ ...annotation, comment: "edited after the send was compiled" }],
+    });
   });
 
   it("never sweeps a draft using expiry read before a queued refresh", async () => {
@@ -592,6 +669,6 @@ describe("draft storage", () => {
     await refreshed;
 
     expect(extensionStorage.keys()).toContain(staleKey);
-    expect(await owner.load(staleConversation)).toEqual([annotation]);
+    expect(await owner.load(staleConversation)).toMatchObject({ annotations: [annotation] });
   });
 });

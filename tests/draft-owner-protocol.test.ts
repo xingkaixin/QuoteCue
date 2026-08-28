@@ -82,11 +82,34 @@ describe("draft owner protocol", () => {
   });
 
   it("accepts complete success and error responses", () => {
-    expect(isDraftOwnerResponse({ status: "ok", annotations: [annotation] })).toBe(true);
+    expect(
+      isDraftOwnerResponse({
+        status: "ok",
+        annotations: [annotation],
+        hasUnreadableAnnotations: false,
+      }),
+    ).toBe(true);
     expect(isDraftOwnerResponse({ status: "error", message: "storage unavailable" })).toBe(true);
   });
 
+  it.each(["capacity", "unreadable"])(
+    "accepts a %s rejection with authoritative data",
+    (reason) => {
+      expect(
+        isDraftOwnerResponse({
+          status: "rejected",
+          reason,
+          annotations: [annotation],
+          hasUnreadableAnnotations: true,
+        }),
+      ).toBe(true);
+    },
+  );
+
   it.each([
+    { status: "rejected", reason: "unknown", annotations: [], hasUnreadableAnnotations: false },
+    { status: "rejected", annotations: [], hasUnreadableAnnotations: false },
+    { status: "ok", annotations: [], hasUnreadableAnnotations: "false" },
     undefined,
     { status: "ok" },
     { status: "ok", annotations: null },

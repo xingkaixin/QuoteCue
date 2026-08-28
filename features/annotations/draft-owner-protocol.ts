@@ -5,6 +5,7 @@ import type { IdentifiedConversation } from "@/features/conversation/conversatio
 
 import type { DraftAnnotation } from "./annotation";
 import type { DraftMutation } from "./draft-mutation";
+import type { DraftMutationResult } from "./draft-store";
 
 export const DRAFT_OWNER_MESSAGE = "quotecue:draft";
 
@@ -17,9 +18,7 @@ export type DraftOwnerRequest =
       mutations: readonly DraftMutation[];
     };
 
-export type DraftOwnerResponse =
-  | { status: "ok"; annotations: DraftAnnotation[] }
-  | { status: "error"; message: string };
+export type DraftOwnerResponse = DraftMutationResult | { status: "error"; message: string };
 
 export function isDraftOwnerRequest(value: unknown): value is DraftOwnerRequest {
   if (
@@ -48,7 +47,10 @@ export function isDraftOwnerResponse(value: unknown): value is DraftOwnerRespons
     return typeof value.message === "string";
   }
   return (
-    value.status === "ok" &&
+    (value.status === "ok" ||
+      (value.status === "rejected" &&
+        (value.reason === "capacity" || value.reason === "unreadable"))) &&
+    typeof value.hasUnreadableAnnotations === "boolean" &&
     Array.isArray(value.annotations) &&
     value.annotations.every(isDraftAnnotation)
   );
