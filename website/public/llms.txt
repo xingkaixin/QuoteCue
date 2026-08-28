@@ -28,6 +28,6 @@ Extension privacy policy: https://github.com/xingkaixin/QuoteCue/blob/main/PRIVA
 - Identified-conversation drafts stay in browser-local extension storage.
 - The extension requests only the storage permission and access to the four supported hosts.
 - Current-version drafts expire after 30 days without an update.
-- The extension itself collects no analytics. The product website uses cookie-free Cloudflare Web Analytics for aggregate performance measurement.
+- The extension itself collects no analytics. The product website uses self-hosted, cookie-free Umami for pageview analytics and supports Cloudflare Web Analytics for aggregate performance measurement. Website analytics do not include annotation or demo input content.
 
-Last updated: 2026-08-07
+Last updated: 2026-08-28

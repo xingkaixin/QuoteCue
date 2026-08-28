@@ -14,7 +14,17 @@ pnpm site:build
 ```
 
 `site:check` 会执行 Astro 类型检查、生产构建，并验证 canonical、hreflang、JSON-LD、
-sitemap、robots.txt、404 和 Cloudflare 部署产物。
+sitemap、robots.txt、404、Umami 脚本与 CSP，以及 Cloudflare 部署产物。
+
+## Umami 访问统计
+
+生产构建在共用布局中加载自建 Umami 的 `https://umami.xingkaixin.me/script.js`，站点 ID 为
+`7d43d6ea-7e27-4c6b-9037-917d977a9af3`，无需额外环境变量。`data-domains` 使用 Astro 配置的
+正式域名 `quotecue.xingkaixin.me`，避免本地预览和其他部署域名的访问计入统计；开发模式不加载
+脚本。`_headers` 仅在 `script-src` 和 `connect-src` 中放行该 Umami 来源。
+
+统计只用于产品网站的页面访问，不添加自定义事件，不上报演示中的批注或输入内容，也不进入扩展
+或 AI 宿主页面。扩展继续不收集使用统计；详见 [PRIVACY.md](../PRIVACY.md)。
 
 ## Cloudflare Web Analytics
 

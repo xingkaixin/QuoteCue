@@ -106,6 +106,17 @@ const jsonLd = structuredData ? JSON.stringify(structuredData).replaceAll("<", "
         document.documentElement.dataset.theme = "dark";
       }
     </script>
+    {
+      import.meta.env.PROD && (
+        <script
+          is:inline
+          defer
+          src="https://umami.xingkaixin.me/script.js"
+          data-website-id="7d43d6ea-7e27-4c6b-9037-917d977a9af3"
+          data-domains={canonicalUrl.hostname}
+        />
+      )
+    }
   </head>
   <body>
     <slot />
