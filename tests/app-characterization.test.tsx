@@ -466,8 +466,8 @@ function identifiedConversation(id: string): IdentifiedConversation {
   return { kind: "identified", id, siteId: "chatgpt" };
 }
 
-function loadStoredDrafts(id: string) {
-  return draftStore.load(identifiedConversation(id));
+async function loadStoredDrafts(id: string) {
+  return (await draftStore.load(identifiedConversation(id))).annotations;
 }
 
 async function click(container: HTMLElement, testId: string) {

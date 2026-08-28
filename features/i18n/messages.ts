@@ -23,6 +23,7 @@ export type Messages = {
   editNumberedAnnotation: (number: number) => string;
   loadDraftFailed: string;
   loadingDraft: string;
+  unreadableDraft: string;
   optionalComment: string;
   save: string;
   saveAnnotation: string;
@@ -60,6 +61,7 @@ const ENGLISH: Messages = {
   editNumberedAnnotation: (number) => `Edit annotation ${number}`,
   loadDraftFailed: "QuoteCue couldn't restore this draft.",
   loadingDraft: "Restoring QuoteCue draft…",
+  unreadableDraft: "Some annotations cannot be read. Clear this draft to start again.",
   optionalComment: "Add an optional comment…",
   save: "Save",
   saveAnnotation: "Save annotation",
@@ -101,6 +103,7 @@ const JAPANESE: Messages = {
   editNumberedAnnotation: (number) => `注釈 ${number} を編集`,
   loadDraftFailed: "QuoteCue でこの下書きを復元できませんでした。",
   loadingDraft: "QuoteCue の下書きを復元しています…",
+  unreadableDraft: "一部の注釈を読み込めません。下書きを削除してやり直してください。",
   optionalComment: "任意のコメントを追加…",
   save: "保存",
   saveAnnotation: "注釈を保存",
@@ -140,6 +143,7 @@ const SIMPLIFIED_CHINESE: Messages = {
   editNumberedAnnotation: (number) => `编辑批注 ${number}`,
   loadDraftFailed: "QuoteCue 无法恢复这份草稿。",
   loadingDraft: "正在恢复 QuoteCue 草稿…",
+  unreadableDraft: "部分批注无法读取，可清空这份草稿后重新开始。",
   optionalComment: "添加可选批注…",
   save: "保存",
   saveAnnotation: "保存批注",
@@ -176,6 +180,7 @@ const TRADITIONAL_CHINESE: Messages = {
   editNumberedAnnotation: (number) => `編輯批註 ${number}`,
   loadDraftFailed: "QuoteCue 無法復原這份草稿。",
   loadingDraft: "正在復原 QuoteCue 草稿…",
+  unreadableDraft: "部分批註無法讀取，可清除這份草稿後重新開始。",
   optionalComment: "新增選填批註…",
   save: "儲存",
   saveAnnotation: "儲存批註",

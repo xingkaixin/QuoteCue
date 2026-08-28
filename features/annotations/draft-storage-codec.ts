@@ -93,9 +93,6 @@ function decodeAnnotations(values: unknown[], version: DraftStorageVersion): Dec
     annotations.push(annotation);
   }
 
-  if (values.length > 0 && annotations.length === 0) {
-    throw new Error("Draft contains no valid annotations");
-  }
   return { annotations, hasDuplicateAnnotations, hasUnreadableAnnotations };
 }
 

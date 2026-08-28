@@ -10,7 +10,7 @@ import type { AnchoredSelection } from "@/features/host-port/host-port";
 import { I18nProvider } from "@/features/i18n/I18nProvider";
 
 import { createFakeHost, type FakeHost } from "./fixtures/fake-host";
-import { createDraftStoreDouble } from "./fixtures/memory-draft-store";
+import { createDraftStoreDouble, draftResult } from "./fixtures/memory-draft-store";
 
 const anchoredSelection: AnchoredSelection = {
   anchor: {
@@ -54,7 +54,7 @@ afterEach(() => {
 
 describe("annotation workspace", () => {
   it("keeps the editor closed when source navigation fails", async () => {
-    draftStoreFixture.store.load.mockResolvedValue([annotation]);
+    draftStoreFixture.store.load.mockResolvedValue(draftResult([annotation]));
     const host = createWorkspaceHost();
     vi.spyOn(host.selection, "reveal").mockReturnValue({
       status: "unavailable",
@@ -75,7 +75,7 @@ describe("annotation workspace", () => {
 
   it("keeps the current editor target when its session refuses dismissal", async () => {
     const other: DraftAnnotation = { ...annotation, comment: "other", id: "annotation-two" };
-    draftStoreFixture.store.load.mockResolvedValue([annotation, other]);
+    draftStoreFixture.store.load.mockResolvedValue(draftResult([annotation, other]));
     const mounted = await mountWorkspace();
     await act(async () => new Promise(requestAnimationFrame));
     const [first, second] = workspace.summary.annotations;
@@ -99,7 +99,7 @@ describe("annotation workspace", () => {
   });
 
   it("closes an active editor after annotation resolution fails", async () => {
-    draftStoreFixture.store.load.mockResolvedValue([]);
+    draftStoreFixture.store.load.mockResolvedValue(draftResult([]));
     const mounted = await mountWorkspace();
     mounted.host.controls.setMessageIndex(new Map());
 
@@ -116,7 +116,10 @@ describe("annotation workspace", () => {
   it("opens an editor and clears selection only after the annotation write succeeds", async () => {
     let resolveLoad: (annotations: DraftAnnotation[]) => void = () => undefined;
     draftStoreFixture.store.load.mockImplementation(
-      () => new Promise<DraftAnnotation[]>((resolve) => (resolveLoad = resolve)),
+      () =>
+        new Promise<ReturnType<typeof draftResult>>(
+          (resolve) => (resolveLoad = (annotations) => resolve(draftResult(annotations))),
+        ),
     );
     const mounted = await mountWorkspace();
     const clearSelection = vi.spyOn(mounted.host.selection, "clear");
@@ -140,7 +143,7 @@ describe("annotation workspace", () => {
   });
 
   it("reads locale changes without reinstalling the send interceptor", async () => {
-    draftStoreFixture.store.load.mockResolvedValue([]);
+    draftStoreFixture.store.load.mockResolvedValue(draftResult([]));
     const host = createWorkspaceHost();
     const subscribeToSubmit = vi.spyOn(host.composer, "subscribeToSubmit");
     const mounted = await mountWorkspace(host);
@@ -156,7 +159,7 @@ describe("annotation workspace", () => {
   });
 
   it("clears failed send state when the draft is cleared", async () => {
-    draftStoreFixture.store.load.mockResolvedValue([annotation]);
+    draftStoreFixture.store.load.mockResolvedValue(draftResult([annotation]));
     const host = createWorkspaceHost();
     vi.spyOn(host.composer, "submit").mockResolvedValue({
       reason: "send-unavailable",

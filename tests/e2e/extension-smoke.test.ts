@@ -131,6 +131,59 @@ async function openConversation(context: BrowserContext, conversationId: string)
   return page;
 }
 
+test("clears unreadable drafts with the keyboard across display settings", async ({
+  context,
+  extensionWorker,
+}) => {
+  for (const { width, colorScheme, reducedMotion, zoom } of [
+    { width: 1280, colorScheme: "light", reducedMotion: "no-preference", zoom: 1 },
+    { width: 360, colorScheme: "dark", reducedMotion: "reduce", zoom: 1 },
+    { width: 720, colorScheme: "light", reducedMotion: "reduce", zoom: 2 },
+  ] as const) {
+    const key = draftKey("unreadable");
+    await extensionWorker.evaluate(async (storageKey) => {
+      const extensionApi = Reflect.get(globalThis, "chrome") as {
+        storage: { local: { set(values: Record<string, unknown>): Promise<void> } };
+      };
+      await extensionApi.storage.local.set({
+        [storageKey]: { version: 3, annotations: [{ id: "unreadable" }], updatedAt: Date.now() },
+      });
+    }, key);
+    const page = await openConversation(context, "unreadable");
+    await page.setViewportSize({ width, height: 800 });
+    await page.emulateMedia({ colorScheme, reducedMotion });
+    await page.evaluate((scale) => {
+      document.documentElement.style.zoom = String(scale);
+    }, zoom);
+    const session = await context.newCDPSession(page);
+    let clearButtonId: number | undefined;
+    await expect(async () => {
+      const { nodes } = await session.send("Accessibility.getFullAXTree");
+      clearButtonId = nodes.find(
+        (node) => node.role?.value === "button" && node.name?.value === "Clear all annotations",
+      )?.backendDOMNodeId;
+      expect(clearButtonId).toBeDefined();
+    }).toPass();
+    await session.send("DOM.focus", { backendNodeId: clearButtonId });
+    await page.keyboard.press("Enter");
+    expect(await storedAnnotationCount(extensionWorker, key)).toBe(1);
+    const { nodes } = await session.send("Accessibility.getFullAXTree");
+    expect(nodes.some((node) => node.name?.value === "Confirm clearing all annotations")).toBe(
+      true,
+    );
+    const { model } = await session.send("DOM.getBoxModel", { backendNodeId: clearButtonId });
+    expect(Math.min(...model.border.filter((_, index) => index % 2 === 0))).toBeGreaterThanOrEqual(
+      0,
+    );
+    expect(Math.max(...model.border.filter((_, index) => index % 2 === 0))).toBeLessThanOrEqual(
+      width,
+    );
+    await page.keyboard.press("Enter");
+    await expect.poll(() => storedAnnotationCount(extensionWorker, key)).toBe(0);
+    await page.close();
+  }
+});
+
 async function addAnnotation(page: Page) {
   const action = page.locator("[data-quotecue-native-action]");
   await expect(async () => {

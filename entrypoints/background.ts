@@ -12,13 +12,13 @@ export default defineBackground(() => {
       return false;
     }
 
-    const annotations =
+    const result =
       message.kind === "load"
-        ? owner.load(message.conversation)
+        ? owner.load(message.conversation).then((draft) => ({ ...draft, status: "ok" as const }))
         : owner.mutate(message.conversation, message.mutations);
 
-    void annotations.then(
-      (value) => sendResponse({ status: "ok", annotations: value } satisfies DraftOwnerResponse),
+    void result.then(
+      (value) => sendResponse(value satisfies DraftOwnerResponse),
       (error: unknown) => {
         console.error("[QuoteCue] Draft owner failed", error);
         sendResponse({

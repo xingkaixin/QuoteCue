@@ -1,12 +1,11 @@
 import { browser } from "wxt/browser";
 
-import type { DraftAnnotation } from "./annotation";
 import {
   DRAFT_OWNER_MESSAGE,
   isDraftOwnerResponse,
   type DraftOwnerRequest,
 } from "./draft-owner-protocol";
-import type { DraftStore } from "./draft-store";
+import type { DraftMutationResult, DraftStore } from "./draft-store";
 
 export function createBrowserDraftStore(): DraftStore {
   return {
@@ -16,7 +15,7 @@ export function createBrowserDraftStore(): DraftStore {
   };
 }
 
-async function request(message: DraftOwnerRequest): Promise<DraftAnnotation[]> {
+async function request(message: DraftOwnerRequest): Promise<DraftMutationResult> {
   const response: unknown = await browser.runtime.sendMessage(message);
   if (!isDraftOwnerResponse(response)) {
     throw new Error("Draft owner returned an unexpected response");
@@ -24,5 +23,5 @@ async function request(message: DraftOwnerRequest): Promise<DraftAnnotation[]> {
   if (response.status === "error") {
     throw new Error(response.message);
   }
-  return response.annotations;
+  return response;
 }
