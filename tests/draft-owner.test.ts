@@ -205,6 +205,24 @@ describe("draft storage", () => {
     await vi.waitFor(() => expect(extensionStorage.getKeys).toHaveBeenCalledTimes(2));
   });
 
+  it.each(["A", "B"])("saves conversation %s while the startup scan is pending", async (id) => {
+    let resolveKeys: (keys: string[]) => void = () => undefined;
+    extensionStorage.getKeys.mockImplementationOnce(
+      () => new Promise<string[]>((resolve) => (resolveKeys = resolve)),
+    );
+    const owner = createDraftOwner();
+    await owner.load(conversationA);
+    expect(extensionStorage.getKeys).toHaveBeenCalledOnce();
+    const saving = owner.mutate({ ...conversationA, id }, [{ kind: "add", annotation }]);
+
+    try {
+      await vi.waitFor(() => expect(extensionStorage.set).toHaveBeenCalledOnce());
+    } finally {
+      resolveKeys(extensionStorage.keys());
+      await saving;
+    }
+  });
+
   it("expires the loaded draft before conservative background cleanup", async () => {
     const expiredKey = "quotecue:draft:expired";
     const recentKey = "quotecue:draft:recent";
@@ -730,5 +748,32 @@ describe("draft storage", () => {
 
     expect(extensionStorage.keys()).toContain(staleKey);
     expect(await owner.load(staleConversation)).toMatchObject({ annotations: [annotation] });
+  });
+
+  it("rechecks expiry after the background scan captured a stale envelope", async () => {
+    const staleConversation = { ...conversationA, id: "stale" };
+    const staleKey = "quotecue:draft:chatgpt:stale";
+    extensionStorage.reset({
+      [currentKey]: envelope,
+      [staleKey]: { ...envelope, updatedAt: NOW - 31 * DAY_MS },
+    });
+    const scannedDrafts = extensionStorage.snapshot();
+    let resolveScan: (value: Record<string, unknown>) => void = () => undefined;
+    const scan = new Promise<Record<string, unknown>>((resolve) => (resolveScan = resolve));
+    extensionStorage.get
+      .mockImplementationOnce(extensionStorage.get.getMockImplementation()!)
+      .mockReturnValueOnce(scan);
+    const owner = createDraftOwner();
+
+    await owner.load(conversationA);
+    await vi.waitFor(() =>
+      expect(extensionStorage.get).toHaveBeenCalledWith([currentKey, staleKey]),
+    );
+    await owner.mutate(staleConversation, [{ kind: "add", annotation }]);
+    resolveScan(scannedDrafts);
+    await vi.waitFor(() => expect(extensionStorage.get).toHaveBeenCalledWith([staleKey]));
+
+    expect(await owner.load(staleConversation)).toMatchObject({ annotations: [annotation] });
+    expect(extensionStorage.snapshot()).toHaveProperty(staleKey, envelope);
   });
 });

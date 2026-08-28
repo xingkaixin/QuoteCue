@@ -7,7 +7,28 @@ import {
   ORPHANED_DRAFT_KEY_PREFIXES,
 } from "./draft-storage-key";
 
-export async function removeStoredDrafts(openConversationKeys: ReadonlySet<string>) {
+export async function removeStoredDrafts(
+  serialize: (key: string, operation: () => Promise<boolean>) => Promise<boolean>,
+) {
+  const { orphanedKeys, expiredKeys } = await collectExpiredDraftKeys();
+  if (orphanedKeys.length > 0) {
+    // Temporary conversation keys no longer have a writer to coordinate with.
+    await browser.storage.local.remove(orphanedKeys);
+  }
+  const removals = await Promise.all(
+    expiredKeys.map((key) => serialize(key, () => removeExpiredDraft(key))),
+  );
+  const removedCount = removals.filter(Boolean).length;
+  if (removedCount > 0) {
+    console.info(
+      `[QuoteCue] Removed ${removedCount} expired annotation ${
+        removedCount === 1 ? "draft" : "drafts"
+      }`,
+    );
+  }
+}
+
+async function collectExpiredDraftKeys() {
   const storedKeys = await getStoredKeys();
   const orphanedKeys = storedKeys.filter((key) =>
     ORPHANED_DRAFT_KEY_PREFIXES.some((prefix) => key.startsWith(prefix)),
@@ -18,22 +39,19 @@ export async function removeStoredDrafts(openConversationKeys: ReadonlySet<strin
   );
   const storedDrafts = draftKeys.length > 0 ? await browser.storage.local.get(draftKeys) : {};
   const expiresBefore = Date.now() - DRAFT_RETENTION_MS;
-  const expiredKeys = draftKeys.filter(
-    (key) =>
-      !openConversationKeys.has(key) && isExpiredDraftEnvelope(storedDrafts[key], expiresBefore),
+  const expiredKeys = draftKeys.filter((key) =>
+    isExpiredDraftEnvelope(storedDrafts[key], expiresBefore),
   );
-  const keysToRemove = [...orphanedKeys, ...expiredKeys];
+  return { orphanedKeys, expiredKeys };
+}
 
-  if (keysToRemove.length > 0) {
-    await browser.storage.local.remove(keysToRemove);
+async function removeExpiredDraft(key: string) {
+  const current = await browser.storage.local.get([key]);
+  if (!isExpiredDraftEnvelope(current[key], Date.now() - DRAFT_RETENTION_MS)) {
+    return false;
   }
-  if (expiredKeys.length > 0) {
-    console.info(
-      `[QuoteCue] Removed ${expiredKeys.length} expired annotation ${
-        expiredKeys.length === 1 ? "draft" : "drafts"
-      }`,
-    );
-  }
+  await browser.storage.local.remove(key);
+  return true;
 }
 
 async function getStoredKeys() {

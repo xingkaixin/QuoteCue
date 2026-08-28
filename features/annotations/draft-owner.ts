@@ -24,24 +24,15 @@ import {
 /**
  * The single writer for draft storage. Extension contexts share `storage.local`, so a queue that
  * lives in one content script cannot order writes made by another. Read-modify-write operations
- * are ordered per conversation, while startup cleanup briefly coordinates all conversations.
+ * and cleanup deletions are ordered per conversation; the startup scan stays outside those queues.
  */
 export function createDraftOwner() {
   const conversationChains = new Map<string, Promise<unknown>>();
-  let cleanup: Promise<void> | null = null;
   let cleanupScheduled = false;
-  // Operations started before cleanup settles must protect their conversation from expiry.
-  // Later operations wait for cleanup through serialize, so the set has no owner afterwards.
-  let cleanupProtectedConversationKeys: Set<string> | null = new Set();
 
-  function serialize<T>(conversation: IdentifiedConversation, operation: () => Promise<T>) {
-    const key = scopedDraftStorageKey(conversation);
+  function serialize<T>(key: string, operation: () => Promise<T>) {
     const previous = conversationChains.get(key) ?? Promise.resolve();
-    const run = async () => {
-      await cleanup;
-      return operation();
-    };
-    const result = previous.then(run, run);
+    const result = previous.then(operation, operation);
     const settled = result.catch(() => undefined);
     conversationChains.set(key, settled);
     void settled.finally(() => {
@@ -53,28 +44,20 @@ export function createDraftOwner() {
   }
 
   function scheduleCleanup(after: Promise<unknown>) {
-    const protectedConversationKeys = cleanupProtectedConversationKeys;
-    if (cleanupScheduled || !protectedConversationKeys) {
+    if (cleanupScheduled) {
       return;
     }
     cleanupScheduled = true;
-    const startCleanup = () => {
-      cleanup = removeStoredDrafts(protectedConversationKeys)
-        .catch((error: unknown) => {
-          console.error("[QuoteCue] Failed to clean stored drafts", error);
-        })
-        .finally(() => {
-          cleanupProtectedConversationKeys = null;
-          cleanup = null;
-        });
-    };
+    const startCleanup = () =>
+      removeStoredDrafts(serialize).catch((error: unknown) => {
+        console.error("[QuoteCue] Failed to clean stored drafts", error);
+      });
     void after.then(startCleanup, startCleanup);
   }
 
   return {
     load(conversation: IdentifiedConversation) {
-      cleanupProtectedConversationKeys?.add(scopedDraftStorageKey(conversation));
-      const draft = serialize(conversation, () => readDraft(conversation));
+      const draft = serialize(scopedDraftStorageKey(conversation), () => readDraft(conversation));
       scheduleCleanup(draft);
       return draft.then(({ annotations, hasUnreadableAnnotations }) => ({
         annotations,
@@ -82,8 +65,8 @@ export function createDraftOwner() {
       }));
     },
     mutate(conversation: IdentifiedConversation, mutations: readonly DraftMutation[]) {
-      cleanupProtectedConversationKeys?.add(scopedDraftStorageKey(conversation));
-      return serialize(conversation, async (): Promise<DraftMutationResult> => {
+      const key = scopedDraftStorageKey(conversation);
+      return serialize(key, async (): Promise<DraftMutationResult> => {
         const decoded = await readDraft(conversation);
         const current = decoded.annotations;
         let next: readonly DraftAnnotation[] = current;
