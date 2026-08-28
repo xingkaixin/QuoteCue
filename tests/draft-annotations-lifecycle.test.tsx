@@ -13,7 +13,7 @@ import { applyDraftMutation, type DraftMutation } from "@/features/annotations/d
 import { DraftRuntimeProvider } from "@/features/annotations/DraftRuntimeProvider";
 import { canMutateDraft, useDraftAnnotations } from "@/features/annotations/use-draft-annotations";
 
-import { createDraftStoreDouble } from "./fixtures/memory-draft-store";
+import { createDraftStoreDouble, draftResult } from "./fixtures/memory-draft-store";
 
 const annotation: DraftAnnotation = {
   id: "annotation-a",
@@ -73,7 +73,9 @@ describe("draft annotation lifecycle", () => {
     const pendingLoads = new Map<string, (annotations: DraftAnnotation[]) => void>();
     draftStoreFixture.store.load.mockImplementation(
       (conversation: IdentifiedConversation) =>
-        new Promise<DraftAnnotation[]>((resolve) => pendingLoads.set(conversation.id, resolve)),
+        new Promise<ReturnType<typeof draftResult>>((resolve) =>
+          pendingLoads.set(conversation.id, (annotations) => resolve(draftResult(annotations))),
+        ),
     );
     const container = document.createElement("div");
     document.body.append(container);
@@ -94,11 +96,11 @@ describe("draft annotation lifecycle", () => {
   it("loads B without waiting for an in-flight A save", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     let resolveSave: (annotations: DraftAnnotation[]) => void = () => undefined;
-    draftStoreFixture.store.load.mockResolvedValue([]);
+    draftStoreFixture.store.load.mockResolvedValue(draftResult([]));
     draftStoreFixture.store.mutate.mockImplementation(
       () =>
-        new Promise<DraftAnnotation[]>((resolve) => {
-          resolveSave = resolve;
+        new Promise<ReturnType<typeof draftResult>>((resolve) => {
+          resolveSave = (annotations) => resolve(draftResult(annotations));
         }),
     );
     const container = document.createElement("div");
@@ -112,7 +114,7 @@ describe("draft annotation lifecycle", () => {
     await vi.waitFor(() =>
       expect(draftStoreFixture.store.load).toHaveBeenCalledWith(conversationB),
     );
-    expect(latestDrafts.draft).toEqual({ status: "ready", annotations: [] });
+    expect(latestDrafts.draft).toMatchObject({ status: "ready", annotations: [] });
 
     await act(async () => resolveSave([annotation]));
     await act(async () => root.unmount());
@@ -120,14 +122,18 @@ describe("draft annotation lifecycle", () => {
 
   it("saves B independently after an A save fails", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-    draftStoreFixture.store.load.mockResolvedValue([]);
+    draftStoreFixture.store.load.mockResolvedValue(draftResult([]));
     draftStoreFixture.store.mutate.mockImplementation(async (conversation, mutations) => {
       if (sameConversationIdentity(conversation, conversationA)) {
         throw new Error("A storage unavailable");
       }
-      return mutations.reduce<DraftAnnotation[]>(
-        (annotations, mutation) => [...(applyDraftMutation(annotations, mutation) ?? annotations)],
-        [],
+      return draftResult(
+        mutations.reduce<DraftAnnotation[]>(
+          (annotations, mutation) => [
+            ...(applyDraftMutation(annotations, mutation) ?? annotations),
+          ],
+          [],
+        ),
       );
     });
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
@@ -150,7 +156,7 @@ describe("draft annotation lifecycle", () => {
         { kind: "add", annotation: annotationB },
       ]),
     );
-    expect(latestDrafts.draft).toEqual({ status: "ready", annotations: [annotationB] });
+    expect(latestDrafts.draft).toMatchObject({ status: "ready", annotations: [annotationB] });
 
     consoleError.mockRestore();
     await act(async () => root.unmount());
@@ -169,7 +175,7 @@ describe("draft annotation lifecycle", () => {
     expect(latestDrafts.draft).toMatchObject({ status: "error", operation: "load" });
     expect(draftStoreFixture.store.mutate).not.toHaveBeenCalled();
 
-    draftStoreFixture.store.load.mockResolvedValue([annotation]);
+    draftStoreFixture.store.load.mockResolvedValue(draftResult([annotation]));
     await act(async () => latestDrafts.retry());
     expect(latestDrafts.draft.status).toBe("ready");
     expect(currentAnnotations()).toEqual([annotation]);
@@ -182,7 +188,10 @@ describe("draft annotation lifecycle", () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     let resolveLoad: (annotations: DraftAnnotation[]) => void = () => undefined;
     draftStoreFixture.store.load.mockImplementation(
-      () => new Promise<DraftAnnotation[]>((resolve) => (resolveLoad = resolve)),
+      () =>
+        new Promise<ReturnType<typeof draftResult>>(
+          (resolve) => (resolveLoad = (annotations) => resolve(draftResult(annotations))),
+        ),
     );
     const container = document.createElement("div");
     document.body.append(container);
@@ -260,12 +269,13 @@ describe("draft annotation lifecycle", () => {
 
     expect(latestDrafts.draft).toEqual({
       status: "error",
+      hasUnreadableAnnotations: false,
       operation: "load",
       annotations: [annotation],
     });
 
     await act(async () => latestDrafts.retry());
-    expect(latestDrafts.draft).toEqual({ status: "ready", annotations: [annotation] });
+    expect(latestDrafts.draft).toMatchObject({ status: "ready", annotations: [annotation] });
 
     consoleError.mockRestore();
     await act(async () => root.unmount());
@@ -279,13 +289,14 @@ describe("draft annotation lifecycle", () => {
 
     expect(latestDrafts.draft).toEqual({
       status: "error",
+      hasUnreadableAnnotations: false,
       operation: "save",
       annotations: [annotation],
     });
 
     await act(async () => latestDrafts.retry());
     await vi.waitFor(() =>
-      expect(latestDrafts.draft).toEqual({ status: "ready", annotations: [annotation] }),
+      expect(latestDrafts.draft).toMatchObject({ status: "ready", annotations: [annotation] }),
     );
 
     consoleError.mockRestore();
@@ -294,7 +305,7 @@ describe("draft annotation lifecycle", () => {
 
   it("rejects updates for unknown annotations without saving", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-    draftStoreFixture.store.load.mockResolvedValue([annotation]);
+    draftStoreFixture.store.load.mockResolvedValue(draftResult([annotation]));
     const container = document.createElement("div");
     document.body.append(container);
     const root = createRoot(container);
@@ -316,7 +327,7 @@ describe("draft annotation lifecycle", () => {
 
   it("reports capacity failures without mutating the draft", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-    draftStoreFixture.store.load.mockResolvedValue([]);
+    draftStoreFixture.store.load.mockResolvedValue(draftResult([]));
     const container = document.createElement("div");
     document.body.append(container);
     const root = createRoot(container);
@@ -344,9 +355,9 @@ describe("draft annotation lifecycle", () => {
     const pendingLoads = new Map<string, Array<(annotations: DraftAnnotation[]) => void>>();
     draftStoreFixture.store.load.mockImplementation(
       (conversation: IdentifiedConversation) =>
-        new Promise<DraftAnnotation[]>((resolve) => {
+        new Promise<ReturnType<typeof draftResult>>((resolve) => {
           const resolvers = pendingLoads.get(conversation.id) ?? [];
-          resolvers.push(resolve);
+          resolvers.push((annotations) => resolve(draftResult(annotations)));
           pendingLoads.set(conversation.id, resolvers);
         }),
     );
@@ -381,13 +392,13 @@ describe("draft annotation lifecycle", () => {
     ]);
     const pendingSaves: Array<{ resolve: () => void }> = [];
     draftStoreFixture.store.load.mockImplementation(async (conversation: IdentifiedConversation) =>
-      structuredClone(storedDrafts.get(conversation.id) ?? []),
+      draftResult(structuredClone(storedDrafts.get(conversation.id) ?? [])),
     );
     // Mirrors the owner: the read-modify-write happens when the mutation is actually applied,
     // not when it is issued, so a later mutation observes the earlier one.
     draftStoreFixture.store.mutate.mockImplementation(
       (conversation: IdentifiedConversation, mutations: readonly DraftMutation[]) =>
-        new Promise<DraftAnnotation[]>((resolve) => {
+        new Promise<ReturnType<typeof draftResult>>((resolve) => {
           pendingSaves.push({
             resolve: () => {
               const current = storedDrafts.get(conversation.id) ?? [];
@@ -399,7 +410,7 @@ describe("draft annotation lifecycle", () => {
                 ),
               ]);
               storedDrafts.set(conversation.id, annotations);
-              resolve(annotations);
+              resolve(draftResult(annotations));
             },
           });
         }),
@@ -426,17 +437,19 @@ describe("draft annotation lifecycle", () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     let storedAnnotations = [annotation];
     const pendingSaves: Array<{ resolve: () => void }> = [];
-    draftStoreFixture.store.load.mockImplementation(async () => structuredClone(storedAnnotations));
+    draftStoreFixture.store.load.mockImplementation(async () =>
+      draftResult(structuredClone(storedAnnotations)),
+    );
     draftStoreFixture.store.mutate.mockImplementation(
       (_conversation, mutations) =>
-        new Promise<DraftAnnotation[]>((resolve) => {
+        new Promise<ReturnType<typeof draftResult>>((resolve) => {
           pendingSaves.push({
             resolve: () => {
               storedAnnotations = mutations.reduce<DraftAnnotation[]>(
                 (current, mutation) => [...(applyDraftMutation(current, mutation) ?? current)],
                 storedAnnotations,
               );
-              resolve(structuredClone(storedAnnotations));
+              resolve(draftResult(structuredClone(storedAnnotations)));
             },
           });
         }),
@@ -469,12 +482,15 @@ describe("draft annotation lifecycle", () => {
 
   it("resends all unconfirmed mutations on retry without losing memory state", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-    draftStoreFixture.store.load.mockResolvedValue([]);
+    draftStoreFixture.store.load.mockResolvedValue(draftResult([]));
     const pendingSaves: Array<{ resolve: () => void; reject: (error: Error) => void }> = [];
     draftStoreFixture.store.mutate.mockImplementation(
       () =>
-        new Promise<DraftAnnotation[]>((resolve, reject) => {
-          pendingSaves.push({ resolve: () => resolve([...currentAnnotations()]), reject });
+        new Promise<ReturnType<typeof draftResult>>((resolve, reject) => {
+          pendingSaves.push({
+            resolve: () => resolve(draftResult([...currentAnnotations()])),
+            reject,
+          });
         }),
     );
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
@@ -510,7 +526,7 @@ describe("draft annotation lifecycle", () => {
 
   it("keeps failed unsaved annotations visible after returning to a conversation", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-    draftStoreFixture.store.load.mockResolvedValue([]);
+    draftStoreFixture.store.load.mockResolvedValue(draftResult([]));
     draftStoreFixture.store.mutate.mockRejectedValue(new Error("storage unavailable"));
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const container = document.createElement("div");
@@ -528,6 +544,7 @@ describe("draft annotation lifecycle", () => {
 
     expect(latestDrafts.draft).toEqual({
       status: "error",
+      hasUnreadableAnnotations: false,
       operation: "save",
       annotations: [annotation],
     });
@@ -539,15 +556,17 @@ describe("draft annotation lifecycle", () => {
   it("preserves a failed edit when a later mutation saves successfully", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     const storedAnnotations = [annotation];
-    draftStoreFixture.store.load.mockResolvedValue(storedAnnotations);
+    draftStoreFixture.store.load.mockResolvedValue(draftResult(storedAnnotations));
     draftStoreFixture.store.mutate
       .mockRejectedValueOnce(new Error("storage unavailable"))
       .mockImplementationOnce(async (_conversation, mutations) =>
-        mutations.reduce<DraftAnnotation[]>(
-          (annotations, mutation) => [
-            ...(applyDraftMutation(annotations, mutation) ?? annotations),
-          ],
-          storedAnnotations,
+        draftResult(
+          mutations.reduce<DraftAnnotation[]>(
+            (annotations, mutation) => [
+              ...(applyDraftMutation(annotations, mutation) ?? annotations),
+            ],
+            storedAnnotations,
+          ),
         ),
       );
     vi.spyOn(console, "error").mockImplementation(() => undefined);
@@ -573,10 +592,13 @@ describe("draft annotation lifecycle", () => {
 
   it("settles an in-flight save after unmount without starting more storage work", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-    draftStoreFixture.store.load.mockResolvedValue([]);
+    draftStoreFixture.store.load.mockResolvedValue(draftResult([]));
     let resolveSave: () => void = () => undefined;
     draftStoreFixture.store.mutate.mockImplementation(
-      () => new Promise<DraftAnnotation[]>((resolve) => (resolveSave = () => resolve([]))),
+      () =>
+        new Promise<ReturnType<typeof draftResult>>(
+          (resolve) => (resolveSave = () => resolve(draftResult([]))),
+        ),
     );
     const container = document.createElement("div");
     document.body.append(container);
@@ -594,10 +616,10 @@ describe("draft annotation lifecycle", () => {
 
   it("scopes a failed confirmation cleanup to its source conversation", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-    draftStoreFixture.store.load.mockResolvedValue([]);
+    draftStoreFixture.store.load.mockResolvedValue(draftResult([]));
     draftStoreFixture.store.mutate
       .mockRejectedValueOnce(new Error("cleanup unavailable"))
-      .mockResolvedValue([]);
+      .mockResolvedValue(draftResult([]));
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const container = document.createElement("div");
     document.body.append(container);
@@ -631,7 +653,7 @@ describe("draft annotation lifecycle", () => {
 
   it("preserves newer edits while removing annotations that were sent unchanged", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-    draftStoreFixture.store.load.mockResolvedValue([]);
+    draftStoreFixture.store.load.mockResolvedValue(draftResult([]));
     const container = document.createElement("div");
     document.body.append(container);
     const root = createRoot(container);
@@ -676,7 +698,7 @@ describe("draft annotation lifecycle", () => {
 
   it("preserves an annotation when its anchor format changed after sending", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-    draftStoreFixture.store.load.mockResolvedValue([annotation]);
+    draftStoreFixture.store.load.mockResolvedValue(draftResult([annotation]));
     const container = document.createElement("div");
     document.body.append(container);
     const root = createRoot(container);

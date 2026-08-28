@@ -5,6 +5,8 @@ import {
   MAX_ANNOTATION_COMMENT_LENGTH,
   MAX_DRAFT_ANNOTATIONS,
 } from "@/features/annotations/draft-capacity";
+import { createDraftPersistence } from "@/features/annotations/draft-persistence";
+import { createDraftRuntime } from "@/features/annotations/draft-runtime";
 import { createDraftOwner } from "@/features/annotations/draft-owner";
 
 const extensionStorage = vi.hoisted(() => {
@@ -83,6 +85,64 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks());
 
 describe("draft storage", () => {
+  it.each([{ readable: [] }, { readable: [annotation] }])(
+    "recovers an unreadable draft through the runtime clear path: %#",
+    async ({ readable }) => {
+      extensionStorage.reset({
+        [currentKey]: { ...envelope, annotations: [...readable, { id: "unreadable" }] },
+      });
+      const runtime = createDraftRuntime(createDraftPersistence(draftStore));
+      const unsubscribe = runtime.subscribe(() => undefined);
+      runtime.activate(conversationA);
+      await vi.waitFor(() =>
+        expect(runtime.getSnapshot().draftState).toMatchObject({
+          status: "ready",
+          hasUnreadableAnnotations: true,
+        }),
+      );
+      runtime.mutate(conversationA, { kind: "add", annotation: { ...annotation, id: "new" } });
+      await vi.waitFor(() =>
+        expect(runtime.getSnapshot().draftState).toMatchObject({
+          status: "ready",
+          annotations: readable,
+        }),
+      );
+      expect(runtime.mutate(conversationA, { kind: "clear" })).toBe(true);
+      await vi.waitFor(() => expect(extensionStorage.snapshot()).toEqual({}));
+      expect(runtime.getSnapshot().draftState).toMatchObject({
+        status: "ready",
+        annotations: [],
+        hasUnreadableAnnotations: false,
+      });
+      unsubscribe();
+    },
+  );
+
+  it("rolls back a cross-tab capacity rejection and persists subsequent deletion", async () => {
+    const annotations = Array.from({ length: MAX_DRAFT_ANNOTATIONS - 1 }, (_, index) => ({
+      ...annotation,
+      id: `stored-${index}`,
+    }));
+    extensionStorage.reset({ [currentKey]: { ...envelope, annotations } });
+    const runtime = createDraftRuntime(createDraftPersistence(draftStore));
+    const unsubscribe = runtime.subscribe(() => undefined);
+    runtime.activate(conversationA);
+    await vi.waitFor(() => expect(runtime.getSnapshot().draftState?.status).toBe("ready"));
+    await draftStore.mutate(conversationA, [{ kind: "add", annotation }]);
+    runtime.mutate(conversationA, { kind: "add", annotation: { ...annotation, id: "rejected" } });
+    await vi.waitFor(() => expect(runtime.getSnapshot().capacityExceeded).toBe(true));
+    expect(runtime.getSnapshot().draftState).toMatchObject({
+      status: "ready",
+      annotations: [...annotations, annotation],
+    });
+    runtime.mutate(conversationA, { kind: "discard", annotationIds: [annotation.id] });
+    await vi.waitFor(() =>
+      expect(extensionStorage.snapshot()[currentKey]).toMatchObject({ annotations }),
+    );
+    expect(runtime.getSnapshot().capacityExceeded).toBe(false);
+    unsubscribe();
+  });
+
   it("continues through a rejected mutation to an explicit clear in the same batch", async () => {
     extensionStorage.reset({
       [currentKey]: { ...envelope, annotations: [annotation, { id: "unreadable" }] },

@@ -26,6 +26,10 @@ export default function App() {
           <DraftPersistenceStatus {...draft.state} onRetry={draft.retry} />
         )}
 
+        {draft.state.status === "ready" && draft.state.hasUnreadableAnnotations && (
+          <DraftPersistenceStatus {...draft.state} onClear={summary.clear} />
+        )}
+
         {draft.capacityExceeded && <DraftCapacityStatus />}
 
         <SelectionPresentation {...selection} />

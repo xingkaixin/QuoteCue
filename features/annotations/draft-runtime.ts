@@ -35,10 +35,18 @@ export function createDraftRuntime(draftPersistence: DraftPersistence) {
       dispatch({ type: "save-failed", conversationIdentity: event.conversationIdentity });
       return;
     }
+    const { result } = event;
+    if (
+      snapshot.draftState &&
+      sameConversationIdentity(snapshot.draftState.conversationIdentity, event.conversationIdentity)
+    ) {
+      setCapacityExceeded(result.status === "rejected" && result.reason === "capacity");
+    }
     dispatch({
       type: "save-succeeded",
       conversationIdentity: event.conversationIdentity,
-      annotations: applyDraftMutations(event.annotations, event.pendingMutations),
+      annotations: applyDraftMutations(result.annotations, event.pendingMutations),
+      hasUnreadableAnnotations: result.hasUnreadableAnnotations,
     });
   }
 
@@ -80,17 +88,15 @@ export function createDraftRuntime(draftPersistence: DraftPersistence) {
 
     void draftPersistence
       .load(conversationIdentity)
-      .then(({ annotations, hasFailedSave }) => {
+      .then(({ annotations, hasFailedSave, hasUnreadableAnnotations }) => {
         if (generation !== loadGeneration) {
           return;
         }
         dispatch({
           type: "load-succeeded",
           conversationIdentity,
-          annotations: applyDraftMutations(
-            annotations,
-            annotationsToAdopt.map((annotation) => ({ kind: "add", annotation })),
-          ),
+          annotations,
+          hasUnreadableAnnotations,
           hasFailedSave,
         });
       })
@@ -120,7 +126,10 @@ export function createDraftRuntime(draftPersistence: DraftPersistence) {
     if (annotations === null) {
       return false;
     }
-    if (annotations === current.annotations) {
+    if (
+      annotations === current.annotations &&
+      !(current.hasUnreadableAnnotations && mutation.kind === "clear")
+    ) {
       setCapacityExceeded(false);
       return true;
     }

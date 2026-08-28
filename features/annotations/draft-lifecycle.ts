@@ -11,11 +11,13 @@ export type DraftLifecycleState =
       status: "ready";
       conversationIdentity: ConversationIdentity;
       annotations: DraftAnnotation[];
+      hasUnreadableAnnotations: boolean;
     }
   | {
       status: "error";
       conversationIdentity: IdentifiedConversation;
       annotations: DraftAnnotation[];
+      hasUnreadableAnnotations: boolean;
       operation: "load" | "save";
     };
 
@@ -25,10 +27,15 @@ type MutableDraftLifecycleState =
 
 export type DraftState =
   | { readonly status: "loading" }
-  | { readonly status: "ready"; readonly annotations: readonly DraftAnnotation[] }
+  | {
+      readonly status: "ready";
+      readonly annotations: readonly DraftAnnotation[];
+      readonly hasUnreadableAnnotations: boolean;
+    }
   | {
       readonly status: "error";
       readonly annotations: readonly DraftAnnotation[];
+      readonly hasUnreadableAnnotations: boolean;
       readonly operation: "load" | "save";
     };
 
@@ -42,6 +49,7 @@ export type DraftLifecycleAction =
       type: "load-succeeded";
       conversationIdentity: IdentifiedConversation;
       annotations: DraftAnnotation[];
+      hasUnreadableAnnotations: boolean;
       hasFailedSave: boolean;
     }
   | {
@@ -54,6 +62,7 @@ export type DraftLifecycleAction =
       type: "save-succeeded";
       conversationIdentity: IdentifiedConversation;
       annotations: DraftAnnotation[];
+      hasUnreadableAnnotations: boolean;
     }
   | {
       type: "mutated";
@@ -80,18 +89,21 @@ export function reduceDraftLifecycle(
             status: "error",
             conversationIdentity: action.conversationIdentity,
             annotations: action.annotations,
+            hasUnreadableAnnotations: action.hasUnreadableAnnotations,
             operation: "save",
           }
         : {
             status: "ready",
             conversationIdentity: action.conversationIdentity,
             annotations: action.annotations,
+            hasUnreadableAnnotations: action.hasUnreadableAnnotations,
           };
     case "load-failed":
       return {
         status: "error",
         conversationIdentity: action.conversationIdentity,
         annotations: action.annotations,
+        hasUnreadableAnnotations: false,
         operation: "load",
       };
     case "save-failed":
@@ -100,6 +112,7 @@ export function reduceDraftLifecycle(
             status: "error",
             conversationIdentity: action.conversationIdentity,
             annotations: state.annotations,
+            hasUnreadableAnnotations: state.hasUnreadableAnnotations,
             operation: "save",
           }
         : state;
@@ -109,6 +122,7 @@ export function reduceDraftLifecycle(
             status: "ready",
             conversationIdentity: state.conversationIdentity,
             annotations: action.annotations,
+            hasUnreadableAnnotations: action.hasUnreadableAnnotations,
           }
         : state;
     case "mutated":
@@ -146,11 +160,16 @@ export function publicDraftState(state: DraftLifecycleState): DraftState {
     case "loading":
       return { status: "loading" };
     case "ready":
-      return { status: "ready", annotations: state.annotations };
+      return {
+        status: "ready",
+        annotations: state.annotations,
+        hasUnreadableAnnotations: state.hasUnreadableAnnotations,
+      };
     case "error":
       return {
         status: "error",
         annotations: state.annotations,
+        hasUnreadableAnnotations: state.hasUnreadableAnnotations,
         operation: state.operation,
       };
   }
@@ -176,5 +195,5 @@ export function draftAnnotationsToAdopt(
 function loadStartedState(conversationIdentity: ConversationIdentity): DraftLifecycleState {
   return conversationIdentity.kind === "identified"
     ? { status: "loading", conversationIdentity }
-    : { status: "ready", conversationIdentity, annotations: [] };
+    : { status: "ready", conversationIdentity, annotations: [], hasUnreadableAnnotations: false };
 }

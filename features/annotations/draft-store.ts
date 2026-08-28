@@ -14,10 +14,10 @@ export type DraftMutationResult = DraftSnapshot &
   ({ status: "ok" } | { status: "rejected"; reason: DraftRejectionReason });
 
 export type DraftStore = {
-  load(conversation: IdentifiedConversation): Promise<DraftAnnotation[]>;
+  load(conversation: IdentifiedConversation): Promise<DraftSnapshot>;
   /** Applies ordered domain mutations and resolves with the authoritative annotations afterwards. */
   mutate(
     conversation: IdentifiedConversation,
     mutations: readonly DraftMutation[],
-  ): Promise<DraftAnnotation[]>;
+  ): Promise<DraftMutationResult>;
 };

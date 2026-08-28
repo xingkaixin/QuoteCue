@@ -9,7 +9,7 @@ export function createMemoryDraftStore() {
   const drafts = new Map<string, DraftAnnotation[]>();
   const store: DraftStore = {
     async load(conversation) {
-      return cloneAnnotations(drafts.get(conversationIdentityKey(conversation)) ?? []);
+      return draftResult(cloneAnnotations(drafts.get(conversationIdentityKey(conversation)) ?? []));
     },
     async mutate(conversation, mutations) {
       const key = conversationIdentityKey(conversation);
@@ -22,7 +22,7 @@ export function createMemoryDraftStore() {
         ),
       );
       drafts.set(key, annotations);
-      return cloneAnnotations(annotations);
+      return draftResult(cloneAnnotations(annotations));
     },
   };
   return { store };
@@ -44,4 +44,8 @@ function cloneAnnotations(annotations: readonly DraftAnnotation[]) {
     ...annotation,
     anchor: { ...annotation.anchor },
   }));
+}
+
+export function draftResult(annotations: DraftAnnotation[]) {
+  return { status: "ok" as const, annotations, hasUnreadableAnnotations: false };
 }

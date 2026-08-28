@@ -1,4 +1,5 @@
 import { AlertTriangle, LoaderCircle, RotateCcw } from "lucide-react";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/features/i18n/I18nProvider";
@@ -8,10 +9,12 @@ import type { DraftState } from "./use-draft-annotations";
 
 type DraftPersistenceStatusProps =
   | Extract<DraftState, { status: "loading" }>
+  | (Extract<DraftState, { status: "ready" }> & { onClear: () => void })
   | (Extract<DraftState, { status: "error" }> & { onRetry: () => void });
 
 export function DraftPersistenceStatus(props: DraftPersistenceStatusProps) {
   const { messages } = useI18n();
+  const [isConfirmingClear, setIsConfirmingClear] = useState(false);
   const isLoading = props.status === "loading";
 
   return (
@@ -31,11 +34,25 @@ export function DraftPersistenceStatus(props: DraftPersistenceStatusProps) {
       <span className="min-w-0 flex-1">
         {isLoading
           ? messages.loadingDraft
-          : props.operation === "load"
-            ? messages.loadDraftFailed
-            : messages.saveDraftFailed}
+          : props.status === "ready"
+            ? messages.unreadableDraft
+            : props.operation === "load"
+              ? messages.loadDraftFailed
+              : messages.saveDraftFailed}
       </span>
-      {!isLoading && (
+      {props.status === "ready" && (
+        <Button
+          aria-label={
+            isConfirmingClear ? messages.confirmClearAnnotations : messages.clearAnnotations
+          }
+          onClick={() => (isConfirmingClear ? props.onClear() : setIsConfirmingClear(true))}
+          size="sm"
+          variant="outline"
+        >
+          {isConfirmingClear ? messages.confirmClearAnnotations : messages.clearAnnotations}
+        </Button>
+      )}
+      {props.status === "error" && (
         <Button onClick={props.onRetry} size="sm" variant="outline">
           <RotateCcw aria-hidden="true" className="size-3.5" />
           {messages.retry}

@@ -23,6 +23,34 @@ describe("DraftPersistenceStatus", () => {
     await act(async () => root.unmount());
   });
 
+  it("offers a confirmed clear action for wholly unreadable drafts", async () => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    const onClear = vi.fn();
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    await act(async () =>
+      root.render(
+        <DraftPersistenceStatus
+          status="ready"
+          annotations={[]}
+          hasUnreadableAnnotations
+          onClear={onClear}
+        />,
+      ),
+    );
+    expect(container.textContent).toContain("Some annotations cannot be read");
+    const button = container.querySelector("button")!;
+    button.focus();
+    await act(async () => button.click());
+    expect(onClear).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(button);
+    expect(button.getAttribute("aria-label")).toBe("Confirm clearing all annotations");
+    await act(async () => button.click());
+    expect(onClear).toHaveBeenCalledOnce();
+    await act(async () => root.unmount());
+  });
+
   it("explains a save failure and retries on request", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     const onRetry = vi.fn();
@@ -34,6 +62,7 @@ describe("DraftPersistenceStatus", () => {
       root.render(
         <DraftPersistenceStatus
           annotations={[]}
+          hasUnreadableAnnotations={false}
           operation="save"
           onRetry={onRetry}
           status="error"
