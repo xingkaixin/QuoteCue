@@ -7,6 +7,7 @@ import { once } from "./host-signals";
 
 type ComposerLayoutElements = {
   action: HTMLElement | null;
+  isSendControlPresent: boolean;
   send: SelectionRect;
   summary: HostLayout["summary"];
   surface: HTMLElement;
@@ -34,6 +35,7 @@ export function createComposerLayout(
   let activeReservation: { height: number } | null = null;
   const layoutSubscribers = new Set<() => void>();
   let resizeObserver: ResizeObserver | null = null;
+  let actionObserver: MutationObserver | null = null;
   let observedSurface: HTMLElement | null = null;
   let stopSignalObservation: (() => void) | null = null;
   let styledSurface: InlineStyleOverride | null = null;
@@ -45,19 +47,20 @@ export function createComposerLayout(
     const elements = currentElements();
     if (elements.status === "unavailable") {
       reconcileReservation(null);
-      observeSurfaceResize(null);
+      observeSurface(null);
       return elements;
     }
     reconcileReservation(elements.value);
-    observeSurfaceResize(elements.value.surface);
+    observeSurface(elements.value.surface);
     return available({
+      isSendControlPresent: elements.value.isSendControlPresent,
       send: elements.value.send,
       summary: elements.value.summary,
     });
   }
 
-  function observeSurfaceResize(surface: HTMLElement | null) {
-    if (!resizeObserver) {
+  function observeSurface(surface: HTMLElement | null) {
+    if (layoutSubscribers.size === 0) {
       observedSurface = null;
       return;
     }
@@ -65,9 +68,17 @@ export function createComposerLayout(
       return;
     }
     resizeObserver?.disconnect();
+    actionObserver?.disconnect();
     observedSurface = surface;
     if (surface) {
       resizeObserver?.observe(surface);
+      actionObserver ??= new MutationObserver((records) => {
+        // Reservation styles must not schedule another layout read.
+        if (records.some((record) => record.attributeName !== "style")) {
+          notifySubscribers();
+        }
+      });
+      actionObserver.observe(surface, { attributes: true, subtree: true });
     }
   }
 
@@ -77,7 +88,7 @@ export function createComposerLayout(
       return unavailable("composer-unavailable", logger);
     }
 
-    const boundary = findComposerBoundary(composer);
+    const boundary = context.composerBoundary(composer);
     if (!boundary) {
       return unavailable("composer-surface-unavailable", logger);
     }
@@ -87,11 +98,12 @@ export function createComposerLayout(
     }
 
     const rect = surface.getBoundingClientRect();
-    const action = findComposerAction(boundary ?? surface, rect);
+    const action = findComposerAction(boundary, rect);
     const actionRect = action?.getBoundingClientRect();
     const send = actionRect ? toSelectionRect(actionRect) : fallbackRectangle(rect);
     return available({
       action,
+      isSendControlPresent: context.sendControl(composer) !== null,
       send,
       summary: { left: rect.left + 12, top: rect.top + 8 },
       surface,
@@ -158,6 +170,8 @@ export function createComposerLayout(
     stopSignalObservation = null;
     resizeObserver?.disconnect();
     resizeObserver = null;
+    actionObserver?.disconnect();
+    actionObserver = null;
     observedSurface = null;
   }
 
@@ -195,7 +209,7 @@ export function createComposerLayout(
       return;
     }
     styleSurface(elements.surface, activeReservation.height);
-    if (elements.action) {
+    if (elements.isSendControlPresent && elements.action) {
       hideAction(elements.action);
     } else {
       restoreAction();
@@ -249,12 +263,6 @@ export function createComposerLayout(
   function findComposerSurface(composer: HTMLElement, boundary: HTMLElement) {
     const surface = composer.closest<HTMLElement>(adapter.layout.surfaceSelector);
     return surface && surface !== boundary && boundary.contains(surface) ? surface : null;
-  }
-
-  function findComposerBoundary(composer: HTMLElement) {
-    return adapter.layout.boundarySelector
-      ? composer.closest<HTMLElement>(adapter.layout.boundarySelector)
-      : (composer.closest<HTMLElement>("form") ?? hostDocument.body);
   }
 
   function findComposerAction(root: HTMLElement, surfaceRect: DOMRect) {

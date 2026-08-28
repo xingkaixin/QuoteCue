@@ -18,6 +18,7 @@ export function runPresentationHostContract(definition: HostContractDefinition) 
       expect(fixture.sendControl.style.getPropertyValue("visibility")).toBe("hidden");
       expect(fixture.sendControl.style.getPropertyPriority("visibility")).toBe("important");
       expect(Object.keys(availableValue(siteHost.layout.current())).sort()).toEqual([
+        "isSendControlPresent",
         "send",
         "summary",
       ]);
@@ -27,6 +28,28 @@ export function runPresentationHostContract(definition: HostContractDefinition) 
       expect(fixture.surface.style.getPropertyPriority("padding-top")).toBe("important");
       expect(fixture.sendControl.style.getPropertyValue("visibility")).toBe("visible");
       expect(fixture.sendControl.style.getPropertyPriority("visibility")).toBe("important");
+    });
+
+    it("keeps the host streaming action available while its send control is absent", async () => {
+      const fixture = definition.installFixture();
+      const siteHost = host();
+      const refresh = vi.fn(() => siteHost.layout.current());
+      const stop = siteHost.layout.subscribe(refresh);
+      const release = siteHost.layout.reserveAnnotationRow(40);
+      siteHost.layout.current();
+      definition.setStreaming(fixture.sendControl, true);
+      await nextFrame();
+      expect(refresh).toHaveBeenCalledOnce();
+      const layout = availableValue(siteHost.layout.current());
+      expect(fixture.sendControl.style.visibility).toBe("");
+      expect(layout).toMatchObject({ isSendControlPresent: false });
+      definition.setStreaming(fixture.sendControl, false);
+      expect(availableValue(siteHost.layout.current())).toMatchObject({
+        isSendControlPresent: true,
+      });
+      expect(fixture.sendControl.style.visibility).toBe("hidden");
+      release();
+      stop();
     });
 
     it("reports a collapsed selection as unavailable", () => {

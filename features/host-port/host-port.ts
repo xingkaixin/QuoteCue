@@ -48,6 +48,7 @@ export type SelectionCapture = AnchoredSelection & {
 };
 
 export type HostLayout = {
+  isSendControlPresent: boolean;
   send: SelectionRect;
   summary: Pick<SelectionRect, "left" | "top">;
 };

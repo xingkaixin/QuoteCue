@@ -36,6 +36,7 @@ export type HostContractDefinition = {
   siteId: SupportedSiteId;
   setSendDisabled: (control: HTMLElement, isDisabled: boolean) => void;
   supportsSyntheticPaste: boolean;
+  setStreaming: (control: HTMLElement, isStreaming: boolean) => void;
 };
 
 export function runHostContractSuite(definition: HostContractDefinition) {

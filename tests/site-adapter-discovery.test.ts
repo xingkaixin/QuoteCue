@@ -44,6 +44,7 @@ describe("site adapter discovery", () => {
     expect(host.layout.current()).toEqual({
       status: "available",
       value: {
+        isSendControlPresent: true,
         send: { bottom: 784, height: 36, left: 456, right: 492, top: 748, width: 36 },
         summary: { left: 112, top: 708 },
       },

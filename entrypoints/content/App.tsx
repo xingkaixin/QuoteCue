@@ -85,7 +85,7 @@ export default function App() {
           />
         )}
 
-        {isSendControlVisible && composerLayout && (
+        {isSendControlVisible && composerLayout?.isSendControlPresent && (
           <AnnotationSendControl
             onSend={summary.send}
             position={composerLayout.send}

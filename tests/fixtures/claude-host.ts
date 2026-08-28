@@ -115,3 +115,7 @@ export function appendClaudeSelectionToolbar(rect = new DOMRect(100, 150, 72, 34
 function setButtonRect(button: HTMLButtonElement, left: number) {
   setElementRect(button, new DOMRect(left, 748, 32, 32));
 }
+
+export function setClaudeStreaming(control: HTMLElement, isStreaming: boolean) {
+  control.dataset.testid = isStreaming ? "chat-input-stop" : "chat-input-send";
+}

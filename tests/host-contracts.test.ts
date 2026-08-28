@@ -8,6 +8,7 @@ import {
   appendSelectionToolbar,
   appendUserMessage,
   installChatGptHostFixture,
+  setChatGptStreaming,
 } from "./fixtures/chatgpt-host";
 import {
   appendClaudeAssistantMessage,
@@ -15,23 +16,27 @@ import {
   appendClaudeUserMessage,
   enableClaudeSend,
   installClaudeHostFixture,
+  setClaudeStreaming,
 } from "./fixtures/claude-host";
 import {
   appendAssistantMessageItem,
   appendUserMessageItem,
   installDeepSeekHostFixture,
+  setDeepSeekStreaming,
 } from "./fixtures/deepseek-host";
 import { requiredElement } from "./fixtures/fixture-utils";
 import {
   appendKimiAssistantMessage,
   appendKimiUserMessage,
   installKimiHostFixture,
+  setKimiStreaming,
 } from "./fixtures/kimi-host";
 import { runHostContractSuite, type HostContractDefinition } from "./host-contract-suite";
 
 const contracts: HostContractDefinition[] = [
   {
     name: "ChatGPT",
+    setStreaming: setChatGptStreaming,
     createHost: createChatGptHost,
     installFixture() {
       const fixture = installChatGptHostFixture();
@@ -65,6 +70,7 @@ const contracts: HostContractDefinition[] = [
   },
   {
     name: "Claude",
+    setStreaming: setClaudeStreaming,
     createHost: createClaudeHost,
     installFixture() {
       const fixture = installClaudeHostFixture();
@@ -103,6 +109,7 @@ const contracts: HostContractDefinition[] = [
   },
   {
     name: "DeepSeek",
+    setStreaming: setDeepSeekStreaming,
     createHost: createDeepSeekHost,
     installFixture() {
       const fixture = installDeepSeekHostFixture();
@@ -142,6 +149,7 @@ const contracts: HostContractDefinition[] = [
   },
   {
     name: "Kimi",
+    setStreaming: setKimiStreaming,
     createHost: createKimiHost,
     installFixture() {
       const fixture = installKimiHostFixture();
