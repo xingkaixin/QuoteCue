@@ -51,6 +51,7 @@ export function createFakeHost(overrides: FakeHostOverrides = {}): FakeHost {
   let layout: HostResult<HostLayout> = {
     status: "available",
     value: {
+      isSendControlPresent: true,
       send: { bottom: 236, height: 36, left: 200, right: 236, top: 200, width: 36 },
       summary: { left: 10, top: 10 },
     },

@@ -6,11 +6,9 @@ import type { HostLayout } from "@/features/host-port/host-port";
 const ANNOTATION_ROW_HEIGHT = 40;
 const POSITION_REFRESH_MS = 80;
 
-type AnnotatedComposerLayout = Pick<HostLayout, "send" | "summary">;
-
 export function useAnnotatedComposerLayout(isActive: boolean) {
   const host = useHost();
-  const [layout, setLayout] = useState<AnnotatedComposerLayout | null>(null);
+  const [layout, setLayout] = useState<HostLayout | null>(null);
 
   useEffect(() => {
     if (!isActive) {
@@ -30,8 +28,7 @@ export function useAnnotatedComposerLayout(isActive: boolean) {
         return;
       }
 
-      const { send, summary } = result.value;
-      const nextLayout = { send, summary };
+      const nextLayout = result.value;
       setLayout((current) => (sameLayout(current, nextLayout) ? current : nextLayout));
     }
 
@@ -61,9 +58,10 @@ export function useAnnotatedComposerLayout(isActive: boolean) {
   return layout;
 }
 
-function sameLayout(current: AnnotatedComposerLayout | null, next: AnnotatedComposerLayout) {
+function sameLayout(current: HostLayout | null, next: HostLayout) {
   return (
-    current?.summary.left === next.summary.left &&
+    current?.isSendControlPresent === next.isSendControlPresent &&
+    current.summary.left === next.summary.left &&
     current.summary.top === next.summary.top &&
     current.send.left === next.send.left &&
     current.send.top === next.send.top &&

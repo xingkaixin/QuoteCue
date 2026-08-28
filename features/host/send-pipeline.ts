@@ -30,8 +30,10 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
     return adapter.composer.normalize(text);
   }
 
-  const currentSendButton = () =>
-    hostDocument.querySelector<HTMLElement>(adapter.sendControl.selector);
+  const currentSendButton = () => {
+    const composer = composerDriver.current();
+    return composer ? context.sendControl(composer) : null;
+  };
 
   function isButtonAvailable(button: HTMLElement | null): button is HTMLElement {
     return (
@@ -383,9 +385,7 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
       }
     }
 
-    const boundary = adapter.layout.boundarySelector
-      ? composer.closest<HTMLElement>(adapter.layout.boundarySelector)
-      : composer.closest<HTMLElement>("form");
+    const boundary = context.composerBoundary(composer);
     return boundary ?? composer.parentElement ?? hostDocument.body;
   }
 

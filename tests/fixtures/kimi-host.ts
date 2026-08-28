@@ -75,3 +75,8 @@ export function appendKimiAssistantMessage(messageId: string, text: string) {
   (document.querySelector("main") ?? document.body).append(message);
   return message;
 }
+
+export function setKimiStreaming(control: HTMLElement, isStreaming: boolean) {
+  control.classList.toggle("send-button-container", !isStreaming);
+  control.classList.toggle("stop-button-container", isStreaming);
+}

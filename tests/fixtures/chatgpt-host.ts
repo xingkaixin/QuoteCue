@@ -70,7 +70,11 @@ export function appendComposer(text = "") {
     configurable: true,
     get: () => composer.textContent ?? "",
   });
-  document.body.append(composer);
+  const form = document.createElement("form");
+  const surface = document.createElement("div");
+  surface.append(composer);
+  form.append(surface);
+  document.body.append(form);
   return composer;
 }
 
@@ -78,7 +82,7 @@ export function appendSendButton(onClick: () => void = () => undefined) {
   const sendButton = document.createElement("button");
   sendButton.dataset.testid = "send-button";
   sendButton.addEventListener("click", onClick);
-  document.body.append(sendButton);
+  requiredElement("form:has(#prompt-textarea) > div").append(sendButton);
   return sendButton;
 }
 
@@ -97,4 +101,8 @@ export function appendSelectionToolbar(rect = new DOMRect(100, 150, 200, 36)) {
   setElementRect(toolbar, rect);
   document.body.append(toolbar);
   return { actionRow, firstAction, lastAction, toolbar };
+}
+
+export function setChatGptStreaming(control: HTMLElement, isStreaming: boolean) {
+  control.dataset.testid = isStreaming ? "stop-button" : "send-button";
 }

@@ -37,6 +37,7 @@ vi.mock("@/features/host/use-annotated-composer-layout", () => {
     (isActive) => {
       return isActive
         ? {
+            isSendControlPresent: true,
             send: {
               bottom: 236,
               height: 36,

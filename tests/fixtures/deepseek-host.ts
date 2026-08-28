@@ -81,3 +81,9 @@ export function appendAssistantMessageItem(itemKey: string, text: string) {
   (document.querySelector("main") ?? document.body).append(item);
   return item;
 }
+
+export function setDeepSeekStreaming(control: HTMLElement, isStreaming: boolean) {
+  control
+    .querySelector("path")!
+    .setAttribute("d", isStreaming ? DEEPSEEK_STOP_ICON_PATH : DEEPSEEK_SEND_ICON_PATH);
+}

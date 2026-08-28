@@ -20,7 +20,7 @@ afterEach(() => {
 function LayoutProbe() {
   const layout = useAnnotatedComposerLayout(true);
   return (
-    <output>
+    <output data-send-present={layout?.isSendControlPresent}>
       {layout
         ? `${layout.summary.left},${layout.summary.top}|${layout.send.left},${layout.send.top},${layout.send.width},${layout.send.height}`
         : "missing"}
@@ -51,6 +51,34 @@ describe("useAnnotatedComposerLayout", () => {
 
     await act(async () => root.unmount());
     expect(releaseReservation).toHaveBeenCalledOnce();
+  });
+
+  it("publishes send-control changes without requiring changed geometry", async () => {
+    vi.useFakeTimers();
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    const host = createFakeHost();
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    await act(async () =>
+      root.render(
+        <HostTestProvider host={host}>
+          <LayoutProbe />
+        </HostTestProvider>,
+      ),
+    );
+    const current = host.layout.current();
+    if (current.status !== "available") throw new Error("Missing fixture layout");
+    host.controls.setLayout({
+      status: "available",
+      value: { ...current.value, isSendControlPresent: false },
+    });
+    await act(async () => {
+      host.controls.emitLayoutChange();
+      await vi.advanceTimersByTimeAsync(80);
+    });
+    expect(container.querySelector("output")?.dataset.sendPresent).toBe("false");
+    await act(async () => root.unmount());
   });
 
   it("refreshes throughout a continuous stream of layout signals", async () => {

@@ -123,6 +123,29 @@ test("keeps browser storage isolated by committed conversation", async ({
     .toBe(1);
 });
 
+test("leaves streaming stop controls visible and clickable", async ({ context }) => {
+  const page = await openConversation(context, "streaming");
+  await addAnnotation(page);
+  await page.locator("[data-testid=send-button]").evaluate((button) => {
+    button.setAttribute("data-testid", "stop-button");
+    button.textContent = "Stop";
+    button.addEventListener(
+      "click",
+      (event) => {
+        event.stopImmediatePropagation();
+        button.setAttribute("data-stopped", "true");
+      },
+      { capture: true },
+    );
+  });
+  const stop = page.locator("[data-testid=stop-button]");
+  await expect(stop).toBeVisible();
+  await stop.click();
+  await expect(stop).toHaveAttribute("data-stopped", "true");
+  await stop.evaluate((button) => button.setAttribute("data-testid", "send-button"));
+  await expect(page.locator("[data-testid=send-button]")).toBeHidden();
+});
+
 test("protects an unsaved comment when a native action is activated by keyboard", async ({
   context,
   extensionWorker,
