@@ -56,6 +56,14 @@ for (const page of pages) {
   );
   assert.equal(occurrences(html, /<h1\b/g), 1, `${page.path} must contain one h1`);
 
+  const umamiScripts = html.match(
+    /<script\b[^>]*\bsrc="https:\/\/umami\.xingkaixin\.me\/script\.js"[^>]*><\/script>/g,
+  );
+  assert.equal(umamiScripts?.length, 1, `${page.path} must load Umami exactly once`);
+  assert.match(umamiScripts[0], /\bdefer(?:\s|>)/);
+  assert.match(umamiScripts[0], /data-website-id="7d43d6ea-7e27-4c6b-9037-917d977a9af3"/);
+  assert.match(umamiScripts[0], /data-domains="quotecue\.xingkaixin\.me"/);
+
   const structuredData = readStructuredData(html);
   const graph = structuredData["@graph"];
   assert(Array.isArray(graph), `${page.path} JSON-LD must use @graph`);
@@ -91,6 +99,8 @@ assert.equal(manifest.icons.length, 2);
 const headers = await read("_headers");
 assert.match(headers, /Content-Security-Policy:/);
 assert.match(headers, /static\.cloudflareinsights\.com/);
+assert.match(headers, /script-src[^;]* https:\/\/umami\.xingkaixin\.me(?:\s|;)/);
+assert.match(headers, /connect-src[^;]* https:\/\/umami\.xingkaixin\.me(?:\s|;)/);
 assert.doesNotMatch(headers, /no-transform/);
 
 const llms = await read("llms.txt");
@@ -100,4 +110,4 @@ assert.match(llms, /## Privacy facts/);
 const socialImage = await stat(new URL("og-cover.png", distUrl));
 assert(socialImage.size > 10_000, "Social preview image is unexpectedly small");
 
-console.log("Verified landing SEO and deployment artifacts");
+console.log("Verified landing SEO, analytics, and deployment artifacts");

@@ -1,11 +1,14 @@
 # QuoteCue Privacy Policy
 
-Effective date: July 27, 2026
+Effective date: August 28, 2026
 
 QuoteCue is a Chrome extension that lets users annotate selected text in ChatGPT, Claude, DeepSeek,
 and Kimi responses and include those annotations in a follow-up message. QuoteCue is designed to
 process and store data locally unless the user chooses to send an annotated message through the
 active AI service.
+
+The extension's data practices are described below. The separate product website's analytics are
+described in the "Product website analytics" section.
 
 ## Data QuoteCue handles
 
@@ -47,9 +50,22 @@ earlier versions. Users can remove all locally stored QuoteCue data by uninstall
 
 ## Data sharing and sale
 
-The developer does not receive, sell, rent, or share user data. QuoteCue includes annotation data
-in a message to the supported AI service being used only when the user explicitly chooses to send
-that message. No data is shared with advertisers, data brokers, or analytics providers.
+The developer does not receive, sell, rent, or share extension user data. QuoteCue includes
+annotation data in a message to the supported AI service being used only when the user explicitly
+chooses to send that message. The extension shares no data with advertisers, data brokers, or
+analytics providers.
+
+## Product website analytics
+
+The product website at `https://quotecue.xingkaixin.me` uses self-hosted Umami at
+`https://umami.xingkaixin.me` to measure page visits. This sends website visit metadata, including
+the page URL and title, referrer, browser language, and screen size, to the developer's Umami
+instance. Umami does not use tracking cookies. The website also supports Cloudflare Web Analytics
+for aggregate performance measurement.
+
+These analytics run only on the product website, not in the extension or on supported AI service
+pages. No selected AI text, annotations, drafts, message composer content, or interactive demo input
+is sent to these analytics services.
 
 ## Permissions
 
