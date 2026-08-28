@@ -6,7 +6,7 @@ import type { DraftAnnotation } from "@/features/annotations/annotation";
 import { DraftRuntimeProvider } from "@/features/annotations/DraftRuntimeProvider";
 import { useAnnotationWorkspace } from "@/features/annotations/use-annotation-workspace";
 import { HostProvider } from "@/features/host-port/HostProvider";
-import type { AnchoredSelection } from "@/features/host-port/host-port";
+import type { AnchoredSelection, ComposerSubmitResult } from "@/features/host-port/host-port";
 import { I18nProvider } from "@/features/i18n/I18nProvider";
 
 import { createFakeHost, type FakeHost } from "./fixtures/fake-host";
@@ -53,6 +53,32 @@ afterEach(() => {
 });
 
 describe("annotation workspace", () => {
+  it("clears an adopted draft when the host navigates before confirming send", async () => {
+    const host = createWorkspaceHost();
+    host.conversation.identity = (sessionKey) => ({ kind: "unidentified", sessionKey });
+    let confirm: () => void = () => undefined;
+    vi.spyOn(host.composer, "submit").mockImplementation(
+      () =>
+        new Promise<ComposerSubmitResult>((resolve) => {
+          confirm = () => resolve({ status: "available", value: "confirmed" });
+        }),
+    );
+    const mounted = await mountWorkspace(host);
+    await act(async () => workspace.selection.onActivate(anchoredSelection));
+    await act(async () => new Promise(requestAnimationFrame));
+    await act(async () => workspace.summary.send());
+    const identified = { kind: "identified", id: "created", siteId: "chatgpt" } as const;
+    await act(async () => {
+      host.conversation.identity = () => identified;
+      host.controls.setConversationIdentity(identified);
+    });
+    expect((await draftStoreFixture.store.load(identified)).annotations).toHaveLength(1);
+    await act(async () => confirm());
+    expect(workspace.summary.annotations).toEqual([]);
+    expect((await draftStoreFixture.store.load(identified)).annotations).toEqual([]);
+    await act(async () => mounted.root.unmount());
+  });
+
   it("keeps the editor closed when source navigation fails", async () => {
     draftStoreFixture.store.load.mockResolvedValue(draftResult([annotation]));
     const host = createWorkspaceHost();

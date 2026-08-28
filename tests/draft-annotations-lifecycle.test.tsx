@@ -44,6 +44,61 @@ afterEach(() => {
 });
 
 describe("draft annotation lifecycle", () => {
+  it("removes the sent snapshot after its unidentified draft is adopted", async () => {
+    const root = await mountUnidentifiedDraft();
+    await act(async () => root.render(<DraftHarness conversationIdentity={conversationA} />));
+    let removed = false;
+    await act(async () => {
+      removed = latestDrafts.removeConfirmedAnnotations(
+        { kind: "unidentified", sessionKey: "session-a" },
+        [annotation],
+      );
+    });
+    expect(removed).toBe(true);
+    expect(currentAnnotations()).toEqual([]);
+    expect((await draftStoreFixture.store.load(conversationA)).annotations).toEqual([]);
+    await act(async () => root.unmount());
+  });
+
+  it("cleans the adopted conversation after the user navigates elsewhere", async () => {
+    const root = await mountUnidentifiedDraft();
+    await act(async () => root.render(<DraftHarness conversationIdentity={conversationA} />));
+    await act(async () => root.render(<DraftHarness conversationIdentity={conversationB} />));
+    await act(async () => latestDrafts.addAnnotation({ ...annotation, id: "other" }));
+    await act(async () =>
+      latestDrafts.removeConfirmedAnnotations({ kind: "unidentified", sessionKey: "session-a" }, [
+        annotation,
+      ]),
+    );
+    expect((await draftStoreFixture.store.load(conversationA)).annotations).toEqual([]);
+    expect(currentAnnotations()).toEqual([{ ...annotation, id: "other" }]);
+    await act(async () => root.unmount());
+  });
+
+  it("queues confirmation while the adopted draft is still loading", async () => {
+    let releaseSave: () => void = () => undefined;
+    const saved = new Promise<void>((resolve) => {
+      releaseSave = resolve;
+    });
+    const mutate = draftStoreFixture.store.mutate.getMockImplementation()!;
+    draftStoreFixture.store.mutate.mockImplementationOnce(async (...args) => {
+      await saved;
+      return mutate(...args);
+    });
+    const root = await mountUnidentifiedDraft();
+    await act(async () => root.render(<DraftHarness conversationIdentity={conversationA} />));
+    expect(latestDrafts.draft.status).toBe("loading");
+    await act(async () =>
+      latestDrafts.removeConfirmedAnnotations({ kind: "unidentified", sessionKey: "session-a" }, [
+        annotation,
+      ]),
+    );
+    await act(async () => releaseSave());
+    expect(currentAnnotations()).toEqual([]);
+    expect((await draftStoreFixture.store.load(conversationA)).annotations).toEqual([]);
+    await act(async () => root.unmount());
+  });
+
   it("isolates identical conversation ids across sites", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     const claudeConversationA: IdentifiedConversation = {

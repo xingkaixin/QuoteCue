@@ -1,6 +1,7 @@
 import {
   sameConversationIdentity,
   type ConversationIdentity,
+  type IdentifiedConversation,
 } from "@/features/conversation/conversation-identity";
 
 import type { DraftAnnotation } from "./annotation";
@@ -28,6 +29,7 @@ export function createDraftRuntime(draftPersistence: DraftPersistence) {
   let loadGeneration = 0;
   let unsubscribePersistence: (() => void) | null = null;
   const listeners = new Set<() => void>();
+  const adoptedSessions = new Map<string, IdentifiedConversation>();
 
   function handlePersistenceEvent(event: DraftPersistenceEvent) {
     if (event.status === "failed") {
@@ -76,6 +78,12 @@ export function createDraftRuntime(draftPersistence: DraftPersistence) {
     const annotationsToAdopt = snapshot.draftState
       ? draftAnnotationsToAdopt(snapshot.draftState, conversationIdentity)
       : [];
+    const previousIdentity = snapshot.draftState?.conversationIdentity;
+    if (conversationIdentity.kind === "unidentified") {
+      adoptedSessions.delete(conversationIdentity.sessionKey);
+    } else if (annotationsToAdopt.length > 0 && previousIdentity?.kind === "unidentified") {
+      adoptedSessions.set(previousIdentity.sessionKey, conversationIdentity);
+    }
     setCapacityExceeded(false);
     dispatch({ type: "load-started", conversationIdentity });
     if (conversationIdentity.kind === "unidentified") {
@@ -151,13 +159,21 @@ export function createDraftRuntime(draftPersistence: DraftPersistence) {
     annotations: readonly DraftAnnotation[],
   ) {
     const mutation = { kind: "discard-confirmed", annotations } as const;
-    if (sameConversationIdentity(currentConversationIdentity, conversationIdentity)) {
+    const target =
+      conversationIdentity.kind === "unidentified"
+        ? (adoptedSessions.get(conversationIdentity.sessionKey) ?? conversationIdentity)
+        : conversationIdentity;
+    if (
+      sameConversationIdentity(currentConversationIdentity, target) &&
+      snapshot.draftState &&
+      canMutateDraftLifecycle(snapshot.draftState, target)
+    ) {
       return mutate(currentConversationIdentity, mutation);
     }
-    if (conversationIdentity.kind === "unidentified") {
+    if (target.kind === "unidentified") {
       return false;
     }
-    draftPersistence.enqueue(conversationIdentity, mutation);
+    draftPersistence.enqueue(target, mutation);
     return true;
   }
 
