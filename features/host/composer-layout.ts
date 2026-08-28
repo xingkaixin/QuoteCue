@@ -12,6 +12,13 @@ type ComposerLayoutElements = {
   surface: HTMLElement;
 };
 
+type InlineStyleOverride = {
+  element: HTMLElement;
+  property: string;
+  value: string;
+  priority: string;
+};
+
 const FALLBACK_ACTION = {
   bottomInset: 8,
   height: 36,
@@ -29,12 +36,8 @@ export function createComposerLayout(
   let resizeObserver: ResizeObserver | null = null;
   let observedSurface: HTMLElement | null = null;
   let stopSignalObservation: (() => void) | null = null;
-  let styledSurface: HTMLElement | null = null;
-  let hiddenAction: HTMLElement | null = null;
-  let originalPaddingTop = "";
-  let originalPaddingTopPriority = "";
-  let originalActionVisibility = "";
-  let originalActionVisibilityPriority = "";
+  let styledSurface: InlineStyleOverride | null = null;
+  let hiddenAction: InlineStyleOverride | null = null;
 
   // The single expensive boundary: one measurement serves layout publication, the reservation
   // and the resize observation, so raw signals only have to invalidate.
@@ -200,46 +203,42 @@ export function createComposerLayout(
   }
 
   function styleSurface(surface: HTMLElement, height: number) {
-    if (surface === styledSurface) {
+    if (surface === styledSurface?.element) {
       return;
     }
     restoreSurface();
-    styledSurface = surface;
-    originalPaddingTop = surface.style.getPropertyValue("padding-top");
-    originalPaddingTopPriority = surface.style.getPropertyPriority("padding-top");
     const paddingTop = Number.parseFloat(hostWindow.getComputedStyle(surface).paddingTop);
-    surface.style.setProperty("padding-top", `${paddingTop + height}px`, "important");
+    styledSurface = overrideInlineStyle(surface, "padding-top", `${paddingTop + height}px`);
   }
 
   function restoreSurface() {
-    if (!styledSurface) {
-      return;
-    }
-    styledSurface.style.setProperty("padding-top", originalPaddingTop, originalPaddingTopPriority);
+    restoreInlineStyle(styledSurface);
     styledSurface = null;
   }
 
   function hideAction(action: HTMLElement) {
-    if (action === hiddenAction) {
+    if (action === hiddenAction?.element) {
       return;
     }
     restoreAction();
-    hiddenAction = action;
-    originalActionVisibility = action.style.getPropertyValue("visibility");
-    originalActionVisibilityPriority = action.style.getPropertyPriority("visibility");
-    action.style.setProperty("visibility", "hidden", "important");
+    hiddenAction = overrideInlineStyle(action, "visibility", "hidden");
   }
 
   function restoreAction() {
-    if (!hiddenAction) {
-      return;
-    }
-    hiddenAction.style.setProperty(
-      "visibility",
-      originalActionVisibility,
-      originalActionVisibilityPriority,
-    );
+    restoreInlineStyle(hiddenAction);
     hiddenAction = null;
+  }
+
+  function isHostHidden(action: HTMLElement) {
+    if (action !== hiddenAction?.element) {
+      return hostWindow.getComputedStyle(action).visibility === "hidden";
+    }
+    restoreInlineStyle(hiddenAction);
+    try {
+      return hostWindow.getComputedStyle(action).visibility === "hidden";
+    } finally {
+      action.style.setProperty("visibility", "hidden", "important");
+    }
   }
 
   function restoreReservation() {
@@ -266,8 +265,7 @@ export function createComposerLayout(
       const centerX = rect.left + rect.width / 2;
       const centerY = rect.top + rect.height / 2;
       if (
-        (adapter.layout.visibleActionsOnly &&
-          hostWindow.getComputedStyle(action).visibility === "hidden") ||
+        (adapter.layout.visibleActionsOnly && isHostHidden(action)) ||
         rect.width <= 0 ||
         rect.height <= 0 ||
         centerX < surfaceRect.left ||
@@ -298,4 +296,25 @@ function fallbackRectangle(surface: DOMRect): SelectionRect {
     top,
     width: FALLBACK_ACTION.width,
   };
+}
+
+function overrideInlineStyle(
+  element: HTMLElement,
+  property: string,
+  value: string,
+): InlineStyleOverride {
+  const original = {
+    element,
+    property,
+    value: element.style.getPropertyValue(property),
+    priority: element.style.getPropertyPriority(property),
+  };
+  element.style.setProperty(property, value, "important");
+  return original;
+}
+
+function restoreInlineStyle(override: InlineStyleOverride | null) {
+  if (override) {
+    override.element.style.setProperty(override.property, override.value, override.priority);
+  }
 }
