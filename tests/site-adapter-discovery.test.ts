@@ -2,6 +2,7 @@ import { afterEach, describe, expect, expectTypeOf, it } from "vitest";
 
 import { pasteFirstDomFallbackComposer } from "@/features/host/rich-text-composer";
 import { createHostEngine } from "@/features/host/dom-host";
+import { createHostContext } from "@/features/host/host-context";
 import {
   composerLayout,
   type SelectionPresentationAccess,
@@ -16,6 +17,24 @@ afterEach(() => {
 });
 
 describe("site adapter discovery", () => {
+  it("finds the send control in the current composer surface", () => {
+    document.body.innerHTML = `
+      <section data-composer-surface>
+        <div contenteditable="true"></div>
+        <button data-send-control="other" type="button"></button>
+      </section>
+      <section data-composer-surface>
+        <div id="composer" contenteditable="true"></div>
+        <button data-send-control="current" type="button"></button>
+      </section>
+    `;
+    const composer = requiredElement<HTMLElement>("#composer");
+    const context = createHostContext({ document, window }, adapter({}));
+    const sendControl = context.sendControl(composer);
+
+    expect(sendControl?.dataset.sendControl).toBe("current");
+  });
+
   it("uses declared composer boundaries and surfaces without visual heuristics", () => {
     document.body.innerHTML = `
       <main>
