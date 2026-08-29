@@ -1,4 +1,4 @@
-import { act } from "react";
+import { act, useLayoutEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -60,6 +60,30 @@ describe("useConversationIdentity", () => {
       secondRoot.unmount();
     });
   });
+
+  it("reads a conversation committed before the navigation subscription", async () => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    const host = createFakeHost();
+
+    await act(async () => {
+      root.render(
+        <HostTestProvider host={host}>
+          <ConversationIdentityValue />
+          <CommitConversationIdentity host={host} />
+        </HostTestProvider>,
+      );
+    });
+
+    expect(readIdentity(container)).toEqual({
+      kind: "identified",
+      value: "conversation-a",
+    });
+
+    await act(async () => root.unmount());
+  });
 });
 
 function ConversationIdentityProbe({ host }: { host: FakeHost }) {
@@ -77,6 +101,17 @@ function ConversationIdentityValue() {
       {identity.kind === "identified" ? identity.id : identity.sessionKey}
     </output>
   );
+}
+
+function CommitConversationIdentity({ host }: { host: FakeHost }) {
+  useLayoutEffect(() => {
+    host.controls.setConversationIdentity({
+      kind: "identified",
+      id: "conversation-a",
+      siteId: "chatgpt",
+    });
+  }, [host]);
+  return null;
 }
 
 function readIdentity(container: HTMLElement) {

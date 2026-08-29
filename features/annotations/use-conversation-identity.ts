@@ -20,7 +20,9 @@ export function useConversationIdentity() {
         sameConversationIdentity(currentIdentity, nextIdentity) ? currentIdentity : nextIdentity,
       );
     };
-    return host.conversation.subscribe(refresh);
+    const unsubscribe = host.conversation.subscribe(refresh);
+    refresh();
+    return unsubscribe;
   }, [host, resolveConversationIdentity]);
 
   return conversationIdentity;
