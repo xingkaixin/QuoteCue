@@ -14,10 +14,12 @@ type ComposerLayoutElements = {
 };
 
 type InlineStyleOverride = {
+  appliedPriority: string;
+  appliedValue: string;
   element: HTMLElement;
   property: string;
-  value: string;
-  priority: string;
+  restoredPriority: string;
+  restoredValue: string;
 };
 
 const FALLBACK_ACTION = {
@@ -86,12 +88,7 @@ export function createComposerLayout(
     observedSurface = surface;
     if (surface) {
       resizeObserver?.observe(surface);
-      actionObserver ??= new MutationObserver((records) => {
-        // Reservation styles must not schedule another layout read.
-        if (records.some((record) => record.attributeName !== "style")) {
-          scheduleRefresh();
-        }
-      });
+      actionObserver ??= new MutationObserver(() => scheduleRefresh());
       actionObserver.observe(surface, { attributes: true, subtree: true });
     }
   }
@@ -263,7 +260,7 @@ export function createComposerLayout(
   }
 
   function styleSurface(surface: HTMLElement, height: number) {
-    if (surface === styledSurface?.element) {
+    if (surface === styledSurface?.element && isInlineStyleApplied(styledSurface)) {
       return;
     }
     restoreSurface();
@@ -277,7 +274,7 @@ export function createComposerLayout(
   }
 
   function hideAction(action: HTMLElement) {
-    if (action === hiddenAction?.element) {
+    if (action === hiddenAction?.element && isInlineStyleApplied(hiddenAction)) {
       return;
     }
     restoreAction();
@@ -293,12 +290,68 @@ export function createComposerLayout(
     if (action !== hiddenAction?.element) {
       return hostWindow.getComputedStyle(action).visibility === "hidden";
     }
+    if (!isInlineStyleApplied(hiddenAction)) {
+      return hostWindow.getComputedStyle(action).visibility === "hidden";
+    }
     restoreInlineStyle(hiddenAction);
     try {
       return hostWindow.getComputedStyle(action).visibility === "hidden";
     } finally {
-      action.style.setProperty("visibility", "hidden", "important");
+      applyInlineStyle(hiddenAction);
     }
+  }
+
+  function overrideInlineStyle(element: HTMLElement, property: string, value: string) {
+    const override: InlineStyleOverride = {
+      appliedPriority: "important",
+      appliedValue: value,
+      element,
+      property,
+      restoredPriority: element.style.getPropertyPriority(property),
+      restoredValue: element.style.getPropertyValue(property),
+    };
+    applyInlineStyle(override);
+    return override;
+  }
+
+  function applyInlineStyle(override: InlineStyleOverride) {
+    writeInlineStyle(
+      override.element,
+      override.property,
+      override.appliedValue,
+      override.appliedPriority,
+    );
+  }
+
+  function restoreInlineStyle(override: InlineStyleOverride | null) {
+    if (override && isInlineStyleApplied(override)) {
+      writeInlineStyle(
+        override.element,
+        override.property,
+        override.restoredValue,
+        override.restoredPriority,
+      );
+    }
+  }
+
+  function isInlineStyleApplied(override: InlineStyleOverride) {
+    return (
+      override.element.style.getPropertyValue(override.property) === override.appliedValue &&
+      override.element.style.getPropertyPriority(override.property) === override.appliedPriority
+    );
+  }
+
+  function writeInlineStyle(
+    element: HTMLElement,
+    property: string,
+    value: string,
+    priority: string,
+  ) {
+    if (actionObserver?.takeRecords().length) {
+      scheduleRefresh();
+    }
+    element.style.setProperty(property, value, priority);
+    actionObserver?.takeRecords();
   }
 
   function restoreReservation() {
@@ -350,25 +403,4 @@ function fallbackRectangle(surface: DOMRect): SelectionRect {
     top,
     width: FALLBACK_ACTION.width,
   };
-}
-
-function overrideInlineStyle(
-  element: HTMLElement,
-  property: string,
-  value: string,
-): InlineStyleOverride {
-  const original = {
-    element,
-    property,
-    value: element.style.getPropertyValue(property),
-    priority: element.style.getPropertyPriority(property),
-  };
-  element.style.setProperty(property, value, "important");
-  return original;
-}
-
-function restoreInlineStyle(override: InlineStyleOverride | null) {
-  if (override) {
-    override.element.style.setProperty(override.property, override.value, override.priority);
-  }
 }

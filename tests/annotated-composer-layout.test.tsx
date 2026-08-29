@@ -215,6 +215,42 @@ describe("useAnnotatedComposerLayout", () => {
     expect(nextSurface.style.paddingTop).toBe("3px");
     expect(nextAction.style.visibility).toBe("");
   });
+
+  it("preserves host style updates during an active reservation", async () => {
+    vi.useFakeTimers();
+    stubPassiveResizeObserver();
+    const fixture = installChatGptHostFixture();
+    fixture.surface.style.paddingTop = "5px";
+    const host = createChatGptHost({ document, window });
+    const release = host.layout.reserveAnnotationRow(40);
+
+    fixture.surface.style.paddingTop = "12px";
+    fixture.action.style.visibility = "visible";
+    await Promise.resolve();
+    await vi.advanceTimersByTimeAsync(80);
+
+    expect(fixture.surface.style.paddingTop).toBe("52px");
+    expect(fixture.action.style.visibility).toBe("hidden");
+
+    release();
+    expect(fixture.surface.style.paddingTop).toBe("12px");
+    expect(fixture.action.style.visibility).toBe("visible");
+  });
+
+  it("does not overwrite a queued host style update when releasing a reservation", () => {
+    stubPassiveResizeObserver();
+    const fixture = installChatGptHostFixture();
+    fixture.surface.style.paddingTop = "5px";
+    const host = createChatGptHost({ document, window });
+    const release = host.layout.reserveAnnotationRow(40);
+
+    fixture.surface.style.paddingTop = "12px";
+    fixture.action.style.visibility = "visible";
+    release();
+
+    expect(fixture.surface.style.paddingTop).toBe("12px");
+    expect(fixture.action.style.visibility).toBe("visible");
+  });
 });
 
 function stubPassiveResizeObserver() {
