@@ -1,4 +1,4 @@
-import { act } from "react";
+import { act, useLayoutEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -93,7 +93,41 @@ describe("host theme", () => {
     expect(themeContainer.style.getPropertyValue("--qc-divider")).toBe("");
     expect(themeContainer.style.getPropertyValue("--qc-shadow")).toBe("");
   });
+
+  it("refreshes the theme after subscribing to host changes", async () => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    vi.stubGlobal("matchMedia", () => ({
+      addEventListener: vi.fn(),
+      matches: false,
+      removeEventListener: vi.fn(),
+    }));
+    document.documentElement.dataset.mode = "light";
+    const themeContainer = document.createElement("div");
+    const container = document.createElement("div");
+    document.body.append(themeContainer, container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        <HostThemeProvider accentTokens={KIMI_ACCENT_TOKENS} container={themeContainer}>
+          <ChangeThemeOnLayout />
+          <ThemeProbe />
+        </HostThemeProvider>,
+      );
+    });
+
+    expect(container.textContent).toBe("dark");
+    expect(themeContainer.dataset.quotecueTheme).toBe("dark");
+    await act(async () => root.unmount());
+  });
 });
+
+function ChangeThemeOnLayout() {
+  useLayoutEffect(() => {
+    document.documentElement.dataset.mode = "dark";
+  }, []);
+  return null;
+}
 
 function ThemeProbe() {
   return useHostTheme();

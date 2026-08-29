@@ -21,6 +21,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
     observer.observe(document.documentElement, { attributeFilter: ["lang"], attributes: true });
     window.addEventListener("languagechange", updateLocale);
+    updateLocale();
     return () => {
       observer.disconnect();
       window.removeEventListener("languagechange", updateLocale);
