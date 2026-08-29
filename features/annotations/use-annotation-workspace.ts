@@ -45,8 +45,9 @@ export function useAnnotationWorkspace() {
     requestDeletion,
     visibleAnnotations,
   } = useDeferredAnnotationDeletion(annotations, conversationIdentity, discardAnnotations);
+  const actionableAnnotations = isDraftMutable ? visibleAnnotations : [];
   const activeAnnotationId = editorState.status === "hidden" ? null : editorState.annotationId;
-  const projectedAnnotations = useAnnotationProjection(visibleAnnotations, activeAnnotationId);
+  const projectedAnnotations = useAnnotationProjection(actionableAnnotations, activeAnnotationId);
   const activeProjection = projectedAnnotations.find(
     ({ annotation }) => annotation.id === activeAnnotationId,
   );
@@ -54,10 +55,10 @@ export function useAnnotationWorkspace() {
   const closeEditor = useCallback(() => setEditorState({ status: "hidden" }), []);
 
   useEffect(() => {
-    if (activeResolution === "unresolved") {
+    if (!isDraftMutable || activeResolution === "unresolved") {
       closeEditor();
     }
-  }, [activeResolution, closeEditor]);
+  }, [activeResolution, closeEditor, isDraftMutable]);
 
   const sendInputRef = useRef({
     annotations: projectedAnnotations,
@@ -105,11 +106,17 @@ export function useAnnotationWorkspace() {
     closeEditor();
   }, [closeEditor, conversationIdentity]);
 
+  const sendState = sendControllerRef.current?.state(conversationIdentity) ?? { status: "idle" };
+
   useEffect(() => {
-    if (draft.status !== "loading" && annotations.length === 0) {
+    if (
+      draft.status !== "loading" &&
+      actionableAnnotations.length === 0 &&
+      sendState.status === "failed"
+    ) {
       sendControllerRef.current?.draftEmptied(conversationIdentity);
     }
-  }, [annotations.length, conversationIdentity, draft.status]);
+  }, [actionableAnnotations.length, conversationIdentity, draft.status, sendState.status]);
 
   const replaceEditorSession = useCallback((replace: () => void) => {
     if (requestSessionDismissalRef.current?.() !== false) {
@@ -198,8 +205,6 @@ export function useAnnotationWorkspace() {
   const send = useCallback(() => {
     sendControllerRef.current?.submit();
   }, []);
-  const sendState = sendControllerRef.current?.state(conversationIdentity) ?? { status: "idle" };
-
   return {
     draft: {
       capacityExceeded,

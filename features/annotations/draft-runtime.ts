@@ -126,6 +126,9 @@ export function createDraftRuntime(draftPersistence: DraftPersistence) {
     if (!current || !canMutateDraftLifecycle(current, conversationIdentity)) {
       return false;
     }
+    if (current.hasUnreadableAnnotations && mutation.kind !== "clear") {
+      return false;
+    }
     if (draftMutationExceedsCapacity(current.annotations, mutation)) {
       setCapacityExceeded(true);
       return false;

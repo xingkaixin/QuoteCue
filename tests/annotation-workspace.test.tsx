@@ -53,6 +53,35 @@ afterEach(() => {
 });
 
 describe("annotation workspace", () => {
+  it("exposes only recovery clearing for an unreadable draft", async () => {
+    draftStoreFixture.store.load.mockResolvedValue({
+      ...draftResult([annotation]),
+      hasUnreadableAnnotations: true,
+    });
+    const host = createWorkspaceHost();
+    const mounted = await mountWorkspace(host);
+
+    await vi.waitFor(() =>
+      expect(workspace.draft.state).toMatchObject({
+        status: "ready",
+        hasUnreadableAnnotations: true,
+      }),
+    );
+    expect(workspace.selection.isEnabled).toBe(false);
+    expect(workspace.summary.annotations).toEqual([]);
+    expect(workspace.summary.isVisible).toBe(false);
+    expect(host.controls.emitSubmitIntent({ isSendAvailable: true })).toBe("pass-through");
+    expect(draftStoreFixture.store.mutate).not.toHaveBeenCalled();
+
+    await act(async () => workspace.summary.clear());
+    expect(draftStoreFixture.store.mutate).toHaveBeenCalledWith(
+      { kind: "identified", id: "conversation-a", siteId: "chatgpt" },
+      [{ kind: "clear" }],
+    );
+
+    await act(async () => mounted.root.unmount());
+  });
+
   it("keeps the active annotation session when opening the same target", async () => {
     draftStoreFixture.store.load.mockResolvedValue(draftResult([annotation]));
     const mounted = await mountWorkspace();

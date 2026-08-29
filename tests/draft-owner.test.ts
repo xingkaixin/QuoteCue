@@ -100,13 +100,16 @@ describe("draft storage", () => {
           hasUnreadableAnnotations: true,
         }),
       );
-      runtime.mutate(conversationA, { kind: "add", annotation: { ...annotation, id: "new" } });
-      await vi.waitFor(() =>
-        expect(runtime.getSnapshot().draftState).toMatchObject({
-          status: "ready",
-          annotations: readable,
+      expect(
+        runtime.mutate(conversationA, {
+          kind: "add",
+          annotation: { ...annotation, id: "new" },
         }),
-      );
+      ).toBe(false);
+      expect(runtime.getSnapshot().draftState).toMatchObject({
+        status: "ready",
+        annotations: readable,
+      });
       expect(runtime.mutate(conversationA, { kind: "clear" })).toBe(true);
       await vi.waitFor(() => expect(extensionStorage.snapshot()).toEqual({}));
       expect(runtime.getSnapshot().draftState).toMatchObject({
