@@ -14,10 +14,12 @@ export function createHostContext(environment: HostEnvironment, adapter: SiteAda
     adapter.layout.boundarySelector
       ? composer.closest<HTMLElement>(adapter.layout.boundarySelector)
       : (composer.closest<HTMLElement>("form") ?? environment.document.body);
+  const composerSurface = (composer: HTMLElement) =>
+    composer.closest<HTMLElement>(adapter.layout.surfaceSelector);
   return {
     composerBoundary,
     sendControl: (composer) =>
-      composerBoundary(composer)?.querySelector<HTMLElement>(adapter.sendControl.selector) ?? null,
+      composerSurface(composer)?.querySelector<HTMLElement>(adapter.sendControl.selector) ?? null,
     ...environment,
     adapter,
     signals: createHostSignals(environment.document, environment.window, adapter.messages),

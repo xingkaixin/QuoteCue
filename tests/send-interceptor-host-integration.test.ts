@@ -94,7 +94,7 @@ describe("annotated send host integration", () => {
     const fixture = installChatGptHostFixture();
     fixture.action.disabled = true;
     const observe = vi.spyOn(MutationObserver.prototype, "observe");
-    const querySelector = vi.spyOn(fixture.form, "querySelector");
+    const querySelector = vi.spyOn(fixture.surface, "querySelector");
     const host = createChatGptHost({ document, window });
     fixture.action.addEventListener("click", () => {
       installUserMessage("submitted-message", fixture.composer.textContent ?? "");
