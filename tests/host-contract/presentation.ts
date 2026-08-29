@@ -33,17 +33,18 @@ export function runPresentationHostContract(definition: HostContractDefinition) 
     it("keeps the host streaming action available while its send control is absent", async () => {
       const fixture = definition.installFixture();
       const siteHost = host();
-      const refresh = vi.fn(() => siteHost.layout.current());
-      const stop = siteHost.layout.subscribe(refresh);
       const release = siteHost.layout.reserveAnnotationRow(40);
-      siteHost.layout.current();
+      const refresh = vi.fn();
+      const stop = siteHost.layout.subscribe(refresh);
+      refresh.mockClear();
       definition.setStreaming(fixture.sendControl, true);
-      await nextFrame();
-      expect(refresh).toHaveBeenCalledOnce();
+      await vi.waitFor(() => expect(refresh).toHaveBeenCalledOnce());
       const layout = availableValue(siteHost.layout.current());
       expect(fixture.sendControl.style.visibility).toBe("");
       expect(layout).toMatchObject({ isSendControlPresent: false });
+      refresh.mockClear();
       definition.setStreaming(fixture.sendControl, false);
+      await vi.waitFor(() => expect(refresh).toHaveBeenCalledOnce());
       expect(availableValue(siteHost.layout.current())).toMatchObject({
         isSendControlPresent: true,
       });

@@ -26,6 +26,7 @@ const FALLBACK_ACTION = {
   rightInset: 8,
   width: 36,
 };
+const LAYOUT_REFRESH_INTERVAL_MS = 80;
 
 export function createComposerLayout(
   context: HostContext,
@@ -33,25 +34,38 @@ export function createComposerLayout(
 ) {
   const { adapter, document: hostDocument, logger, signals, window: hostWindow } = context;
   let activeReservation: { height: number } | null = null;
-  const layoutSubscribers = new Set<() => void>();
+  const layoutSubscribers = new Set<(layout: HostResult<HostLayout>) => void>();
   let resizeObserver: ResizeObserver | null = null;
   let actionObserver: MutationObserver | null = null;
   let observedSurface: HTMLElement | null = null;
   let stopSignalObservation: (() => void) | null = null;
   let styledSurface: InlineStyleOverride | null = null;
   let hiddenAction: InlineStyleOverride | null = null;
+  let refreshTimer: number | undefined;
+  let lastRefreshAt = Number.NEGATIVE_INFINITY;
 
-  // The single expensive boundary: one measurement serves layout publication, the reservation
-  // and the resize observation, so raw signals only have to invalidate.
   function current(): HostResult<HostLayout> {
+    const elements = currentElements();
+    return publicLayout(elements);
+  }
+
+  function refreshLayout(): HostResult<HostLayout> {
+    lastRefreshAt = Date.now();
     const elements = currentElements();
     if (elements.status === "unavailable") {
       reconcileReservation(null);
       observeSurface(null);
+    } else {
+      reconcileReservation(elements.value);
+      observeSurface(elements.value.surface);
+    }
+    return publicLayout(elements);
+  }
+
+  function publicLayout(elements: HostResult<ComposerLayoutElements>): HostResult<HostLayout> {
+    if (elements.status === "unavailable") {
       return elements;
     }
-    reconcileReservation(elements.value);
-    observeSurface(elements.value.surface);
     return available({
       isSendControlPresent: elements.value.isSendControlPresent,
       send: elements.value.send,
@@ -60,7 +74,7 @@ export function createComposerLayout(
   }
 
   function observeSurface(surface: HTMLElement | null) {
-    if (layoutSubscribers.size === 0) {
+    if (!needsObservation()) {
       observedSurface = null;
       return;
     }
@@ -75,7 +89,7 @@ export function createComposerLayout(
       actionObserver ??= new MutationObserver((records) => {
         // Reservation styles must not schedule another layout read.
         if (records.some((record) => record.attributeName !== "style")) {
-          notifySubscribers();
+          scheduleRefresh();
         }
       });
       actionObserver.observe(surface, { attributes: true, subtree: true });
@@ -118,8 +132,8 @@ export function createComposerLayout(
     restoreReservation();
     const reservation = { height };
     activeReservation = reservation;
-    const elements = currentElements();
-    reconcileReservation(elements.status === "available" ? elements.value : null);
+    startObservation();
+    publishRefresh();
 
     return once(() => {
       if (activeReservation !== reservation) {
@@ -127,37 +141,43 @@ export function createComposerLayout(
       }
       activeReservation = null;
       restoreReservation();
+      if (layoutSubscribers.size === 0) {
+        stopObservation();
+      } else {
+        publishRefresh();
+      }
     });
   }
 
-  function subscribe(callback: () => void) {
-    const subscription = () => callback();
-    layoutSubscribers.add(subscription);
-    if (layoutSubscribers.size === 1) {
-      startObservation();
-    }
+  function subscribe(callback: (layout: HostResult<HostLayout>) => void) {
+    layoutSubscribers.add(callback);
+    startObservation();
+    callback(refreshLayout());
 
     return once(() => {
-      layoutSubscribers.delete(subscription);
-      if (layoutSubscribers.size === 0) {
+      layoutSubscribers.delete(callback);
+      if (!needsObservation()) {
         stopObservation();
       }
     });
   }
 
   function startObservation() {
+    if (stopSignalObservation) {
+      return;
+    }
     resizeObserver =
-      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(notifySubscribers);
+      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(scheduleRefresh);
     hostDocument.addEventListener("input", handleComposerInput, true);
     const stopMutationObservation = signals.observeMutations(
       (records) => {
         if (mutationsAffectComposer(records)) {
-          notifySubscribers();
+          scheduleRefresh();
         }
       },
       { childList: true },
     );
-    const stopViewportObservation = signals.observeViewport(notifySubscribers);
+    const stopViewportObservation = signals.observeViewport(scheduleRefresh);
     stopSignalObservation = () => {
       hostDocument.removeEventListener("input", handleComposerInput, true);
       stopMutationObservation();
@@ -173,18 +193,44 @@ export function createComposerLayout(
     actionObserver?.disconnect();
     actionObserver = null;
     observedSurface = null;
+    if (refreshTimer !== undefined) {
+      hostWindow.clearTimeout(refreshTimer);
+      refreshTimer = undefined;
+    }
+    lastRefreshAt = Number.NEGATIVE_INFINITY;
   }
 
-  function notifySubscribers() {
+  function needsObservation() {
+    return activeReservation !== null || layoutSubscribers.size > 0;
+  }
+
+  function scheduleRefresh() {
+    if (refreshTimer !== undefined) {
+      return;
+    }
+    const delay = LAYOUT_REFRESH_INTERVAL_MS - (Date.now() - lastRefreshAt);
+    if (delay <= 0) {
+      publishRefresh();
+      return;
+    }
+    refreshTimer = hostWindow.setTimeout(publishRefresh, delay);
+  }
+
+  function publishRefresh() {
+    if (refreshTimer !== undefined) {
+      hostWindow.clearTimeout(refreshTimer);
+      refreshTimer = undefined;
+    }
+    const layout = refreshLayout();
     for (const subscriber of [...layoutSubscribers]) {
-      subscriber();
+      subscriber(layout);
     }
   }
 
   function handleComposerInput(event: Event) {
     const composer = currentComposer();
     if (composer && event.target instanceof Node && composer.contains(event.target)) {
-      notifySubscribers();
+      scheduleRefresh();
     }
   }
 

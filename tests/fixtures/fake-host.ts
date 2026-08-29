@@ -57,7 +57,7 @@ export function createFakeHost(overrides: FakeHostOverrides = {}): FakeHost {
     },
   };
   const conversationSubscribers = new Set<() => void>();
-  const layoutSubscribers = new Set<() => void>();
+  const layoutSubscribers = new Set<(layout: HostResult<HostLayout>) => void>();
   const selectionCaptureSubscribers = new Set<(intent: SelectionCaptureIntent) => void>();
   const selectionSubscribers = new Set<(invalidation: SelectionInvalidation) => void>();
   const submitSubscribers = new Set<Parameters<Host["composer"]["subscribeToSubmit"]>[0]>();
@@ -102,6 +102,7 @@ export function createFakeHost(overrides: FakeHostOverrides = {}): FakeHost {
       reserveAnnotationRow: () => () => undefined,
       subscribe(callback) {
         layoutSubscribers.add(callback);
+        callback(layout);
         return () => layoutSubscribers.delete(callback);
       },
     },
@@ -131,7 +132,7 @@ export function createFakeHost(overrides: FakeHostOverrides = {}): FakeHost {
     controls: {
       emitLayoutChange() {
         for (const subscriber of layoutSubscribers) {
-          subscriber();
+          subscriber(layout);
         }
       },
       emitSelectionCaptureIntent(intent) {

@@ -81,11 +81,13 @@ describe("useAnnotatedComposerLayout", () => {
     await act(async () => root.unmount());
   });
 
-  it("refreshes throughout a continuous stream of layout signals", async () => {
+  it("throttles measurements throughout a continuous stream of layout signals", async () => {
     vi.useFakeTimers();
+    stubPassiveResizeObserver();
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-    const host = createFakeHost();
-    const currentLayout = vi.spyOn(host.layout, "current");
+    const { surface } = installChatGptHostFixture();
+    const measure = vi.spyOn(surface, "getBoundingClientRect");
+    const host = createChatGptHost({ document, window });
     const container = document.createElement("div");
     document.body.append(container);
     const root = createRoot(container);
@@ -97,12 +99,15 @@ describe("useAnnotatedComposerLayout", () => {
         </HostTestProvider>,
       ),
     );
+    measure.mockClear();
     for (let elapsed = 0; elapsed < 200; elapsed += 20) {
-      host.controls.emitLayoutChange();
-      await act(async () => vi.advanceTimersByTimeAsync(20));
+      await act(async () => {
+        window.dispatchEvent(new Event("resize"));
+        await vi.advanceTimersByTimeAsync(20);
+      });
     }
 
-    expect(currentLayout).toHaveBeenCalledTimes(3);
+    expect(measure).toHaveBeenCalledTimes(2);
     await act(async () => root.unmount());
   });
 
@@ -144,8 +149,8 @@ describe("useAnnotatedComposerLayout", () => {
     stubPassiveResizeObserver();
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     const { surface } = installChatGptHostFixture();
+    const measure = vi.spyOn(surface, "getBoundingClientRect");
     const host = createChatGptHost({ document, window });
-    const currentLayout = vi.spyOn(host.layout, "current");
     const container = document.createElement("div");
     document.body.append(container);
     const root = createRoot(container);
@@ -156,12 +161,12 @@ describe("useAnnotatedComposerLayout", () => {
         </HostTestProvider>,
       ),
     );
-    currentLayout.mockClear();
+    measure.mockClear();
 
     surface.append(document.createElement("span"));
     await act(async () => vi.advanceTimersByTimeAsync(80));
 
-    expect(currentLayout).toHaveBeenCalledOnce();
+    expect(measure).toHaveBeenCalledOnce();
 
     await act(async () => root.unmount());
   });
@@ -184,7 +189,9 @@ describe("useAnnotatedComposerLayout", () => {
     expect(host.layout.current()).toEqual({ status: "unavailable" });
   });
 
-  it("moves an active reservation to a replacement composer surface", () => {
+  it("moves an active reservation to a replacement composer surface", async () => {
+    vi.useFakeTimers();
+    stubPassiveResizeObserver();
     const fixture = installChatGptHostFixture();
     const host = createChatGptHost({ document, window });
     const release = host.layout.reserveAnnotationRow(40);
@@ -196,8 +203,9 @@ describe("useAnnotatedComposerLayout", () => {
     fixture.form.append(nextSurface);
     setElementRect(nextSurface, new DOMRect(100, 500, 400, 92));
     setElementRect(nextAction, new DOMRect(456, 548, 36, 36));
+    await Promise.resolve();
+    await vi.advanceTimersByTimeAsync(80);
 
-    expect(host.layout.current().status).toBe("available");
     expect(fixture.surface.style.paddingTop).toBe("5px");
     expect(fixture.action.style.visibility).toBe("");
     expect(nextSurface.style.paddingTop).toBe("43px");

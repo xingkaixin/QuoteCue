@@ -30,7 +30,7 @@ afterEach(() => {
 });
 
 describe("Claude host contract", () => {
-  it("keeps the host action stable across repeated layout reads", () => {
+  it("keeps the host action stable across repeated layout reads", async () => {
     const fixture = installClaudeHostFixture("hello");
     const host = createClaudeHost({ document, window });
     const release = host.layout.reserveAnnotationRow(40);
@@ -44,6 +44,7 @@ describe("Claude host contract", () => {
     });
     expect(readings).toEqual(Array(3).fill({ left: 828, send: "hidden", voice: "" }));
     setClaudeComposerText("");
+    await vi.waitFor(() => expect(fixture.voiceButton.style.visibility).toBe("hidden"));
     for (let index = 0; index < 3; index++) {
       expect(host.layout.current()).toMatchObject({ value: { send: { left: 828 } } });
       expect(fixture.voiceButton.style.visibility).toBe("hidden");
@@ -113,19 +114,20 @@ describe("Claude host contract", () => {
     interceptor.dispose();
   });
 
-  it("tracks Claude's visible composer action while annotations are active", () => {
+  it("tracks Claude's visible composer action while annotations are active", async () => {
     const fixture = installClaudeHostFixture("");
     const host = createClaudeHost({ document, window });
-    const refresh = vi.fn(() => host.layout.current());
-    const stop = host.layout.subscribe(refresh);
     const release = host.layout.reserveAnnotationRow(40);
+    const refresh = vi.fn();
+    const stop = host.layout.subscribe(refresh);
+    refresh.mockClear();
 
     expect(fixture.voiceButton.style.visibility).toBe("hidden");
     expect(fixture.sendButton.style.visibility).toBe("");
 
     setClaudeComposerText("Japanese input");
 
-    expect(refresh).toHaveBeenCalledOnce();
+    await vi.waitFor(() => expect(refresh).toHaveBeenCalledOnce());
     expect(fixture.voiceButton.classList).toContain("claude-fixture-hidden");
     expect(fixture.voiceButton.style.visibility).toBe("");
     expect(fixture.sendButton.style.visibility).toBe("hidden");
