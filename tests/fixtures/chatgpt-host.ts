@@ -80,6 +80,7 @@ export function appendComposer(text = "") {
 
 export function appendSendButton(onClick: () => void = () => undefined) {
   const sendButton = document.createElement("button");
+  sendButton.type = "button";
   sendButton.dataset.testid = "send-button";
   sendButton.addEventListener("click", onClick);
   requiredElement("form:has(#prompt-textarea) > div").append(sendButton);
