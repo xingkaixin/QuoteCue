@@ -19,6 +19,7 @@ export function useVisualViewportBounds() {
     window.addEventListener("resize", updateBounds);
     window.visualViewport?.addEventListener("resize", updateBounds);
     window.visualViewport?.addEventListener("scroll", updateBounds);
+    updateBounds();
     return () => {
       window.removeEventListener("resize", updateBounds);
       window.visualViewport?.removeEventListener("resize", updateBounds);

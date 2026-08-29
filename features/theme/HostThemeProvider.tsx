@@ -39,6 +39,7 @@ export function HostThemeProvider({ accentTokens, children, container }: HostThe
       });
     }
     mediaQuery?.addEventListener("change", updateTheme);
+    updateTheme();
     return () => {
       observer.disconnect();
       mediaQuery?.removeEventListener("change", updateTheme);
