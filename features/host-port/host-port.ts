@@ -95,7 +95,7 @@ export type Host = {
   layout: {
     current(): HostResult<HostLayout>;
     reserveAnnotationRow(height: number): () => void;
-    subscribe(callback: () => void): () => void;
+    subscribe(callback: (layout: HostResult<HostLayout>) => void): () => void;
   };
   selection: HostSelection;
 };

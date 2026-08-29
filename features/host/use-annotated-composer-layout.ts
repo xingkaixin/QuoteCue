@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
 
 import { useHost } from "@/features/host-port/HostProvider";
-import type { HostLayout } from "@/features/host-port/host-port";
+import type { HostLayout, HostResult } from "@/features/host-port/host-port";
 
 const ANNOTATION_ROW_HEIGHT = 40;
-const POSITION_REFRESH_MS = 80;
 
 export function useAnnotatedComposerLayout(isActive: boolean) {
   const host = useHost();
@@ -16,13 +15,7 @@ export function useAnnotatedComposerLayout(isActive: boolean) {
       return;
     }
 
-    let refreshTimer: number | undefined;
-    let lastRefreshAt = Number.NEGATIVE_INFINITY;
-
-    function refresh() {
-      refreshTimer = undefined;
-      lastRefreshAt = Date.now();
-      const result = host.layout.current();
+    function publish(result: HostResult<HostLayout>) {
       if (result.status === "unavailable") {
         setLayout(null);
         return;
@@ -32,25 +25,11 @@ export function useAnnotatedComposerLayout(isActive: boolean) {
       setLayout((current) => (sameLayout(current, nextLayout) ? current : nextLayout));
     }
 
-    function scheduleRefresh() {
-      if (refreshTimer !== undefined) {
-        return;
-      }
-      const delay = POSITION_REFRESH_MS - (Date.now() - lastRefreshAt);
-      if (delay <= 0) {
-        refresh();
-        return;
-      }
-      refreshTimer = window.setTimeout(refresh, delay);
-    }
-
-    const stopObserving = host.layout.subscribe(scheduleRefresh);
-    refresh();
     const releaseReservation = host.layout.reserveAnnotationRow(ANNOTATION_ROW_HEIGHT);
+    const stopObserving = host.layout.subscribe(publish);
 
     return () => {
       stopObserving();
-      window.clearTimeout(refreshTimer);
       releaseReservation();
     };
   }, [host, isActive]);

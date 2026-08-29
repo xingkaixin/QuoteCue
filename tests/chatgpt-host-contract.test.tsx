@@ -250,7 +250,7 @@ describe("ChatGPT host contract", () => {
     expect(disconnect).toHaveBeenCalledTimes(2);
   });
 
-  it("keeps resize updates active for every layout subscriber", () => {
+  it("keeps resize updates active for every layout subscriber", async () => {
     const observers: TestResizeObserver[] = [];
     class TestResizeObserver {
       private active = false;
@@ -278,16 +278,16 @@ describe("ChatGPT host contract", () => {
     const host = createChatGptHost({ document, window });
     const firstSubscriber = vi.fn();
     const secondSubscriber = vi.fn();
-    host.layout.current();
     const stopFirst = host.layout.subscribe(firstSubscriber);
-    host.layout.current();
     const stopSecond = host.layout.subscribe(secondSubscriber);
-    host.layout.current();
+    firstSubscriber.mockClear();
+    secondSubscriber.mockClear();
 
     expect(observers).toHaveLength(1);
     for (const observer of observers) {
       observer.emit();
     }
+    await vi.waitFor(() => expect(firstSubscriber).toHaveBeenCalledOnce());
     expect(firstSubscriber).toHaveBeenCalledOnce();
     expect(secondSubscriber).toHaveBeenCalledOnce();
 
@@ -297,6 +297,7 @@ describe("ChatGPT host contract", () => {
     for (const observer of observers) {
       observer.emit();
     }
+    await vi.waitFor(() => expect(secondSubscriber).toHaveBeenCalledOnce());
     expect(firstSubscriber).not.toHaveBeenCalled();
     expect(secondSubscriber).toHaveBeenCalledOnce();
     stopSecond();
