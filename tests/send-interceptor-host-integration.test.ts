@@ -32,6 +32,7 @@ describe("annotated send host integration", () => {
     vi.useFakeTimers();
     const composer = installComposer("original question");
     const sendButton = installSendButton();
+    expect(sendButton.type).toBe("button");
     sendButton.disabled = true;
     const onStateChange = vi.fn();
     const interceptor = createInterceptor(undefined, { onStateChange });
