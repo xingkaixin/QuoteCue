@@ -133,7 +133,11 @@ export function reduceDraftLifecycle(
 }
 
 export function canMutateDraft(draft: DraftState): draft is MutableDraftState {
-  return draft.status === "ready" || (draft.status === "error" && draft.operation === "save");
+  return (
+    draft.status !== "loading" &&
+    !draft.hasUnreadableAnnotations &&
+    (draft.status === "ready" || (draft.status === "error" && draft.operation === "save"))
+  );
 }
 
 export function canMutateDraftLifecycle(
