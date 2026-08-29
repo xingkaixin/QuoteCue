@@ -14,15 +14,19 @@ export default defineBackground(() => {
 
     const result =
       message.kind === "load"
-        ? owner.load(message.conversation).then((draft) => ({ ...draft, status: "ok" as const }))
-        : owner.mutate(message.conversation, message.mutations);
+        ? owner
+            .load(message.conversation)
+            .then((draft) => ({ kind: "loaded", draft }) satisfies DraftOwnerResponse)
+        : owner
+            .mutate(message.conversation, message.mutations)
+            .then((value) => ({ kind: "mutated", result: value }) satisfies DraftOwnerResponse);
 
     void result.then(
       (value) => sendResponse(value satisfies DraftOwnerResponse),
       (error: unknown) => {
         console.error("[QuoteCue] Draft owner failed", error);
         sendResponse({
-          status: "error",
+          kind: "error",
           message: "Draft storage is unavailable",
         } satisfies DraftOwnerResponse);
       },
