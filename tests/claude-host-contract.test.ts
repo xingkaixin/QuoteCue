@@ -62,6 +62,9 @@ describe("Claude host contract", () => {
       rect: { bottom: 220, height: 20, left: 100, right: 260, top: 200, width: 160 },
     });
     const { actionRow, replyButton } = appendClaudeSelectionToolbar();
+    replyButton.disabled = true;
+    replyButton.setAttribute("aria-controls", "host-popover");
+    replyButton.dataset.state = "open";
     await nextFrame();
 
     const action = actionRow.querySelector<HTMLButtonElement>(QUOTECUE_NATIVE_ACTION_SELECTOR);
@@ -69,6 +72,9 @@ describe("Claude host contract", () => {
     expect(action?.nextElementSibling).toBe(replyButton);
     expect(action?.className).toBe(replyButton.className);
     expect(action?.textContent).toBe("QuoteCue");
+    expect(action?.disabled).toBe(false);
+    expect(action?.getAttribute("aria-controls")).toBeNull();
+    expect(action?.dataset.state).toBeUndefined();
 
     action?.click();
     expect(onActivate).toHaveBeenCalledOnce();

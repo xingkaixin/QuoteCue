@@ -60,11 +60,11 @@ export function createNativeActionMount(
         return;
       }
 
-      action = sourceAction.cloneNode(true) as HTMLButtonElement;
+      action = hostDocument.createElement("button");
+      action.type = "button";
+      action.className = sourceAction.className;
       action.setAttribute(QUOTECUE_NATIVE_ACTION_ATTR, "");
       action.setAttribute("aria-label", options.label);
-      action.removeAttribute("aria-describedby");
-      action.removeAttribute("id");
       action.textContent = "QuoteCue";
       action.addEventListener("mousedown", preserveSelection, true);
       action.addEventListener("click", (event) => {
