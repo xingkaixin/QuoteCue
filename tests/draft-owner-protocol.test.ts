@@ -81,15 +81,30 @@ describe("draft owner protocol", () => {
     expect(isDraftOwnerRequest(request)).toBe(false);
   });
 
-  it("accepts complete success and error responses", () => {
+  it("accepts a complete load response", () => {
     expect(
       isDraftOwnerResponse({
-        status: "ok",
-        annotations: [annotation],
-        hasUnreadableAnnotations: false,
+        kind: "loaded",
+        draft: {
+          annotations: [annotation],
+          hasUnreadableAnnotations: false,
+        },
       }),
     ).toBe(true);
-    expect(isDraftOwnerResponse({ status: "error", message: "storage unavailable" })).toBe(true);
+  });
+
+  it("accepts complete mutation and error responses", () => {
+    expect(
+      isDraftOwnerResponse({
+        kind: "mutated",
+        result: {
+          status: "ok",
+          annotations: [annotation],
+          hasUnreadableAnnotations: false,
+        },
+      }),
+    ).toBe(true);
+    expect(isDraftOwnerResponse({ kind: "error", message: "storage unavailable" })).toBe(true);
   });
 
   it.each(["capacity", "unreadable"])(
@@ -97,25 +112,49 @@ describe("draft owner protocol", () => {
     (reason) => {
       expect(
         isDraftOwnerResponse({
-          status: "rejected",
-          reason,
-          annotations: [annotation],
-          hasUnreadableAnnotations: true,
+          kind: "mutated",
+          result: {
+            status: "rejected",
+            reason,
+            annotations: [annotation],
+            hasUnreadableAnnotations: true,
+          },
         }),
       ).toBe(true);
     },
   );
 
   it.each([
-    { status: "rejected", reason: "unknown", annotations: [], hasUnreadableAnnotations: false },
-    { status: "rejected", annotations: [], hasUnreadableAnnotations: false },
-    { status: "ok", annotations: [], hasUnreadableAnnotations: "false" },
+    {
+      kind: "mutated",
+      result: {
+        status: "rejected",
+        reason: "unknown",
+        annotations: [],
+        hasUnreadableAnnotations: false,
+      },
+    },
+    {
+      kind: "mutated",
+      result: { status: "rejected", annotations: [], hasUnreadableAnnotations: false },
+    },
+    {
+      kind: "mutated",
+      result: { status: "ok", annotations: [], hasUnreadableAnnotations: "false" },
+    },
     undefined,
-    { status: "ok" },
-    { status: "ok", annotations: null },
-    { status: "ok", annotations: [{ ...annotation, comment: 42 }] },
-    { status: "error" },
-    { status: "error", message: 42 },
+    { kind: "loaded" },
+    { kind: "loaded", draft: { annotations: null, hasUnreadableAnnotations: false } },
+    {
+      kind: "loaded",
+      draft: {
+        annotations: [{ ...annotation, comment: 42 }],
+        hasUnreadableAnnotations: false,
+      },
+    },
+    { kind: "error" },
+    { kind: "error", message: 42 },
+    { status: "ok", annotations: [], hasUnreadableAnnotations: false },
   ])("rejects an incomplete response: %#", (response) => {
     expect(isDraftOwnerResponse(response)).toBe(false);
   });

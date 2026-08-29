@@ -5,7 +5,7 @@ import type { IdentifiedConversation } from "@/features/conversation/conversatio
 
 import type { DraftAnnotation } from "./annotation";
 import type { DraftMutation } from "./draft-mutation";
-import type { DraftMutationResult } from "./draft-store";
+import type { DraftMutationResult, DraftSnapshot } from "./draft-store";
 
 export const DRAFT_OWNER_MESSAGE = "quotecue:draft";
 
@@ -18,7 +18,10 @@ export type DraftOwnerRequest =
       mutations: readonly DraftMutation[];
     };
 
-export type DraftOwnerResponse = DraftMutationResult | { status: "error"; message: string };
+export type DraftOwnerResponse =
+  | { kind: "loaded"; draft: DraftSnapshot }
+  | { kind: "mutated"; result: DraftMutationResult }
+  | { kind: "error"; message: string };
 
 export function isDraftOwnerRequest(value: unknown): value is DraftOwnerRequest {
   if (
@@ -43,13 +46,33 @@ export function isDraftOwnerResponse(value: unknown): value is DraftOwnerRespons
   if (!isRecord(value)) {
     return false;
   }
-  if (value.status === "error") {
-    return typeof value.message === "string";
+  switch (value.kind) {
+    case "loaded":
+      return isDraftSnapshot(value.draft);
+    case "mutated":
+      return isDraftMutationResult(value.result);
+    case "error":
+      return typeof value.message === "string";
+    default:
+      return false;
+  }
+}
+
+function isDraftMutationResult(value: unknown): value is DraftMutationResult {
+  if (!isRecord(value)) {
+    return false;
   }
   return (
     (value.status === "ok" ||
       (value.status === "rejected" &&
         (value.reason === "capacity" || value.reason === "unreadable"))) &&
+    isDraftSnapshot(value)
+  );
+}
+
+function isDraftSnapshot(value: unknown): value is DraftSnapshot {
+  return (
+    isRecord(value) &&
     typeof value.hasUnreadableAnnotations === "boolean" &&
     Array.isArray(value.annotations) &&
     value.annotations.every(isDraftAnnotation)
