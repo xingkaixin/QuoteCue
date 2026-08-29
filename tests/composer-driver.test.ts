@@ -13,7 +13,7 @@ afterEach(() => {
 });
 
 describe("composer driver", () => {
-  it("stops after an editor accepts the synthetic paste", () => {
+  it("stops after an editor applies the synthetic paste", async () => {
     const execCommand = installExecCommand(false);
     vi.stubGlobal(
       "DataTransfer",
@@ -23,26 +23,41 @@ describe("composer driver", () => {
     );
     vi.stubGlobal("ClipboardEvent", class extends Event {});
     const composer = installComposer();
-    composer.addEventListener("paste", (event) => event.preventDefault());
+    composer.addEventListener("paste", (event) => {
+      event.preventDefault();
+      composer.textContent = "replacement";
+    });
 
     const composerDriver = driver();
-    expect(composerDriver.replaceText(availableSnapshot(composerDriver), "replacement")).toBe(true);
+    await expect(
+      composerDriver.replaceText(
+        availableSnapshot(composerDriver),
+        "replacement",
+        new AbortController().signal,
+      ),
+    ).resolves.toBe(true);
     expect(execCommand).not.toHaveBeenCalled();
   });
 
-  it("trusts an accepted insertText command before asynchronous rendering", () => {
+  it("waits for an accepted insertText command to render", async () => {
     const execCommand = installExecCommand(true);
     vi.stubGlobal("ClipboardEvent", undefined);
     vi.stubGlobal("DataTransfer", undefined);
     const composer = installComposer("original");
 
     const composerDriver = driver();
-    expect(composerDriver.replaceText(availableSnapshot(composerDriver), "replacement")).toBe(true);
+    const replaced = composerDriver.replaceText(
+      availableSnapshot(composerDriver),
+      "replacement",
+      new AbortController().signal,
+    );
     expect(execCommand).toHaveBeenCalledWith("insertText", false, "replacement");
     expect(composer.textContent).toBe("original");
+    composer.textContent = "replacement";
+    await expect(replaced).resolves.toBe(true);
   });
 
-  it("falls back to replacing children and dispatching input", () => {
+  it("falls back to replacing children and dispatching input", async () => {
     installExecCommand(false);
     vi.stubGlobal("ClipboardEvent", undefined);
     vi.stubGlobal("DataTransfer", undefined);
@@ -51,18 +66,30 @@ describe("composer driver", () => {
     composer.addEventListener("input", onInput);
 
     const composerDriver = driver();
-    expect(composerDriver.replaceText(availableSnapshot(composerDriver), "replacement")).toBe(true);
+    await expect(
+      composerDriver.replaceText(
+        availableSnapshot(composerDriver),
+        "replacement",
+        new AbortController().signal,
+      ),
+    ).resolves.toBe(true);
     expect(composer.innerHTML).toBe("<p>replacement</p>");
     expect(onInput).toHaveBeenCalledOnce();
   });
 
-  it("writes textarea values without entering the rich-text fallback ladder", () => {
+  it("writes textarea values without entering the rich-text fallback ladder", async () => {
     const execCommand = installExecCommand(true);
     const composer = document.createElement("textarea");
     document.body.append(composer);
 
     const composerDriver = driver(textareaComposer("textarea"));
-    expect(composerDriver.replaceText(availableSnapshot(composerDriver), "replacement")).toBe(true);
+    await expect(
+      composerDriver.replaceText(
+        availableSnapshot(composerDriver),
+        "replacement",
+        new AbortController().signal,
+      ),
+    ).resolves.toBe(true);
     expect(composer.value).toBe("replacement");
     expect(execCommand).not.toHaveBeenCalled();
   });

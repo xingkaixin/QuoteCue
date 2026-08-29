@@ -22,8 +22,6 @@ export function pasteFirstDomFallbackComposer(
         typeof environment.document.execCommand === "function" &&
         environment.document.execCommand("insertText", false, text)
       ) {
-        // Managed editors may render an accepted command asynchronously; send confirmation still
-        // validates the final user message against the complete replacement text.
         const isSynced = normalize(readRenderedText(composer)) === normalize(text);
         environment.logger?.(`[QuoteCue host] composer command replacement: synced=${isSynced}`);
         if (!isSynced) {
