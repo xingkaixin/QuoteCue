@@ -191,7 +191,9 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
     if (options.signal.aborted) {
       return failure("send-unavailable");
     }
-    if (!replaceComposer(options)) {
+    const replaced = await replaceComposer(options);
+    if (!replaced) {
+      logger?.("[QuoteCue host] composer replacement failed");
       restoreComposer(options);
       return failure("send-unavailable");
     }
@@ -216,11 +218,7 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
 
   function replaceComposer(options: ComposerSubmitOptions) {
     try {
-      const replaced = composerDriver.replaceText(options.restoreTo, options.text);
-      if (!replaced) {
-        logger?.("[QuoteCue host] composer replacement failed");
-      }
-      return replaced;
+      return composerDriver.replaceText(options.restoreTo, options.text, options.signal);
     } catch (error: unknown) {
       logger?.("[QuoteCue host] composer replacement failed", error);
       return false;

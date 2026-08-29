@@ -47,12 +47,14 @@ describe("annotated send host integration", () => {
     interceptor.dispose();
   });
 
-  it("trusts a truthy insertText command while the editor renders asynchronously", async () => {
+  it("fails when an accepted insertText command never renders", async () => {
     vi.useFakeTimers();
     const composer = installComposer("original question");
     vi.mocked(document.execCommand).mockReturnValue(true);
     const onStateChange = vi.fn();
     const interceptor = createInterceptor(undefined, { onStateChange });
+    const send = vi.fn();
+    installSendButton(send);
 
     interceptor.submit();
     expect(onStateChange).toHaveBeenLastCalledWith(expect.objectContaining({ status: "sending" }));
@@ -63,7 +65,29 @@ describe("annotated send host integration", () => {
       reason: "send-unavailable",
     });
     expect(composer.textContent).toBe("original question");
+    expect(send).not.toHaveBeenCalled();
     interceptor.dispose();
+  });
+
+  it("waits for asynchronous editor rendering before using an enabled send control", async () => {
+    const composer = installComposer("original question");
+    vi.mocked(document.execCommand).mockReturnValue(true);
+    const send = vi.fn(() => {
+      installUserMessage("submitted-message", composer.textContent ?? "");
+    });
+    installSendButton(send);
+    const host = createChatGptHost({ document, window });
+
+    const result = host.composer.submit({
+      restoreTo: availableComposer(host),
+      signal: new AbortController().signal,
+      text: "compiled prompt",
+    });
+    await Promise.resolve();
+
+    expect(send).not.toHaveBeenCalled();
+    composer.textContent = "compiled prompt";
+    await expect(result).resolves.toEqual({ status: "available", value: "confirmed" });
   });
 
   it("scopes send-control observation to the shared composer surface", async () => {
@@ -81,6 +105,7 @@ describe("annotated send host integration", () => {
       signal: new AbortController().signal,
       text: "compiled prompt",
     });
+    await Promise.resolve();
     expect(observe).toHaveBeenCalledWith(
       fixture.surface,
       expect.objectContaining({ attributes: true, childList: true, subtree: true }),
@@ -139,6 +164,7 @@ describe("annotated send host integration", () => {
       signal: controller.signal,
       text: "message that does not exist",
     });
+    await Promise.resolve();
     await Promise.resolve();
     querySelectorAll.mockClear();
     requestAnimationFrame.mockClear();
