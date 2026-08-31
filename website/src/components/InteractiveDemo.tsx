@@ -6,7 +6,6 @@ import type { DemoCopy } from "@/i18n/content";
 import { SUPPORTED_SITES, type SupportedSiteName } from "@quotecue/shared/supported-sites";
 
 import { formatDemoRemovedNotice } from "./interactive-demo-copy";
-import { compileDemoPrompt } from "./interactive-demo-prompt";
 import { InteractiveDemoEditor } from "./InteractiveDemoEditor";
 import { InteractiveDemoSummary } from "./InteractiveDemoSummary";
 import {
@@ -81,8 +80,7 @@ export function InteractiveDemo({ copy }: InteractiveDemoProps) {
   }
 
   function sendAnnotations() {
-    const prompt = compileDemoPrompt(annotations, copy);
-    dispatch({ type: "start-send", prompt });
+    dispatch({ type: "start-send", locale: copy.locale });
   }
 
   const actionStyle = geometry.action

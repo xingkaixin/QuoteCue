@@ -27,12 +27,12 @@ function reduce(actions: InteractiveDemoAction[]) {
 
 describe("interactive demo state", () => {
   it("replaces clear confirmation with send progress and returns to idle", () => {
-    const prompt = "compiled prompt";
+    const prompt = compileDemoPrompt([annotation()], "en");
     const state = reduce([
       { type: "add-annotation", annotation: annotation() },
       { type: "save-editor" },
       { type: "request-clear" },
-      { type: "start-send", prompt },
+      { type: "start-send", locale: "en" },
       { type: "complete-send" },
     ]);
 
@@ -66,6 +66,76 @@ describe("interactive demo state", () => {
     ]);
 
     expect(state.annotations).toEqual([]);
+  });
+
+  it("preserves the first edit and its cancel behavior when its badge is reopened", () => {
+    const reopened = reduce([
+      { type: "add-annotation", annotation: annotation() },
+      { type: "change-editor-comment", comment: "unsaved note" },
+      { type: "open-editor", annotationId: 1 },
+    ]);
+
+    expect(reopened.editor?.comment).toBe("unsaved note");
+
+    const cancelled = reduceInteractiveDemo(reopened, { type: "cancel-editor" });
+
+    expect(cancelled.annotations).toEqual([]);
+    expect(cancelled.editor).toBeNull();
+  });
+
+  it.each([
+    ["another badge", { type: "open-editor", annotationId: 1 }, 1],
+    ["a new annotation", { type: "add-annotation", annotation: annotation(3) }, 3],
+  ] as const)("saves the current comment before opening %s", (_, action, nextId) => {
+    const switched = reduce([
+      { type: "add-annotation", annotation: annotation(1) },
+      { type: "save-editor" },
+      { type: "add-annotation", annotation: annotation(2) },
+      { type: "change-editor-comment", comment: "  note to preserve  " },
+      action,
+    ]);
+
+    expect(switched.annotations.find(({ id }) => id === 2)?.comment).toBe("note to preserve");
+    expect(switched.editor?.annotationId).toBe(nextId);
+
+    const cancelled = reduceInteractiveDemo(switched, { type: "cancel-editor" });
+
+    expect(cancelled.annotations.find(({ id }) => id === 2)?.comment).toBe("note to preserve");
+  });
+
+  it("preserves the current edit when another annotation is removed", () => {
+    const removed = reduce([
+      { type: "add-annotation", annotation: annotation(1) },
+      { type: "save-editor" },
+      { type: "add-annotation", annotation: annotation(2) },
+      { type: "change-editor-comment", comment: "unfinished note" },
+      { type: "remove-annotation", annotationId: 1 },
+    ]);
+
+    expect(removed.editor?.annotationId).toBe(2);
+    expect(removed.editor?.comment).toBe("unfinished note");
+
+    const saved = reduceInteractiveDemo(removed, { type: "save-editor" });
+
+    expect(saved.annotations).toEqual([annotation(2, "unfinished note")]);
+  });
+
+  it("commits the active comment before compiling and sending the prompt", () => {
+    const sending = reduce([
+      { type: "add-annotation", annotation: annotation() },
+      { type: "change-editor-comment", comment: "  current note  " },
+      { type: "start-send", locale: "en" },
+    ]);
+    const prompt = compileDemoPrompt([annotation(1, "current note")], "en");
+
+    expect(sending.annotations).toEqual([annotation(1, "current note")]);
+    expect(sending.editor).toBeNull();
+    expect(sending.send).toEqual({ kind: "sending", prompt });
+
+    const sent = reduceInteractiveDemo(sending, { type: "complete-send" });
+
+    expect(sent.sentPrompt).toBe(prompt);
+    expect(sent.annotations).toEqual([]);
   });
 
   it("restores a removed annotation at its original position", () => {
@@ -110,7 +180,7 @@ describe("interactive demo state", () => {
       { type: "add-annotation", annotation: second },
       { type: "save-editor" },
       { type: "remove-annotation", annotationId: first.id },
-      { type: "start-send", prompt: "compiled prompt" },
+      { type: "start-send", locale: "en" },
       { type: "complete-send" },
     ]);
     const restored = reduceInteractiveDemo(sent, { type: "undo-removal" });
@@ -118,7 +188,7 @@ describe("interactive demo state", () => {
     expect(restored).toBe(sent);
     expect(restored.annotations).toEqual([]);
     expect(restored.pendingRemovals).toEqual([]);
-    expect(restored.sentPrompt).toBe("compiled prompt");
+    expect(restored.sentPrompt).toBe(compileDemoPrompt([second], "en"));
   });
 
   it("restores consecutive removals in their original order", () => {
@@ -141,11 +211,11 @@ describe("interactive demo state", () => {
   });
 
   it("keeps sending authoritative until it completes", () => {
-    const prompt = "compiled prompt";
+    const prompt = compileDemoPrompt([annotation()], "en");
     const state = reduce([
       { type: "add-annotation", annotation: annotation() },
       { type: "save-editor" },
-      { type: "start-send", prompt },
+      { type: "start-send", locale: "en" },
       { type: "request-clear" },
       { type: "add-annotation", annotation: annotation(2) },
       { type: "remove-annotation", annotationId: 1 },
@@ -173,7 +243,7 @@ describe("interactive demo state", () => {
 
 describe("interactive demo prompt", () => {
   it("uses the same compiled format as the extension", () => {
-    expect(compileDemoPrompt([annotation(1, "my note")], getCopy("en").demo)).toBe(
+    expect(compileDemoPrompt([annotation(1, "my note")], "en")).toBe(
       "Please respond based on the following annotations:\n\n[Annotation 1]\nSelected text: selected\nMy comment: my note",
     );
   });

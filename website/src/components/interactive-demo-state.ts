@@ -1,3 +1,6 @@
+import type { Locale } from "../i18n/locales";
+
+import { compileDemoPrompt } from "./interactive-demo-prompt";
 import type { DemoTextAnchor } from "./interactive-demo-text-anchor";
 
 export type DemoAnnotation = {
@@ -40,7 +43,7 @@ export type InteractiveDemoAction =
   | { type: "request-clear" }
   | { type: "expire-clear" }
   | { type: "expire-undo" }
-  | { type: "start-send"; prompt: string }
+  | { type: "start-send"; locale: Locale }
   | { type: "complete-send" }
   | { type: "set-summary-open"; isOpen: boolean };
 
@@ -59,28 +62,31 @@ export function reduceInteractiveDemo(
   action: InteractiveDemoAction,
 ): InteractiveDemoState {
   switch (action.type) {
-    case "add-annotation":
-      return state.send.kind === "sending"
-        ? state
-        : {
-            ...state,
-            annotations: [...state.annotations, action.annotation],
-            clearArmed: false,
-            editor: {
-              annotationId: action.annotation.id,
-              comment: "",
-              removeOnCancel: true,
-            },
-            sentPrompt: "",
-          };
-    case "open-editor": {
+    case "add-annotation": {
       if (state.send.kind === "sending") {
+        return state;
+      }
+      const saved = saveEditor(state);
+      return {
+        ...saved,
+        annotations: [...saved.annotations, action.annotation],
+        clearArmed: false,
+        editor: {
+          annotationId: action.annotation.id,
+          comment: "",
+          removeOnCancel: true,
+        },
+        sentPrompt: "",
+      };
+    }
+    case "open-editor": {
+      if (state.send.kind === "sending" || state.editor?.annotationId === action.annotationId) {
         return state;
       }
       const annotation = state.annotations.find(({ id }) => id === action.annotationId);
       return annotation
         ? {
-            ...state,
+            ...saveEditor(state),
             editor: {
               annotationId: annotation.id,
               comment: annotation.comment,
@@ -95,17 +101,7 @@ export function reduceInteractiveDemo(
         ? { ...state, editor: { ...state.editor, comment: action.comment } }
         : state;
     case "save-editor":
-      return state.editor
-        ? {
-            ...state,
-            annotations: state.annotations.map((annotation) =>
-              annotation.id === state.editor?.annotationId
-                ? { ...annotation, comment: state.editor.comment.trim() }
-                : annotation,
-            ),
-            editor: null,
-          }
-        : state;
+      return saveEditor(state);
     case "cancel-editor":
       return state.editor
         ? {
@@ -133,7 +129,7 @@ export function reduceInteractiveDemo(
         ...state,
         annotations,
         clearArmed: false,
-        editor: null,
+        editor: state.editor?.annotationId === action.annotationId ? null : state.editor,
         pendingRemovals: [...state.pendingRemovals, { annotation, index }],
         summaryOpen: annotations.length > 0 && state.summaryOpen,
       };
@@ -166,16 +162,18 @@ export function reduceInteractiveDemo(
       return state.clearArmed ? { ...state, clearArmed: false } : state;
     case "expire-undo":
       return state.pendingRemovals.length > 0 ? { ...state, pendingRemovals: [] } : state;
-    case "start-send":
-      return state.annotations.length > 0 && state.send.kind !== "sending"
-        ? {
-            ...state,
-            editor: null,
-            pendingRemovals: [],
-            send: { kind: "sending", prompt: action.prompt },
-            summaryOpen: false,
-          }
-        : state;
+    case "start-send": {
+      if (state.annotations.length === 0 || state.send.kind === "sending") {
+        return state;
+      }
+      const saved = saveEditor(state);
+      return {
+        ...saved,
+        pendingRemovals: [],
+        send: { kind: "sending", prompt: compileDemoPrompt(saved.annotations, action.locale) },
+        summaryOpen: false,
+      };
+    }
     case "complete-send":
       return state.send.kind === "sending"
         ? {
@@ -191,4 +189,20 @@ export function reduceInteractiveDemo(
     case "set-summary-open":
       return state.send.kind === "sending" ? state : { ...state, summaryOpen: action.isOpen };
   }
+}
+
+function saveEditor(state: InteractiveDemoState): InteractiveDemoState {
+  const editor = state.editor;
+  if (!editor) {
+    return state;
+  }
+  return {
+    ...state,
+    annotations: state.annotations.map((annotation) =>
+      annotation.id === editor.annotationId
+        ? { ...annotation, comment: editor.comment.trim() }
+        : annotation,
+    ),
+    editor: null,
+  };
 }
