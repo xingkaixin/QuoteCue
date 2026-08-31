@@ -7,7 +7,11 @@ import { registerSendInterceptor } from "@/features/annotations/register-send-in
 import { createKimiHost } from "@/features/kimi/kimi-host";
 
 import { installSyntheticPasteSupport } from "./fixtures/host-contract";
-import { appendKimiUserMessage, installKimiHostFixture } from "./fixtures/kimi-host";
+import {
+  appendKimiUserMessage,
+  installKimiHostFixture,
+  rebuildKimiUserMessage,
+} from "./fixtures/kimi-host";
 
 beforeEach(() => {
   Object.defineProperty(document, "execCommand", {
@@ -17,6 +21,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   window.getSelection()?.removeAllRanges();
   window.history.replaceState({}, "", "/");
   document.body.replaceChildren();
@@ -131,6 +136,56 @@ describe("Kimi host contract", () => {
       reason: "confirmation-timeout",
     });
     vi.useRealTimers();
+    interceptor.dispose();
+  });
+
+  it.each([undefined, "reconciled-user"])(
+    "does not confirm a matching optimistic baseline rebuilt with id %s",
+    async (messageId) => {
+      vi.useFakeTimers();
+      const fixture = installKimiHostFixture("");
+      fixture.sendControl.classList.remove("disabled");
+      const compiled = compileAnnotatedPrompt(numberAnnotations([annotation()]), "", "zh-CN");
+      const baseline = appendKimiUserMessage(undefined, compiled);
+      fixture.sendControl.addEventListener("click", () => {
+        rebuildKimiUserMessage(baseline, messageId);
+      });
+      const onSendConfirmed = vi.fn();
+      const interceptor = registerSendInterceptor({
+        getSendInput: kimiSendInput,
+        host: createKimiHost({ document, window }),
+        onSendConfirmed,
+      });
+
+      interceptor.submit();
+      await vi.advanceTimersByTimeAsync(15_001);
+
+      expect(onSendConfirmed).not.toHaveBeenCalled();
+      expect(interceptor.state(kimiSendInput().conversationIdentity)).toEqual({
+        status: "failed",
+        reason: "confirmation-timeout",
+      });
+      interceptor.dispose();
+    },
+  );
+
+  it("confirms repeated text when both messages have distinct stable ids", async () => {
+    const fixture = installKimiHostFixture("");
+    fixture.sendControl.classList.remove("disabled");
+    const compiled = compileAnnotatedPrompt(numberAnnotations([annotation()]), "", "zh-CN");
+    appendKimiUserMessage("previous-user", compiled);
+    fixture.sendControl.addEventListener("click", () => {
+      appendKimiUserMessage("new-user", fixture.composer.innerText);
+    });
+    const onSendConfirmed = vi.fn();
+    const interceptor = registerSendInterceptor({
+      getSendInput: kimiSendInput,
+      host: createKimiHost({ document, window }),
+      onSendConfirmed,
+    });
+
+    interceptor.submit();
+    await vi.waitFor(() => expect(onSendConfirmed).toHaveBeenCalledOnce());
     interceptor.dispose();
   });
 

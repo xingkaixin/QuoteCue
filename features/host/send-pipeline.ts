@@ -102,24 +102,36 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
       return () => undefined;
     }
 
+    const expectedText = normalizedRenderedText(options.expectedText);
+    const matchesExpectedText = (message: HTMLElement) =>
+      (message.textContent?.length ?? 0) >= expectedText.length &&
+      normalizedRenderedText(message) === expectedText;
     const initialMessages = userMessages();
-    const existingMessageIds = new Set(
-      initialMessages
-        .map((message) => adapter.messages.id(message))
-        .filter((messageId): messageId is string => messageId !== undefined),
-    );
-    // Messages without a host id have no stable identity, so the only fact that survives
-    // optimistic reconciliation is which nodes already existed when the watcher started.
-    // Reusing an existing node for a new message reads as old, which fails closed.
-    const initialMessageNodes = new WeakSet(initialMessages);
-    const isNewMessage = (message: HTMLElement) => {
+    const existingMessageIds = new Set<string>();
+    let hasMatchingBaseline = false;
+    let hasUnidentifiedMatchingBaseline = false;
+    for (const message of initialMessages) {
       const messageId = adapter.messages.id(message);
       if (messageId) {
-        return !existingMessageIds.has(messageId);
+        existingMessageIds.add(messageId);
       }
-      return !initialMessageNodes.has(message);
+      if (matchesExpectedText(message)) {
+        hasMatchingBaseline = true;
+        hasUnidentifiedMatchingBaseline ||= !messageId;
+      }
+    }
+    const initialMessageNodes = new WeakSet(initialMessages);
+    const isNewMessage = (message: HTMLElement) => {
+      if (initialMessageNodes.has(message)) {
+        return false;
+      }
+      const messageId = adapter.messages.id(message);
+      if (messageId) {
+        return !hasUnidentifiedMatchingBaseline && !existingMessageIds.has(messageId);
+      }
+      // A repeated optimistic message cannot distinguish a new send from reconciliation.
+      return !hasMatchingBaseline;
     };
-    const expectedText = normalizedRenderedText(options.expectedText);
     logger?.(`[QuoteCue host] send confirmation started: existing=${initialMessages.length}`);
     const candidateMessages = new Set<HTMLElement>();
     let confirmationFrame: number | undefined;
@@ -145,10 +157,7 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
         if (!isNewMessage(message)) {
           return false;
         }
-        if ((message.textContent?.length ?? 0) < expectedText.length) {
-          return false;
-        }
-        return normalizedRenderedText(message) === expectedText;
+        return matchesExpectedText(message);
       });
       if (logger) {
         logger(

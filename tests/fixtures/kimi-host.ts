@@ -76,6 +76,15 @@ export function appendKimiAssistantMessage(messageId: string, text: string) {
   return message;
 }
 
+export function rebuildKimiUserMessage(message: HTMLElement, messageId?: string) {
+  const replacement = message.cloneNode(true) as HTMLElement;
+  if (messageId) {
+    replacement.dataset.archerId = messageId;
+  }
+  message.replaceWith(replacement);
+  return replacement;
+}
+
 export function setKimiStreaming(control: HTMLElement, isStreaming: boolean) {
   control.classList.toggle("send-button-container", !isStreaming);
   control.classList.toggle("stop-button-container", isStreaming);
