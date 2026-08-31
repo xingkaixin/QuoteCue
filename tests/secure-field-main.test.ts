@@ -14,7 +14,7 @@ const config = {
   name: "quotecue-annotation-comment",
   placeholder: "Add a comment",
   theme: "dark",
-  value: "private annotation",
+  initialValue: "private annotation",
 } satisfies SecureFieldConfig;
 
 beforeEach(() => {
@@ -84,7 +84,7 @@ describe("secure field frame", () => {
       name: config.name,
       maxLength: config.maxLength,
       placeholder: config.placeholder,
-      value: config.value,
+      value: config.initialValue,
     });
     expect(field.autocomplete).toBe("off");
     expect(document.documentElement.dataset.theme).toBe("dark");
@@ -130,6 +130,8 @@ describe("secure field frame", () => {
     dispatchInit(port);
     const field = secureField();
     const focus = vi.spyOn(field, "focus");
+    field.value = "latest input";
+    field.setSelectionRange(2, 4);
 
     port.receive({
       type: "update",
@@ -138,17 +140,21 @@ describe("secure field frame", () => {
         lang: "zh-CN",
         placeholder: "添加批注",
         theme: "light",
-        value: "remote value",
+        value: "stale parent echo",
       },
     });
     port.receive({ type: "focus" });
 
-    expect(field.value).toBe("remote value");
+    expect(field.value).toBe("latest input");
+    expect(field.selectionStart).toBe(2);
+    expect(field.selectionEnd).toBe(4);
     expect(field.ariaLabel).toBe("批注内容");
     expect(field.placeholder).toBe("添加批注");
     expect(document.documentElement.lang).toBe("zh-CN");
     expect(document.documentElement.dataset.theme).toBe("light");
     expect(focus).toHaveBeenCalledOnce();
+    port.receive({ type: "save" });
+    expect(port.postMessage).toHaveBeenCalledWith({ type: "save", value: "latest input" });
   });
 });
 

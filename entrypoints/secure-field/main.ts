@@ -19,11 +19,14 @@ function connect(event: MessageEvent<unknown>) {
   }
 
   const field = createField(init.config);
+  const save = () => port.postMessage({ type: "save", value: field.value });
   applyUpdate(field, init.config);
   port.onmessage = (message: MessageEvent<unknown>) => {
     const command = decodeSecureFieldCommand(message.data);
     if (command?.type === "focus") {
       field.focus();
+    } else if (command?.type === "save") {
+      save();
     } else if (command?.type === "update") {
       applyUpdate(field, command.update);
     }
@@ -41,7 +44,7 @@ function connect(event: MessageEvent<unknown>) {
     }
     if (isSecureFieldSaveShortcut(keyboardEvent, init.config.kind)) {
       keyboardEvent.preventDefault();
-      port.postMessage({ type: "save", value: field.value });
+      save();
     }
   });
   document.body.replaceChildren(field);
@@ -55,6 +58,7 @@ function createField(config: SecureFieldConfig) {
     field.maxLength = config.maxLength;
   }
   field.name = config.name;
+  field.value = config.initialValue;
   return field;
 }
 
@@ -63,7 +67,4 @@ function applyUpdate(field: HTMLInputElement | HTMLTextAreaElement, update: Secu
   document.documentElement.dataset.theme = update.theme;
   field.setAttribute("aria-label", update.ariaLabel);
   field.placeholder = update.placeholder;
-  if (field.value !== update.value) {
-    field.value = update.value;
-  }
 }

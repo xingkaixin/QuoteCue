@@ -1,9 +1,14 @@
-import { act } from "react";
+import { act, createRef } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { SecureTextField } from "@/features/secure-field/SecureTextField";
+import {
+  SecureTextField,
+  type SecureTextFieldHandle,
+} from "@/features/secure-field/SecureTextField";
 import { I18nProvider, useI18n } from "@/features/i18n/I18nProvider";
+import { siteForHostname } from "@/features/host/site-registry";
+import { HostThemeProvider } from "@/features/theme/HostThemeProvider";
 
 vi.mock("wxt/browser", () => ({
   browser: {
@@ -31,6 +36,7 @@ afterEach(() => {
   });
   document.body.replaceChildren();
   document.documentElement.lang = "";
+  document.documentElement.removeAttribute("data-theme");
   vi.restoreAllMocks();
 });
 
@@ -55,7 +61,7 @@ describe("SecureTextField", () => {
           onChange={onChange}
           onSave={onSave}
           placeholder="Add a comment"
-          value="private annotation"
+          initialValue="private annotation"
         />,
       );
     });
@@ -84,7 +90,7 @@ describe("SecureTextField", () => {
         config: expect.objectContaining({
           name: "quotecue-annotation-comment",
           theme: "light",
-          value: "private annotation",
+          initialValue: "private annotation",
         }),
       }),
       "https://extension.test",
@@ -109,7 +115,7 @@ describe("SecureTextField", () => {
           onChange={onChange}
           onSave={onSave}
           placeholder="Updated placeholder"
-          value="updated annotation"
+          initialValue="updated annotation"
         />,
       );
     });
@@ -128,6 +134,7 @@ describe("SecureTextField", () => {
       expect.objectContaining({
         config: expect.objectContaining({
           kind: "input",
+          initialValue: "updated annotation",
           maxLength: 32,
           name: "renamed-field",
         }),
@@ -140,13 +147,81 @@ describe("SecureTextField", () => {
     await act(async () => root.unmount());
   });
 
-  it("updates the isolated field when the host language changes", async () => {
+  it("does not echo stale changes and asks the frame for the saved value", async () => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    const fieldRef = createRef<SecureTextFieldHandle>();
+    const onChange = vi.fn();
+    const onSave = vi.fn();
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    const renderField = (initialValue: string) =>
+      root.render(
+        <SecureTextField
+          ariaLabel="Annotation content"
+          initialValue={initialValue}
+          kind="textarea"
+          name="quotecue-annotation-comment"
+          onCancel={vi.fn()}
+          onChange={onChange}
+          onSave={onSave}
+          placeholder="Add a comment"
+          ref={fieldRef}
+        />,
+      );
+
+    await act(async () => renderField("initial annotation"));
+    const iframe = container.querySelector("iframe");
+    if (!iframe?.contentWindow) {
+      throw new Error("Expected secure field iframe");
+    }
+    const postMessage = vi.spyOn(iframe.contentWindow, "postMessage").mockImplementation(() => {});
+    markExtensionFrameLoaded(iframe);
+    await act(async () => iframe.dispatchEvent(new Event("load")));
+    const channel = FakeMessageChannel.instances[0];
+    if (!channel) {
+      throw new Error("Expected secure field channel");
+    }
+    const receive = vi.fn();
+    channel.port2.onmessage = (event) => receive(event.data);
+
+    await act(async () => {
+      channel.port2.postMessage({ type: "change", value: "a" });
+      renderField("a");
+    });
+
+    expect(onChange).toHaveBeenCalledWith("a");
+    expect(container.querySelector("iframe")).toBe(iframe);
+    expect(postMessage).toHaveBeenCalledOnce();
+    expect(receive).not.toHaveBeenCalled();
+
+    await act(async () => fieldRef.current?.save());
+
+    expect(receive).toHaveBeenCalledWith({ type: "save" });
+    expect(onSave).not.toHaveBeenCalled();
+    channel.port2.postMessage({ type: "save", value: "ab" });
+    expect(onSave).toHaveBeenCalledWith("ab");
+
+    await act(async () => root.unmount());
+  });
+
+  it("updates language and theme without sending text to the isolated field", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     const container = document.createElement("div");
     document.body.append(container);
     const root = createRoot(container);
 
-    await act(async () => root.render(<LocalizedSecureTextField />));
+    const site = siteForHostname("chatgpt.com");
+    if (!site) {
+      throw new Error("Expected ChatGPT site registration");
+    }
+    await act(async () =>
+      root.render(
+        <HostThemeProvider accentTokens={site.accentTokens} container={container}>
+          <LocalizedSecureTextField />
+        </HostThemeProvider>,
+      ),
+    );
     const iframe = container.querySelector("iframe");
     if (!iframe?.contentWindow) {
       throw new Error("Expected secure field iframe");
@@ -168,13 +243,29 @@ describe("SecureTextField", () => {
     });
 
     expect(iframe.lang).toBe("ja");
-    expect(receive).toHaveBeenCalledWith({
+    expect(receive).toHaveBeenLastCalledWith({
       type: "update",
-      update: expect.objectContaining({
+      update: {
         ariaLabel: "注釈の内容",
         lang: "ja",
         placeholder: "任意のコメントを追加…",
-      }),
+        theme: "light",
+      },
+    });
+
+    await act(async () => {
+      document.documentElement.dataset.theme = "dark";
+      await Promise.resolve();
+    });
+
+    expect(receive).toHaveBeenLastCalledWith({
+      type: "update",
+      update: {
+        ariaLabel: "注釈の内容",
+        lang: "ja",
+        placeholder: "任意のコメントを追加…",
+        theme: "dark",
+      },
     });
 
     await act(async () => root.unmount());
@@ -204,7 +295,7 @@ function LocalizedField() {
       onChange={vi.fn()}
       onSave={vi.fn()}
       placeholder={messages.optionalComment}
-      value=""
+      initialValue="private annotation"
     />
   );
 }

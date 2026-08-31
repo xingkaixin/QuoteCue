@@ -15,16 +15,24 @@ vi.mock("@/features/secure-field/SecureTextField", async () => {
     onCancel: () => void;
     onChange: (value: string) => void;
     placeholder: string;
-    value: string;
+    initialValue: string;
+    onSave: (value: string) => void;
   };
   return {
-    SecureTextField: forwardRef<{ focus: () => void }, FakeSecureFieldProps>(
+    SecureTextField: forwardRef<{ focus: () => void; save: () => void }, FakeSecureFieldProps>(
       function FakeSecureTextField(
-        { ariaLabel, className, name, onCancel, onChange, placeholder, value },
+        { ariaLabel, className, initialValue, name, onCancel, onChange, onSave, placeholder },
         ref,
       ) {
         const fieldRef = useRef<HTMLInputElement>(null);
-        useImperativeHandle(ref, () => ({ focus: () => fieldRef.current?.focus() }), []);
+        useImperativeHandle(
+          ref,
+          () => ({
+            focus: () => fieldRef.current?.focus(),
+            save: () => onSave(fieldRef.current?.value ?? ""),
+          }),
+          [onSave],
+        );
         useEffect(() => fieldRef.current?.focus(), []);
         return (
           <input
@@ -39,7 +47,7 @@ vi.mock("@/features/secure-field/SecureTextField", async () => {
             }}
             placeholder={placeholder}
             ref={fieldRef}
-            value={value}
+            defaultValue={initialValue}
           />
         );
       },

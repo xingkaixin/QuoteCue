@@ -23,6 +23,7 @@ import {
 
 export type SecureTextFieldHandle = {
   focus: () => void;
+  save: () => void;
 };
 
 type SecureTextFieldProps = Omit<SecureFieldConfig, "lang" | "theme"> & {
@@ -34,7 +35,18 @@ type SecureTextFieldProps = Omit<SecureFieldConfig, "lang" | "theme"> & {
 
 export const SecureTextField = forwardRef<SecureTextFieldHandle, SecureTextFieldProps>(
   function SecureTextField(
-    { ariaLabel, className, kind, maxLength, name, onCancel, onChange, onSave, placeholder, value },
+    {
+      ariaLabel,
+      className,
+      initialValue,
+      kind,
+      maxLength,
+      name,
+      onCancel,
+      onChange,
+      onSave,
+      placeholder,
+    },
     ref,
   ) {
     const { locale } = useI18n();
@@ -46,21 +58,21 @@ export const SecureTextField = forwardRef<SecureTextFieldHandle, SecureTextField
     const portRef = useRef<MessagePort | null>(null);
     const configRef = useRef<SecureFieldConfig>({
       ariaLabel,
+      initialValue,
       kind,
       lang: locale,
       maxLength,
       name,
       placeholder,
       theme,
-      value,
     });
     const handlersRef = useRef({ onCancel, onChange, onSave });
 
     const update = useMemo<SecureFieldUpdate>(
-      () => ({ ariaLabel, lang: locale, placeholder, theme, value }),
-      [ariaLabel, locale, placeholder, theme, value],
+      () => ({ ariaLabel, lang: locale, placeholder, theme }),
+      [ariaLabel, locale, placeholder, theme],
     );
-    configRef.current = { ...update, kind, maxLength, name };
+    configRef.current = { ...update, initialValue, kind, maxLength, name };
     handlersRef.current = { onCancel, onChange, onSave };
 
     const handleFieldEvent = useCallback((event: MessageEvent<unknown>) => {
@@ -113,6 +125,9 @@ export const SecureTextField = forwardRef<SecureTextFieldHandle, SecureTextField
       () => ({
         focus() {
           portRef.current?.postMessage({ type: "focus" });
+        },
+        save() {
+          portRef.current?.postMessage({ type: "save" });
         },
       }),
       [],

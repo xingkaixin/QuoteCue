@@ -79,6 +79,17 @@ test("sends an annotation through the loaded extension", async ({ context, exten
   const page = await openConversation(context, "conversation-send");
   await addAnnotation(page);
   await expect
+    .poll(() => page.frames().some((candidate) => candidate.url().includes("secure-field.html")))
+    .toBe(true);
+  const frame = page.frames().find((candidate) => candidate.url().includes("secure-field.html"))!;
+  const field = frame.locator("input");
+  await field.fill("Explain this fixture answer");
+  await field.press("Tab");
+  await page.keyboard.press("Enter");
+  await expect
+    .poll(() => page.frames().some((candidate) => candidate.url().includes("secure-field.html")))
+    .toBe(false);
+  await expect
     .poll(() => storedAnnotationCount(extensionWorker, draftKey("conversation-send")))
     .toBe(1);
   await expect
@@ -92,6 +103,7 @@ test("sends an annotation through the loaded extension", async ({ context, exten
   const sentMessage = page.locator('[data-message-author-role="user"]');
   await expect(sentMessage).toContainText("[Annotation 1]");
   await expect(sentMessage).toContainText("A focused answer for the browser smoke test.");
+  await expect(sentMessage).toContainText("Explain this fixture answer");
   await expect(sentMessage).toContainText("Supplemental question");
   await expect
     .poll(() => storedAnnotationCount(extensionWorker, draftKey("conversation-send")))
