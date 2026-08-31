@@ -41,25 +41,22 @@ function resolveTextAnchor(messageText: string, anchor: TextAnchor) {
   if (anchor.quote.length === 0) {
     return null;
   }
-  if (messageText.slice(anchor.start, anchor.end) === anchor.quote) {
-    return { quote: anchor.quote, start: anchor.start };
+  const positionalQuote =
+    anchor.format === "legacy-rendered" ? legacyPositionalQuote(messageText, anchor) : null;
+  const quote = positionalQuote ?? anchor.quote;
+  // Legacy whitespace compatibility must not hide an existing stored-quote candidate.
+  if (quote !== anchor.quote && messageText.includes(anchor.quote)) {
+    return null;
   }
 
-  if (anchor.format === "legacy-rendered") {
-    const positionalQuote = legacyPositionalQuote(messageText, anchor);
-    if (positionalQuote !== null) {
-      return { quote: positionalQuote, start: anchor.start };
-    }
-  }
-
-  const candidates = quoteOffsets(messageText, anchor.quote);
+  const candidates = quoteOffsets(messageText, quote);
   const uniqueCandidate = candidates.length === 1 ? candidates[0] : undefined;
   if (uniqueCandidate !== undefined) {
-    return { quote: anchor.quote, start: uniqueCandidate };
+    return { quote, start: uniqueCandidate };
   }
 
-  const start = uniqueContextMatch(messageText, anchor, candidates);
-  return start < 0 ? null : { quote: anchor.quote, start };
+  const start = uniqueContextMatch(messageText, anchor, quote.length, candidates);
+  return start < 0 ? null : { quote, start };
 }
 
 function legacyPositionalQuote(messageText: string, anchor: TextAnchor) {
@@ -95,7 +92,12 @@ function quoteOffsets(text: string, quote: string) {
   return offsets;
 }
 
-function uniqueContextMatch(messageText: string, anchor: TextAnchor, candidates: number[]) {
+function uniqueContextMatch(
+  messageText: string,
+  anchor: TextAnchor,
+  quoteLength: number,
+  candidates: number[],
+) {
   let bestOffset = -1;
   let bestScore = 0;
   let bestCount = 0;
@@ -103,7 +105,7 @@ function uniqueContextMatch(messageText: string, anchor: TextAnchor, candidates:
   for (const candidate of candidates) {
     const prefixStart = Math.max(0, candidate - anchor.prefix.length);
     const prefix = messageText.slice(prefixStart, candidate);
-    const suffixStart = candidate + anchor.quote.length;
+    const suffixStart = candidate + quoteLength;
     const suffix = messageText.slice(suffixStart, suffixStart + anchor.suffix.length);
     const prefixScore = matchingEdgeLength(prefix, anchor.prefix, "end");
     const suffixScore = matchingEdgeLength(suffix, anchor.suffix, "start");
