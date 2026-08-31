@@ -93,6 +93,10 @@ conversation data:
 - Leave an unidentified conversation and confirm its draft is kept separate. Restore it explicitly
   into the chosen conversation, or discard it through confirmation, before reloading the page.
 - Navigate to another conversation and back; confirm drafts remain isolated to their conversation.
+- Open the same conversation in two tabs; confirm saved edits and confirmed-send cleanup appear
+  in the other tab without reloading, while drafts in other conversations remain unchanged.
+- While editing an annotation in one tab, remove it from the other tab; confirm the unfinished
+  input remains available to cancel or explicitly save as a new annotation.
 - Send an annotated message and confirm the pending state clears only after the matching user
   message appears. Simulate or observe a send failure and confirm the draft remains recoverable.
 - Delete an annotation and undo it, then clear all annotations through the confirmation dialog.

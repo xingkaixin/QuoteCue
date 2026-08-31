@@ -196,6 +196,8 @@ describe("AnnotationEditor", () => {
       root.render(
         <HostTestProvider>
           <AnnotationEditor
+            canSave
+            sourceRemoved={false}
             annotation={annotation}
             bindSession={bindSession}
             onCancel={vi.fn()}
@@ -414,6 +416,8 @@ function editor(
   return (
     <HostTestProvider host={host}>
       <AnnotationEditor
+        canSave
+        sourceRemoved={false}
         annotation={annotation}
         bindSession={actions.bindSession ?? (() => undefined)}
         onCancel={onCancel}

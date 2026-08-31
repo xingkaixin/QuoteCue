@@ -53,25 +53,31 @@ export default function App() {
 
         {editor.status === "quick" && activeProjection?.resolution === "resolved" && (
           <AnnotationQuickInput
+            canSave={editor.canSave}
             bindSession={editor.bindSession}
             key={activeProjection.annotation.id}
             onClose={editor.close}
             onSave={editor.save}
             rect={activeProjection.geometry.rect}
+            sourceRemoved={editor.sourceRemoved}
           />
         )}
 
-        {editor.status === "expanded" && activeProjection?.resolution === "resolved" && (
-          <AnnotationEditor
-            annotation={activeProjection.annotation}
-            bindSession={editor.bindSession}
-            key={activeProjection.annotation.id}
-            onCancel={editor.close}
-            onDelete={editor.delete}
-            onSave={editor.save}
-            rect={activeProjection.geometry.rect}
-          />
-        )}
+        {editor.status === "expanded" &&
+          editor.annotation &&
+          activeProjection?.resolution === "resolved" && (
+            <AnnotationEditor
+              canSave={editor.canSave}
+              annotation={editor.annotation}
+              bindSession={editor.bindSession}
+              key={activeProjection.annotation.id}
+              onCancel={editor.close}
+              onDelete={editor.delete}
+              onSave={editor.save}
+              rect={activeProjection.geometry.rect}
+              sourceRemoved={editor.sourceRemoved}
+            />
+          )}
 
         {summary.annotations.map((projection) => {
           if (projection.resolution !== "resolved") {

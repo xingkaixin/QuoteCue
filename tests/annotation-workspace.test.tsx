@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { DraftAnnotation } from "@/features/annotations/annotation";
+import { MAX_DRAFT_ANNOTATIONS } from "@/features/annotations/draft-capacity";
 import { DraftRuntimeProvider } from "@/features/annotations/DraftRuntimeProvider";
 import { useAnnotationWorkspace } from "@/features/annotations/use-annotation-workspace";
 import { HostProvider } from "@/features/host-port/HostProvider";
@@ -96,6 +97,146 @@ describe("annotation workspace", () => {
     await act(async () => workspace.summary.open(projection));
     expect(request).not.toHaveBeenCalled();
     expect(workspace.editor.status).toBe("expanded");
+    await act(async () => mounted.root.unmount());
+  });
+
+  it("keeps an editor snapshot through remote changes and saves a removed source as a new annotation", async () => {
+    const conversation = { kind: "identified", id: "conversation-a", siteId: "chatgpt" } as const;
+    const original = { ...annotation, comment: "original comment" };
+    const other = { ...annotation, id: "annotation-two", comment: "other comment" };
+    await draftStoreFixture.store.mutate(conversation, [
+      { kind: "add", annotation: original },
+      { kind: "add", annotation: other },
+    ]);
+    const mounted = await mountWorkspace();
+    const submit = vi.spyOn(mounted.host.composer, "submit");
+    await act(async () => new Promise(requestAnimationFrame));
+    await act(async () => workspace.summary.open(workspace.summary.annotations[0]!));
+
+    await act(async () => {
+      await draftStoreFixture.store.mutate(conversation, [
+        { kind: "update", annotationId: original.id, comment: "remote comment" },
+      ]);
+    });
+    expect(workspace.summary.annotations[0]?.annotation.comment).toBe("remote comment");
+    expect(workspace.editor.annotation).toEqual(original);
+    expect(workspace.editor.sourceRemoved).toBe(false);
+
+    await act(async () => {
+      await draftStoreFixture.store.mutate(conversation, [
+        { kind: "discard", annotationIds: [original.id] },
+      ]);
+    });
+    expect(workspace.editor.status).toBe("expanded");
+    expect(workspace.editor.sourceRemoved).toBe(true);
+    expect(workspace.editor.projection).toMatchObject({
+      annotation: original,
+      resolution: "resolved",
+    });
+    expect(workspace.summary.annotations.map((entry) => entry.annotation)).toEqual([other]);
+
+    await act(async () => workspace.summary.send());
+    expect(submit).toHaveBeenCalledOnce();
+    expect(submit.mock.calls[0]?.[0].text).toContain(other.comment);
+    expect(submit.mock.calls[0]?.[0].text).not.toContain(original.comment);
+    expect(workspace.summary.annotations).toEqual([]);
+    expect(workspace.summary.isVisible).toBe(false);
+    expect(workspace.editor.status).toBe("expanded");
+    expect(workspace.editor.sourceRemoved).toBe(true);
+
+    await act(async () => workspace.summary.send());
+    expect(submit).toHaveBeenCalledOnce();
+
+    await act(async () => workspace.editor.save("unsaved local comment"));
+    expect(workspace.editor.status).toBe("hidden");
+    const saved = (await draftStoreFixture.store.load(conversation)).annotations;
+    expect(saved).toEqual([
+      { anchor: original.anchor, comment: "unsaved local comment", id: expect.any(String) },
+    ]);
+    expect(saved[0]?.id).not.toBe(original.id);
+    await act(async () => mounted.root.unmount());
+  });
+
+  it("keeps a removed-source editor when adding is rejected and allows explicit dismissal", async () => {
+    const conversation = { kind: "identified", id: "conversation-a", siteId: "chatgpt" } as const;
+    await draftStoreFixture.store.mutate(conversation, [{ kind: "add", annotation }]);
+    const mounted = await mountWorkspace();
+    await act(async () => new Promise(requestAnimationFrame));
+    await act(async () => workspace.summary.open(workspace.summary.annotations[0]!));
+    await act(async () => {
+      await draftStoreFixture.store.mutate(conversation, [
+        { kind: "discard", annotationIds: [annotation.id] },
+        ...Array.from({ length: MAX_DRAFT_ANNOTATIONS }, (_, index) => ({
+          kind: "add" as const,
+          annotation: { ...annotation, id: `remote-${index}` },
+        })),
+      ]);
+    });
+    const writes = draftStoreFixture.store.mutate.mock.calls.length;
+
+    await act(async () => workspace.editor.save("local edit"));
+    expect(workspace.draft.capacityExceeded).toBe(true);
+    expect(workspace.editor.status).toBe("expanded");
+    expect(workspace.editor.sourceRemoved).toBe(true);
+    expect(draftStoreFixture.store.mutate).toHaveBeenCalledTimes(writes);
+
+    await act(async () => workspace.editor.delete());
+    expect(workspace.editor.status).toBe("hidden");
+    expect(workspace.summary.annotations).toHaveLength(MAX_DRAFT_ANNOTATIONS);
+    expect(workspace.summary.pendingDeletionCount).toBe(0);
+    expect(draftStoreFixture.store.mutate).toHaveBeenCalledTimes(writes);
+    await act(async () => mounted.root.unmount());
+  });
+
+  it("preserves the editor through refresh failure and retry without allowing writes or sends", async () => {
+    const conversation = { kind: "identified", id: "conversation-a", siteId: "chatgpt" } as const;
+    await draftStoreFixture.store.mutate(conversation, [{ kind: "add", annotation }]);
+    const mounted = await mountWorkspace();
+    const submit = vi.spyOn(mounted.host.composer, "submit");
+    await act(async () => new Promise(requestAnimationFrame));
+    await act(async () => workspace.summary.open(workspace.summary.annotations[0]!));
+
+    draftStoreFixture.store.load.mockRejectedValueOnce(new Error("Refresh unavailable"));
+    await act(async () => {
+      await draftStoreFixture.store.mutate(conversation, [
+        { kind: "update", annotationId: annotation.id, comment: "remote comment" },
+      ]);
+    });
+    expect(workspace.draft.state).toMatchObject({ status: "error", operation: "load" });
+    expect(workspace.editor.projection).toMatchObject({ annotation, resolution: "resolved" });
+    expect(workspace.editor.canSave).toBe(false);
+    expect(workspace.editor.sourceRemoved).toBe(false);
+    expect(workspace.summary.annotations).toEqual([]);
+    const writes = draftStoreFixture.store.mutate.mock.calls.length;
+
+    await act(async () => {
+      workspace.summary.send();
+      workspace.editor.save("local edit");
+      workspace.editor.delete();
+    });
+    expect(submit).not.toHaveBeenCalled();
+    expect(draftStoreFixture.store.mutate).toHaveBeenCalledTimes(writes);
+    expect(workspace.editor.status).toBe("expanded");
+
+    let completeRetry: (result: ReturnType<typeof draftResult>) => void = () => undefined;
+    draftStoreFixture.store.load.mockImplementationOnce(
+      () => new Promise((resolve) => (completeRetry = resolve)),
+    );
+    await act(async () => workspace.draft.retry());
+    expect(workspace.editor.status).toBe("expanded");
+    expect(workspace.editor.projection?.resolution).toBe("resolved");
+    expect(workspace.editor.canSave).toBe(false);
+
+    await act(async () =>
+      completeRetry(draftResult([{ ...annotation, comment: "remote comment" }])),
+    );
+    expect(workspace.editor.annotation).toEqual(annotation);
+    expect(workspace.editor.canSave).toBe(true);
+    await act(async () => workspace.editor.save("local edit"));
+    expect(workspace.editor.status).toBe("hidden");
+    expect((await draftStoreFixture.store.load(conversation)).annotations).toEqual([
+      { ...annotation, comment: "local edit" },
+    ]);
     await act(async () => mounted.root.unmount());
   });
 
@@ -246,7 +387,6 @@ describe("annotation workspace", () => {
   });
 
   it("closes an active editor after annotation resolution fails", async () => {
-    draftStoreFixture.store.load.mockResolvedValue(draftResult([]));
     const mounted = await mountWorkspace();
     mounted.host.controls.setMessageIndex(new Map());
 

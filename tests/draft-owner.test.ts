@@ -8,9 +8,18 @@ import {
 import { createDraftPersistence } from "@/features/annotations/draft-persistence";
 import { createDraftRuntime, visibleDraftSnapshot } from "@/features/annotations/draft-runtime";
 import { createDraftOwner } from "@/features/annotations/draft-owner";
+import { createBrowserDraftStore } from "@/features/annotations/draft-store-client";
+import type { DraftOwnerRequest } from "@/features/annotations/draft-owner-protocol";
 
 const extensionStorage = vi.hoisted(() => {
   let values: Record<string, unknown> = {};
+  const listeners = new Set<(changes: Record<string, unknown>, areaName: string) => void>();
+  const changed = (keys: readonly string[]) => {
+    if (keys.length > 0) {
+      const changes = Object.fromEntries(keys.map((key) => [key, {}]));
+      for (const listener of listeners) listener(changes, "local");
+    }
+  };
 
   return {
     get: vi.fn(async (keys: string[] | null) =>
@@ -19,14 +28,27 @@ const extensionStorage = vi.hoisted(() => {
         : Object.fromEntries(keys.filter((key) => key in values).map((key) => [key, values[key]])),
     ),
     getKeys: vi.fn(async () => Object.keys(values)),
-    set: vi.fn(async (updates: Record<string, unknown>) => Object.assign(values, updates)),
+    set: vi.fn(async (updates: Record<string, unknown>) => {
+      Object.assign(values, updates);
+      changed(Object.keys(updates));
+    }),
     remove: vi.fn(async (keys: string | string[]) => {
+      const removed: string[] = [];
       for (const key of Array.isArray(keys) ? keys : [keys]) {
+        if (key in values) removed.push(key);
         delete values[key];
       }
+      changed(removed);
     }),
+    onChanged: {
+      addListener: (listener: (changes: Record<string, unknown>, areaName: string) => void) =>
+        listeners.add(listener),
+      removeListener: (listener: (changes: Record<string, unknown>, areaName: string) => void) =>
+        listeners.delete(listener),
+    },
     reset(nextValues: Record<string, unknown> = {}) {
       values = structuredClone(nextValues);
+      listeners.clear();
       this.get.mockClear();
       this.getKeys.mockClear();
       this.set.mockClear();
@@ -40,9 +62,13 @@ const extensionStorage = vi.hoisted(() => {
     },
   };
 });
+const sendMessage = vi.hoisted(() => vi.fn());
 
 vi.mock("wxt/browser", () => ({
-  browser: { storage: { local: extensionStorage } },
+  browser: {
+    runtime: { sendMessage },
+    storage: { local: extensionStorage, onChanged: extensionStorage.onChanged },
+  },
 }));
 
 const currentKey = "quotecue:draft:chatgpt:A";
@@ -79,19 +105,57 @@ let draftStore = createDraftOwner();
 beforeEach(() => {
   extensionStorage.reset();
   draftStore = createDraftOwner();
+  sendMessage.mockImplementation(async (message: DraftOwnerRequest) =>
+    message.kind === "load"
+      ? { kind: "loaded", draft: await draftStore.load(message.conversation) }
+      : {
+          kind: "mutated",
+          result: await draftStore.mutate(message.conversation, message.mutations),
+        },
+  );
   vi.spyOn(Date, "now").mockReturnValue(NOW);
 });
 
 afterEach(() => vi.restoreAllMocks());
 
 describe("draft storage", () => {
+  it("refreshes another subscribed client after send confirmation removes their shared draft", async () => {
+    extensionStorage.reset({ [currentKey]: envelope });
+    const first = createDraftRuntime(createDraftPersistence(createBrowserDraftStore()));
+    const second = createDraftRuntime(createDraftPersistence(createBrowserDraftStore()));
+    const stopFirst = first.subscribe(() => undefined);
+    const states: (string | undefined)[] = [];
+    const stopSecond = second.subscribe(() => states.push(second.getSnapshot().draftState?.status));
+    first.activate(conversationA);
+    second.activate(conversationA);
+    await vi.waitFor(() => {
+      expect(first.getSnapshot().draftState).toMatchObject({
+        status: "ready",
+        annotations: [annotation],
+      });
+      expect(second.getSnapshot().draftState).toMatchObject({
+        status: "ready",
+        annotations: [annotation],
+      });
+    });
+    states.length = 0;
+    first.removeConfirmed(conversationA, conversationA, [annotation]);
+    await vi.waitFor(() =>
+      expect(second.getSnapshot().draftState).toMatchObject({ status: "ready", annotations: [] }),
+    );
+    expect(states).not.toContain("loading");
+    expect(extensionStorage.snapshot()).toEqual({});
+    stopFirst();
+    stopSecond();
+  });
+
   it.each([{ readable: [] }, { readable: [annotation] }])(
     "recovers an unreadable draft through the runtime clear path: %#",
     async ({ readable }) => {
       extensionStorage.reset({
         [currentKey]: { ...envelope, annotations: [...readable, { id: "unreadable" }] },
       });
-      const runtime = createDraftRuntime(createDraftPersistence(draftStore));
+      const runtime = createDraftRuntime(createDraftPersistence(createBrowserDraftStore()));
       const unsubscribe = runtime.subscribe(() => undefined);
       runtime.activate(conversationA);
       await vi.waitFor(() =>
@@ -127,7 +191,7 @@ describe("draft storage", () => {
       id: `stored-${index}`,
     }));
     extensionStorage.reset({ [currentKey]: { ...envelope, annotations } });
-    const runtime = createDraftRuntime(createDraftPersistence(draftStore));
+    const runtime = createDraftRuntime(createDraftPersistence(createBrowserDraftStore()));
     const unsubscribe = runtime.subscribe(() => undefined);
     runtime.activate(conversationA);
     await vi.waitFor(() => expect(runtime.getSnapshot().draftState?.status).toBe("ready"));
@@ -152,7 +216,7 @@ describe("draft storage", () => {
       id: `stored-${index}`,
     }));
     extensionStorage.reset({ [currentKey]: { ...envelope, annotations: stored } });
-    const runtime = createDraftRuntime(createDraftPersistence(draftStore));
+    const runtime = createDraftRuntime(createDraftPersistence(createBrowserDraftStore()));
     const unsubscribe = runtime.subscribe(() => undefined);
     const unidentified = { kind: "unidentified", sessionKey: "source-session" } as const;
     const second = { ...annotation, id: "second-retained" };

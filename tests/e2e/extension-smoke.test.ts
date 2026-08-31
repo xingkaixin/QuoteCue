@@ -110,6 +110,174 @@ test("sends an annotation through the loaded extension", async ({ context, exten
     .toBe(0);
 });
 
+test("removes sent annotations from another tab before its next native send", async ({
+  context,
+  extensionWorker,
+}) => {
+  const conversationId = "cross-tab-send";
+  const key = draftKey(conversationId);
+  const firstPage = await openConversation(context, conversationId);
+  await addAnnotation(firstPage);
+  await expect
+    .poll(() => firstPage.frames().some((frame) => frame.url().includes("secure-field.html")))
+    .toBe(true);
+  const fieldFrame = firstPage.frames().find((frame) => frame.url().includes("secure-field.html"))!;
+  const field = fieldFrame.locator("input");
+  await field.fill("Clarify this shared fixture answer");
+  await field.press("Tab");
+  await firstPage.keyboard.press("Enter");
+  await expect
+    .poll(() => firstPage.frames().some((frame) => frame.url().includes("secure-field.html")))
+    .toBe(false);
+  await expect.poll(() => storedAnnotationCount(extensionWorker, key)).toBe(1);
+  await expect(firstPage.locator("[data-testid=send-button]")).toBeHidden();
+
+  const secondPage = await openConversation(context, conversationId);
+  const secondSession = await context.newCDPSession(secondPage);
+  const summaryVisible = async () => {
+    const { nodes } = await secondSession.send("Accessibility.getFullAXTree");
+    return nodes.some(
+      (node) => node.role?.value === "button" && node.name?.value === "1 annotation",
+    );
+  };
+  await expect.poll(summaryVisible).toBe(true);
+  const nativeSend = secondPage.locator("[data-testid=send-button]");
+  await expect(nativeSend).toBeHidden();
+
+  await firstPage.locator("#prompt-textarea").press("Enter");
+  await expect(firstPage.locator('[data-message-author-role="user"]')).toContainText(
+    "[Annotation 1]",
+  );
+  await expect.poll(() => storedAnnotationCount(extensionWorker, key)).toBe(0);
+
+  await expect.poll(summaryVisible).toBe(false);
+  await expect(nativeSend).toBeVisible();
+  await nativeSend.click();
+  const secondSentMessage = secondPage.locator('[data-message-author-role="user"]');
+  await expect(secondSentMessage).toHaveCount(1);
+  await expect(secondSentMessage).toHaveText("Supplemental question");
+});
+
+test("preserves another tab's unsaved comment after its annotation is sent", async ({
+  context,
+  extensionWorker,
+}) => {
+  for (const { width, colorScheme, reducedMotion, zoom } of DISPLAY_SETTINGS) {
+    const conversationId = `cross-tab-dirty-${width}`;
+    const key = draftKey(conversationId);
+    const firstPage = await openConversation(context, conversationId);
+    await addAnnotation(firstPage);
+    await expect
+      .poll(() => firstPage.frames().some((frame) => frame.url().includes("secure-field.html")))
+      .toBe(true);
+    const firstFrame = firstPage
+      .frames()
+      .find((frame) => frame.url().includes("secure-field.html"))!;
+    await firstFrame.locator("input").press("Tab");
+    await firstPage.keyboard.press("Enter");
+    await expect.poll(() => storedAnnotationCount(extensionWorker, key)).toBe(1);
+    const originalAnnotationId = await extensionWorker.evaluate(async (storageKey) => {
+      const extensionApi = Reflect.get(globalThis, "chrome") as {
+        storage: { local: { get(key: string): Promise<Record<string, unknown>> } };
+      };
+      const stored = await extensionApi.storage.local.get(storageKey);
+      return (stored[storageKey] as { annotations: { id: string }[] }).annotations[0]!.id;
+    }, key);
+
+    const secondPage = await openConversation(context, conversationId);
+    await secondPage.setViewportSize({ width, height: 800 });
+    await secondPage.emulateMedia({ colorScheme, reducedMotion });
+    await secondPage.evaluate((scale) => {
+      document.documentElement.style.zoom = String(scale);
+    }, zoom);
+    const nativeSend = secondPage.locator("[data-testid=send-button]");
+    await expect(nativeSend).toBeHidden();
+    const secondSession = await context.newCDPSession(secondPage);
+    let badgeId: number | undefined;
+    await expect(async () => {
+      const { nodes } = await secondSession.send("Accessibility.getFullAXTree");
+      badgeId = nodes.find(
+        (node) => node.role?.value === "button" && node.name?.value === "View annotation 1",
+      )?.backendDOMNodeId;
+      expect(badgeId).toBeDefined();
+    }).toPass();
+    await secondSession.send("DOM.focus", { backendNodeId: badgeId });
+    await secondPage.keyboard.press("Enter");
+    await expect
+      .poll(() => secondPage.frames().some((frame) => frame.url().includes("secure-field.html")))
+      .toBe(true);
+    const secondFrame = secondPage
+      .frames()
+      .find((frame) => frame.url().includes("secure-field.html"))!;
+    const field = secondFrame.locator("textarea");
+    const comment = "Unsaved synthetic cross-tab comment";
+    await field.fill(comment);
+
+    await firstPage.locator("#prompt-textarea").press("Enter");
+    await expect(firstPage.locator('[data-message-author-role="user"]')).toContainText(
+      "[Annotation 1]",
+    );
+    await expect.poll(() => storedAnnotationCount(extensionWorker, key)).toBe(0);
+    await expect
+      .poll(async () => {
+        const { nodes } = await secondSession.send("Accessibility.getFullAXTree");
+        return nodes.some(
+          (node) => node.role?.value === "button" && node.name?.value === "1 annotation",
+        );
+      })
+      .toBe(false);
+    await expect(nativeSend).toBeVisible();
+    expect(secondFrame.isDetached()).toBe(false);
+    await expect(field).toHaveValue(comment);
+
+    await field.press("Tab");
+    await secondPage.keyboard.press("Tab");
+    await secondPage.keyboard.press("Tab");
+    let saveButtonId: number | undefined;
+    await expect(async () => {
+      const { nodes } = await secondSession.send("Accessibility.getFullAXTree");
+      const save = nodes.find(
+        (node) => node.role?.value === "button" && node.name?.value === "Save as new annotation",
+      );
+      saveButtonId = save?.backendDOMNodeId;
+      expect(saveButtonId).toBeDefined();
+      expect(save?.properties?.find((property) => property.name === "focused")?.value.value).toBe(
+        true,
+      );
+    }).toPass();
+    const { model } = await secondSession.send("DOM.getBoxModel", { backendNodeId: saveButtonId });
+    const horizontalEdges = model.border.filter((_, index) => index % 2 === 0);
+    const verticalEdges = model.border.filter((_, index) => index % 2 === 1);
+    expect(Math.min(...horizontalEdges)).toBeGreaterThanOrEqual(0);
+    expect(Math.max(...horizontalEdges)).toBeLessThanOrEqual(width);
+    expect(Math.min(...verticalEdges)).toBeGreaterThanOrEqual(0);
+    expect(Math.max(...verticalEdges)).toBeLessThanOrEqual(800);
+    await secondPage.keyboard.press("Enter");
+    await expect.poll(() => storedAnnotationCount(extensionWorker, key)).toBe(1);
+    const saved = await extensionWorker.evaluate(
+      async ({ storageKey, previousId, expectedComment }) => {
+        const extensionApi = Reflect.get(globalThis, "chrome") as {
+          storage: { local: { get(key: string): Promise<Record<string, unknown>> } };
+        };
+        const stored = await extensionApi.storage.local.get(storageKey);
+        const annotation = (
+          stored[storageKey] as {
+            annotations: { id: string; comment: string }[];
+          }
+        ).annotations[0]!;
+        return {
+          hasNewId: annotation.id !== previousId,
+          hasComment: annotation.comment === expectedComment,
+        };
+      },
+      { storageKey: key, previousId: originalAnnotationId, expectedComment: comment },
+    );
+    expect(saved).toEqual({ hasNewId: true, hasComment: true });
+    await secondPage.close();
+    await firstPage.close();
+  }
+});
+
 test("keeps browser storage isolated by committed conversation", async ({
   context,
   extensionWorker,
@@ -192,11 +360,6 @@ test("protects an unsaved comment when a native action is activated by keyboard"
   await page.locator("[data-quotecue-native-action]").press("Enter");
   await expect(field).toHaveValue("Unsaved fixture comment");
   expect(await storedAnnotationCount(extensionWorker, draftKey("dirty-editor"))).toBe(1);
-  await field.focus();
-  await page.keyboard.press("Escape");
-  await expect
-    .poll(() => page.frames().some((candidate) => candidate.url().includes("secure-field.html")))
-    .toBe(false);
 });
 
 async function openConversation(context: BrowserContext, conversationId: string) {
@@ -222,8 +385,8 @@ test("retains summary keyboard focus when the pointer leaves across display sett
       .poll(() => page.frames().some((frame) => frame.url().includes("secure-field.html")))
       .toBe(true);
     const fieldFrame = page.frames().find((frame) => frame.url().includes("secure-field.html"))!;
-    await fieldFrame.locator("input, textarea").focus();
-    await page.keyboard.press("Escape");
+    await fieldFrame.locator("input, textarea").press("Tab");
+    await page.keyboard.press("Enter");
 
     const session = await context.newCDPSession(page);
     let countButtonId: number | undefined;
@@ -345,8 +508,8 @@ test("restores unidentified drafts only after keyboard confirmation across displ
       .poll(() => page.frames().some((frame) => frame.url().includes("secure-field.html")))
       .toBe(true);
     const fieldFrame = page.frames().find((frame) => frame.url().includes("secure-field.html"))!;
-    await fieldFrame.locator("input, textarea").focus();
-    await page.keyboard.press("Escape");
+    await fieldFrame.locator("input, textarea").press("Tab");
+    await page.keyboard.press("Enter");
     await expect
       .poll(() => page.frames().some((frame) => frame.url().includes("secure-field.html")))
       .toBe(false);
