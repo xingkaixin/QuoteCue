@@ -237,6 +237,14 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
     sendButton: HTMLElement,
     options: ComposerSubmitOptions,
   ): Promise<ComposerSubmitResult> {
+    if (
+      !composerDriver.isCurrent(options.restoreTo, options.text) ||
+      currentSendButton() !== sendButton ||
+      !isButtonAvailable(sendButton)
+    ) {
+      logger?.("[QuoteCue host] send target changed before dispatch");
+      return failure("send-unavailable");
+    }
     const confirmation = createConfirmation(options.text, options.signal);
     try {
       sendButton.click();
