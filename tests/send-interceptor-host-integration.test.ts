@@ -23,6 +23,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
+  window.history.replaceState({}, "", "/");
   document.body.replaceChildren();
   vi.restoreAllMocks();
 });
@@ -120,11 +121,129 @@ describe("annotated send host integration", () => {
 
     fixture.action.disabled = false;
     await expect(result).resolves.toEqual({ status: "available", value: "confirmed" });
-    expect(
-      querySelector.mock.calls.filter(
-        ([selector]) => selector === "button[data-testid='send-button']",
-      ),
-    ).toHaveLength(1);
+  });
+
+  it("does not write a snapshot from another conversation into a reused composer", async () => {
+    window.history.replaceState({}, "", "/c/conversation-a");
+    const fixture = installChatGptHostFixture();
+    const host = createChatGptHost({ document, window });
+    const restoreTo = availableComposer(host);
+    const send = vi.fn();
+    fixture.action.addEventListener("click", send);
+    window.history.replaceState({}, "", "/c/conversation-b");
+
+    await expect(
+      host.composer.submit({
+        restoreTo,
+        signal: new AbortController().signal,
+        text: "compiled prompt",
+      }),
+    ).resolves.toEqual({ reason: "send-unavailable", status: "unavailable" });
+
+    expect(availableComposer(host).text).toBe("Original question");
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it.each(["navigation", "editing", "replacement"])(
+    "preserves a composer changed by %s while the send control is pending",
+    async (change) => {
+      window.history.replaceState({}, "", "/c/conversation-a");
+      const fixture = installChatGptHostFixture();
+      fixture.action.disabled = true;
+      const host = createChatGptHost({ document, window });
+      const send = vi.fn();
+      fixture.action.addEventListener("click", send);
+      const result = host.composer.submit({
+        restoreTo: availableComposer(host),
+        signal: new AbortController().signal,
+        text: "compiled prompt",
+      });
+      await Promise.resolve();
+
+      if (change === "navigation") {
+        window.history.replaceState({}, "", "/c/conversation-b");
+      } else if (change === "editing") {
+        fixture.composer.textContent = "Edited question";
+      } else {
+        fixture.composer.replaceWith(fixture.composer.cloneNode(true));
+      }
+      const currentText = availableComposer(host).text;
+      fixture.action.disabled = false;
+
+      await expect(result).resolves.toEqual({
+        reason: "send-unavailable",
+        status: "unavailable",
+      });
+      expect(availableComposer(host).text).toBe(currentText);
+      expect(send).not.toHaveBeenCalled();
+    },
+  );
+
+  it("does not accept another conversation while waiting for editor rendering", async () => {
+    window.history.replaceState({}, "", "/c/conversation-a");
+    const fixture = installChatGptHostFixture();
+    vi.mocked(document.execCommand).mockReturnValue(true);
+    const host = createChatGptHost({ document, window });
+    const send = vi.fn();
+    fixture.action.addEventListener("click", send);
+    const result = host.composer.submit({
+      restoreTo: availableComposer(host),
+      signal: new AbortController().signal,
+      text: "compiled prompt",
+    });
+
+    window.history.replaceState({}, "", "/c/conversation-b");
+    fixture.composer.textContent = "compiled prompt";
+
+    await expect(result).resolves.toEqual({ reason: "send-unavailable", status: "unavailable" });
+    expect(availableComposer(host).text).toBe("compiled prompt");
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("rechecks send-control availability after its wait completes", async () => {
+    const fixture = installChatGptHostFixture();
+    fixture.action.disabled = true;
+    const host = createChatGptHost({ document, window });
+    const send = vi.fn();
+    fixture.action.addEventListener("click", send);
+    const result = host.composer.submit({
+      restoreTo: availableComposer(host),
+      signal: new AbortController().signal,
+      text: "compiled prompt",
+    });
+    await Promise.resolve();
+
+    fixture.action.disabled = false;
+    queueMicrotask(() => {
+      fixture.action.disabled = true;
+    });
+
+    await expect(result).resolves.toEqual({ reason: "send-unavailable", status: "unavailable" });
+    expect(availableComposer(host).text).toBe("Original question");
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("does not restore an earlier conversation after confirmation times out", async () => {
+    vi.useFakeTimers();
+    window.history.replaceState({}, "", "/c/conversation-a");
+    const fixture = installChatGptHostFixture();
+    const host = createChatGptHost({ document, window });
+    fixture.action.addEventListener("click", () => {
+      window.history.replaceState({}, "", "/c/conversation-b");
+    });
+    const result = host.composer.submit({
+      restoreTo: availableComposer(host),
+      signal: new AbortController().signal,
+      text: "compiled prompt",
+    });
+
+    await vi.advanceTimersByTimeAsync(15_001);
+
+    await expect(result).resolves.toEqual({
+      reason: "confirmation-timeout",
+      status: "unavailable",
+    });
+    expect(availableComposer(host).text).toBe("compiled prompt");
   });
 
   it("logs the underlying send dispatch error", async () => {
@@ -465,12 +584,13 @@ describe("annotated send host integration", () => {
     interceptor.dispose();
   });
 
-  it("confirms a matching user message after the composer node is replaced", async () => {
+  it("confirms a new conversation after dispatch replaces the composer node", async () => {
     const composer = installComposer("original question");
     const onSendConfirmed = vi.fn();
     const interceptor = createInterceptor(onSendConfirmed);
     installSendButton(() => {
       const compiledPrompt = composer.textContent ?? "";
+      window.history.replaceState({}, "", "/c/new-conversation");
       composer.remove();
       installComposer();
       installUserMessage("user-message-after-replacement", compiledPrompt);

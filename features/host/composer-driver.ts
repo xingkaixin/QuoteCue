@@ -8,7 +8,10 @@ const COMPOSER_REPLACEMENT_TIMEOUT_MS = 2_000;
 export function createComposerDriver(context: HostContext) {
   const { adapter, document: hostDocument, logger, window: hostWindow } = context;
   const composerAccess = adapter.composer;
-  const composerBySnapshot = new WeakMap<ComposerSnapshot, HTMLElement>();
+  const targetBySnapshot = new WeakMap<
+    ComposerSnapshot,
+    { element: HTMLElement; pathname: string }
+  >();
 
   const current = () => hostDocument.querySelector<HTMLElement>(adapter.composer.selector);
 
@@ -18,28 +21,24 @@ export function createComposerDriver(context: HostContext) {
       return unavailable("composer-unavailable", logger);
     }
     const value = { text: composerAccess.read(element) } as ComposerSnapshot;
-    composerBySnapshot.set(value, element);
+    targetBySnapshot.set(value, { element, pathname: hostWindow.location.pathname });
     return available(value);
   }
 
   function replaceText(composerSnapshot: ComposerSnapshot, text: string, signal: AbortSignal) {
-    const composer = composerBySnapshot.get(composerSnapshot);
+    const composer = targetComposer(composerSnapshot);
     if (!composer || !writeText(composer, text)) {
       return Promise.resolve(false);
     }
-    return waitForText(composer, text, signal);
+    return waitForText(composerSnapshot, text, signal);
   }
 
-  function waitForText(replacedComposer: HTMLElement, text: string, signal: AbortSignal) {
-    const expectedText = composerAccess.normalize(text);
-    const matches = () => {
-      const composer = current();
-      return (
-        composer !== null &&
-        composerAccess.normalize(composerAccess.read(composer)) === expectedText
-      );
-    };
-    if (matches()) {
+  function waitForText(composerSnapshot: ComposerSnapshot, text: string, signal: AbortSignal) {
+    const composer = targetComposer(composerSnapshot);
+    if (!composer) {
+      return Promise.resolve(false);
+    }
+    if (isCurrent(composerSnapshot, text)) {
       return Promise.resolve(true);
     }
     if (signal.aborted) {
@@ -50,7 +49,9 @@ export function createComposerDriver(context: HostContext) {
     return new Promise<boolean>((resolve) => {
       let timeout: number | undefined;
       const observer = new MutationObserver(() => {
-        if (matches()) {
+        if (!targetComposer(composerSnapshot)) {
+          finish(false);
+        } else if (isCurrent(composerSnapshot, text)) {
           finish(true);
         }
       });
@@ -63,7 +64,7 @@ export function createComposerDriver(context: HostContext) {
         resolve(replaced);
       };
       const onAbort = () => finish(false);
-      observer.observe(replacedComposer.parentElement ?? replacedComposer, {
+      observer.observe(composer.parentElement ?? composer, {
         characterData: true,
         childList: true,
         subtree: true,
@@ -90,19 +91,32 @@ export function createComposerDriver(context: HostContext) {
     expectedText: string,
     restoredText = composerSnapshot.text,
   ) {
-    const composer = composerBySnapshot.get(composerSnapshot);
-    if (
-      !composer ||
-      current() !== composer ||
-      composerAccess.normalize(composerAccess.read(composer)) !==
-        composerAccess.normalize(expectedText)
-    ) {
+    const composer = targetComposer(composerSnapshot);
+    if (!composer || !isCurrent(composerSnapshot, expectedText)) {
       return false;
     }
     return writeText(composer, restoredText);
   }
 
-  return { current, replaceText, restoreText, snapshot };
+  function targetComposer(composerSnapshot: ComposerSnapshot) {
+    const target = targetBySnapshot.get(composerSnapshot);
+    return target &&
+      target.pathname === hostWindow.location.pathname &&
+      current() === target.element
+      ? target.element
+      : null;
+  }
+
+  function isCurrent(composerSnapshot: ComposerSnapshot, expectedText: string) {
+    const composer = targetComposer(composerSnapshot);
+    return (
+      composer !== null &&
+      composerAccess.normalize(composerAccess.read(composer)) ===
+        composerAccess.normalize(expectedText)
+    );
+  }
+
+  return { current, isCurrent, replaceText, restoreText, snapshot };
 }
 
 export type ComposerDriver = ReturnType<typeof createComposerDriver>;
