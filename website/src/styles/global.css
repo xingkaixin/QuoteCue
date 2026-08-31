@@ -69,6 +69,9 @@
   --accent-soft: rgb(77 146 255 / 18%);
   --mark: rgb(77 146 255 / 26%);
   --surface-shadow: 0 18px 56px rgb(0 0 0 / 50%);
+  --highlight-background: url("../assets/backgrounds/highlight-dark.avif");
+  --compile-background: url("../assets/backgrounds/compile-dark.avif");
+  --background-art-opacity: 0.66;
 }
 
 :root[data-theme="light"] {
@@ -85,6 +88,9 @@
   --accent-soft: rgb(27 101 196 / 12%);
   --mark: rgb(27 101 196 / 22%);
   --surface-shadow: 0 18px 48px rgb(0 0 0 / 16%);
+  --highlight-background: url("../assets/backgrounds/highlight-light.avif");
+  --compile-background: url("../assets/backgrounds/compile-light.avif");
+  --background-art-opacity: 0.92;
 }
 
 @layer base {
@@ -146,6 +152,52 @@
     "YuGothic",
     "Noto Sans JP",
     sans-serif;
+}
+
+.section-background {
+  --art-base: var(--background);
+  position: relative;
+  isolation: isolate;
+}
+
+.section-background::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to bottom, var(--art-base), transparent 17%, transparent 75%, var(--art-base)),
+    linear-gradient(
+      to right,
+      var(--art-base),
+      color-mix(in srgb, var(--art-base) 80%, transparent) 35%,
+      transparent 72%
+    ),
+    var(--section-art);
+  background-position: center;
+  background-size: cover;
+  opacity: var(--background-art-opacity);
+}
+
+.hero-background,
+.closing-background {
+  --section-art: var(--highlight-background);
+}
+
+.features-background {
+  --section-art: var(--compile-background);
+}
+
+.closing-background {
+  --art-base: var(--panel);
+}
+
+@media (width < 40rem) {
+  .section-background::before {
+    background-position: 65% center;
+    opacity: calc(var(--background-art-opacity) * 0.35);
+  }
 }
 
 .hero-mark {
