@@ -45,7 +45,7 @@ export function useAnnotationCommentSurface({
     [resetWarning],
   );
   const saveValue = useCallback((value: string) => onSave(value.trim()), [onSave]);
-  const saveComment = useCallback(() => saveValue(comment), [comment, saveValue]);
+  const saveComment = useCallback(() => fieldRef.current?.save(), []);
 
   useOutsideDiscard(rootRef, requestDismissal);
 
@@ -58,13 +58,13 @@ export function useAnnotationCommentSurface({
 
   return {
     commentFieldProps: {
+      initialValue: comment,
       maxLength: MAX_ANNOTATION_COMMENT_LENGTH,
       name: "quotecue-annotation-comment",
       onCancel: onDismiss,
       onChange: changeComment,
       onSave: saveValue,
       ref: fieldRef,
-      value: comment,
     },
     position,
     resetWarning,

@@ -4,18 +4,18 @@ export const SECURE_FIELD_INIT = "quotecue:secure-field:init";
 
 export type SecureFieldConfig = {
   ariaLabel: string;
+  initialValue: string;
   kind: "input" | "textarea";
   lang: string;
   maxLength?: number;
   name: string;
   placeholder: string;
   theme: "dark" | "light";
-  value: string;
 };
 
 export type SecureFieldUpdate = Pick<
   SecureFieldConfig,
-  "ariaLabel" | "lang" | "placeholder" | "theme" | "value"
+  "ariaLabel" | "lang" | "placeholder" | "theme"
 >;
 
 export type SecureFieldInitMessage = {
@@ -24,7 +24,9 @@ export type SecureFieldInitMessage = {
   config: SecureFieldConfig;
 };
 
-export type SecureFieldCommand = { type: "focus" } | { type: "update"; update: SecureFieldUpdate };
+export type SecureFieldCommand =
+  | { type: "focus" | "save" }
+  | { type: "update"; update: SecureFieldUpdate };
 
 export type SecureFieldEvent =
   | { type: "cancel" }
@@ -46,8 +48,8 @@ export function decodeSecureFieldCommand(value: unknown): SecureFieldCommand | n
   if (!isRecord(value)) {
     return null;
   }
-  if (value.type === "focus") {
-    return { type: "focus" };
+  if (value.type === "focus" || value.type === "save") {
+    return { type: value.type };
   }
   const update = value.type === "update" ? decodeUpdate(value.update) : null;
   return update ? { type: "update", update } : null;
@@ -71,6 +73,7 @@ function decodeConfig(value: unknown): SecureFieldConfig | null {
   if (
     !isRecord(value) ||
     !update ||
+    typeof value.initialValue !== "string" ||
     (value.kind !== "input" && value.kind !== "textarea") ||
     (value.maxLength !== undefined && !isPositiveSafeInteger(value.maxLength)) ||
     typeof value.name !== "string"
@@ -79,6 +82,7 @@ function decodeConfig(value: unknown): SecureFieldConfig | null {
   }
   return {
     ...update,
+    initialValue: value.initialValue,
     kind: value.kind,
     ...(value.maxLength === undefined ? {} : { maxLength: value.maxLength }),
     name: value.name,
@@ -91,8 +95,7 @@ function decodeUpdate(value: unknown): SecureFieldUpdate | null {
     typeof value.ariaLabel !== "string" ||
     typeof value.lang !== "string" ||
     typeof value.placeholder !== "string" ||
-    (value.theme !== "dark" && value.theme !== "light") ||
-    typeof value.value !== "string"
+    (value.theme !== "dark" && value.theme !== "light")
   ) {
     return null;
   }
@@ -101,7 +104,6 @@ function decodeUpdate(value: unknown): SecureFieldUpdate | null {
     lang: value.lang,
     placeholder: value.placeholder,
     theme: value.theme,
-    value: value.value,
   };
 }
 

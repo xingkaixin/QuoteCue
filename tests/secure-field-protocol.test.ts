@@ -15,7 +15,7 @@ const config = {
   name: "quotecue-annotation-comment",
   placeholder: "Add a comment",
   theme: "dark" as const,
-  value: "private annotation",
+  initialValue: "private annotation",
 };
 
 describe("secure field protocol", () => {
@@ -26,7 +26,7 @@ describe("secure field protocol", () => {
     expect(decodeSecureFieldInit(message, "different-token")).toBeNull();
     expect(
       decodeSecureFieldInit(
-        { ...message, config: { ...config, value: { exposed: true } } },
+        { ...message, config: { ...config, initialValue: { exposed: true } } },
         "frame-token",
       ),
     ).toBeNull();
@@ -37,12 +37,12 @@ describe("secure field protocol", () => {
 
   it("rejects malformed commands and field events", () => {
     expect(decodeSecureFieldCommand({ type: "focus" })).toEqual({ type: "focus" });
+    expect(decodeSecureFieldCommand({ type: "save" })).toEqual({ type: "save" });
     const update = {
       ariaLabel: "批注内容",
       lang: "zh-CN",
       placeholder: "添加批注",
       theme: "dark",
-      value: "下一条",
     } as const;
     expect(decodeSecureFieldCommand({ type: "update", update })).toEqual({
       type: "update",
@@ -52,8 +52,8 @@ describe("secure field protocol", () => {
       decodeSecureFieldCommand({ type: "update", update: { ...update, theme: "sepia" } }),
     ).toBeNull();
     expect(
-      decodeSecureFieldCommand({ type: "update", update: { ...update, value: 1 } }),
-    ).toBeNull();
+      decodeSecureFieldCommand({ type: "update", update: { ...update, value: "stale echo" } }),
+    ).toEqual({ type: "update", update });
     expect(decodeSecureFieldEvent({ type: "save", value: "comment" })).toEqual({
       type: "save",
       value: "comment",
