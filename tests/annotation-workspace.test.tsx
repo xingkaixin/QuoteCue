@@ -112,7 +112,7 @@ describe("annotation workspace", () => {
     await act(async () => mounted.root.unmount());
   });
 
-  it("clears an adopted draft when the host navigates before confirming send", async () => {
+  it("keeps a sending draft unassigned until confirmation and blocks recovery actions", async () => {
     const host = createWorkspaceHost();
     host.conversation.identity = (sessionKey) => ({ kind: "unidentified", sessionKey });
     let confirm: () => void = () => undefined;
@@ -125,16 +125,78 @@ describe("annotation workspace", () => {
     const mounted = await mountWorkspace(host);
     await act(async () => workspace.selection.onActivate(anchoredSelection));
     await act(async () => new Promise(requestAnimationFrame));
+    const sourceIdentity = workspace.selection.conversationIdentity;
     await act(async () => workspace.summary.send());
     const identified = { kind: "identified", id: "created", siteId: "chatgpt" } as const;
     await act(async () => {
       host.conversation.identity = () => identified;
       host.controls.setConversationIdentity(identified);
     });
-    expect((await draftStoreFixture.store.load(identified)).annotations).toHaveLength(1);
+    expect(workspace.retainedDraft.state).toEqual({
+      conversationIdentity: sourceIdentity,
+      count: 1,
+      status: "retained",
+    });
+    expect(workspace.retainedDraft.isSending).toBe(true);
+    expect(workspace.summary.annotations).toEqual([]);
+    expect(draftStoreFixture.store.mutate).not.toHaveBeenCalled();
+
+    await act(async () => {
+      workspace.retainedDraft.restore();
+      workspace.retainedDraft.discard();
+    });
+    expect(workspace.retainedDraft.state).toMatchObject({ count: 1, status: "retained" });
+    expect(draftStoreFixture.store.mutate).not.toHaveBeenCalled();
+
     await act(async () => confirm());
+    expect(workspace.retainedDraft.state).toBeNull();
     expect(workspace.summary.annotations).toEqual([]);
     expect((await draftStoreFixture.store.load(identified)).annotations).toEqual([]);
+    expect(draftStoreFixture.store.mutate).not.toHaveBeenCalled();
+    await act(async () => mounted.root.unmount());
+  });
+
+  it("retains a failed send from an unidentified conversation until explicitly restored", async () => {
+    const host = createWorkspaceHost();
+    host.conversation.identity = (sessionKey) => ({ kind: "unidentified", sessionKey });
+    let fail: () => void = () => undefined;
+    vi.spyOn(host.composer, "submit").mockImplementation(
+      () =>
+        new Promise<ComposerSubmitResult>((resolve) => {
+          fail = () => resolve({ status: "unavailable", reason: "confirmation-timeout" });
+        }),
+    );
+    const mounted = await mountWorkspace(host);
+    await act(async () => workspace.selection.onActivate(anchoredSelection));
+    await act(async () => new Promise(requestAnimationFrame));
+    const sourceIdentity = workspace.selection.conversationIdentity;
+    const originalAnnotations = workspace.summary.annotations.map((entry) => entry.annotation);
+    await act(async () => workspace.summary.send());
+    const identified = { kind: "identified", id: "created", siteId: "chatgpt" } as const;
+    await act(async () => {
+      host.conversation.identity = () => identified;
+      host.controls.setConversationIdentity(identified);
+    });
+    await act(async () => fail());
+
+    expect(workspace.retainedDraft.state).toEqual({
+      conversationIdentity: sourceIdentity,
+      count: 1,
+      status: "retained",
+    });
+    expect(workspace.retainedDraft.isSending).toBe(false);
+    expect(workspace.summary.annotations).toEqual([]);
+    expect(draftStoreFixture.store.mutate).not.toHaveBeenCalled();
+
+    await act(async () => workspace.retainedDraft.restore());
+
+    expect(workspace.retainedDraft.state).toBeNull();
+    expect(workspace.summary.annotations.map((entry) => entry.annotation)).toEqual(
+      originalAnnotations,
+    );
+    expect((await draftStoreFixture.store.load(identified)).annotations).toEqual(
+      originalAnnotations,
+    );
     await act(async () => mounted.root.unmount());
   });
 

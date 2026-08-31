@@ -44,7 +44,7 @@ afterEach(() => {
 });
 
 describe("draft annotation lifecycle", () => {
-  it("removes the sent snapshot after its unidentified draft is adopted", async () => {
+  it("removes the sent snapshot from retained memory after navigation", async () => {
     const root = await mountUnidentifiedDraft();
     await act(async () => root.render(<DraftHarness conversationIdentity={conversationA} />));
     let removed = false;
@@ -55,12 +55,14 @@ describe("draft annotation lifecycle", () => {
       );
     });
     expect(removed).toBe(true);
+    expect(latestDrafts.retainedDraft).toBeNull();
+    expect(draftStoreFixture.store.mutate).not.toHaveBeenCalled();
     expect(currentAnnotations()).toEqual([]);
     expect((await draftStoreFixture.store.load(conversationA)).annotations).toEqual([]);
     await act(async () => root.unmount());
   });
 
-  it("cleans the adopted conversation after the user navigates elsewhere", async () => {
+  it("cleans only the retained source after the user navigates elsewhere", async () => {
     const root = await mountUnidentifiedDraft();
     await act(async () => root.render(<DraftHarness conversationIdentity={conversationA} />));
     await act(async () => root.render(<DraftHarness conversationIdentity={conversationB} />));
@@ -72,18 +74,19 @@ describe("draft annotation lifecycle", () => {
     );
     expect((await draftStoreFixture.store.load(conversationA)).annotations).toEqual([]);
     expect(currentAnnotations()).toEqual([{ ...annotation, id: "other" }]);
+    expect(latestDrafts.retainedDraft).toBeNull();
     await act(async () => root.unmount());
   });
 
-  it("queues confirmation while the adopted draft is still loading", async () => {
-    let releaseSave: () => void = () => undefined;
-    const saved = new Promise<void>((resolve) => {
-      releaseSave = resolve;
+  it("confirms the retained source while the destination draft is still loading", async () => {
+    let releaseLoad: () => void = () => undefined;
+    const loaded = new Promise<void>((resolve) => {
+      releaseLoad = resolve;
     });
-    const mutate = draftStoreFixture.store.mutate.getMockImplementation()!;
-    draftStoreFixture.store.mutate.mockImplementationOnce(async (...args) => {
-      await saved;
-      return mutate(...args);
+    const load = draftStoreFixture.store.load.getMockImplementation()!;
+    draftStoreFixture.store.load.mockImplementationOnce(async (...args) => {
+      await loaded;
+      return load(...args);
     });
     const root = await mountUnidentifiedDraft();
     await act(async () => root.render(<DraftHarness conversationIdentity={conversationA} />));
@@ -93,7 +96,9 @@ describe("draft annotation lifecycle", () => {
         annotation,
       ]),
     );
-    await act(async () => releaseSave());
+    expect(latestDrafts.retainedDraft).toBeNull();
+    expect(draftStoreFixture.store.mutate).not.toHaveBeenCalled();
+    await act(async () => releaseLoad());
     expect(currentAnnotations()).toEqual([]);
     expect((await draftStoreFixture.store.load(conversationA)).annotations).toEqual([]);
     await act(async () => root.unmount());
@@ -287,28 +292,35 @@ describe("draft annotation lifecycle", () => {
     await act(async () => root.unmount());
   });
 
-  it("adopts an unidentified draft when the conversation becomes identified", async () => {
+  it("retains an unidentified draft without assuming the next identity owns it", async () => {
     const root = await mountUnidentifiedDraft();
     expect(currentAnnotations()).toEqual([annotation]);
 
     await act(async () => root.render(<DraftHarness conversationIdentity={conversationA} />));
 
-    expect(currentAnnotations()).toEqual([annotation]);
-    expect(draftStoreFixture.store.mutate).toHaveBeenCalledWith(conversationA, [
-      { kind: "add", annotation },
-    ]);
+    expect(currentAnnotations()).toEqual([]);
+    expect(latestDrafts.retainedDraft).toEqual({
+      conversationIdentity: { kind: "unidentified", sessionKey: "session-a" },
+      count: 1,
+      status: "retained",
+    });
+    expect(draftStoreFixture.store.mutate).not.toHaveBeenCalled();
 
     await act(async () => root.unmount());
   });
 
-  it("merges an unidentified draft into an existing identified draft", async () => {
+  it("restores retained annotations into an existing draft only on explicit request", async () => {
     const existing = { ...annotation, id: "annotation-existing", comment: "stored draft" };
     await draftStoreFixture.store.mutate(conversationA, [{ kind: "add", annotation: existing }]);
     draftStoreFixture.store.mutate.mockClear();
     const root = await mountUnidentifiedDraft();
     await act(async () => root.render(<DraftHarness conversationIdentity={conversationA} />));
 
+    expect(currentAnnotations()).toEqual([existing]);
+    expect(draftStoreFixture.store.mutate).not.toHaveBeenCalled();
+    await act(async () => expect(latestDrafts.restoreRetainedDraft()).toBe(true));
     expect(currentAnnotations()).toEqual([existing, annotation]);
+    expect(latestDrafts.retainedDraft).toBeNull();
     expect(draftStoreFixture.store.mutate).toHaveBeenCalledWith(conversationA, [
       { kind: "add", annotation },
     ]);
@@ -316,7 +328,7 @@ describe("draft annotation lifecycle", () => {
     await act(async () => root.unmount());
   });
 
-  it("retains an unidentified draft when adoption cannot be loaded", async () => {
+  it("keeps retained annotations separate through a destination load failure and retry", async () => {
     draftStoreFixture.store.load.mockRejectedValueOnce(new Error("storage unavailable"));
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const root = await mountUnidentifiedDraft();
@@ -326,35 +338,166 @@ describe("draft annotation lifecycle", () => {
       status: "error",
       hasUnreadableAnnotations: false,
       operation: "load",
-      annotations: [annotation],
+      annotations: [],
     });
+    expect(latestDrafts.retainedDraft).toMatchObject({ count: 1, status: "retained" });
+    expect(latestDrafts.restoreRetainedDraft()).toBe(false);
 
     await act(async () => latestDrafts.retry());
-    expect(latestDrafts.draft).toMatchObject({ status: "ready", annotations: [annotation] });
+    expect(latestDrafts.draft).toMatchObject({ status: "ready", annotations: [] });
+    expect(draftStoreFixture.store.mutate).not.toHaveBeenCalled();
+    await act(async () => latestDrafts.restoreRetainedDraft());
+    expect(currentAnnotations()).toEqual([annotation]);
+    expect(latestDrafts.retainedDraft).toBeNull();
 
     consoleError.mockRestore();
     await act(async () => root.unmount());
   });
 
-  it("retains an unidentified draft when adoption cannot be saved", async () => {
+  it("retries failed restoration in its original destination without replaying additions", async () => {
     draftStoreFixture.store.mutate.mockRejectedValueOnce(new Error("storage unavailable"));
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const root = await mountUnidentifiedDraft();
     await act(async () => root.render(<DraftHarness conversationIdentity={conversationA} />));
+    await act(async () => latestDrafts.restoreRetainedDraft());
 
     expect(latestDrafts.draft).toEqual({
       status: "error",
       hasUnreadableAnnotations: false,
       operation: "save",
-      annotations: [annotation],
+      annotations: [],
     });
+    expect(latestDrafts.retainedDraft).toMatchObject({ count: 1, status: "save-failed" });
+    expect(latestDrafts.discardRetainedDraft()).toBe(false);
 
-    await act(async () => latestDrafts.retry());
-    await vi.waitFor(() =>
-      expect(latestDrafts.draft).toMatchObject({ status: "ready", annotations: [annotation] }),
+    await act(async () => root.render(<DraftHarness conversationIdentity={conversationB} />));
+    await act(async () => root.render(<DraftHarness conversationIdentity={conversationA} />));
+    expect(currentAnnotations()).toEqual([]);
+    expect(latestDrafts.retainedDraft).toMatchObject({ count: 1, status: "save-failed" });
+    await act(async () => root.render(<DraftHarness conversationIdentity={conversationB} />));
+    let releaseSave: () => void = () => undefined;
+    const saved = new Promise<void>((resolve) => (releaseSave = resolve));
+    const mutate = draftStoreFixture.store.mutate.getMockImplementation()!;
+    draftStoreFixture.store.mutate.mockImplementationOnce(async (...args) => {
+      await saved;
+      return mutate(...args);
+    });
+    await act(async () => {
+      expect(latestDrafts.restoreRetainedDraft()).toBe(true);
+      expect(latestDrafts.restoreRetainedDraft()).toBe(false);
+    });
+    expect(latestDrafts.retainedDraft).toMatchObject({ count: 1, status: "restoring" });
+    expect(currentAnnotations()).toEqual([]);
+    await act(async () => releaseSave());
+    expect(latestDrafts.retainedDraft).toBeNull();
+    expect(currentAnnotations()).toEqual([]);
+    expect(draftStoreFixture.store.mutate).toHaveBeenCalledTimes(2);
+    expect(draftStoreFixture.store.mutate.mock.calls[1]).toEqual(
+      draftStoreFixture.store.mutate.mock.calls[0],
     );
+    expect((await draftStoreFixture.store.load(conversationA)).annotations).toEqual([annotation]);
 
     consoleError.mockRestore();
+    await act(async () => root.unmount());
+  });
+
+  it("does not overwrite a retained source when another unidentified draft is left behind", async () => {
+    const other = { ...annotation, id: "annotation-second-session" };
+    const root = await mountUnidentifiedDraft();
+    await act(async () => root.render(<DraftHarness conversationIdentity={conversationA} />));
+    let releaseSave: () => void = () => undefined;
+    const saved = new Promise<void>((resolve) => (releaseSave = resolve));
+    const mutate = draftStoreFixture.store.mutate.getMockImplementation()!;
+    draftStoreFixture.store.mutate.mockImplementationOnce(async (...args) => {
+      await saved;
+      return mutate(...args);
+    });
+    await act(async () => latestDrafts.restoreRetainedDraft());
+    expect(currentAnnotations()).toEqual([]);
+    await act(async () =>
+      root.render(
+        <DraftHarness conversationIdentity={{ kind: "unidentified", sessionKey: "session-b" }} />,
+      ),
+    );
+    await act(async () => latestDrafts.addAnnotation(other));
+    await act(async () => root.render(<DraftHarness conversationIdentity={conversationB} />));
+    expect(latestDrafts.retainedDraft).toMatchObject({
+      conversationIdentity: { sessionKey: "session-a" },
+      status: "restoring",
+    });
+    await act(async () => releaseSave());
+    expect(currentAnnotations()).toEqual([]);
+    expect(latestDrafts.retainedDraft).toMatchObject({
+      conversationIdentity: { sessionKey: "session-b" },
+      status: "retained",
+    });
+    await act(async () => latestDrafts.restoreRetainedDraft());
+    expect(currentAnnotations()).toEqual([other]);
+    expect((await draftStoreFixture.store.load(conversationA)).annotations).toEqual([annotation]);
+    expect(latestDrafts.retainedDraft).toBeNull();
+    await act(async () => root.unmount());
+  });
+
+  it("keeps edits made after a sent snapshot when confirming retained annotations", async () => {
+    const unchanged = { ...annotation, id: "annotation-unchanged" };
+    const root = await mountUnidentifiedDraft();
+    await act(async () => {
+      latestDrafts.addAnnotation(unchanged);
+      latestDrafts.updateAnnotation(annotation.id, "edited after sending");
+    });
+    await act(async () => root.render(<DraftHarness conversationIdentity={conversationA} />));
+    await act(async () =>
+      latestDrafts.removeConfirmedAnnotations({ kind: "unidentified", sessionKey: "session-a" }, [
+        annotation,
+        unchanged,
+      ]),
+    );
+    expect(latestDrafts.retainedDraft).toMatchObject({ count: 1, status: "retained" });
+    await act(async () => latestDrafts.restoreRetainedDraft());
+    expect(currentAnnotations()).toEqual([{ ...annotation, comment: "edited after sending" }]);
+    await act(async () => root.unmount());
+  });
+
+  it("explicitly discards retained annotations without changing the active draft", async () => {
+    const root = await mountUnidentifiedDraft();
+    await act(async () => root.render(<DraftHarness conversationIdentity={conversationA} />));
+    await act(async () => latestDrafts.addAnnotation({ ...annotation, id: "destination" }));
+    draftStoreFixture.store.mutate.mockClear();
+    await act(async () => expect(latestDrafts.discardRetainedDraft()).toBe(true));
+    expect(latestDrafts.retainedDraft).toBeNull();
+    expect(currentAnnotations()).toEqual([{ ...annotation, id: "destination" }]);
+    expect(draftStoreFixture.store.mutate).not.toHaveBeenCalled();
+    await act(async () => root.unmount());
+  });
+
+  it("does not apply stale retained-draft actions to the next source", async () => {
+    const root = await mountUnidentifiedDraft();
+    await act(async () => root.render(<DraftHarness conversationIdentity={conversationA} />));
+    await act(async () =>
+      root.render(
+        <DraftHarness conversationIdentity={{ kind: "unidentified", sessionKey: "session-b" }} />,
+      ),
+    );
+    await act(async () => latestDrafts.addAnnotation({ ...annotation, id: "second-source" }));
+    await act(async () => root.render(<DraftHarness conversationIdentity={conversationB} />));
+    const restoreFirst = latestDrafts.restoreRetainedDraft;
+    const discardFirst = latestDrafts.discardRetainedDraft;
+    await act(async () =>
+      latestDrafts.removeConfirmedAnnotations({ kind: "unidentified", sessionKey: "session-a" }, [
+        annotation,
+      ]),
+    );
+    await act(async () => {
+      expect(restoreFirst()).toBe(false);
+      expect(discardFirst()).toBe(false);
+    });
+    expect(latestDrafts.retainedDraft).toMatchObject({
+      conversationIdentity: { sessionKey: "session-b" },
+      count: 1,
+      status: "retained",
+    });
+    expect(draftStoreFixture.store.mutate).not.toHaveBeenCalled();
+    expect(currentAnnotations()).toEqual([]);
     await act(async () => root.unmount());
   });
 

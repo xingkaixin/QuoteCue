@@ -20,6 +20,12 @@ export type Messages = {
   deleteAnnotation: string;
   deleteNumberedAnnotation: (number: number) => string;
   draftCapacityExceeded: string;
+  retainedDraft: (count: number) => string;
+  retainedDraftSaveFailed: string;
+  restoreRetainedDraft: string;
+  discardRetainedDraft: string;
+  confirmDiscardRetainedDraft: string;
+  retrySavingDraft: string;
   editNumberedAnnotation: (number: number) => string;
   loadDraftFailed: string;
   loadingDraft: string;
@@ -58,6 +64,14 @@ const ENGLISH: Messages = {
   deleteAnnotation: "Delete annotation",
   deleteNumberedAnnotation: (number) => `Delete annotation ${number}`,
   draftCapacityExceeded: "This draft is full. Shorten or remove annotations to continue.",
+  retainedDraft: (count) =>
+    `${count} ${count === 1 ? "annotation was" : "annotations were"} kept from an unidentified conversation. They remain only in this page until restored or discarded; reloading loses them.`,
+  retainedDraftSaveFailed:
+    "Restoration couldn't be saved. Retry saving to the original destination before reloading this page.",
+  restoreRetainedDraft: "Restore to this conversation",
+  discardRetainedDraft: "Discard retained draft",
+  confirmDiscardRetainedDraft: "Confirm discard",
+  retrySavingDraft: "Retry saving",
   editNumberedAnnotation: (number) => `Edit annotation ${number}`,
   loadDraftFailed: "QuoteCue couldn't restore this draft.",
   loadingDraft: "Restoring QuoteCue draft…",
@@ -100,6 +114,14 @@ const JAPANESE: Messages = {
   deleteAnnotation: "注釈を削除",
   deleteNumberedAnnotation: (number) => `注釈 ${number} を削除`,
   draftCapacityExceeded: "この下書きは上限に達しました。注釈を短くするか削除して続けてください。",
+  retainedDraft: (count) =>
+    `識別できない会話から ${count} 件の注釈を保持しています。この会話に復元するか破棄してください。ページを再読み込みすると失われます。`,
+  retainedDraftSaveFailed:
+    "復元内容を保存できませんでした。ページを再読み込みする前に、元の復元先への保存を再試行してください。",
+  restoreRetainedDraft: "この会話に復元",
+  discardRetainedDraft: "保持した下書きを破棄",
+  confirmDiscardRetainedDraft: "破棄を確定",
+  retrySavingDraft: "保存を再試行",
   editNumberedAnnotation: (number) => `注釈 ${number} を編集`,
   loadDraftFailed: "QuoteCue でこの下書きを復元できませんでした。",
   loadingDraft: "QuoteCue の下書きを復元しています…",
@@ -140,6 +162,13 @@ const SIMPLIFIED_CHINESE: Messages = {
   deleteAnnotation: "删除批注",
   deleteNumberedAnnotation: (number) => `删除批注 ${number}`,
   draftCapacityExceeded: "这份草稿已满，请缩短或删除批注后继续。",
+  retainedDraft: (count) =>
+    `已保留未识别会话的 ${count} 条批注。仅在本页临时保留，刷新会丢失。可恢复到当前会话或丢弃。`,
+  retainedDraftSaveFailed: "恢复内容保存失败，请在刷新页面前重试保存到原目标会话。",
+  restoreRetainedDraft: "恢复到当前会话",
+  discardRetainedDraft: "丢弃保留草稿",
+  confirmDiscardRetainedDraft: "确认丢弃",
+  retrySavingDraft: "重试保存",
   editNumberedAnnotation: (number) => `编辑批注 ${number}`,
   loadDraftFailed: "QuoteCue 无法恢复这份草稿。",
   loadingDraft: "正在恢复 QuoteCue 草稿…",
@@ -177,6 +206,13 @@ const TRADITIONAL_CHINESE: Messages = {
   deleteAnnotation: "刪除批註",
   deleteNumberedAnnotation: (number) => `刪除批註 ${number}`,
   draftCapacityExceeded: "這份草稿已滿，請縮短或刪除批註後繼續。",
+  retainedDraft: (count) =>
+    `已保留未識別對話的 ${count} 條批註。僅在本頁暫時保留，重新整理會遺失。可復原到目前對話或捨棄。`,
+  retainedDraftSaveFailed: "復原內容儲存失敗，請在重新整理頁面前重試儲存到原目標對話。",
+  restoreRetainedDraft: "復原到目前對話",
+  discardRetainedDraft: "捨棄保留草稿",
+  confirmDiscardRetainedDraft: "確認捨棄",
+  retrySavingDraft: "重試儲存",
   editNumberedAnnotation: (number) => `編輯批註 ${number}`,
   loadDraftFailed: "QuoteCue 無法復原這份草稿。",
   loadingDraft: "正在復原 QuoteCue 草稿…",

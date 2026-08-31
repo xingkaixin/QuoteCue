@@ -6,16 +6,22 @@ import { AnnotationSendControl } from "@/features/annotations/AnnotationSendCont
 import { AnnotationSummary } from "@/features/annotations/AnnotationSummary";
 import { DraftCapacityStatus } from "@/features/annotations/DraftCapacityStatus";
 import { DraftPersistenceStatus } from "@/features/annotations/DraftPersistenceStatus";
+import { RetainedDraftStatus } from "@/features/annotations/RetainedDraftStatus";
 import { SelectionPresentation } from "@/features/annotations/SelectionPresentation";
 import { useAnnotationWorkspace } from "@/features/annotations/use-annotation-workspace";
 import { useAnnotatedComposerLayout } from "@/features/host/use-annotated-composer-layout";
 
 export default function App() {
-  const { draft, editor, selection, summary } = useAnnotationWorkspace();
+  const { draft, editor, retainedDraft, selection, summary } = useAnnotationWorkspace();
   const hasSendFeedback = summary.sendState.status !== "idle";
   const isSendControlVisible = summary.isVisible || hasSendFeedback;
   const composerLayout = useAnnotatedComposerLayout(isSendControlVisible);
   const activeProjection = editor.projection;
+  const isRetainedDraftVisible =
+    retainedDraft.state !== null &&
+    selection.conversationIdentity.kind === "identified" &&
+    draft.state.status === "ready" &&
+    !draft.state.hasUnreadableAnnotations;
 
   return (
     <TooltipProvider delay={180}>
@@ -30,7 +36,18 @@ export default function App() {
           <DraftPersistenceStatus {...draft.state} onClear={summary.clear} />
         )}
 
-        {draft.capacityExceeded && <DraftCapacityStatus />}
+        {draft.capacityExceeded && !isRetainedDraftVisible && <DraftCapacityStatus />}
+
+        {retainedDraft.state && isRetainedDraftVisible && (
+          <RetainedDraftStatus
+            key={retainedDraft.state.conversationIdentity.sessionKey}
+            state={retainedDraft.state}
+            capacityExceeded={draft.capacityExceeded}
+            isSending={retainedDraft.isSending}
+            onRestore={retainedDraft.restore}
+            onDiscard={retainedDraft.discard}
+          />
+        )}
 
         <SelectionPresentation {...selection} />
 

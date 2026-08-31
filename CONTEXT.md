@@ -32,6 +32,10 @@ The conversation-scoped collection of annotations that have neither left after s
 nor been explicitly discarded. Drafts for identified conversations may be persisted; drafts for
 unidentified conversations remain in memory.
 
+**Retained Draft**:
+An unidentified conversation's draft kept apart after leaving that conversation. It joins an
+identified conversation's draft only through explicit user restoration.
+
 **Deferred Deletion**:
 An explicit discard request that immediately hides annotations and commits after a five-second undo
 window. Undo or a conversation change cancels the pending request, leaving the draft unchanged.

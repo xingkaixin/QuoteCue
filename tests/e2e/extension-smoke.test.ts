@@ -322,6 +322,74 @@ test("clears unreadable drafts with the keyboard across display settings", async
   }
 });
 
+test("restores unidentified drafts only after keyboard confirmation across display settings", async ({
+  context,
+  extensionWorker,
+}) => {
+  for (const { width, colorScheme, reducedMotion, zoom } of DISPLAY_SETTINGS) {
+    const conversationId = `restored-${width}`;
+    const key = draftKey(conversationId);
+    const page = await context.newPage();
+    await page.setViewportSize({ width, height: 800 });
+    await page.emulateMedia({ colorScheme, reducedMotion });
+    await page.goto("https://chatgpt.com/");
+    await expect(page.locator("quotecue-ui")).toHaveCount(1);
+    expect(await page.evaluate(() => document.querySelector("quotecue-ui")?.shadowRoot)).toBeNull();
+    await page.evaluate((scale) => {
+      document.documentElement.style.zoom = String(scale);
+    }, zoom);
+    await addAnnotation(page);
+    await expect
+      .poll(() => page.frames().some((frame) => frame.url().includes("secure-field.html")))
+      .toBe(true);
+    const fieldFrame = page.frames().find((frame) => frame.url().includes("secure-field.html"))!;
+    await fieldFrame.locator("input, textarea").press("Escape");
+    await expect
+      .poll(() => page.frames().some((frame) => frame.url().includes("secure-field.html")))
+      .toBe(false);
+
+    await page.evaluate((id) => history.pushState({}, "", `/c/${id}`), conversationId);
+    await expect(page).toHaveURL(new RegExp(`/c/${conversationId}$`));
+    const session = await context.newCDPSession(page);
+    let restoreButtonId: number | undefined;
+    await expect(async () => {
+      const { nodes } = await session.send("Accessibility.getFullAXTree");
+      restoreButtonId = nodes.find(
+        (node) =>
+          node.role?.value === "button" && node.name?.value === "Restore to this conversation",
+      )?.backendDOMNodeId;
+      expect(restoreButtonId).toBeDefined();
+    }).toPass();
+    expect(await storedAnnotationCount(extensionWorker, key)).toBe(0);
+
+    const { model } = await session.send("DOM.getBoxModel", { backendNodeId: restoreButtonId });
+    const horizontalEdges = model.border.filter((_, index) => index % 2 === 0);
+    const verticalEdges = model.border.filter((_, index) => index % 2 === 1);
+    expect(
+      Math.min(...horizontalEdges),
+      `left edge at width=${width}, zoom=${zoom}`,
+    ).toBeGreaterThanOrEqual(0);
+    expect(Math.max(...horizontalEdges)).toBeLessThanOrEqual(width);
+    expect(Math.min(...verticalEdges)).toBeGreaterThanOrEqual(0);
+    expect(Math.max(...verticalEdges)).toBeLessThanOrEqual(800);
+
+    await session.send("DOM.focus", { backendNodeId: restoreButtonId });
+    await page.keyboard.press("Enter");
+
+    await expect.poll(() => storedAnnotationCount(extensionWorker, key)).toBe(1);
+    await expect(async () => {
+      const { nodes } = await session.send("Accessibility.getFullAXTree");
+      expect(
+        nodes.some(
+          (node) =>
+            node.role?.value === "button" && node.name?.value === "Restore to this conversation",
+        ),
+      ).toBe(false);
+    }).toPass();
+    await page.close();
+  }
+});
+
 async function addAnnotation(page: Page) {
   const action = page.locator("[data-quotecue-native-action]");
   await expect(async () => {

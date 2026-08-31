@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useHost } from "@/features/host-port/HostProvider";
 
@@ -6,24 +6,24 @@ import { sameConversationIdentity } from "@/features/conversation/conversation-i
 
 export function useConversationIdentity() {
   const host = useHost();
-  const [sessionKey] = useState(() => crypto.randomUUID());
-  const resolveConversationIdentity = useCallback(
-    () => host.conversation.identity(sessionKey),
-    [host, sessionKey],
+  const [conversationIdentity, setConversationIdentity] = useState(() =>
+    host.conversation.identity(crypto.randomUUID()),
   );
-  const [conversationIdentity, setConversationIdentity] = useState(resolveConversationIdentity);
 
   useEffect(() => {
     const refresh = () => {
-      const nextIdentity = resolveConversationIdentity();
-      setConversationIdentity((currentIdentity) =>
-        sameConversationIdentity(currentIdentity, nextIdentity) ? currentIdentity : nextIdentity,
-      );
+      const nextIdentity = host.conversation.identity(crypto.randomUUID());
+      setConversationIdentity((currentIdentity) => {
+        return (currentIdentity.kind === "unidentified" && nextIdentity.kind === "unidentified") ||
+          sameConversationIdentity(currentIdentity, nextIdentity)
+          ? currentIdentity
+          : nextIdentity;
+      });
     };
     const unsubscribe = host.conversation.subscribe(refresh);
     refresh();
     return unsubscribe;
-  }, [host, resolveConversationIdentity]);
+  }, [host]);
 
   return conversationIdentity;
 }

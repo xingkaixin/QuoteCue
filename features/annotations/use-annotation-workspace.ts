@@ -32,6 +32,9 @@ export function useAnnotationWorkspace() {
     discardAnnotations,
     removeConfirmedAnnotations,
     discardAllAnnotations,
+    retainedDraft,
+    restoreRetainedDraft,
+    discardRetainedDraft,
     retry,
   } = useDraftAnnotations(conversationIdentity);
   const annotations = draft.status === "loading" ? [] : draft.annotations;
@@ -205,11 +208,36 @@ export function useAnnotationWorkspace() {
   const send = useCallback(() => {
     sendControllerRef.current?.submit();
   }, []);
+  const isRetainedDraftSending = retainedDraft
+    ? sendControllerRef.current?.state(retainedDraft.conversationIdentity).status === "sending"
+    : false;
+  const restoreRetained = useCallback(() => {
+    if (
+      retainedDraft &&
+      sendControllerRef.current?.state(retainedDraft.conversationIdentity).status !== "sending"
+    ) {
+      restoreRetainedDraft();
+    }
+  }, [retainedDraft, restoreRetainedDraft]);
+  const discardRetained = useCallback(() => {
+    if (
+      retainedDraft &&
+      sendControllerRef.current?.state(retainedDraft.conversationIdentity).status !== "sending"
+    ) {
+      discardRetainedDraft();
+    }
+  }, [discardRetainedDraft, retainedDraft]);
   return {
     draft: {
       capacityExceeded,
       retry,
       state: draft,
+    },
+    retainedDraft: {
+      state: retainedDraft,
+      restore: restoreRetained,
+      discard: discardRetained,
+      isSending: isRetainedDraftSending,
     },
     editor: {
       bindSession: bindEditorSession,

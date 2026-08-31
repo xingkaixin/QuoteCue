@@ -8,6 +8,7 @@ import { useDraftRuntime } from "./DraftRuntimeProvider";
 
 export { canMutateDraft } from "./draft-lifecycle";
 export type { DraftState } from "./draft-lifecycle";
+export type { RetainedDraftState } from "./draft-runtime";
 
 export function useDraftAnnotations(conversationIdentity: ConversationIdentity) {
   const runtime = useDraftRuntime();
@@ -21,7 +22,11 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
     runtime.activate(conversationIdentity);
   }, [conversationIdentity, runtime]);
 
-  const { capacityExceeded, draft } = visibleDraftSnapshot(snapshot, conversationIdentity);
+  const { capacityExceeded, draft, retainedDraft } = visibleDraftSnapshot(
+    snapshot,
+    conversationIdentity,
+  );
+  const retainedSessionKey = retainedDraft?.conversationIdentity.sessionKey;
   const mutate = useCallback(
     (mutation: Parameters<typeof runtime.mutate>[1]) =>
       runtime.mutate(conversationIdentity, mutation),
@@ -31,6 +36,15 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
   return {
     capacityExceeded,
     draft,
+    retainedDraft,
+    restoreRetainedDraft: useCallback(
+      () => runtime.restoreRetainedDraft(conversationIdentity, retainedSessionKey),
+      [conversationIdentity, retainedSessionKey, runtime],
+    ),
+    discardRetainedDraft: useCallback(
+      () => runtime.discardRetainedDraft(retainedSessionKey),
+      [retainedSessionKey, runtime],
+    ),
     addAnnotation: useCallback(
       (annotation: DraftAnnotation) => mutate({ kind: "add", annotation }),
       [mutate],

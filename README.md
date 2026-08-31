@@ -90,6 +90,8 @@ conversation data:
   `/g/<gizmo>/c/<conversation>`.
 - On a new or otherwise unidentified conversation page, confirm annotations work until reload and
   are then discarded instead of being persisted under a page-session identifier.
+- Leave an unidentified conversation and confirm its draft is kept separate. Restore it explicitly
+  into the chosen conversation, or discard it through confirmation, before reloading the page.
 - Navigate to another conversation and back; confirm drafts remain isolated to their conversation.
 - Send an annotated message and confirm the pending state clears only after the matching user
   message appears. Simulate or observe a send failure and confirm the draft remains recoverable.
