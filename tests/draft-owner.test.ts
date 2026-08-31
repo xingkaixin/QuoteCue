@@ -6,7 +6,7 @@ import {
   MAX_DRAFT_ANNOTATIONS,
 } from "@/features/annotations/draft-capacity";
 import { createDraftPersistence } from "@/features/annotations/draft-persistence";
-import { createDraftRuntime } from "@/features/annotations/draft-runtime";
+import { createDraftRuntime, visibleDraftSnapshot } from "@/features/annotations/draft-runtime";
 import { createDraftOwner } from "@/features/annotations/draft-owner";
 
 const extensionStorage = vi.hoisted(() => {
@@ -143,6 +143,52 @@ describe("draft storage", () => {
       expect(extensionStorage.snapshot()[currentKey]).toMatchObject({ annotations }),
     );
     expect(runtime.getSnapshot().capacityExceeded).toBe(false);
+    unsubscribe();
+  });
+
+  it("retains only rejected restore items and can restore them after freeing capacity", async () => {
+    const stored = Array.from({ length: MAX_DRAFT_ANNOTATIONS - 2 }, (_, index) => ({
+      ...annotation,
+      id: `stored-${index}`,
+    }));
+    extensionStorage.reset({ [currentKey]: { ...envelope, annotations: stored } });
+    const runtime = createDraftRuntime(createDraftPersistence(draftStore));
+    const unsubscribe = runtime.subscribe(() => undefined);
+    const unidentified = { kind: "unidentified", sessionKey: "source-session" } as const;
+    const second = { ...annotation, id: "second-retained" };
+    runtime.activate(unidentified);
+    runtime.mutate(unidentified, { kind: "add", annotation });
+    runtime.mutate(unidentified, { kind: "add", annotation: second });
+    runtime.activate(conversationA);
+    await vi.waitFor(() => expect(runtime.getSnapshot().draftState?.status).toBe("ready"));
+    await draftStore.mutate(conversationA, [
+      { kind: "add", annotation: { ...annotation, id: "other-tab" } },
+    ]);
+
+    expect(runtime.restoreRetainedDraft(conversationA, unidentified.sessionKey)).toBe(true);
+    expect(runtime.restoreRetainedDraft(conversationA, unidentified.sessionKey)).toBe(false);
+    await vi.waitFor(() =>
+      expect(visibleDraftSnapshot(runtime.getSnapshot(), conversationA)).toMatchObject({
+        capacityExceeded: true,
+        retainedDraft: { count: 1, status: "retained" },
+      }),
+    );
+    expect((await draftStore.load(conversationA)).annotations).toHaveLength(MAX_DRAFT_ANNOTATIONS);
+    expect((await draftStore.load(conversationA)).annotations).toContainEqual(annotation);
+    expect((await draftStore.load(conversationA)).annotations).not.toContainEqual(second);
+    expect(runtime.restoreRetainedDraft(conversationA, unidentified.sessionKey)).toBe(false);
+
+    runtime.mutate(conversationA, { kind: "discard", annotationIds: ["other-tab"] });
+    await vi.waitFor(() =>
+      expect(visibleDraftSnapshot(runtime.getSnapshot(), conversationA).draft).toMatchObject({
+        status: "ready",
+      }),
+    );
+    expect(runtime.restoreRetainedDraft(conversationA, unidentified.sessionKey)).toBe(true);
+    await vi.waitFor(() =>
+      expect(visibleDraftSnapshot(runtime.getSnapshot(), conversationA).retainedDraft).toBeNull(),
+    );
+    expect((await draftStore.load(conversationA)).annotations).toContainEqual(second);
     unsubscribe();
   });
 

@@ -55,7 +55,6 @@ export type DraftLifecycleAction =
   | {
       type: "load-failed";
       conversationIdentity: IdentifiedConversation;
-      annotations: DraftAnnotation[];
     }
   | { type: "save-failed"; conversationIdentity: IdentifiedConversation }
   | {
@@ -102,7 +101,7 @@ export function reduceDraftLifecycle(
       return {
         status: "error",
         conversationIdentity: action.conversationIdentity,
-        annotations: action.annotations,
+        annotations: [],
         hasUnreadableAnnotations: false,
         operation: "load",
       };
@@ -177,23 +176,6 @@ export function publicDraftState(state: DraftLifecycleState): DraftState {
         operation: state.operation,
       };
   }
-}
-
-export function draftAnnotationsToAdopt(
-  state: DraftLifecycleState,
-  nextIdentity: ConversationIdentity,
-) {
-  if (nextIdentity.kind !== "identified" || state.status === "loading") {
-    return [];
-  }
-  if (state.conversationIdentity.kind === "unidentified") {
-    return state.annotations;
-  }
-  return state.status === "error" &&
-    state.operation === "load" &&
-    sameConversationIdentity(state.conversationIdentity, nextIdentity)
-    ? state.annotations
-    : [];
 }
 
 function loadStartedState(conversationIdentity: ConversationIdentity): DraftLifecycleState {

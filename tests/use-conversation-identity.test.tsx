@@ -55,6 +55,13 @@ describe("useConversationIdentity", () => {
       value: "conversation-a",
     });
 
+    await act(async () => firstHost.controls.setConversationIdentity(null));
+    const nextUnidentified = readIdentity(firstContainer);
+    expect(nextUnidentified.kind).toBe("unidentified");
+    expect(nextUnidentified.value).not.toBe(firstIdentity.value);
+    await act(async () => firstHost.controls.setConversationIdentity(null));
+    expect(readIdentity(firstContainer)).toEqual(nextUnidentified);
+
     await act(async () => {
       firstRoot.unmount();
       secondRoot.unmount();

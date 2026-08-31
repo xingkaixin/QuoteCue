@@ -2,13 +2,13 @@ import {
   sameConversationIdentity,
   type ConversationIdentity,
   type IdentifiedConversation,
+  type UnidentifiedConversation,
 } from "@/features/conversation/conversation-identity";
 
-import type { DraftAnnotation } from "./annotation";
+import { sameAnnotationSnapshot, type DraftAnnotation } from "./annotation";
 import { draftMutationExceedsCapacity } from "./draft-capacity";
 import {
   canMutateDraftLifecycle,
-  draftAnnotationsToAdopt,
   initialDraftLifecycleState,
   publicDraftState,
   reduceDraftLifecycle,
@@ -22,16 +22,32 @@ import type { DraftPersistence, DraftPersistenceEvent } from "./draft-persistenc
 type DraftRuntimeSnapshot = {
   capacityExceeded: boolean;
   draftState: DraftLifecycleState | null;
+  retainedDrafts: ReadonlyMap<string, RetainedAnnotations>;
+};
+
+type RetainedAnnotations = { annotations: readonly DraftAnnotation[] } & (
+  | { status: "retained" }
+  | { status: "restoring" | "save-failed"; target: IdentifiedConversation }
+);
+
+export type RetainedDraftState = {
+  conversationIdentity: UnidentifiedConversation;
+  count: number;
+  status: RetainedAnnotations["status"];
 };
 
 export function createDraftRuntime(draftPersistence: DraftPersistence) {
-  let snapshot: DraftRuntimeSnapshot = { capacityExceeded: false, draftState: null };
+  let snapshot: DraftRuntimeSnapshot = {
+    capacityExceeded: false,
+    draftState: null,
+    retainedDrafts: new Map(),
+  };
   let loadGeneration = 0;
   let unsubscribePersistence: (() => void) | null = null;
   const listeners = new Set<() => void>();
-  const adoptedSessions = new Map<string, IdentifiedConversation>();
 
   function handlePersistenceEvent(event: DraftPersistenceEvent) {
+    settleRetainedDrafts(event);
     if (event.status === "failed") {
       console.error("[QuoteCue] Failed to save draft annotations", event.error);
       dispatch({ type: "save-failed", conversationIdentity: event.conversationIdentity });
@@ -47,7 +63,10 @@ export function createDraftRuntime(draftPersistence: DraftPersistence) {
     dispatch({
       type: "save-succeeded",
       conversationIdentity: event.conversationIdentity,
-      annotations: applyDraftMutations(result.annotations, event.pendingMutations),
+      annotations: withoutRestoringAnnotations(
+        applyDraftMutations(result.annotations, event.pendingMutations),
+        event.conversationIdentity,
+      ),
       hasUnreadableAnnotations: result.hasUnreadableAnnotations,
     });
   }
@@ -75,23 +94,21 @@ export function createDraftRuntime(draftPersistence: DraftPersistence) {
 
   function load(conversationIdentity: ConversationIdentity) {
     const generation = ++loadGeneration;
-    const annotationsToAdopt = snapshot.draftState
-      ? draftAnnotationsToAdopt(snapshot.draftState, conversationIdentity)
-      : [];
-    const previousIdentity = snapshot.draftState?.conversationIdentity;
-    if (conversationIdentity.kind === "unidentified") {
-      adoptedSessions.delete(conversationIdentity.sessionKey);
-    } else if (annotationsToAdopt.length > 0 && previousIdentity?.kind === "unidentified") {
-      adoptedSessions.set(previousIdentity.sessionKey, conversationIdentity);
+    const previous = snapshot.draftState;
+    if (
+      previous?.status === "ready" &&
+      previous.conversationIdentity.kind === "unidentified" &&
+      previous.annotations.length > 0
+    ) {
+      setRetainedDraft(previous.conversationIdentity.sessionKey, {
+        status: "retained",
+        annotations: previous.annotations,
+      });
     }
     setCapacityExceeded(false);
     dispatch({ type: "load-started", conversationIdentity });
     if (conversationIdentity.kind === "unidentified") {
       return;
-    }
-
-    for (const annotation of annotationsToAdopt) {
-      draftPersistence.enqueue(conversationIdentity, { kind: "add", annotation });
     }
 
     void draftPersistence
@@ -103,7 +120,7 @@ export function createDraftRuntime(draftPersistence: DraftPersistence) {
         dispatch({
           type: "load-succeeded",
           conversationIdentity,
-          annotations,
+          annotations: withoutRestoringAnnotations(annotations, conversationIdentity),
           hasUnreadableAnnotations,
           hasFailedSave,
         });
@@ -116,7 +133,6 @@ export function createDraftRuntime(draftPersistence: DraftPersistence) {
         dispatch({
           type: "load-failed",
           conversationIdentity,
-          annotations: annotationsToAdopt,
         });
       });
   }
@@ -162,10 +178,16 @@ export function createDraftRuntime(draftPersistence: DraftPersistence) {
     annotations: readonly DraftAnnotation[],
   ) {
     const mutation = { kind: "discard-confirmed", annotations } as const;
-    const target =
-      conversationIdentity.kind === "unidentified"
-        ? (adoptedSessions.get(conversationIdentity.sessionKey) ?? conversationIdentity)
-        : conversationIdentity;
+    if (conversationIdentity.kind === "unidentified") {
+      const retained = snapshot.retainedDrafts.get(conversationIdentity.sessionKey);
+      if (retained) {
+        const remaining =
+          applyDraftMutation(retained.annotations, mutation) ?? retained.annotations;
+        setRetainedDraft(conversationIdentity.sessionKey, { ...retained, annotations: remaining });
+        return true;
+      }
+    }
+    const target = conversationIdentity;
     if (
       sameConversationIdentity(currentConversationIdentity, target) &&
       snapshot.draftState &&
@@ -178,6 +200,120 @@ export function createDraftRuntime(draftPersistence: DraftPersistence) {
     }
     draftPersistence.enqueue(target, mutation);
     return true;
+  }
+
+  function restoreRetainedDraft(
+    conversationIdentity: ConversationIdentity,
+    sourceSessionKey: string | undefined,
+  ) {
+    const first = snapshot.retainedDrafts.entries().next().value;
+    if (!first || first[0] !== sourceSessionKey || conversationIdentity.kind !== "identified") {
+      return false;
+    }
+    const [sessionKey, retained] = first;
+    if (retained.status === "restoring") {
+      return false;
+    }
+    if (retained.status === "save-failed") {
+      setRetainedDraft(sessionKey, { ...retained, status: "restoring" });
+      draftPersistence.retry(retained.target);
+      return true;
+    }
+    const current = snapshot.draftState;
+    if (
+      current?.status !== "ready" ||
+      current.hasUnreadableAnnotations ||
+      !sameConversationIdentity(current.conversationIdentity, conversationIdentity)
+    ) {
+      return false;
+    }
+    let combined: readonly DraftAnnotation[] = current.annotations;
+    for (const annotation of retained.annotations) {
+      const mutation = { kind: "add", annotation } as const;
+      if (draftMutationExceedsCapacity(combined, mutation)) {
+        setCapacityExceeded(true);
+        return false;
+      }
+      combined = applyDraftMutation(combined, mutation) ?? combined;
+    }
+    setRetainedDraft(sessionKey, {
+      ...retained,
+      status: "restoring",
+      target: conversationIdentity,
+    });
+    for (const annotation of retained.annotations) {
+      draftPersistence.enqueue(conversationIdentity, { kind: "add", annotation });
+    }
+    setCapacityExceeded(false);
+    return true;
+  }
+
+  function discardRetainedDraft(sourceSessionKey: string | undefined) {
+    const first = snapshot.retainedDrafts.entries().next().value;
+    if (!first || first[0] !== sourceSessionKey || first[1].status !== "retained") {
+      return false;
+    }
+    setRetainedDraft(first[0], null);
+    return true;
+  }
+
+  function setRetainedDraft(sessionKey: string, retained: RetainedAnnotations | null) {
+    const retainedDrafts = new Map(snapshot.retainedDrafts);
+    if (retained && retained.annotations.length > 0) {
+      retainedDrafts.set(sessionKey, retained);
+    } else {
+      retainedDrafts.delete(sessionKey);
+    }
+    snapshot = { ...snapshot, retainedDrafts };
+    notify();
+  }
+
+  function settleRetainedDrafts(event: DraftPersistenceEvent) {
+    for (const [sessionKey, retained] of snapshot.retainedDrafts) {
+      if (
+        retained.status === "retained" ||
+        !sameConversationIdentity(retained.target, event.conversationIdentity)
+      ) {
+        continue;
+      }
+      if (event.status === "failed") {
+        setRetainedDraft(sessionKey, { ...retained, status: "save-failed" });
+        continue;
+      }
+      const annotations = retained.annotations.filter(
+        (annotation) =>
+          !event.result.annotations.some((saved) => sameAnnotationSnapshot(annotation, saved)),
+      );
+      const hasPendingAdds = event.pendingMutations.some(
+        (mutation) =>
+          mutation.kind === "add" &&
+          annotations.some((annotation) => annotation.id === mutation.annotation.id),
+      );
+      setRetainedDraft(
+        sessionKey,
+        hasPendingAdds
+          ? { ...retained, annotations, status: "restoring" }
+          : { annotations, status: "retained" },
+      );
+    }
+  }
+
+  function withoutRestoringAnnotations(
+    annotations: readonly DraftAnnotation[],
+    conversationIdentity: IdentifiedConversation,
+  ) {
+    const restoringIds = new Set<string>();
+    for (const retained of snapshot.retainedDrafts.values()) {
+      if (
+        retained.status !== "retained" &&
+        sameConversationIdentity(retained.target, conversationIdentity)
+      ) {
+        for (const annotation of retained.annotations) {
+          restoringIds.add(annotation.id);
+        }
+      }
+    }
+    return annotations.filter(({ id }) => !restoringIds.has(id));
   }
 
   function retry(conversationIdentity: ConversationIdentity) {
@@ -225,7 +361,16 @@ export function createDraftRuntime(draftPersistence: DraftPersistence) {
     return snapshot;
   }
 
-  return { activate, getSnapshot, mutate, removeConfirmed, retry, subscribe };
+  return {
+    activate,
+    discardRetainedDraft,
+    getSnapshot,
+    mutate,
+    removeConfirmed,
+    restoreRetainedDraft,
+    retry,
+    subscribe,
+  };
 }
 
 export type DraftRuntime = ReturnType<typeof createDraftRuntime>;
@@ -238,10 +383,24 @@ export function visibleDraftSnapshot(
     ? visibleDraftLifecycleState(snapshot.draftState, conversationIdentity)
     : initialDraftLifecycleState(conversationIdentity);
   return {
+    retainedDraft: retainedDraftState(snapshot),
     capacityExceeded:
       snapshot.draftState !== null &&
       sameConversationIdentity(snapshot.draftState.conversationIdentity, conversationIdentity) &&
       snapshot.capacityExceeded,
     draft: publicDraftState(state),
+  };
+}
+
+function retainedDraftState(snapshot: DraftRuntimeSnapshot): RetainedDraftState | null {
+  const first = snapshot.retainedDrafts.entries().next().value;
+  if (!first) {
+    return null;
+  }
+  const [sessionKey, retained] = first;
+  return {
+    conversationIdentity: { kind: "unidentified", sessionKey },
+    count: retained.annotations.length,
+    status: retained.status,
   };
 }
