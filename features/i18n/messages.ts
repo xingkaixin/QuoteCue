@@ -13,6 +13,8 @@ export type Messages = {
   annotationContent: string;
   annotationRemoved: (removed: number, remaining: number) => string;
   annotationSourceUnavailable: string;
+  annotationRemovedElsewhere: string;
+  saveAsNewAnnotation: string;
   cancel: string;
   clearAnnotations: string;
   clearAnnotationsConfirmation: string;
@@ -57,6 +59,9 @@ const ENGLISH: Messages = {
   annotationRemoved: (removed, remaining) =>
     `${removed === 1 ? "Annotation" : `${removed} annotations`} removed. ${remaining} remaining.`,
   annotationSourceUnavailable: "Source position changed",
+  annotationRemovedElsewhere:
+    "This annotation was removed elsewhere. Your edits are kept here; save them as a new annotation or cancel.",
+  saveAsNewAnnotation: "Save as new annotation",
   cancel: "Cancel",
   clearAnnotations: "Clear all annotations",
   clearAnnotationsConfirmation: "Clear all annotations? Click again to confirm.",
@@ -106,6 +111,9 @@ const JAPANESE: Messages = {
   annotationRemoved: (removed, remaining) =>
     `${removed} 件の注釈を削除しました。残り ${remaining} 件です。`,
   annotationSourceUnavailable: "引用元の位置が変更されました",
+  annotationRemovedElsewhere:
+    "この注釈は別のページで削除されました。入力内容は保持されています。新しい注釈として保存するか、キャンセルしてください。",
+  saveAsNewAnnotation: "新しい注釈として保存",
   cancel: "キャンセル",
   clearAnnotations: "すべての注釈を削除",
   clearAnnotationsConfirmation:
@@ -155,6 +163,8 @@ const SIMPLIFIED_CHINESE: Messages = {
   annotationContent: "批注内容",
   annotationRemoved: (removed, remaining) => `已删除 ${removed} 条批注，还剩 ${remaining} 条。`,
   annotationSourceUnavailable: "原文位置已变化",
+  annotationRemovedElsewhere: "这条批注已在其他页面移除。当前输入仍已保留，可另存为新批注或取消。",
+  saveAsNewAnnotation: "另存为新批注",
   cancel: "取消",
   clearAnnotations: "清空全部批注",
   clearAnnotationsConfirmation: "要清空全部批注吗？请再次点击确认。",
@@ -199,6 +209,8 @@ const TRADITIONAL_CHINESE: Messages = {
   annotationContent: "批註內容",
   annotationRemoved: (removed, remaining) => `已刪除 ${removed} 條批註，還剩 ${remaining} 條。`,
   annotationSourceUnavailable: "原文位置已變更",
+  annotationRemovedElsewhere: "這條批註已在其他頁面移除。目前輸入仍已保留，可另存為新批註或取消。",
+  saveAsNewAnnotation: "另存為新批註",
   cancel: "取消",
   clearAnnotations: "清除全部批註",
   clearAnnotationsConfirmation: "要清除全部批註嗎？請再次點擊確認。",

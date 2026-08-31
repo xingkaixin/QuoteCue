@@ -101,7 +101,11 @@ export function reduceDraftLifecycle(
       return {
         status: "error",
         conversationIdentity: action.conversationIdentity,
-        annotations: [],
+        annotations:
+          state.status !== "loading" &&
+          sameConversationIdentity(state.conversationIdentity, action.conversationIdentity)
+            ? state.annotations
+            : [],
         hasUnreadableAnnotations: false,
         operation: "load",
       };

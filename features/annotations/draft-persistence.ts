@@ -135,7 +135,14 @@ export function createDraftPersistence(draftStore: DraftStore) {
     }
   }
 
-  return { enqueue, load, retry, subscribe };
+  return {
+    enqueue,
+    load,
+    retry,
+    subscribe,
+    subscribeToChanges: (conversation: IdentifiedConversation, onChanged: () => void) =>
+      draftStore.subscribe(conversation, onChanged),
+  };
 }
 
 export type DraftPersistence = ReturnType<typeof createDraftPersistence>;

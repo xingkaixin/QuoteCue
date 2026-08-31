@@ -42,11 +42,19 @@ export function createDraftRuntime(draftPersistence: DraftPersistence) {
     draftState: null,
     retainedDrafts: new Map(),
   };
-  let loadGeneration = 0;
+  let activeRead: { conversationIdentity: IdentifiedConversation; invalidated: boolean } | null =
+    null;
   let unsubscribePersistence: (() => void) | null = null;
+  let unsubscribeChanges: (() => void) | null = null;
   const listeners = new Set<() => void>();
 
   function handlePersistenceEvent(event: DraftPersistenceEvent) {
+    if (
+      activeRead &&
+      sameConversationIdentity(activeRead.conversationIdentity, event.conversationIdentity)
+    ) {
+      activeRead.invalidated = true;
+    }
     settleRetainedDrafts(event);
     if (event.status === "failed") {
       console.error("[QuoteCue] Failed to save draft annotations", event.error);
@@ -93,7 +101,7 @@ export function createDraftRuntime(draftPersistence: DraftPersistence) {
   }
 
   function load(conversationIdentity: ConversationIdentity) {
-    const generation = ++loadGeneration;
+    stopObservingConversation();
     const previous = snapshot.draftState;
     if (
       previous?.status === "ready" &&
@@ -110,31 +118,74 @@ export function createDraftRuntime(draftPersistence: DraftPersistence) {
     if (conversationIdentity.kind === "unidentified") {
       return;
     }
+    observeConversation(conversationIdentity);
+    read(conversationIdentity);
+  }
 
-    void draftPersistence
-      .load(conversationIdentity)
-      .then(({ annotations, hasFailedSave, hasUnreadableAnnotations }) => {
-        if (generation !== loadGeneration) {
+  function observeConversation(conversationIdentity: IdentifiedConversation) {
+    if (listeners.size === 0) {
+      return;
+    }
+    unsubscribeChanges = draftPersistence.subscribeToChanges(conversationIdentity, () => {
+      if (
+        listeners.size > 0 &&
+        snapshot.draftState &&
+        sameConversationIdentity(snapshot.draftState.conversationIdentity, conversationIdentity)
+      ) {
+        read(conversationIdentity);
+      }
+    });
+  }
+
+  function stopObservingConversation() {
+    unsubscribeChanges?.();
+    unsubscribeChanges = null;
+    activeRead = null;
+  }
+
+  function read(conversationIdentity: IdentifiedConversation) {
+    if (
+      activeRead &&
+      sameConversationIdentity(activeRead.conversationIdentity, conversationIdentity)
+    ) {
+      activeRead.invalidated = true;
+      return;
+    }
+    const request = { conversationIdentity, invalidated: false };
+    activeRead = request;
+    void (async () => {
+      do {
+        request.invalidated = false;
+        try {
+          const { annotations, hasFailedSave, hasUnreadableAnnotations } =
+            await draftPersistence.load(conversationIdentity);
+          if (activeRead !== request) {
+            return;
+          }
+          if (!request.invalidated) {
+            dispatch({
+              type: "load-succeeded",
+              conversationIdentity,
+              annotations: withoutRestoringAnnotations(annotations, conversationIdentity),
+              hasUnreadableAnnotations,
+              hasFailedSave,
+            });
+          }
+        } catch (error: unknown) {
+          if (activeRead !== request) {
+            return;
+          }
+          if (!request.invalidated) {
+            console.error("[QuoteCue] Failed to load draft annotations", error);
+            dispatch({ type: "load-failed", conversationIdentity });
+          }
+        }
+        if (activeRead !== request) {
           return;
         }
-        dispatch({
-          type: "load-succeeded",
-          conversationIdentity,
-          annotations: withoutRestoringAnnotations(annotations, conversationIdentity),
-          hasUnreadableAnnotations,
-          hasFailedSave,
-        });
-      })
-      .catch((error: unknown) => {
-        console.error("[QuoteCue] Failed to load draft annotations", error);
-        if (generation !== loadGeneration) {
-          return;
-        }
-        dispatch({
-          type: "load-failed",
-          conversationIdentity,
-        });
-      });
+      } while (request.invalidated);
+      activeRead = null;
+    })();
   }
 
   function mutate(conversationIdentity: ConversationIdentity, mutation: DraftMutation) {
@@ -325,7 +376,7 @@ export function createDraftRuntime(draftPersistence: DraftPersistence) {
       return;
     }
     if (visible.operation === "load") {
-      load(conversationIdentity);
+      read(visible.conversationIdentity);
     } else {
       draftPersistence.retry(visible.conversationIdentity);
     }
@@ -341,12 +392,20 @@ export function createDraftRuntime(draftPersistence: DraftPersistence) {
 
   function subscribe(listener: () => void) {
     listeners.add(listener);
-    unsubscribePersistence ??= draftPersistence.subscribe(handlePersistenceEvent);
+    if (!unsubscribePersistence) {
+      unsubscribePersistence = draftPersistence.subscribe(handlePersistenceEvent);
+      const identity = snapshot.draftState?.conversationIdentity;
+      if (identity?.kind === "identified") {
+        observeConversation(identity);
+        read(identity);
+      }
+    }
     return () => {
       listeners.delete(listener);
       if (listeners.size === 0) {
         unsubscribePersistence?.();
         unsubscribePersistence = null;
+        stopObservingConversation();
       }
     };
   }

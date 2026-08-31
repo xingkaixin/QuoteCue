@@ -81,6 +81,37 @@ afterEach(() => {
 });
 
 describe("AnnotationQuickInput", () => {
+  it("keeps the current input when its source is removed elsewhere", async () => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    const onClose = vi.fn();
+    const onSave = vi.fn();
+    const { container, root } = await renderQuickInput(onClose, onSave);
+    const input = container.querySelector("input")!;
+    await act(async () => changeInput(input, "Unfinished local comment"));
+    await act(async () =>
+      root.render(
+        <HostTestProvider>
+          <AnnotationQuickInput
+            canSave
+            bindSession={() => undefined}
+            onClose={onClose}
+            onSave={onSave}
+            rect={draft.rect}
+            sourceRemoved
+          />
+        </HostTestProvider>,
+      ),
+    );
+    expect(container.querySelector("input")).toBe(input);
+    expect(input.value).toBe("Unfinished local comment");
+    expect(container.querySelector('[role="status"]')?.textContent).toContain("removed elsewhere");
+    await act(async () =>
+      container.querySelector<HTMLButtonElement>('[aria-label="Save as new annotation"]')?.click(),
+    );
+    expect(onSave).toHaveBeenCalledWith("Unfinished local comment");
+    await act(async () => root.unmount());
+  });
+
   it("exposes a focused input and labelled save action", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     const { container, root } = await renderQuickInput(vi.fn(), vi.fn());
@@ -162,6 +193,8 @@ async function renderQuickInput(onClose: () => void, onSave: (comment: string) =
     root.render(
       <HostTestProvider>
         <AnnotationQuickInput
+          canSave
+          sourceRemoved={false}
           bindSession={() => undefined}
           onClose={onClose}
           onSave={onSave}

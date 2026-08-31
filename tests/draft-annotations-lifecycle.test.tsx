@@ -851,7 +851,6 @@ describe("draft annotation lifecycle", () => {
 
   it("preserves newer edits while removing annotations that were sent unchanged", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-    draftStoreFixture.store.load.mockResolvedValue(draftResult([]));
     const container = document.createElement("div");
     document.body.append(container);
     const root = createRoot(container);

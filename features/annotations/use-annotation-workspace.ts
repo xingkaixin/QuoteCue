@@ -17,8 +17,7 @@ import { canMutateDraft, useDraftAnnotations } from "./use-draft-annotations";
 type SendController = ReturnType<typeof registerSendInterceptor>;
 type AnnotationEditorState =
   | { status: "hidden" }
-  | { status: "quick"; annotationId: string }
-  | { status: "expanded"; annotationId: string };
+  | { status: "quick" | "expanded"; annotation: DraftAnnotation };
 
 export function useAnnotationWorkspace() {
   const host = useHost();
@@ -49,19 +48,30 @@ export function useAnnotationWorkspace() {
     visibleAnnotations,
   } = useDeferredAnnotationDeletion(annotations, conversationIdentity, discardAnnotations);
   const actionableAnnotations = isDraftMutable ? visibleAnnotations : [];
-  const activeAnnotationId = editorState.status === "hidden" ? null : editorState.annotationId;
-  const projectedAnnotations = useAnnotationProjection(actionableAnnotations, activeAnnotationId);
-  const activeProjection = projectedAnnotations.find(
+  const activeAnnotation = editorState.status === "hidden" ? null : editorState.annotation;
+  const activeAnnotationId = activeAnnotation?.id ?? null;
+  const sourceRemoved =
+    isDraftMutable &&
+    activeAnnotation !== null &&
+    !annotations.some(({ id }) => id === activeAnnotation.id);
+  const preserveEditorProjection =
+    draft.status !== "loading" && activeAnnotation !== null && (!isDraftMutable || sourceRemoved);
+  const projections = useAnnotationProjection(
+    preserveEditorProjection ? [...actionableAnnotations, activeAnnotation] : actionableAnnotations,
+    activeAnnotationId,
+  );
+  const projectedAnnotations = projections.slice(0, actionableAnnotations.length);
+  const activeProjection = projections.find(
     ({ annotation }) => annotation.id === activeAnnotationId,
   );
   const activeResolution = activeProjection?.resolution;
   const closeEditor = useCallback(() => setEditorState({ status: "hidden" }), []);
 
   useEffect(() => {
-    if (!isDraftMutable || activeResolution === "unresolved") {
+    if (draft.status === "loading" || activeResolution === "unresolved") {
       closeEditor();
     }
-  }, [activeResolution, closeEditor, isDraftMutable]);
+  }, [activeResolution, closeEditor, draft.status]);
 
   const sendInputRef = useRef({
     annotations: projectedAnnotations,
@@ -91,7 +101,12 @@ export function useAnnotationWorkspace() {
             sentConversationIdentity,
           )
         ) {
-          closeEditor();
+          setEditorState((current) =>
+            current.status !== "hidden" &&
+            sentAnnotations.some(({ id }) => id === current.annotation.id)
+              ? { status: "hidden" }
+              : current,
+          );
         }
       },
     });
@@ -103,7 +118,7 @@ export function useAnnotationWorkspace() {
       }
       controller.dispose();
     };
-  }, [closeEditor, host]);
+  }, [host]);
 
   useEffect(() => {
     closeEditor();
@@ -138,7 +153,7 @@ export function useAnnotationWorkspace() {
         if (!addAnnotation(annotation)) {
           return;
         }
-        setEditorState({ status: "quick", annotationId: annotation.id });
+        setEditorState({ status: "quick", annotation });
         host.selection.clear();
       }),
     [addAnnotation, host, replaceEditorSession],
@@ -146,18 +161,25 @@ export function useAnnotationWorkspace() {
 
   const saveActiveAnnotation = useCallback(
     (comment: string) => {
-      if (editorState.status !== "hidden" && updateAnnotation(editorState.annotationId, comment)) {
+      if (!activeAnnotation) {
+        return;
+      }
+      const saved = sourceRemoved
+        ? addAnnotation({ ...activeAnnotation, id: crypto.randomUUID(), comment })
+        : updateAnnotation(activeAnnotation.id, comment);
+      if (saved) {
         closeEditor();
       }
     },
-    [closeEditor, editorState, updateAnnotation],
+    [activeAnnotation, addAnnotation, closeEditor, sourceRemoved, updateAnnotation],
   );
 
   const openEditor = useCallback(
     (projection: ProjectedAnnotation) => {
       if (
         projection.resolution !== "resolved" ||
-        (editorState.status === "expanded" && editorState.annotationId === projection.annotation.id)
+        (editorState.status === "expanded" &&
+          editorState.annotation.id === projection.annotation.id)
       ) {
         return;
       }
@@ -168,7 +190,7 @@ export function useAnnotationWorkspace() {
         }
 
         const showEditor = () =>
-          setEditorState({ status: "expanded", annotationId: projection.annotation.id });
+          setEditorState({ status: "expanded", annotation: projection.annotation });
         if (reveal.value === "visible") {
           showEditor();
           return;
@@ -192,10 +214,15 @@ export function useAnnotationWorkspace() {
   );
 
   const deleteActiveAnnotation = useCallback(() => {
-    if (editorState.status !== "hidden") {
-      deleteAnnotation(editorState.annotationId);
+    if (!isDraftMutable) {
+      return;
     }
-  }, [deleteAnnotation, editorState]);
+    if (sourceRemoved) {
+      closeEditor();
+    } else if (activeAnnotation) {
+      deleteAnnotation(activeAnnotation.id);
+    }
+  }, [activeAnnotation, closeEditor, deleteAnnotation, isDraftMutable, sourceRemoved]);
 
   const clearAll = useCallback(() => {
     if (!discardAllAnnotations()) {
@@ -240,11 +267,14 @@ export function useAnnotationWorkspace() {
       isSending: isRetainedDraftSending,
     },
     editor: {
+      annotation: activeAnnotation,
       bindSession: bindEditorSession,
+      canSave: isDraftMutable,
       close: closeEditor,
       delete: deleteActiveAnnotation,
       projection: activeProjection,
       save: saveActiveAnnotation,
+      sourceRemoved,
       status: editorState.status,
     },
     selection: {

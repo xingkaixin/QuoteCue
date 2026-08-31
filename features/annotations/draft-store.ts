@@ -15,6 +15,7 @@ export type DraftMutationResult = DraftSnapshot &
 
 export type DraftStore = {
   load(conversation: IdentifiedConversation): Promise<DraftSnapshot>;
+  subscribe(conversation: IdentifiedConversation, onChanged: () => void): () => void;
   /** Applies ordered domain mutations and resolves with the authoritative annotations afterwards. */
   mutate(
     conversation: IdentifiedConversation,

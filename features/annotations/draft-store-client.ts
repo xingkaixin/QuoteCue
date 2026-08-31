@@ -7,11 +7,22 @@ import {
   type DraftOwnerResponse,
 } from "./draft-owner-protocol";
 import type { DraftStore } from "./draft-store";
+import { scopedDraftStorageKey } from "./draft-storage-key";
 
 type DraftOwnerSuccessResponse = Exclude<DraftOwnerResponse, { kind: "error" }>;
 
 export function createBrowserDraftStore(): DraftStore {
   return {
+    subscribe(conversation, onChanged) {
+      const key = scopedDraftStorageKey(conversation);
+      const changed = (changes: Record<string, unknown>, areaName: string) => {
+        if (areaName === "local" && Object.hasOwn(changes, key)) {
+          onChanged();
+        }
+      };
+      browser.storage.onChanged.addListener(changed);
+      return () => browser.storage.onChanged.removeListener(changed);
+    },
     load: async (conversation) => {
       const response = await request({
         channel: DRAFT_OWNER_MESSAGE,

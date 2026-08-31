@@ -16,6 +16,8 @@ type AnnotationEditorProps = {
   onDelete: () => void;
   onSave: (comment: string) => void;
   rect: SelectionRect;
+  sourceRemoved: boolean;
+  canSave: boolean;
 };
 
 const EDITOR_SIZE = { height: 164, width: 340 };
@@ -27,6 +29,8 @@ export function AnnotationEditor({
   onDelete,
   onSave,
   rect,
+  sourceRemoved,
+  canSave,
 }: AnnotationEditorProps) {
   const { messages } = useI18n();
   const { commentFieldProps, position, resetWarning, rootRef, saveComment } =
@@ -46,6 +50,11 @@ export function AnnotationEditor({
       ref={rootRef}
       style={position}
     >
+      {sourceRemoved && (
+        <p className="mb-2 text-sm" role="status">
+          {messages.annotationRemovedElsewhere}
+        </p>
+      )}
       <SecureTextField
         {...commentFieldProps}
         ariaLabel={messages.annotationContent}
@@ -56,6 +65,7 @@ export function AnnotationEditor({
       <div className="mt-2.5 flex items-center justify-between">
         <Button
           aria-label={messages.deleteAnnotation}
+          disabled={!canSave}
           onClick={onDelete}
           size="icon"
           variant="ghost"
@@ -66,8 +76,8 @@ export function AnnotationEditor({
           <Button onClick={onCancel} size="sm" variant="outline">
             {messages.cancel}
           </Button>
-          <Button onClick={saveComment} size="sm">
-            {messages.save}
+          <Button disabled={!canSave} onClick={saveComment} size="sm">
+            {sourceRemoved ? messages.saveAsNewAnnotation : messages.save}
           </Button>
         </div>
       </div>
