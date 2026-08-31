@@ -148,7 +148,7 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
       return;
     }
     abortAttempt(attempt);
-    recordFailure(attempt.conversationIdentity, reason, attempt.snapshot.text);
+    recordFailure(attempt.conversationIdentity, reason, attempt.restoreText);
   };
 
   const replaySend = (attempt: SendAttempt) => {

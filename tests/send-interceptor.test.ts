@@ -185,6 +185,57 @@ describe("registerSendInterceptor", () => {
     interceptor.dispose();
   });
 
+  it.each([
+    { composerText: "", expectedQuestion: "original question", source: "retained" },
+    {
+      composerText: "replacement question",
+      expectedQuestion: "replacement question",
+      source: "newly entered",
+    },
+  ])(
+    "uses the $source question after consecutive failed retries",
+    async ({ composerText, expectedQuestion }) => {
+      vi.useFakeTimers();
+      const composer = installComposer("original question");
+      const onSendConfirmed = vi.fn();
+      const onStateChange = vi.fn();
+      const interceptor = createInterceptor(onSendConfirmed, { onStateChange });
+      const sentPrompts: string[] = [];
+      installSendButton(() => {
+        const compiledPrompt = composer.textContent ?? "";
+        sentPrompts.push(compiledPrompt);
+        composer.replaceChildren();
+        if (sentPrompts.length === 3) {
+          installUserMessage("retried-user-message", compiledPrompt);
+        }
+      });
+
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        interceptor.submit();
+        await vi.advanceTimersByTimeAsync(15_001);
+        expect(onStateChange).toHaveBeenLastCalledWith({
+          status: "failed",
+          reason: "confirmation-timeout",
+        });
+        expect(composer.textContent).toBe("");
+        expect(sentPrompts[attempt]).toContain("[Supplemental question]\noriginal question");
+      }
+
+      composer.textContent = composerText;
+      interceptor.submit();
+      await vi.advanceTimersByTimeAsync(17);
+
+      expect(onSendConfirmed).toHaveBeenCalledOnce();
+      expect(onStateChange).toHaveBeenLastCalledWith({ status: "idle" });
+      expect(sentPrompts[2]).toContain(`[Supplemental question]\n${expectedQuestion}`);
+      expect(sentPrompts[2]?.match(/\[Annotation 1\]/g)).toHaveLength(1);
+      if (composerText) {
+        expect(sentPrompts[2]).not.toContain("original question");
+      }
+      interceptor.dispose();
+    },
+  );
+
   it("restores an owned composer when disposed", async () => {
     const composer = installComposer("original question");
     const interceptor = createInterceptor();
