@@ -18,5 +18,9 @@ export default defineConfig({
   integrations: [react()],
   vite: {
     plugins: [tailwindcss()],
+    build: {
+      // Keep font URLs external to satisfy the site's font-src 'self' policy.
+      assetsInlineLimit: 0,
+    },
   },
 });
