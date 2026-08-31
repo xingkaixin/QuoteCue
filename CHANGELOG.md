@@ -2,6 +2,29 @@
 
 Notable changes to QuoteCue are documented in this file.
 
+## [0.3.1] - 2026-08-31
+
+### Added
+
+- Synchronize draft updates, removals, and confirmed-send cleanup across open tabs in real time without page reloads.
+- Keep drafts from unidentified conversations isolated when navigating away, requiring explicit restoration before merging them into a persistent conversation.
+- Add self-hosted Umami analytics support and a standard sitemap endpoint to the product website.
+
+### Changed
+
+- Resolve text anchors using surrounding context evidence to improve restoration reliability after content changes.
+- Scope host composer action states and send controls strictly to the active composer instead of page-wide selectors.
+- Delay draft loading feedback to prevent visual flicker during fast reads and state updates.
+
+### Fixed
+
+- Preserve the supplemental question and annotation draft context across failed send attempts and retry failures.
+- Reject ambiguous send confirmations to prevent clearing annotations prematurely when matching is uncertain.
+- Keep secure field editing strictly isolated within its frame to prevent focus drops or premature dismissal during input.
+- Stabilize composer layout reconciliation during message streaming, voice input, and host dynamic style transitions.
+- Allow explicit, confirmed clearing and recovery even when stored draft entries are unreadable or rejected by storage limits.
+- Persist user edits and generated state across interactive demo transitions on the website.
+
 ## [0.3.0] - 2026-08-24
 
 ### Added
