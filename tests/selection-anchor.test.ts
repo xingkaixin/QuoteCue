@@ -65,6 +65,45 @@ describe("selection anchors", () => {
     expect(range?.toString()).toBe("target");
   });
 
+  it.each(["exact", "legacy-rendered"] as const)(
+    "uses stronger context instead of a matching old offset for %s anchors",
+    (format) => {
+      document.body.innerHTML = "<div>C target D A target B</div>";
+
+      const range = restore({
+        format,
+        messageId: "assistant-one",
+        quote: "target",
+        prefix: "A ",
+        suffix: " B",
+        start: 2,
+        end: 8,
+      });
+
+      expect(range?.startOffset).toBe(13);
+      expect(range?.toString()).toBe("target");
+    },
+  );
+
+  it.each(["exact", "legacy-rendered"] as const)(
+    "rejects tied context even when the old offset matches for %s anchors",
+    (format) => {
+      document.body.innerHTML = "<div>A target B A target B</div>";
+
+      expect(
+        restore({
+          format,
+          messageId: "assistant-one",
+          quote: "target",
+          prefix: "A ",
+          suffix: " B",
+          start: 2,
+          end: 8,
+        }),
+      ).toBeNull();
+    },
+  );
+
   it("fails closed when repeated candidates tie", () => {
     document.body.innerHTML = `
       <div>same target same target same</div>
@@ -211,6 +250,22 @@ describe("selection anchors", () => {
         end: 10,
       })?.toString(),
     ).toBe("alpha\tbeta");
+  });
+
+  it("fails closed when a legacy quote has both stored and whitespace-compatible candidates", () => {
+    document.body.innerHTML = "<div>alphabeta alpha beta</div>";
+
+    expect(
+      restore({
+        format: "legacy-rendered",
+        messageId: "assistant-one",
+        quote: "alpha beta",
+        prefix: "",
+        suffix: "",
+        start: 0,
+        end: 9,
+      }),
+    ).toBeNull();
   });
 
   it("fails closed for an empty quote", () => {
