@@ -192,7 +192,8 @@ test("protects an unsaved comment when a native action is activated by keyboard"
   await page.locator("[data-quotecue-native-action]").press("Enter");
   await expect(field).toHaveValue("Unsaved fixture comment");
   expect(await storedAnnotationCount(extensionWorker, draftKey("dirty-editor"))).toBe(1);
-  await field.press("Escape");
+  await field.focus();
+  await page.keyboard.press("Escape");
   await expect
     .poll(() => page.frames().some((candidate) => candidate.url().includes("secure-field.html")))
     .toBe(false);
@@ -221,7 +222,8 @@ test("retains summary keyboard focus when the pointer leaves across display sett
       .poll(() => page.frames().some((frame) => frame.url().includes("secure-field.html")))
       .toBe(true);
     const fieldFrame = page.frames().find((frame) => frame.url().includes("secure-field.html"))!;
-    await fieldFrame.locator("input, textarea").press("Escape");
+    await fieldFrame.locator("input, textarea").focus();
+    await page.keyboard.press("Escape");
 
     const session = await context.newCDPSession(page);
     let countButtonId: number | undefined;
@@ -343,7 +345,8 @@ test("restores unidentified drafts only after keyboard confirmation across displ
       .poll(() => page.frames().some((frame) => frame.url().includes("secure-field.html")))
       .toBe(true);
     const fieldFrame = page.frames().find((frame) => frame.url().includes("secure-field.html"))!;
-    await fieldFrame.locator("input, textarea").press("Escape");
+    await fieldFrame.locator("input, textarea").focus();
+    await page.keyboard.press("Escape");
     await expect
       .poll(() => page.frames().some((frame) => frame.url().includes("secure-field.html")))
       .toBe(false);
