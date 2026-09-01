@@ -22,6 +22,18 @@ Extension privacy policy: https://github.com/xingkaixin/QuoteCue/blob/main/PRIVA
 - DeepSeek at chat.deepseek.com
 - Kimi at www.kimi.com
 
+## Product direction
+
+QuoteCue is being developed as a reliable annotation layer across AI chat services: it should keep annotations attached to the intended source text, protect unfinished drafts, and turn several focal points into one clear follow-up without interrupting the conversation.
+
+## Latest product update
+
+Version 0.3.1 was released on 2026-08-31.
+
+- Draft additions, edits, removals, and confirmed-send cleanup now synchronize across open tabs.
+- Failed retries and uncertain send confirmations keep annotations and supplemental questions intact.
+- Source passages are restored more reliably after an AI answer changes by using surrounding context.
+
 ## Privacy facts
 
 - The QuoteCue extension operates no developer-controlled server.
@@ -30,4 +42,4 @@ Extension privacy policy: https://github.com/xingkaixin/QuoteCue/blob/main/PRIVA
 - Current-version drafts expire after 30 days without an update.
 - The extension itself collects no analytics. The product website uses self-hosted, cookie-free Umami for pageview analytics and supports Cloudflare Web Analytics for aggregate performance measurement. Website analytics do not include annotation or demo input content.
 
-Last updated: 2026-08-28
+Last updated: 2026-08-31

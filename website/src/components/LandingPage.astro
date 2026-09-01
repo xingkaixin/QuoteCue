@@ -3,9 +3,14 @@ import { Faq } from "./Faq";
 import InstallActions from "./InstallActions.astro";
 import { InteractiveDemo } from "./InteractiveDemo";
 import { LanguageSwitcher } from "./LanguageSwitcher";
+import ProductUpdates from "./ProductUpdates.astro";
 import { ThemeToggle } from "./ThemeToggle";
 import { getCopy } from "../i18n/content";
 import { WEBSITE_LOCALE_CONFIG, WEBSITE_LOCALES, type Locale } from "../i18n/locales";
+import {
+  getProductUpdates,
+  LATEST_PRODUCT_UPDATE_DATE,
+} from "../i18n/product-updates";
 import BaseLayout from "../layouts/BaseLayout.astro";
 import { SUPPORTED_SITES } from "@quotecue/shared/supported-sites";
 
@@ -15,6 +20,7 @@ interface Props {
 
 const { locale } = Astro.props;
 const copy = getCopy(locale);
+const updates = getProductUpdates(locale);
 const pagePath = WEBSITE_LOCALE_CONFIG[locale].path;
 const pageUrl = new URL(pagePath, Astro.site).href;
 const organizationId = new URL("/#organization", Astro.site).href;
@@ -54,6 +60,8 @@ const structuredData = {
       isAccessibleForFree: true,
       downloadUrl: [copy.links.chrome, copy.links.edge],
       featureList: copy.features.items.map((feature) => feature.title),
+      softwareVersion: updates.items[0].version,
+      releaseNotes: updates.items[0].summary,
       offers: {
         "@type": "Offer",
         price: "0",
@@ -68,6 +76,7 @@ const structuredData = {
       url: pageUrl,
       name: copy.meta.title,
       description: copy.meta.description,
+      dateModified: LATEST_PRODUCT_UPDATE_DATE,
       inLanguage: copy.locale,
       isPartOf: { "@id": websiteId },
       about: { "@id": softwareId },
@@ -127,6 +136,11 @@ const structuredData = {
           <li>
             <a class="transition-colors hover:text-foreground" href="#features">
               {copy.nav.features}
+            </a>
+          </li>
+          <li>
+            <a class="transition-colors hover:text-foreground" href="#updates">
+              {copy.nav.updates}
             </a>
           </li>
           <li>
@@ -233,6 +247,8 @@ const structuredData = {
         </ul>
       </div>
     </section>
+
+    <ProductUpdates copy={updates} />
 
     <section
       class="mx-auto max-w-[77.25rem] scroll-mt-20 px-5 pb-20 sm:px-7"

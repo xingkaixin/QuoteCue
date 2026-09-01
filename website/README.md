@@ -62,5 +62,6 @@ Cloudflare Workers Builds 可使用：
 - 中英文分别输出静态 HTML，并配置 canonical、双向 hreflang 与 `x-default`。
 - `/sitemap.xml` 只包含三个 canonical 页面；404 返回独立页面并标记 `noindex`。
 - JSON-LD 同步可见内容，包含 WebSite、Organization、SoftwareApplication、WebPage 和 FAQPage。
+- 落地页提供面向用户的本地化产品更新记录，并同步最新版本、页面更新时间与 sitemap `lastmod`。
 - `llms.txt` 提供可独立引用的产品、支持范围与隐私事实。
 - Open Graph 与 Twitter Card 使用 1200×630 的品牌预览图。

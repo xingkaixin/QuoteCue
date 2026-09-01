@@ -52,6 +52,7 @@ const zh = {
   nav: {
     demo: "试一试",
     features: "特性",
+    updates: "更新",
     privacy: "隐私",
     faq: "常见问题",
   },
@@ -207,6 +208,7 @@ const ja = {
   nav: {
     demo: "試してみる",
     features: "機能",
+    updates: "更新情報",
     privacy: "プライバシー",
     faq: "よくある質問",
   },
@@ -363,6 +365,7 @@ const en = {
   nav: {
     demo: "Try it",
     features: "Features",
+    updates: "Updates",
     privacy: "Privacy",
     faq: "FAQ",
   },
