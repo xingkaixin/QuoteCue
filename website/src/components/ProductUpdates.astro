@@ -1,0 +1,77 @@
+---
+import type { ProductUpdatesCopy } from "../i18n/product-updates";
+
+interface Props {
+  copy: ProductUpdatesCopy;
+}
+
+const { copy } = Astro.props;
+---
+
+<section
+  aria-labelledby="updates-title"
+  class="mx-auto max-w-[77.25rem] scroll-mt-20 px-5 py-20 sm:px-7"
+  id="updates"
+>
+  <div class="grid items-start gap-12 lg:grid-cols-[minmax(16rem,0.72fr)_minmax(0,1.28fr)] lg:gap-16">
+    <header class="lg:sticky lg:top-24">
+      <p class="font-mono mt-0 mb-5 flex items-center gap-2 text-xs text-muted">
+        <span class="size-1.5 rounded-full bg-accent"></span>
+        {copy.eyebrow}
+      </p>
+      <h2
+        class="font-display mt-0 mb-5 max-w-[16ch] text-[clamp(1.875rem,4vw,3.25rem)] leading-[1.08] font-bold tracking-[-0.03em] text-balance"
+        id="updates-title"
+      >
+        {copy.title}
+      </h2>
+      <p class="m-0 max-w-[42rem] text-[0.96875rem] leading-[1.75] text-muted">
+        {copy.intro}
+      </p>
+    </header>
+
+    <ol class="m-0 list-none border-t border-line p-0">
+      {
+        copy.items.map((update, index) => (
+          <li class="grid gap-5 border-b border-line py-8 sm:grid-cols-[7.75rem_minmax(0,1fr)] sm:gap-8">
+            <div class="flex items-center gap-3 self-start sm:block">
+              <div class="flex items-center gap-2">
+                <span class="font-mono text-sm font-semibold text-foreground">
+                  v{update.version}
+                </span>
+                {index === 0 && (
+                  <span class="rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-[0.6875rem] font-semibold text-accent">
+                    {copy.latestLabel}
+                  </span>
+                )}
+              </div>
+              <time
+                class="font-mono mt-0 text-[0.6875rem] leading-5 text-muted sm:mt-2 sm:block"
+                datetime={update.publishedAt}
+              >
+                {update.displayDate}
+              </time>
+            </div>
+
+            <article>
+              <h3 class="font-display mt-0 mb-3 text-[1.3125rem] leading-[1.25] font-semibold tracking-[-0.015em]">
+                {update.title}
+              </h3>
+              <p class="mt-0 mb-5 text-[0.9375rem] leading-[1.72] text-muted">
+                {update.summary}
+              </p>
+              <ul class="m-0 grid list-none gap-2 p-0 text-[0.84375rem] leading-[1.65] text-muted">
+                {update.highlights.map((highlight) => (
+                  <li class="grid grid-cols-[0.75rem_1fr] gap-2">
+                    <span aria-hidden="true" class="mt-[0.7em] h-px bg-accent"></span>
+                    <span>{highlight}</span>
+                  </li>
+                ))}
+              </ul>
+            </article>
+          </li>
+        ))
+      }
+    </ol>
+  </div>
+</section>

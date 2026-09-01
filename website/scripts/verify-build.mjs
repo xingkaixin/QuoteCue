@@ -23,18 +23,21 @@ const pages = [
     lang: "zh-CN",
     canonical: "https://quotecue.xingkaixin.me/",
     marker: "现在就试一遍",
+    updatesMarker: "持续把追问这件事，做得更可靠",
   },
   {
     path: "en/index.html",
     lang: "en",
     canonical: "https://quotecue.xingkaixin.me/en/",
     marker: "Try the whole flow",
+    updatesMarker: "Making every follow-up more dependable",
   },
   {
     path: "ja/index.html",
     lang: "ja",
     canonical: "https://quotecue.xingkaixin.me/ja/",
     marker: "一連の流れを試す",
+    updatesMarker: "フォローアップを、もっと確実なものへ",
   },
 ];
 
@@ -43,6 +46,9 @@ for (const page of pages) {
   assert.match(html, new RegExp(`<html lang="${page.lang}"`));
   assert.match(html, new RegExp(`<link rel="canonical" href="${page.canonical}"`));
   assert(html.includes(page.marker), `${page.path} must contain localized landing copy`);
+  assert(html.includes(page.updatesMarker), `${page.path} must contain localized product updates`);
+  assert.match(html, /<section[^>]*id="updates"/);
+  assert.match(html, /<time[^>]*datetime="2026-08-31"/);
   assert.match(html, /<meta name="description" content="[^"]+">/);
   assert.match(html, /<meta name="robots" content="index, follow, max-image-preview:large">/);
   assert.match(html, /<link rel="alternate" hreflang="zh-CN"/);
@@ -73,6 +79,10 @@ for (const page of pages) {
   }
   const faq = graph.find((entry) => entry["@type"] === "FAQPage");
   assert.equal(faq.mainEntity.length, 5, `${page.path} FAQ schema must match visible questions`);
+  const software = graph.find((entry) => entry["@type"] === "SoftwareApplication");
+  assert.equal(software.softwareVersion, "0.3.1");
+  const webPage = graph.find((entry) => entry["@type"] === "WebPage");
+  assert.equal(webPage.dateModified, "2026-08-31");
 }
 
 const notFound = await read("404.html");
@@ -83,6 +93,7 @@ const sitemap = await read("sitemap.xml");
 assert.match(sitemap, /<loc>https:\/\/quotecue\.xingkaixin\.me\/<\/loc>/);
 assert.match(sitemap, /<loc>https:\/\/quotecue\.xingkaixin\.me\/en\/<\/loc>/);
 assert.match(sitemap, /<loc>https:\/\/quotecue\.xingkaixin\.me\/ja\/<\/loc>/);
+assert.equal(occurrences(sitemap, /<lastmod>2026-08-31<\/lastmod>/g), 3);
 assert.match(sitemap, /hreflang="x-default" href="https:\/\/quotecue\.xingkaixin\.me\/"/);
 assert.doesNotMatch(sitemap, /404/);
 assert.equal(occurrences(sitemap, /<url>/g), 3);
@@ -106,6 +117,8 @@ assert.doesNotMatch(headers, /no-transform/);
 const llms = await read("llms.txt");
 assert.match(llms, /^# QuoteCue/m);
 assert.match(llms, /## Privacy facts/);
+assert.match(llms, /## Latest product update/);
+assert.match(llms, /Version 0\.3\.1 was released on 2026-08-31/);
 
 const socialImage = await stat(new URL("og-cover.png", distUrl));
 assert(socialImage.size > 10_000, "Social preview image is unexpectedly small");

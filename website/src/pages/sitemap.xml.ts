@@ -1,6 +1,7 @@
 import type { APIRoute } from "astro";
 
 import { DEFAULT_WEBSITE_LOCALE, WEBSITE_LOCALE_CONFIG, WEBSITE_LOCALES } from "../i18n/locales";
+import { LATEST_PRODUCT_UPDATE_DATE } from "../i18n/product-updates";
 
 export const prerender = true;
 
@@ -24,6 +25,7 @@ export const GET: APIRoute = ({ site }) => {
     .map(
       ({ url }) => `  <url>
     <loc>${url}</loc>
+    <lastmod>${LATEST_PRODUCT_UPDATE_DATE}</lastmod>
 ${alternateLinks}
   </url>`,
     )
