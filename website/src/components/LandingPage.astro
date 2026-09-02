@@ -1,6 +1,6 @@
 ---
 import { Faq } from "./Faq";
-import { FocusField } from "./FocusField";
+import { CueFlowField } from "./CueFlowField";
 import InstallActions from "./InstallActions.astro";
 import { InteractiveDemo } from "./InteractiveDemo";
 import { LanguageSwitcher } from "./LanguageSwitcher";
@@ -32,6 +32,19 @@ const labels = {
     privacy: "不收集，才是真隐私",
     details: "细节 / 没有小字",
     ready: "当回答还不够",
+    scene: {
+      answerLabel: "AI 回答",
+      answerLead: "三天可以按区域来分，能省下不少路上的时间。",
+      selectionOne: "八点前到清水寺，人最少。",
+      answerBridge: "第二天去岚山，第三天再前往伏见稻荷和宇治。",
+      selectionTwo: "这一天步行距离不短。",
+      noteLabel: "我的批注",
+      noteOne: "我九点才能出发，顺序怎么调？",
+      noteTwo: "把步行控制在一小时内。",
+      compileLabel: "2 条批注已整理",
+      compileText: "结合这两个限制，重新调整行程",
+      caption: "选中文字 · 写下限制 · 一次追问",
+    },
   },
   en: {
     live: "LIVE / IN BROWSER",
@@ -41,6 +54,19 @@ const labels = {
     privacy: "PRIVATE BY ABSENCE",
     details: "DETAILS / NO FINE PRINT",
     ready: "READY WHEN THE ANSWER ISN'T",
+    scene: {
+      answerLabel: "AI answer",
+      answerLead: "Split the three days by area to spend less time in transit.",
+      selectionOne: "Reach Kiyomizu-dera before 8 a.m.",
+      answerBridge: "Visit Arashiyama on day two, then Fushimi Inari and Uji on day three.",
+      selectionTwo: "Expect a long day of walking.",
+      noteLabel: "My note",
+      noteOne: "I can only start at 9. What should move?",
+      noteTwo: "Keep walking under one hour.",
+      compileLabel: "2 notes organized",
+      compileText: "Adjust the itinerary around both constraints",
+      caption: "SELECT TEXT · ADD CONTEXT · ASK ONCE",
+    },
   },
   ja: {
     live: "ライブ / ブラウザ内",
@@ -50,6 +76,19 @@ const labels = {
     privacy: "収集しないプライバシー",
     details: "詳細 / 細則なし",
     ready: "回答が足りないときに",
+    scene: {
+      answerLabel: "AI の回答",
+      answerLead: "エリアごとに分けると、移動時間を抑えられます。",
+      selectionOne: "清水寺には午前 8 時前に到着。",
+      answerBridge: "2 日目は嵐山、3 日目は伏見稲荷と宇治へ向かいます。",
+      selectionTwo: "この日は歩く距離が長めです。",
+      noteLabel: "コメント",
+      noteOne: "9 時出発なら、順番をどう変える？",
+      noteTwo: "歩く時間を 1 時間以内に。",
+      compileLabel: "2 件の注釈を整理",
+      compileText: "2 つの条件に合わせて旅程を調整",
+      caption: "文章を選択 · 条件を追加 · 一度で質問",
+    },
   },
 }[locale];
 const pagePath = WEBSITE_LOCALE_CONFIG[locale].path;
@@ -213,25 +252,53 @@ const structuredData = {
       </div>
 
       <div class="hero-visual" role="img" aria-label={copy.meta.socialImageAlt}>
-        <FocusField client:load />
-        <div aria-hidden="true" class="focus-overlay">
-          <div class="focus-fragment focus-fragment-one">
-            <span class="focus-index">01</span>
-            <span class="focus-lines"><i></i><i></i><i></i></span>
+        <CueFlowField client:load />
+        <div aria-hidden="true" class="product-scene">
+          <div class="scene-answer-window">
+            <div class="scene-window-bar">
+              <span class="scene-window-site">ChatGPT</span>
+              <span>{labels.scene.answerLabel}</span>
+            </div>
+            <div class="scene-question">{copy.demo.userMessage}</div>
+            <div class="scene-answer">
+              <span class="scene-avatar">AI</span>
+              <div class="scene-answer-copy">
+                <p>{labels.scene.answerLead}</p>
+                <p class="scene-selected-sentence">
+                  <mark>{labels.scene.selectionOne}</mark>
+                  <span class="scene-selection-badge">1</span>
+                </p>
+                <p>{labels.scene.answerBridge}</p>
+                <p class="scene-selected-sentence">
+                  <mark>{labels.scene.selectionTwo}</mark>
+                  <span class="scene-selection-badge">2</span>
+                </p>
+              </div>
+            </div>
           </div>
-          <div class="focus-fragment focus-fragment-two">
-            <span class="focus-index">02</span>
-            <span class="focus-lines"><i></i><i></i></span>
+
+          <div class="scene-note scene-note-one">
+            <div><span>01</span>{labels.scene.noteLabel}</div>
+            <p>{labels.scene.noteOne}</p>
           </div>
-          <div class="focus-output">
-            <span class="output-pulse"></span>
-            <span>FOCUSED FOLLOW-UP</span>
+
+          <div class="scene-note scene-note-two">
+            <div><span>02</span>{labels.scene.noteLabel}</div>
+            <p>{labels.scene.noteTwo}</p>
+          </div>
+
+          <div class="scene-composer">
+            <div class="scene-annotation-stack"><span>01</span><span>02</span></div>
+            <div class="scene-compiled-copy">
+              <small>{labels.scene.compileLabel}</small>
+              <p>{labels.scene.compileText}</p>
+            </div>
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-              <path d="m5 13 8-8M7 5h6v6" stroke="currentColor" stroke-width="1.5"></path>
+              <path d="M9 13V5m0 0L5.5 8.5M9 5l3.5 3.5" stroke="currentColor" stroke-width="1.5"></path>
             </svg>
           </div>
         </div>
-        <p class="visual-caption" aria-hidden="true">SELECT · ANNOTATE · SEND ONCE</p>
+        <p class="visual-caption" aria-hidden="true">{labels.scene.caption}</p>
       </div>
     </section>
 

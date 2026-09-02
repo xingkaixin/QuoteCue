@@ -16,117 +16,71 @@ uniform vec2 u_pointer;
 uniform float u_time;
 uniform float u_dark;
 
-#define PI 3.14159265359
-
-mat2 rotate2d(float angle) {
-  float sine = sin(angle);
-  float cosine = cos(angle);
-  return mat2(cosine, -sine, sine, cosine);
+float segmentDistance(vec2 point, vec2 start, vec2 end) {
+  vec2 offset = point - start;
+  vec2 segment = end - start;
+  float amount = clamp(dot(offset, segment) / dot(segment, segment), 0.0, 1.0);
+  return length(offset - segment * amount);
 }
 
-float sphereDistance(vec3 point, float radius) {
-  return length(point) - radius;
+vec2 curvePoint(vec2 start, vec2 control, vec2 end, float amount) {
+  float inverse = 1.0 - amount;
+  return inverse * inverse * start + 2.0 * inverse * amount * control + amount * amount * end;
 }
 
-float torusDistance(vec3 point, vec2 radii) {
-  vec2 ring = vec2(length(point.xy) - radii.x, point.z);
-  return length(ring) - radii.y;
-}
+float curveDistance(vec2 point, vec2 start, vec2 control, vec2 end) {
+  float distanceToCurve = 10.0;
+  vec2 previous = start;
 
-vec2 closerSurface(vec2 current, float distance, float material) {
-  return distance < current.x ? vec2(distance, material) : current;
-}
-
-vec2 sceneDistance(vec3 point) {
-  point.xz *= rotate2d(-0.48 + u_pointer.x * 0.16);
-  point.yz *= rotate2d(0.28 - u_pointer.y * 0.12);
-
-  vec2 surface = vec2(torusDistance(point, vec2(0.86, 0.105)), 1.0);
-
-  vec3 orbitA = point;
-  orbitA.yz *= rotate2d(0.92);
-  surface = closerSurface(surface, torusDistance(orbitA, vec2(1.11, 0.018)), 2.0);
-
-  vec3 orbitB = point;
-  orbitB.xz *= rotate2d(1.16);
-  surface = closerSurface(surface, torusDistance(orbitB, vec2(1.02, 0.014)), 2.0);
-
-  for (int index = 0; index < 11; index++) {
-    float angle = float(index) / 11.0 * PI * 2.0 + u_time * 0.1;
-    vec3 node = vec3(cos(angle) * 0.86, sin(angle) * 0.86, 0.0);
-    float nodeSize = index == 3 ? 0.052 : 0.027;
-    float material = index == 3 ? 3.0 : 2.0;
-    surface = closerSurface(surface, sphereDistance(point - node, nodeSize), material);
+  for (int index = 1; index <= 28; index++) {
+    float amount = float(index) / 28.0;
+    vec2 current = curvePoint(start, control, end, amount);
+    distanceToCurve = min(distanceToCurve, segmentDistance(point, previous, current));
+    previous = current;
   }
 
-  return surface;
-}
-
-vec3 surfaceNormal(vec3 point) {
-  vec2 step = vec2(0.0015, 0.0);
-  float center = sceneDistance(point).x;
-  return normalize(vec3(
-    sceneDistance(point + step.xyy).x - center,
-    sceneDistance(point + step.yxy).x - center,
-    sceneDistance(point + step.yyx).x - center
-  ));
+  return distanceToCurve;
 }
 
 float softGrid(vec2 point) {
-  vec2 grid = abs(fract(point * 5.5) - 0.5);
-  return smoothstep(0.46, 0.495, max(grid.x, grid.y));
+  vec2 grid = abs(fract(point * 5.0) - 0.5);
+  return smoothstep(0.47, 0.498, max(grid.x, grid.y));
 }
 
 void main() {
   vec2 coordinates = (gl_FragCoord.xy * 2.0 - u_resolution.xy) / u_resolution.y;
-  vec3 rayOrigin = vec3(0.0, 0.0, 3.25);
-  vec3 rayDirection = normalize(vec3(coordinates, -1.85));
+  vec2 parallax = u_pointer * 0.018;
+  vec2 sourceOne = vec2(-0.54, 0.29) + parallax;
+  vec2 sourceTwo = vec2(-0.47, -0.08) + parallax;
+  vec2 sink = vec2(0.08, -0.72);
+  vec2 controlOne = vec2(0.52, 0.28);
+  vec2 controlTwo = vec2(0.62, -0.16);
+
+  float firstCurve = curveDistance(coordinates, sourceOne, controlOne, sink);
+  float secondCurve = curveDistance(coordinates, sourceTwo, controlTwo, sink);
+  float firstTrail = smoothstep(0.028, 0.003, firstCurve);
+  float secondTrail = smoothstep(0.028, 0.003, secondCurve);
+
+  float firstProgress = fract(u_time * 0.075 + 0.12);
+  float secondProgress = fract(u_time * 0.075 + 0.58);
+  vec2 firstPulsePoint = curvePoint(sourceOne, controlOne, sink, firstProgress);
+  vec2 secondPulsePoint = curvePoint(sourceTwo, controlTwo, sink, secondProgress);
+  float firstPulse = exp(-900.0 * dot(coordinates - firstPulsePoint, coordinates - firstPulsePoint));
+  float secondPulse = exp(-900.0 * dot(coordinates - secondPulsePoint, coordinates - secondPulsePoint));
 
   vec3 darkBackground = vec3(0.027, 0.082, 0.11);
   vec3 lightBackground = vec3(0.91, 0.945, 0.937);
-  vec3 background = mix(lightBackground, darkBackground, u_dark);
-  float halo = exp(-1.6 * length(coordinates - vec2(0.2, 0.05)));
   vec3 cyan = mix(vec3(0.02, 0.43, 0.52), vec3(0.08, 0.72, 0.83), u_dark);
   vec3 pink = mix(vec3(0.68, 0.1, 0.31), vec3(0.85, 0.28, 0.51), u_dark);
-  background += cyan * halo * mix(0.1, 0.2, u_dark);
-  background += softGrid(coordinates + vec2(u_time * 0.006, 0.0)) * mix(0.018, 0.035, u_dark);
+  vec3 color = mix(lightBackground, darkBackground, u_dark);
 
-  float distanceTraveled = 0.0;
-  float material = 0.0;
-  bool hit = false;
+  color += softGrid(coordinates) * mix(0.014, 0.026, u_dark);
+  color += cyan * (firstTrail + secondTrail) * mix(0.07, 0.14, u_dark);
+  color += cyan * firstPulse * 0.72;
+  color += pink * secondPulse * 0.66;
 
-  for (int stepIndex = 0; stepIndex < 80; stepIndex++) {
-    vec3 point = rayOrigin + rayDirection * distanceTraveled;
-    vec2 result = sceneDistance(point);
-    if (result.x < 0.0015) {
-      hit = true;
-      material = result.y;
-      break;
-    }
-    if (distanceTraveled > 6.0) break;
-    distanceTraveled += result.x * 0.78;
-  }
-
-  vec3 color = background;
-
-  if (hit) {
-    vec3 point = rayOrigin + rayDirection * distanceTraveled;
-    vec3 normal = surfaceNormal(point);
-    vec3 lightDirection = normalize(vec3(-0.7, 0.9, 1.15));
-    float diffuse = max(dot(normal, lightDirection), 0.0);
-    float rim = pow(1.0 - max(dot(normal, -rayDirection), 0.0), 2.6);
-    float gleam = pow(max(dot(reflect(-lightDirection, normal), -rayDirection), 0.0), 38.0);
-
-    vec3 porcelain = mix(vec3(0.16, 0.31, 0.34), vec3(0.84, 0.92, 0.9), u_dark);
-    vec3 materialColor = material < 1.5 ? porcelain : (material < 2.5 ? cyan : pink);
-    color = materialColor * (0.38 + diffuse * 0.74) + rim * cyan * 0.58 + gleam * vec3(1.0);
-    color = mix(color, background, smoothstep(3.2, 5.8, distanceTraveled) * 0.16);
-  }
-
-  float vignette = smoothstep(1.65, 0.25, length(coordinates * vec2(0.76, 1.0)));
-  color *= mix(0.74, 1.0, vignette);
-  color += pink * 0.035 * exp(-14.0 * length(coordinates - vec2(0.7, -0.25)));
-  color = pow(color, vec3(0.92));
+  float sinkGlow = exp(-18.0 * length(coordinates - sink));
+  color += cyan * sinkGlow * mix(0.05, 0.11, u_dark);
 
   gl_FragColor = vec4(color, 1.0);
 }
@@ -173,7 +127,7 @@ function createProgram(context: WebGLRenderingContext): WebGLProgram | null {
   return program;
 }
 
-export function FocusField() {
+export function CueFlowField() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -216,7 +170,7 @@ export function FocusField() {
 
       const width = activeCanvas.clientWidth;
       const height = activeCanvas.clientHeight;
-      const pixelRatio = Math.min(window.devicePixelRatio, 1.5);
+      const pixelRatio = Math.min(window.devicePixelRatio, 1.4);
       const nextWidth = Math.max(1, Math.round(width * pixelRatio));
       const nextHeight = Math.max(1, Math.round(height * pixelRatio));
 
@@ -285,5 +239,5 @@ export function FocusField() {
     };
   }, []);
 
-  return <canvas aria-hidden="true" className="focus-field" ref={canvasRef} />;
+  return <canvas aria-hidden="true" className="cue-flow-field" ref={canvasRef} />;
 }

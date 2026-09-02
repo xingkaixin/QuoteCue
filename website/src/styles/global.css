@@ -40,23 +40,34 @@
   }
 }
 
-@keyframes fragment-float-one {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0) rotate(-4deg);
+@keyframes scene-note-in {
+  from {
+    opacity: 0;
+    transform: translate3d(1.25rem, 0.5rem, 4rem);
   }
-  50% {
-    transform: translate3d(0.5rem, -0.55rem, 0) rotate(-3deg);
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 4rem);
   }
 }
 
-@keyframes fragment-float-two {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0) rotate(3deg);
+@keyframes scene-composer-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 1rem, 6rem);
   }
-  50% {
-    transform: translate3d(-0.4rem, 0.5rem, 0) rotate(2deg);
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 6rem);
+  }
+}
+
+@keyframes scene-selection-draw {
+  from {
+    background-size: 0% 100%;
+  }
+  to {
+    background-size: 100% 100%;
   }
 }
 
@@ -386,11 +397,12 @@
   min-height: min(42rem, 72svh);
   overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: 48% 48% 1.5rem 1.5rem / 24% 24% 1.5rem 1.5rem;
+  border-radius: 1.5rem;
   background: var(--panel);
   box-shadow: var(--surface-shadow);
   grid-column: span 3;
   isolation: isolate;
+  perspective: 75rem;
 }
 
 .hero-visual::after {
@@ -402,128 +414,298 @@
   pointer-events: none;
 }
 
-.focus-field {
+.cue-flow-field {
   position: absolute;
   width: 100%;
   height: 100%;
   inset: 0;
 }
 
-.focus-overlay {
+.product-scene {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  transform-style: preserve-3d;
 }
 
-.focus-fragment {
+.scene-answer-window {
   position: absolute;
-  display: grid;
-  width: clamp(10rem, 25vw, 14rem);
-  min-height: 7rem;
-  padding: 1rem;
-  border: 1px solid rgb(158 226 236 / 32%);
-  background: color-mix(in srgb, var(--panel) 76%, transparent);
-  box-shadow: 0 20px 42px rgb(0 0 0 / 22%);
-  backdrop-filter: blur(12px);
-  grid-template-columns: auto 1fr;
-  gap: 0.8rem;
+  top: 8%;
+  right: 9%;
+  bottom: 20%;
+  left: 5%;
+  overflow: hidden;
+  transform: rotateY(-4.5deg) rotateX(1.5deg);
+  transform-origin: left center;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--panel) 94%, transparent);
+  box-shadow: 0 24px 58px rgb(0 0 0 / 24%);
+  transition: transform 420ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  backdrop-filter: blur(14px);
 }
 
-.focus-fragment::after {
-  position: absolute;
-  right: -0.55rem;
-  bottom: -0.55rem;
-  width: 1.05rem;
-  height: 1.05rem;
+.hero-visual:hover .scene-answer-window {
+  transform: rotateY(-2deg) rotateX(0.5deg);
+}
+
+.scene-window-bar {
+  display: flex;
+  min-height: 2.7rem;
+  padding-inline: 1rem;
+  align-items: center;
+  gap: 0.75rem;
+  border-bottom: 1px solid var(--hairline);
+  color: var(--muted);
+  font-family: "JetBrains Mono Variable", monospace;
+  font-size: 0.57rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.scene-window-site {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.scene-window-site::before {
+  display: inline-block;
+  width: 0.38rem;
+  height: 0.38rem;
+  margin-right: 0.45rem;
   border-radius: 50%;
-  background: var(--pulse);
-  box-shadow: 0 0 0 0.28rem color-mix(in srgb, var(--pulse) 22%, transparent);
+  background: var(--accent);
   content: "";
 }
 
-.focus-fragment-one {
-  top: 20%;
-  left: 8%;
-  animation: fragment-float-one 7s ease-in-out infinite;
+.scene-question {
+  width: min(78%, 21rem);
+  margin: 1rem 1rem 0.85rem auto;
+  padding: 0.72rem 0.9rem;
+  border: 1px solid var(--hairline);
+  border-radius: 0.9rem 0.9rem 0.25rem 0.9rem;
+  background: var(--panel-strong);
+  font-size: 0.68rem;
+  line-height: 1.5;
 }
 
-.focus-fragment-two {
-  right: 7%;
-  bottom: 22%;
-  animation: fragment-float-two 8.5s ease-in-out infinite;
+.scene-answer {
+  display: grid;
+  padding: 0 1.15rem 1.2rem;
+  align-items: start;
+  grid-template-columns: 1.65rem minmax(0, 1fr);
+  gap: 0.7rem;
 }
 
-.focus-index {
+.scene-avatar {
+  display: inline-flex;
+  width: 1.65rem;
+  height: 1.65rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: 0.45rem;
+  background: var(--accent-soft);
   color: var(--accent);
   font-family: "JetBrains Mono Variable", monospace;
-  font-size: 0.65rem;
+  font-size: 0.56rem;
+  font-weight: 700;
 }
 
-.focus-lines {
-  display: flex;
-  padding-top: 0.15rem;
-  flex-direction: column;
-  gap: 0.65rem;
+.scene-answer-copy {
+  color: var(--muted);
+  font-size: clamp(0.61rem, 0.78vw, 0.72rem);
+  line-height: 1.65;
 }
 
-.focus-lines i {
-  display: block;
-  width: 100%;
-  height: 0.38rem;
-  background: color-mix(in srgb, var(--foreground) 62%, transparent);
+.scene-answer-copy p {
+  margin: 0 0 0.42rem;
 }
 
-.focus-lines i:nth-child(2) {
-  width: 76%;
+.scene-selected-sentence {
+  position: relative;
+  width: fit-content;
+  padding-right: 0.45rem;
 }
 
-.focus-lines i:nth-child(3) {
-  width: 54%;
+.scene-selected-sentence mark {
+  padding: 0.1rem 0.18rem;
+  background-color: transparent;
+  background-image: linear-gradient(var(--mark), var(--mark));
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  color: var(--foreground);
+  animation: scene-selection-draw 480ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
-.focus-output {
+.scene-selected-sentence:nth-of-type(4) mark {
+  animation-delay: 420ms;
+}
+
+.scene-selection-badge {
   position: absolute;
-  bottom: 8%;
-  left: 50%;
-  display: flex;
-  width: min(18rem, calc(100% - 3rem));
-  min-height: 3.3rem;
-  padding: 0.8rem 1rem;
-  transform: translateX(-50%);
+  top: 50%;
+  right: -0.65rem;
+  display: inline-flex;
+  width: 1rem;
+  height: 1rem;
+  transform: translateY(-50%);
   align-items: center;
-  gap: 0.65rem;
-  border: 1px solid color-mix(in srgb, var(--accent) 60%, transparent);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--panel) 86%, transparent);
-  box-shadow: 0 12px 34px rgb(0 0 0 / 28%);
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-foreground);
   font-family: "JetBrains Mono Variable", monospace;
-  font-size: 0.65rem;
-  letter-spacing: 0.08em;
+  font-size: 0.5rem;
+  font-weight: 700;
+  box-shadow: 0 0 0 2px var(--panel);
+}
+
+.scene-note {
+  position: absolute;
+  z-index: 2;
+  right: 3.5%;
+  width: min(15rem, 43%);
+  padding: 0.85rem 0.95rem;
+  transform: translateZ(4rem);
+  border: 1px solid color-mix(in srgb, var(--accent) 52%, var(--line));
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--panel) 94%, transparent);
+  box-shadow: 0 18px 42px rgb(0 0 0 / 26%);
+  animation: scene-note-in 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
   backdrop-filter: blur(12px);
 }
 
-.focus-output svg {
-  margin-left: auto;
+.scene-note-one {
+  top: 33%;
+  animation-delay: 240ms;
 }
 
-.output-pulse {
-  width: 0.5rem;
-  height: 0.5rem;
+.scene-note-two {
+  top: 56%;
+  border-color: color-mix(in srgb, var(--pulse) 54%, var(--line));
+  animation-delay: 660ms;
+}
+
+.scene-note > div {
+  display: flex;
+  margin-bottom: 0.45rem;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--muted);
+  font-family: "JetBrains Mono Variable", monospace;
+  font-size: 0.54rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.scene-note > div span {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.scene-note-two > div span {
+  color: var(--pulse);
+}
+
+.scene-note p {
+  margin: 0;
+  font-size: clamp(0.62rem, 0.78vw, 0.72rem);
+  font-weight: 650;
+  line-height: 1.5;
+}
+
+.scene-composer {
+  position: absolute;
+  z-index: 3;
+  right: 6%;
+  bottom: 4.5%;
+  left: 6%;
+  display: flex;
+  min-height: 4.5rem;
+  padding: 0.7rem 0.75rem;
+  transform: translateZ(6rem);
+  align-items: center;
+  gap: 0.8rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 56%, var(--line));
+  border-radius: 1.1rem;
+  background: color-mix(in srgb, var(--panel) 96%, transparent);
+  box-shadow: 0 18px 44px rgb(0 0 0 / 30%);
+  animation: scene-composer-in 560ms cubic-bezier(0.2, 0.8, 0.2, 1) 920ms both;
+  backdrop-filter: blur(16px);
+}
+
+.scene-annotation-stack {
+  position: relative;
+  width: 2.35rem;
+  height: 1.7rem;
+  flex: 0 0 auto;
+}
+
+.scene-annotation-stack span {
+  position: absolute;
+  display: inline-flex;
+  width: 1.65rem;
+  height: 1.65rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
   border-radius: 50%;
-  background: var(--pulse);
-  box-shadow: 0 0 1rem var(--pulse);
+  background: var(--panel-strong);
+  color: var(--accent);
+  font-family: "JetBrains Mono Variable", monospace;
+  font-size: 0.48rem;
+  font-weight: 700;
+}
+
+.scene-annotation-stack span:last-child {
+  right: 0;
+  color: var(--pulse);
+}
+
+.scene-compiled-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.scene-compiled-copy small {
+  display: block;
+  margin-bottom: 0.2rem;
+  color: var(--accent);
+  font-family: "JetBrains Mono Variable", monospace;
+  font-size: 0.5rem;
+}
+
+.scene-compiled-copy p {
+  overflow: hidden;
+  margin: 0;
+  font-size: clamp(0.61rem, 0.76vw, 0.7rem);
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scene-composer svg {
+  width: 2.15rem;
+  height: 2.15rem;
+  padding: 0.48rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-foreground);
 }
 
 .visual-caption {
   position: absolute;
-  top: 50%;
-  right: -5.2rem;
+  z-index: 4;
+  top: 1.2rem;
+  right: 1.4rem;
   margin: 0;
-  transform: rotate(90deg);
   color: color-mix(in srgb, var(--foreground) 52%, transparent);
   font-family: "JetBrains Mono Variable", monospace;
   font-size: 0.58rem;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
 .host-rail {
@@ -1042,18 +1224,94 @@
   }
 
   .hero-visual {
-    min-height: 28rem;
-    border-radius: 42% 42% 1rem 1rem / 18% 18% 1rem 1rem;
+    min-height: 31rem;
+    border-radius: 1rem;
   }
 
-  .focus-fragment {
-    width: 9rem;
-    min-height: 5.5rem;
-    padding: 0.75rem;
+  .scene-answer-window {
+    top: 9%;
+    right: 3%;
+    bottom: 21%;
+    left: 3%;
+    transform: none;
+  }
+
+  .hero-visual:hover .scene-answer-window {
+    transform: none;
+  }
+
+  .scene-window-bar {
+    min-height: 2.35rem;
+    padding-inline: 0.75rem;
+  }
+
+  .scene-question {
+    width: 76%;
+    margin: 0.75rem 0.75rem 0.65rem auto;
+    padding: 0.58rem 0.7rem;
+    font-size: 0.58rem;
+  }
+
+  .scene-answer {
+    padding: 0 0.75rem 0.8rem;
+    grid-template-columns: 1.35rem minmax(0, 1fr);
+    gap: 0.5rem;
+  }
+
+  .scene-avatar {
+    width: 1.35rem;
+    height: 1.35rem;
+    font-size: 0.48rem;
+  }
+
+  .scene-answer-copy {
+    font-size: 0.56rem;
+    line-height: 1.55;
+  }
+
+  .scene-note {
+    right: 2%;
+    width: 54%;
+    padding: 0.65rem 0.7rem;
+  }
+
+  .scene-note-one {
+    top: 38%;
+  }
+
+  .scene-note-two {
+    top: 57%;
+  }
+
+  .scene-note > div {
+    margin-bottom: 0.3rem;
+    font-size: 0.46rem;
+  }
+
+  .scene-note p {
+    font-size: 0.56rem;
+  }
+
+  .scene-composer {
+    right: 3%;
+    bottom: 3.5%;
+    left: 3%;
+    min-height: 4rem;
+    gap: 0.6rem;
+  }
+
+  .scene-compiled-copy small {
+    font-size: 0.44rem;
+  }
+
+  .scene-compiled-copy p {
+    font-size: 0.56rem;
   }
 
   .visual-caption {
-    display: none;
+    top: 0.85rem;
+    right: 1rem;
+    font-size: 0.48rem;
   }
 
   .host-rail ul {
@@ -1161,13 +1419,16 @@
 
   .signal-label span,
   .hero-highlight,
-  .focus-fragment,
+  .scene-note,
+  .scene-composer,
+  .scene-selected-sentence mark,
   .animate-pop,
   .animate-rise,
   .animate-undo {
     animation: none;
   }
 
+  .scene-answer-window,
   .demo-stage,
   .faq-panel {
     transition: none;
