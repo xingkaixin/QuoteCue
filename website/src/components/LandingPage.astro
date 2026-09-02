@@ -34,16 +34,19 @@ const labels = {
     ready: "当回答还不够",
     scene: {
       answerLabel: "AI 回答",
-      answerLead: "三天可以按区域来分，能省下不少路上的时间。",
-      selectionOne: "八点前到清水寺，人最少。",
-      answerBridge: "第二天去岚山，第三天再前往伏见稻荷和宇治。",
-      selectionTwo: "这一天步行距离不短。",
+      paragraphOneBefore: "第一天走东山线。",
+      selectionOne: "清水寺最好八点前到",
+      paragraphOneAfter: "，之后沿二年坂、三年坂去高台寺，傍晚在祇园吃饭。",
+      paragraphTwoBefore: "第二天去岚山。",
+      selectionTwo: "竹林小径同样建议八点前到",
+      paragraphTwoAfter: "，之后前往天龙寺和渡月桥，下午减少步行。",
+      paragraphThree: "第三天安排伏见稻荷和宇治，傍晚回到京都站附近。",
       noteLabel: "我的批注",
-      noteOne: "我九点才能出发，顺序怎么调？",
-      noteTwo: "把步行控制在一小时内。",
-      compileLabel: "2 条批注已整理",
-      compileText: "结合这两个限制，重新调整行程",
-      caption: "选中文字 · 写下限制 · 一次追问",
+      noteOne: "第一天九点才能出发，只调整这里。",
+      noteTwo: "第二天可以早起，这个安排保留。",
+      compileLabel: "2 处相似内容已区分",
+      compileText: "延后清水寺，保留岚山早到",
+      caption: "相似表述 · 精确引用 · 分别调整",
     },
   },
   en: {
@@ -56,16 +59,19 @@ const labels = {
     ready: "READY WHEN THE ANSWER ISN'T",
     scene: {
       answerLabel: "AI answer",
-      answerLead: "Split the three days by area to spend less time in transit.",
+      paragraphOneBefore: "Day one follows the Higashiyama route.",
       selectionOne: "Reach Kiyomizu-dera before 8 a.m.",
-      answerBridge: "Visit Arashiyama on day two, then Fushimi Inari and Uji on day three.",
-      selectionTwo: "Expect a long day of walking.",
+      paragraphOneAfter: "Then walk through Ninenzaka to Kodaiji and finish in Gion.",
+      paragraphTwoBefore: "Day two is for Arashiyama.",
+      selectionTwo: "Reach the bamboo grove before 8 a.m. too.",
+      paragraphTwoAfter: "Continue to Tenryu-ji and Togetsukyo, with less walking after lunch.",
+      paragraphThree: "On day three, visit Fushimi Inari and Uji before returning to Kyoto Station.",
       noteLabel: "My note",
-      noteOne: "I can only start at 9. What should move?",
-      noteTwo: "Keep walking under one hour.",
-      compileLabel: "2 notes organized",
-      compileText: "Adjust the itinerary around both constraints",
-      caption: "SELECT TEXT · ADD CONTEXT · ASK ONCE",
+      noteOne: "I start at 9 on day one. Change only this.",
+      noteTwo: "I can start early on day two. Keep this.",
+      compileLabel: "2 similar references separated",
+      compileText: "Delay Kiyomizu; keep Arashiyama early",
+      caption: "SIMILAR WORDING · EXACT REFERENCES · SEPARATE CHANGES",
     },
   },
   ja: {
@@ -78,19 +84,23 @@ const labels = {
     ready: "回答が足りないときに",
     scene: {
       answerLabel: "AI の回答",
-      answerLead: "エリアごとに分けると、移動時間を抑えられます。",
-      selectionOne: "清水寺には午前 8 時前に到着。",
-      answerBridge: "2 日目は嵐山、3 日目は伏見稲荷と宇治へ向かいます。",
-      selectionTwo: "この日は歩く距離が長めです。",
+      paragraphOneBefore: "1 日目は東山を巡ります。",
+      selectionOne: "清水寺には午前 8 時前に到着",
+      paragraphOneAfter: "し、二年坂から高台寺へ歩き、夕方は祇園へ向かいます。",
+      paragraphTwoBefore: "2 日目は嵐山です。",
+      selectionTwo: "竹林の小径にも午前 8 時前に到着",
+      paragraphTwoAfter: "し、その後は天龍寺と渡月橋を巡ります。",
+      paragraphThree: "3 日目は伏見稲荷と宇治へ行き、夕方に京都駅へ戻ります。",
       noteLabel: "コメント",
-      noteOne: "9 時出発なら、順番をどう変える？",
-      noteTwo: "歩く時間を 1 時間以内に。",
-      compileLabel: "2 件の注釈を整理",
-      compileText: "2 つの条件に合わせて旅程を調整",
-      caption: "文章を選択 · 条件を追加 · 一度で質問",
+      noteOne: "1 日目は 9 時出発。ここだけ変更。",
+      noteTwo: "2 日目は早起きできるので維持。",
+      compileLabel: "似た 2 箇所を区別",
+      compileText: "清水寺だけ遅らせ、嵐山は早いまま",
+      caption: "似た表現 · 正確な引用 · 別々に調整",
     },
   },
 }[locale];
+const sceneSpace = locale === "en" ? " " : "";
 const pagePath = WEBSITE_LOCALE_CONFIG[locale].path;
 const pageUrl = new URL(pagePath, Astro.site).href;
 const organizationId = new URL("/#organization", Astro.site).href;
@@ -263,16 +273,28 @@ const structuredData = {
             <div class="scene-answer">
               <span class="scene-avatar">AI</span>
               <div class="scene-answer-copy">
-                <p>{labels.scene.answerLead}</p>
-                <p class="scene-selected-sentence">
-                  <mark>{labels.scene.selectionOne}</mark>
-                  <span class="scene-selection-badge">1</span>
-                </p>
-                <p>{labels.scene.answerBridge}</p>
-                <p class="scene-selected-sentence">
-                  <mark>{labels.scene.selectionTwo}</mark>
-                  <span class="scene-selection-badge">2</span>
-                </p>
+                <div class="scene-answer-paragraph">
+                  <span>01</span>
+                  <p>
+                    {labels.scene.paragraphOneBefore}{sceneSpace}<span class="scene-inline-selection">
+                      <mark>{labels.scene.selectionOne}</mark>
+                      <span class="scene-selection-badge">1</span>
+                    </span>{sceneSpace}{labels.scene.paragraphOneAfter}
+                  </p>
+                </div>
+                <div class="scene-answer-paragraph">
+                  <span>02</span>
+                  <p>
+                    {labels.scene.paragraphTwoBefore}{sceneSpace}<span class="scene-inline-selection">
+                      <mark>{labels.scene.selectionTwo}</mark>
+                      <span class="scene-selection-badge">2</span>
+                    </span>{sceneSpace}{labels.scene.paragraphTwoAfter}
+                  </p>
+                </div>
+                <div class="scene-answer-paragraph scene-answer-paragraph-muted">
+                  <span>03</span>
+                  <p>{labels.scene.paragraphThree}</p>
+                </div>
               </div>
             </div>
           </div>

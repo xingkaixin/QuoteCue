@@ -513,22 +513,41 @@
 }
 
 .scene-answer-copy {
+  max-width: 74%;
   color: var(--muted);
   font-size: clamp(0.61rem, 0.78vw, 0.72rem);
   line-height: 1.65;
 }
 
-.scene-answer-copy p {
-  margin: 0 0 0.42rem;
+.scene-answer-paragraph {
+  display: grid;
+  margin-bottom: 0.52rem;
+  grid-template-columns: 1.2rem minmax(0, 1fr);
+  gap: 0.36rem;
 }
 
-.scene-selected-sentence {
+.scene-answer-paragraph > span {
+  padding-top: 0.12rem;
+  color: var(--accent);
+  font-family: "JetBrains Mono Variable", monospace;
+  font-size: 0.48rem;
+}
+
+.scene-answer-paragraph p {
+  margin: 0;
+}
+
+.scene-answer-paragraph-muted {
+  opacity: 0.72;
+}
+
+.scene-inline-selection {
   position: relative;
-  width: fit-content;
-  padding-right: 0.45rem;
+  display: inline-block;
+  padding-right: 0.25rem;
 }
 
-.scene-selected-sentence mark {
+.scene-inline-selection mark {
   padding: 0.1rem 0.18rem;
   background-color: transparent;
   background-image: linear-gradient(var(--mark), var(--mark));
@@ -538,7 +557,7 @@
   animation: scene-selection-draw 480ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
-.scene-selected-sentence:nth-of-type(4) mark {
+.scene-answer-paragraph:nth-child(2) .scene-inline-selection mark {
   animation-delay: 420ms;
 }
 
@@ -582,7 +601,7 @@
 }
 
 .scene-note-two {
-  top: 56%;
+  top: 46%;
   border-color: color-mix(in srgb, var(--pulse) 54%, var(--line));
   animation-delay: 660ms;
 }
@@ -1265,6 +1284,7 @@
   }
 
   .scene-answer-copy {
+    max-width: 76%;
     font-size: 0.56rem;
     line-height: 1.55;
   }
@@ -1276,11 +1296,11 @@
   }
 
   .scene-note-one {
-    top: 38%;
+    top: 29%;
   }
 
   .scene-note-two {
-    top: 57%;
+    top: 45%;
   }
 
   .scene-note > div {
@@ -1421,7 +1441,7 @@
   .hero-highlight,
   .scene-note,
   .scene-composer,
-  .scene-selected-sentence mark,
+  .scene-inline-selection mark,
   .animate-pop,
   .animate-rise,
   .animate-undo {
