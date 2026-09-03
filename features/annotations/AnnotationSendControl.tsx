@@ -1,4 +1,6 @@
-import { ArrowUp, LoaderCircle, RotateCcw } from "lucide-react";
+import { ArrowCounterClockwiseIcon } from "@phosphor-icons/react/dist/csr/ArrowCounterClockwise";
+import { ArrowUpIcon } from "@phosphor-icons/react/dist/csr/ArrowUp";
+import { CircleNotchIcon } from "@phosphor-icons/react/dist/csr/CircleNotch";
 
 import type {
   AnnotatedSendFailureReason,
@@ -49,14 +51,15 @@ export function AnnotationSendControl({ onSend, position, state }: AnnotationSen
         type="button"
       >
         {isPending ? (
-          <LoaderCircle
+          <CircleNotchIcon
             aria-hidden="true"
             className="size-5 animate-spin motion-reduce:animate-none"
+            weight="bold"
           />
         ) : failureReason ? (
-          <RotateCcw aria-hidden="true" className="size-4.5" />
+          <ArrowCounterClockwiseIcon aria-hidden="true" className="size-4.5" weight="bold" />
         ) : (
-          <ArrowUp aria-hidden="true" className="size-5" />
+          <ArrowUpIcon aria-hidden="true" className="size-5" weight="bold" />
         )}
       </button>
     </>

@@ -1,4 +1,4 @@
-import { Trash2 } from "lucide-react";
+import { TrashIcon } from "@phosphor-icons/react/dist/csr/Trash";
 import type { CSSProperties, RefObject } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -49,7 +49,7 @@ export function InteractiveDemoEditor({
           size="icon"
           variant="ghost"
         >
-          <Trash2 aria-hidden="true" size={16} />
+          <TrashIcon aria-hidden="true" size={16} weight="bold" />
         </Button>
         <div className="flex items-center gap-1.5">
           <Button onClick={onCancel} size="compact" variant="ghost">

@@ -1,4 +1,4 @@
-import { Trash2 } from "lucide-react";
+import { TrashIcon } from "@phosphor-icons/react/dist/csr/Trash";
 
 import { Button } from "@/components/ui/button";
 import type { SelectionRect } from "@/features/host-port/host-port";
@@ -70,7 +70,7 @@ export function AnnotationEditor({
           size="icon"
           variant="ghost"
         >
-          <Trash2 aria-hidden="true" className="size-4" />
+          <TrashIcon aria-hidden="true" className="size-4" weight="bold" />
         </Button>
         <div className="flex items-center gap-1.5">
           <Button onClick={onCancel} size="sm" variant="outline">

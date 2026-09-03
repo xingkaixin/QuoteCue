@@ -1,4 +1,7 @@
-import { MessageSquareText, Pencil, Trash2, X } from "lucide-react";
+import { ChatTextIcon } from "@phosphor-icons/react/dist/csr/ChatText";
+import { PencilSimpleIcon } from "@phosphor-icons/react/dist/csr/PencilSimple";
+import { TrashIcon } from "@phosphor-icons/react/dist/csr/Trash";
+import { XIcon } from "@phosphor-icons/react/dist/csr/X";
 
 import type { DemoCopy } from "@/i18n/content";
 
@@ -39,7 +42,7 @@ export function InteractiveDemoSummary({
           onClick={onToggle}
           type="button"
         >
-          <MessageSquareText aria-hidden="true" className="text-accent" size={16} />
+          <ChatTextIcon aria-hidden="true" className="text-accent" size={16} weight="bold" />
           {formatDemoAnnotationCount(copy, annotations.length)}
         </button>
         <button
@@ -49,7 +52,7 @@ export function InteractiveDemoSummary({
           onClick={onClear}
           type="button"
         >
-          <X aria-hidden="true" size={14} />
+          <XIcon aria-hidden="true" size={14} weight="bold" />
         </button>
       </div>
 
@@ -87,7 +90,7 @@ export function InteractiveDemoSummary({
                     onClick={() => onEdit(annotation)}
                     type="button"
                   >
-                    <Pencil aria-hidden="true" size={14} />
+                    <PencilSimpleIcon aria-hidden="true" size={14} weight="bold" />
                   </button>
                   <button
                     aria-label={copy.remove}
@@ -95,7 +98,7 @@ export function InteractiveDemoSummary({
                     onClick={() => onRemove(annotation.id)}
                     type="button"
                   >
-                    <Trash2 aria-hidden="true" size={14} />
+                    <TrashIcon aria-hidden="true" size={14} weight="bold" />
                   </button>
                 </div>
               </div>

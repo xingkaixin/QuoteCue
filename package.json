@@ -24,10 +24,10 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
+    "@phosphor-icons/react": "^2.1.10",
     "@quotecue/shared": "workspace:*",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "lucide-react": "^1.33.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "tailwind-merge": "^3.6.0"

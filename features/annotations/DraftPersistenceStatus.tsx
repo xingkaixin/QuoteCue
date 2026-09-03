@@ -1,4 +1,6 @@
-import { AlertTriangle, LoaderCircle, RotateCcw } from "lucide-react";
+import { ArrowCounterClockwiseIcon } from "@phosphor-icons/react/dist/csr/ArrowCounterClockwise";
+import { CircleNotchIcon } from "@phosphor-icons/react/dist/csr/CircleNotch";
+import { WarningIcon } from "@phosphor-icons/react/dist/csr/Warning";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -40,12 +42,13 @@ export function DraftPersistenceStatus(props: DraftPersistenceStatusProps) {
       role={isLoading ? undefined : "status"}
     >
       {isLoading ? (
-        <LoaderCircle
+        <CircleNotchIcon
           aria-hidden="true"
           className="qc-muted size-4 shrink-0 animate-spin motion-reduce:animate-none"
+          weight="bold"
         />
       ) : (
-        <AlertTriangle aria-hidden="true" className="size-4 shrink-0 text-amber-600" />
+        <WarningIcon aria-hidden="true" className="size-4 shrink-0 text-amber-600" weight="bold" />
       )}
       <span className="min-w-0 flex-1">
         {isLoading
@@ -70,7 +73,7 @@ export function DraftPersistenceStatus(props: DraftPersistenceStatusProps) {
       )}
       {props.status === "error" && (
         <Button onClick={props.onRetry} size="sm" variant="outline">
-          <RotateCcw aria-hidden="true" className="size-3.5" />
+          <ArrowCounterClockwiseIcon aria-hidden="true" className="size-3.5" weight="bold" />
           {messages.retry}
         </Button>
       )}
