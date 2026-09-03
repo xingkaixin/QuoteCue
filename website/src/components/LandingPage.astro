@@ -1,5 +1,6 @@
 ---
 import { Faq } from "./Faq";
+import { CueFlowField } from "./CueFlowField";
 import InstallActions from "./InstallActions.astro";
 import { InteractiveDemo } from "./InteractiveDemo";
 import { LanguageSwitcher } from "./LanguageSwitcher";
@@ -13,6 +14,7 @@ import {
 } from "../i18n/product-updates";
 import BaseLayout from "../layouts/BaseLayout.astro";
 import { SUPPORTED_SITES } from "@quotecue/shared/supported-sites";
+import focusArtwork from "../assets/artwork/focus-convergence.avif";
 
 interface Props {
   locale: Locale;
@@ -21,6 +23,84 @@ interface Props {
 const { locale } = Astro.props;
 const copy = getCopy(locale);
 const updates = getProductUpdates(locale);
+const labels = {
+  "zh-CN": {
+    live: "实时演示 / 浏览器内",
+    hint: "↘ 选中任意一句",
+    convergence: "多条批注 / 一次追问",
+    context: "上下文，准确保留",
+    privacy: "不收集，才是真隐私",
+    details: "细节 / 没有小字",
+    ready: "当回答还不够",
+    scene: {
+      answerLabel: "AI 回答",
+      paragraphOneBefore: "第一天走东山线。",
+      selectionOne: "清水寺最好八点前到",
+      paragraphOneAfter: "，之后沿二年坂、三年坂去高台寺，傍晚在祇园吃饭。",
+      paragraphTwoBefore: "第二天去岚山。",
+      selectionTwo: "竹林小径同样建议八点前到",
+      paragraphTwoAfter: "，之后前往天龙寺和渡月桥，下午减少步行。",
+      paragraphThree: "第三天安排伏见稻荷和宇治，傍晚回到京都站附近。",
+      noteLabel: "我的批注",
+      noteOne: "第一天九点才能出发，只调整这里。",
+      noteTwo: "第二天可以早起，这个安排保留。",
+      compileLabel: "2 处相似内容已区分",
+      compileText: "延后清水寺，保留岚山早到",
+      caption: "相似表述 · 精确引用 · 分别调整",
+    },
+  },
+  en: {
+    live: "LIVE / IN BROWSER",
+    hint: "↘ SELECT ANY SENTENCE",
+    convergence: "MANY NOTES / ONE MOVE",
+    context: "CONTEXT, KEPT PRECISE",
+    privacy: "PRIVATE BY ABSENCE",
+    details: "DETAILS / NO FINE PRINT",
+    ready: "READY WHEN THE ANSWER ISN'T",
+    scene: {
+      answerLabel: "AI answer",
+      paragraphOneBefore: "Day one follows the Higashiyama route.",
+      selectionOne: "Reach Kiyomizu-dera before 8 a.m.",
+      paragraphOneAfter: "Then walk through Ninenzaka to Kodaiji and finish in Gion.",
+      paragraphTwoBefore: "Day two is for Arashiyama.",
+      selectionTwo: "Reach the bamboo grove before 8 a.m. too.",
+      paragraphTwoAfter: "Continue to Tenryu-ji and Togetsukyo, with less walking after lunch.",
+      paragraphThree: "On day three, visit Fushimi Inari and Uji before returning to Kyoto Station.",
+      noteLabel: "My note",
+      noteOne: "I start at 9 on day one. Change only this.",
+      noteTwo: "I can start early on day two. Keep this.",
+      compileLabel: "2 similar references separated",
+      compileText: "Delay Kiyomizu; keep Arashiyama early",
+      caption: "SIMILAR WORDING · EXACT REFERENCES · SEPARATE CHANGES",
+    },
+  },
+  ja: {
+    live: "ライブ / ブラウザ内",
+    hint: "↘ 文を選択してください",
+    convergence: "複数の注釈 / 1 回の質問",
+    context: "文脈を正確に保持",
+    privacy: "収集しないプライバシー",
+    details: "詳細 / 細則なし",
+    ready: "回答が足りないときに",
+    scene: {
+      answerLabel: "AI の回答",
+      paragraphOneBefore: "1 日目は東山を巡ります。",
+      selectionOne: "清水寺には午前 8 時前に到着",
+      paragraphOneAfter: "し、二年坂から高台寺へ歩き、夕方は祇園へ向かいます。",
+      paragraphTwoBefore: "2 日目は嵐山です。",
+      selectionTwo: "竹林の小径にも午前 8 時前に到着",
+      paragraphTwoAfter: "し、その後は天龍寺と渡月橋を巡ります。",
+      paragraphThree: "3 日目は伏見稲荷と宇治へ行き、夕方に京都駅へ戻ります。",
+      noteLabel: "コメント",
+      noteOne: "1 日目は 9 時出発。ここだけ変更。",
+      noteTwo: "2 日目は早起きできるので維持。",
+      compileLabel: "似た 2 箇所を区別",
+      compileText: "清水寺だけ遅らせ、嵐山は早いまま",
+      caption: "似た表現 · 正確な引用 · 別々に調整",
+    },
+  },
+}[locale];
+const sceneSpace = locale === "en" ? " " : "";
 const pagePath = WEBSITE_LOCALE_CONFIG[locale].path;
 const pageUrl = new URL(pagePath, Astro.site).href;
 const organizationId = new URL("/#organization", Astro.site).href;
@@ -105,19 +185,17 @@ const structuredData = {
   structuredData={structuredData}
 >
   <a
-    class="fixed top-3 left-3 z-[100] -translate-y-20 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground transition-transform focus:translate-y-0"
+    class="skip-link"
     href="#main"
   >
     {copy.skipToContent}
   </a>
 
-  <header
-    class="sticky top-0 z-60 border-b border-line bg-[color-mix(in_srgb,var(--background)_82%,transparent)] backdrop-blur-[14px]"
-  >
-    <div class="mx-auto flex h-[3.625rem] max-w-[77.25rem] items-center gap-4 px-5 sm:px-7">
+  <header class="site-header">
+    <div class="site-shell header-inner">
       <a
         aria-label="QuoteCue"
-        class="font-display mr-auto flex items-center gap-2.5 text-[1.0625rem] font-bold tracking-[-0.01em]"
+        class="brand-lockup"
         href={pagePath}
       >
         <img
@@ -127,171 +205,226 @@ const structuredData = {
           alt=""
           fetchpriority="high"
         />
-        QuoteCue
+        <span>QuoteCue</span>
       </a>
 
-      <nav aria-label={copy.mainNavigationLabel} class="hidden md:block">
-        <ul class="flex list-none items-center gap-5 p-0 text-[0.84375rem] text-muted">
-          <li><a class="transition-colors hover:text-foreground" href="#demo">{copy.nav.demo}</a></li>
-          <li>
-            <a class="transition-colors hover:text-foreground" href="#features">
-              {copy.nav.features}
-            </a>
-          </li>
-          <li>
-            <a class="transition-colors hover:text-foreground" href="#updates">
-              {copy.nav.updates}
-            </a>
-          </li>
-          <li>
-            <a class="transition-colors hover:text-foreground" href="#privacy">
-              {copy.nav.privacy}
-            </a>
-          </li>
-          <li><a class="transition-colors hover:text-foreground" href="#faq">{copy.nav.faq}</a></li>
+      <nav aria-label={copy.mainNavigationLabel} class="main-nav">
+        <ul>
+          <li><a href="#demo">{copy.nav.demo}</a></li>
+          <li><a href="#features">{copy.nav.features}</a></li>
+          <li><a href="#updates">{copy.nav.updates}</a></li>
+          <li><a href="#privacy">{copy.nav.privacy}</a></li>
         </ul>
       </nav>
 
-      <div class="flex items-center gap-1.5">
+      <div class="header-actions">
         <LanguageSwitcher
           client:load
           currentLocale={locale}
           label={copy.languageSwitcherLabel}
         />
         <ThemeToggle client:load label={copy.themeLabel} />
+        <a
+          class="header-install"
+          href={copy.links.chrome}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {copy.hero.chrome}
+        </a>
       </div>
     </div>
   </header>
 
   <main id="main">
-    <section
-      class="section-background hero-background mx-auto max-w-[77.25rem] overflow-hidden px-5 pt-20 pb-10 sm:px-7 sm:pt-24"
-    >
-      <div class="font-mono relative mb-6 flex items-center gap-2 text-xs text-muted">
-        <span class="size-1.5 rounded-full bg-accent"></span>
-        {copy.hero.eyebrow}
+    <section class="site-shell hero-section">
+      <div class="hero-copy">
+        <p class="signal-label">
+          <span aria-hidden="true"></span>
+          {copy.hero.eyebrow}
+        </p>
+
+        <h1>
+          <span>{copy.hero.before}</span>
+          <span class="hero-highlight">{copy.hero.highlight}</span>
+          <span>{copy.hero.after}</span>
+        </h1>
+
+        <p class="hero-description">{copy.hero.description}</p>
+
+        <InstallActions
+          chromeLabel={copy.hero.chrome}
+          edgeLabel={copy.hero.edge}
+          chromeUrl={copy.links.chrome}
+          edgeUrl={copy.links.edge}
+          note={copy.hero.note}
+        />
       </div>
 
-      <h1
-        class="font-display relative m-0 max-w-[15ch] text-[clamp(2.75rem,7.2vw,6rem)] leading-[1.02] font-bold tracking-[-0.035em] text-balance"
-      >
-        {copy.hero.before}<br />
-        <span class="hero-mark">{copy.hero.highlight}</span>{copy.hero.after}
-        <span
-          aria-hidden="true"
-          class="animate-pop ml-2 inline-flex size-[1.375rem] translate-y-[-0.3em] items-center justify-center rounded-full bg-accent font-sans text-xs leading-none font-semibold tracking-normal text-accent-foreground shadow-[0_0_0_2px_var(--panel),0_8px_20px_rgb(0_0_0/32%)]"
-        >
-          1
-        </span>
-      </h1>
+      <div class="hero-visual" role="img" aria-label={copy.meta.socialImageAlt}>
+        <CueFlowField client:load />
+        <div aria-hidden="true" class="product-scene">
+          <div class="scene-answer-window">
+            <div class="scene-window-bar">
+              <span class="scene-window-site">ChatGPT</span>
+              <span>{labels.scene.answerLabel}</span>
+            </div>
+            <div class="scene-question">{copy.demo.userMessage}</div>
+            <div class="scene-answer">
+              <span class="scene-avatar">AI</span>
+              <div class="scene-answer-copy">
+                <div class="scene-answer-paragraph">
+                  <span>01</span>
+                  <p>
+                    {labels.scene.paragraphOneBefore}{sceneSpace}<span class="scene-inline-selection">
+                      <mark>{labels.scene.selectionOne}</mark>
+                      <span class="scene-selection-badge">1</span>
+                    </span>{sceneSpace}{labels.scene.paragraphOneAfter}
+                  </p>
+                </div>
+                <div class="scene-answer-paragraph">
+                  <span>02</span>
+                  <p>
+                    {labels.scene.paragraphTwoBefore}{sceneSpace}<span class="scene-inline-selection">
+                      <mark>{labels.scene.selectionTwo}</mark>
+                      <span class="scene-selection-badge">2</span>
+                    </span>{sceneSpace}{labels.scene.paragraphTwoAfter}
+                  </p>
+                </div>
+                <div class="scene-answer-paragraph scene-answer-paragraph-muted">
+                  <span>03</span>
+                  <p>{labels.scene.paragraphThree}</p>
+                </div>
+              </div>
+            </div>
+          </div>
 
-      <p class="relative mt-7 mb-9 max-w-[58ch] text-[1.09375rem] leading-[1.62] text-muted">
-        {copy.hero.description}
-      </p>
+          <div class="scene-note scene-note-one">
+            <div><span>01</span>{labels.scene.noteLabel}</div>
+            <p>{labels.scene.noteOne}</p>
+          </div>
 
-      <InstallActions
-        chromeLabel={copy.hero.chrome}
-        edgeLabel={copy.hero.edge}
-        chromeUrl={copy.links.chrome}
-        edgeUrl={copy.links.edge}
-        note={copy.hero.note}
-      />
+          <div class="scene-note scene-note-two">
+            <div><span>02</span>{labels.scene.noteLabel}</div>
+            <p>{labels.scene.noteTwo}</p>
+          </div>
+
+          <div class="scene-composer">
+            <div class="scene-annotation-stack"><span>01</span><span>02</span></div>
+            <div class="scene-compiled-copy">
+              <small>{labels.scene.compileLabel}</small>
+              <p>{labels.scene.compileText}</p>
+            </div>
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+              <path d="M9 13V5m0 0L5.5 8.5M9 5l3.5 3.5" stroke="currentColor" stroke-width="1.5"></path>
+            </svg>
+          </div>
+        </div>
+        <p class="visual-caption" aria-hidden="true">{labels.scene.caption}</p>
+      </div>
     </section>
 
-    <section class="mx-auto max-w-[77.25rem] scroll-mt-20 px-5 pt-15 pb-10 sm:px-7" id="demo">
-      <h2 class="font-display mt-0 mb-2 text-[clamp(1.625rem,3.4vw,2.5rem)] font-bold tracking-[-0.025em]">
-        {copy.demo.title}
-      </h2>
-      <p class="mt-0 mb-6 max-w-[62ch] text-[0.96875rem] leading-[1.6] text-muted">
-        {copy.demo.intro}
-      </p>
-      <InteractiveDemo client:visible copy={copy.demo} />
+    <section class="site-shell host-rail" aria-label={copy.supported.label}>
+      <p>{copy.supported.label}</p>
+      <ul>
+        {
+          SUPPORTED_SITES.map((site) => (
+            <li>
+              <span>{site.name}</span>
+              <small>{site.hostname}</small>
+            </li>
+          ))
+        }
+      </ul>
     </section>
 
-    <section
-      class="section-background features-background mx-auto max-w-[77.25rem] scroll-mt-20 px-5 py-[4.375rem] sm:px-7"
-      id="features"
-    >
-      <h2 class="font-display mt-0 mb-8 text-[clamp(1.625rem,3.4vw,2.5rem)] font-bold tracking-[-0.025em]">
-        {copy.features.title}
-      </h2>
-      <div class="grid grid-cols-[repeat(auto-fit,minmax(min(17.5rem,100%),1fr))] gap-[1.125rem]">
+    <section class="site-shell section-grid demo-section" id="demo">
+      <header class="section-intro">
+        <p class="section-kicker">{labels.live}</p>
+        <h2>{copy.demo.title}</h2>
+        <p>{copy.demo.intro}</p>
+        <span class="interaction-hint" aria-hidden="true">{labels.hint}</span>
+      </header>
+      <div class="demo-stage">
+        <InteractiveDemo client:visible copy={copy.demo} />
+      </div>
+    </section>
+
+    <section class="convergence-section">
+      <div class="convergence-image">
+        <img
+          src={focusArtwork.src}
+          width={focusArtwork.width}
+          height={focusArtwork.height}
+          alt=""
+          loading="lazy"
+          decoding="async"
+        />
+      </div>
+      <div class="convergence-copy">
+        <p class="section-kicker">{labels.convergence}</p>
+        <h2>{copy.features.items[2].title}</h2>
+        <p>{copy.features.items[2].body}</p>
+      </div>
+    </section>
+
+    <section class="site-shell features-section" id="features">
+      <header class="feature-heading">
+        <p class="section-kicker">{labels.context}</p>
+        <h2>{copy.features.title}</h2>
+      </header>
+      <div class="feature-grid">
         {
           copy.features.items.map((feature) => (
-            <article class="rounded-2xl border border-line bg-panel p-6">
-              <h3 class="font-display mt-0 mb-2.5 text-lg font-semibold tracking-[-0.01em]">
-                {feature.title}
-              </h3>
-              <p class="m-0 text-[0.90625rem] leading-[1.65] text-muted">{feature.body}</p>
+            <article class="feature-card">
+              <span class="annotation-bracket" aria-hidden="true"></span>
+              <h3>{feature.title}</h3>
+              <p>{feature.body}</p>
             </article>
           ))
         }
       </div>
     </section>
 
-    <section class="mx-auto max-w-[77.25rem] px-5 pt-5 pb-[4.375rem] sm:px-7">
-      <div class="rounded-[1.25rem] border border-line bg-panel p-6 sm:p-8">
-        <p class="font-mono mt-0 mb-5 text-xs text-muted">{copy.supported.label}</p>
-        <ul
-          class="grid list-none grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] gap-5 p-0"
-          aria-label={copy.supported.label}
-        >
-          {
-            SUPPORTED_SITES.map((site) => (
-              <li class="flex flex-col gap-1.5">
-                <span class="font-display text-[1.3125rem] font-semibold">{site.name}</span>
-                <span class="font-mono text-xs text-muted">{site.hostname}</span>
-              </li>
-            ))
-          }
-        </ul>
-      </div>
-    </section>
-
     <ProductUpdates copy={updates} />
 
-    <section
-      class="mx-auto max-w-[77.25rem] scroll-mt-20 px-5 pb-20 sm:px-7"
-      id="privacy"
-    >
-      <div class="grid grid-cols-[repeat(auto-fit,minmax(min(18.75rem,100%),1fr))] items-start gap-10">
-        <div>
-          <h2 class="font-display mt-0 mb-4 text-[clamp(1.625rem,3.4vw,2.5rem)] font-bold tracking-[-0.025em]">
-            {copy.privacy.title[0]}<br />{copy.privacy.title[1]}
-          </h2>
-          <p class="m-0 max-w-[58ch] text-[0.96875rem] leading-[1.7] text-muted">
-            {copy.privacy.description}
-          </p>
-        </div>
-        <dl class="m-0 flex flex-col gap-px overflow-hidden rounded-[0.875rem] border border-line bg-line">
-          {
-            copy.privacy.facts.map((fact) => (
-              <div class="grid grid-cols-[4.625rem_1fr] items-baseline gap-4 bg-panel px-5 py-4">
-                <dt class="font-mono text-xs text-accent">{fact.label}</dt>
-                <dd class="m-0 text-sm leading-[1.6] text-muted">{fact.body}</dd>
-              </div>
-            ))
-          }
-        </dl>
+    <section class="site-shell privacy-section" id="privacy">
+      <div class="privacy-statement">
+        <p class="section-kicker">{labels.privacy}</p>
+        <h2>
+          {copy.privacy.title[0]}<br />{copy.privacy.title[1]}
+        </h2>
+        <p>{copy.privacy.description}</p>
+      </div>
+      <dl class="privacy-facts">
+        {
+          copy.privacy.facts.map((fact) => (
+            <div>
+              <dt>{fact.label}</dt>
+              <dd>{fact.body}</dd>
+            </div>
+          ))
+        }
+      </dl>
+    </section>
+
+    <section class="site-shell faq-section" id="faq">
+      <div class="faq-heading">
+        <p class="section-kicker">{labels.details}</p>
+        <h2>{copy.faq.title}</h2>
+      </div>
+      <div class="faq-list">
+        <Faq client:visible items={copy.faq.items} />
       </div>
     </section>
 
-    <section class="mx-auto max-w-[56.25rem] scroll-mt-20 px-5 pb-20 sm:px-7" id="faq">
-      <h2 class="font-display mt-0 mb-7 text-[clamp(1.625rem,3.4vw,2.5rem)] font-bold tracking-[-0.025em]">
-        {copy.faq.title}
-      </h2>
-      <Faq client:visible items={copy.faq.items} />
-    </section>
-
-    <section class="mx-auto max-w-[77.25rem] px-5 pb-[5.625rem] sm:px-7">
-      <div class="section-background closing-background overflow-hidden rounded-3xl border border-line bg-panel p-[clamp(2.25rem,6vw,4.5rem)]">
-        <h2 class="font-display relative mt-0 mb-4 max-w-[18ch] text-[clamp(1.75rem,4.4vw,3.25rem)] font-bold tracking-[-0.03em]">
-          {copy.closing.title}
-        </h2>
-        <p class="relative mt-0 mb-8 max-w-[52ch] text-base leading-[1.65] text-muted">
-          {copy.closing.description}
-        </p>
-        <div class="relative flex flex-wrap items-center gap-3">
+    <section class="site-shell closing-section">
+      <div class="closing-orbit" aria-hidden="true"><span></span></div>
+      <div class="closing-copy">
+        <p class="section-kicker">{labels.ready}</p>
+        <h2>{copy.closing.title}</h2>
+        <p>{copy.closing.description}</p>
+        <div class="closing-actions">
           <InstallActions
             chromeLabel={copy.hero.chrome}
             edgeLabel={copy.hero.edge}
@@ -300,7 +433,7 @@ const structuredData = {
             compact
           />
           <a
-            class="inline-flex h-[3.125rem] items-center gap-2 rounded-full border border-line px-6 text-[0.9375rem] font-medium text-muted outline-none transition-colors hover:border-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring max-sm:w-full max-sm:justify-center"
+            class="github-link"
             href={copy.links.github}
             target="_blank"
             rel="noopener noreferrer"
@@ -315,10 +448,12 @@ const structuredData = {
     </section>
   </main>
 
-  <footer class="border-t border-line px-5 py-7 text-[0.8125rem] text-muted sm:px-7">
-    <div class="mx-auto flex max-w-[73.75rem] items-center gap-4">
+  <footer class="site-footer">
+    <div class="site-shell footer-inner">
       <img src="/brand/quotecue-icon-128.png" width="20" height="20" alt="" loading="lazy" />
       <span>QuoteCue</span>
+      <span class="footer-line" aria-hidden="true"></span>
+      <span>{copy.hero.note}</span>
     </div>
   </footer>
 </BaseLayout>
