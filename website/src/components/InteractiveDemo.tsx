@@ -1,4 +1,5 @@
-import { ArrowUp, LoaderCircle } from "lucide-react";
+import { ArrowUpIcon } from "@phosphor-icons/react/dist/csr/ArrowUp";
+import { CircleNotchIcon } from "@phosphor-icons/react/dist/csr/CircleNotch";
 import { useReducer, useRef, useState, type CSSProperties } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -165,9 +166,14 @@ export function InteractiveDemo({ copy }: InteractiveDemoProps) {
               variant="primary"
             >
               {sending ? (
-                <LoaderCircle aria-hidden="true" className="animate-spin" size={19} />
+                <CircleNotchIcon
+                  aria-hidden="true"
+                  className="animate-spin"
+                  size={19}
+                  weight="bold"
+                />
               ) : (
-                <ArrowUp aria-hidden="true" size={19} />
+                <ArrowUpIcon aria-hidden="true" size={19} weight="bold" />
               )}
             </Button>
             {(sending || clearArmed) && (

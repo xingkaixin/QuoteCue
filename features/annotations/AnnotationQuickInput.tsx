@@ -1,4 +1,4 @@
-import { Plus } from "lucide-react";
+import { PlusIcon } from "@phosphor-icons/react/dist/csr/Plus";
 
 import type { SelectionRect } from "@/features/host-port/host-port";
 import { useI18n } from "@/features/i18n/I18nProvider";
@@ -59,7 +59,7 @@ export function AnnotationQuickInput({
           onClick={saveComment}
           type="button"
         >
-          <Plus aria-hidden="true" className="size-5" />
+          <PlusIcon aria-hidden="true" className="size-5" weight="bold" />
         </button>
       </div>
       {sourceRemoved && (

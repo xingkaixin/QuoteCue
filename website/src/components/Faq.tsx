@@ -1,5 +1,5 @@
 import { Accordion } from "@base-ui/react/accordion";
-import { ChevronDown } from "lucide-react";
+import { CaretDownIcon } from "@phosphor-icons/react/dist/csr/CaretDown";
 
 interface FaqItem {
   question: string;
@@ -22,10 +22,11 @@ export function Faq({ items }: FaqProps) {
           <Accordion.Header className="m-0">
             <Accordion.Trigger className="group flex w-full cursor-pointer items-center justify-between gap-6 py-5 text-left text-[1.03125rem] font-semibold text-foreground outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
               {item.question}
-              <ChevronDown
+              <CaretDownIcon
                 aria-hidden="true"
                 className="shrink-0 text-muted transition-transform duration-200 group-data-[panel-open]:rotate-180 motion-reduce:transition-none"
                 size={18}
+                weight="bold"
               />
             </Accordion.Trigger>
           </Accordion.Header>

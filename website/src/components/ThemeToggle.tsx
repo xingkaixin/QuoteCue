@@ -1,4 +1,5 @@
-import { Moon, Sun } from "lucide-react";
+import { MoonIcon } from "@phosphor-icons/react/dist/csr/Moon";
+import { SunIcon } from "@phosphor-icons/react/dist/csr/Sun";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -30,9 +31,9 @@ export function ThemeToggle({ label }: ThemeToggleProps) {
   return (
     <Button aria-label={label} onClick={toggleTheme} size="icon" variant="ghost">
       {theme === "dark" ? (
-        <Moon aria-hidden="true" size={14} />
+        <MoonIcon aria-hidden="true" size={14} weight="bold" />
       ) : (
-        <Sun aria-hidden="true" size={14} />
+        <SunIcon aria-hidden="true" size={14} weight="bold" />
       )}
     </Button>
   );

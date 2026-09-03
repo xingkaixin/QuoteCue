@@ -1,4 +1,7 @@
-import { MessageSquareText, Pencil, Trash2, X } from "lucide-react";
+import { ChatTextIcon } from "@phosphor-icons/react/dist/csr/ChatText";
+import { PencilSimpleIcon } from "@phosphor-icons/react/dist/csr/PencilSimple";
+import { TrashIcon } from "@phosphor-icons/react/dist/csr/Trash";
+import { XIcon } from "@phosphor-icons/react/dist/csr/X";
 import { Fragment, useEffect, useRef, useState } from "react";
 
 import type { HostLayout } from "@/features/host-port/host-port";
@@ -97,7 +100,7 @@ export function AnnotationSummary({
           ref={countButtonRef}
           type="button"
         >
-          <MessageSquareText aria-hidden="true" className="qc-accent-text size-4" />
+          <ChatTextIcon aria-hidden="true" className="qc-accent-text size-4" weight="bold" />
           <span aria-live="polite">{messages.annotationCount(annotations.length)}</span>
         </button>
         <button
@@ -116,7 +119,7 @@ export function AnnotationSummary({
           }}
           type="button"
         >
-          <X aria-hidden="true" className="size-3.5" />
+          <XIcon aria-hidden="true" className="size-3.5" weight="bold" />
         </button>
       </div>
 
@@ -170,7 +173,7 @@ export function AnnotationSummary({
                         onClick={() => onEdit(projection)}
                         type="button"
                       >
-                        <Pencil aria-hidden="true" className="size-3.5" />
+                        <PencilSimpleIcon aria-hidden="true" className="size-3.5" weight="bold" />
                       </button>
                       <button
                         aria-label={messages.deleteNumberedAnnotation(ordinal)}
@@ -178,7 +181,7 @@ export function AnnotationSummary({
                         onClick={() => onRemove(annotation.id)}
                         type="button"
                       >
-                        <Trash2 aria-hidden="true" className="size-3.5" />
+                        <TrashIcon aria-hidden="true" className="size-3.5" weight="bold" />
                       </button>
                     </div>
                   </div>

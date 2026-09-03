@@ -1,5 +1,7 @@
 import { Menu } from "@base-ui/react/menu";
-import { Check, ChevronDown, Languages } from "lucide-react";
+import { CaretDownIcon } from "@phosphor-icons/react/dist/csr/CaretDown";
+import { CheckIcon } from "@phosphor-icons/react/dist/csr/Check";
+import { TranslateIcon } from "@phosphor-icons/react/dist/csr/Translate";
 
 import { Button } from "@/components/ui/button";
 import { WEBSITE_LOCALE_CONFIG, WEBSITE_LOCALES, type Locale } from "@/i18n/locales";
@@ -27,12 +29,13 @@ export function LanguageSwitcher({ currentLocale, label }: LanguageSwitcherProps
           />
         }
       >
-        <Languages aria-hidden="true" size={14} />
+        <TranslateIcon aria-hidden="true" size={14} weight="bold" />
         <span>{currentLabel}</span>
-        <ChevronDown
+        <CaretDownIcon
           aria-hidden="true"
           className="transition-transform group-data-[popup-open]/language:rotate-180 motion-reduce:transition-none"
           size={12}
+          weight="bold"
         />
       </Menu.Trigger>
 
@@ -45,7 +48,7 @@ export function LanguageSwitcher({ currentLocale, label }: LanguageSwitcherProps
                 <>
                   <span>{config.label}</span>
                   {locale === currentLocale && (
-                    <Check aria-hidden="true" className="text-accent" size={14} />
+                    <CheckIcon aria-hidden="true" className="text-accent" size={14} weight="bold" />
                   )}
                 </>
               );
