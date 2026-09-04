@@ -12,7 +12,7 @@
     "deploy": "pnpm build && wrangler deploy"
   },
   "dependencies": {
-    "@astrojs/react": "^6.0.4",
+    "@astrojs/react": "^6.0.5",
     "@base-ui/react": "^1.7.0",
     "@fontsource-variable/jetbrains-mono": "^5.3.0",
     "@fontsource-variable/manrope": "^5.3.0",
@@ -20,7 +20,7 @@
     "@phosphor-icons/react": "^2.1.10",
     "@quotecue/shared": "workspace:*",
     "@tailwindcss/vite": "^4.3.3",
-    "astro": "^7.2.4",
+    "astro": "^7.3.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "react": "^19.2.8",
@@ -31,8 +31,8 @@
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
     "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.4",
+    "@types/react-dom": "^19.2.7",
     "typescript": "^6.0.3",
-    "wrangler": "^4.124.0"
+    "wrangler": "^4.128.0"
   }
 }
