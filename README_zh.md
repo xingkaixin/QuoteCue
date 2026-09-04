@@ -5,13 +5,13 @@ QuoteCue 是一个 Chrome 扩展，用于在 ChatGPT、Claude、DeepSeek 和 Kim
 
 ## 环境要求
 
-- Node.js 24.18.0，版本锁定在 `.node-version`（支持的最低版本为 22.12.0）
-- pnpm 11.15.1，版本锁定在 `package.json`
+- Node.js 24.20.0（支持的最低版本为 22.12.0）
+- pnpm 11.25.0
 
-如果已安装 Corepack，可通过以下命令安装锁定版本的包管理器和依赖：
+项目通过 `mise.toml` 锁定这两个工具的版本。通过以下命令安装工具和项目依赖：
 
 ```bash
-corepack enable
+mise install
 pnpm install --frozen-lockfile
 pnpm exec playwright install chromium
 ```

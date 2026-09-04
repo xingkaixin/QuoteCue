@@ -8,7 +8,7 @@ MV3 扩展，用于给助手回复添加批注，并将批注编译为一次聚�
 
 ## 技术与命令
 
-- Node.js 24.18.0（最低 22.12.0），pnpm 11.15.1。
+- Node.js 24.20.0（最低 22.12.0），pnpm 11.25.0；版本由项目级 `mise.toml` 管理。
 - 扩展使用 WXT、React 19、TypeScript、Tailwind CSS 和 Base UI；落地页使用 Astro。
 - 扩展开发：`pnpm dev`；落地页开发：`pnpm site:dev`；代码质量门禁：`pnpm check`；
   发布包：`pnpm zip`。
