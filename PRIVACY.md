@@ -1,6 +1,6 @@
 # QuoteCue Privacy Policy
 
-Effective date: August 31, 2026
+Effective date: September 5, 2026
 
 QuoteCue is a Chrome extension that lets users annotate selected text in ChatGPT, Claude, DeepSeek,
 and Kimi responses and include those annotations in a follow-up message. QuoteCue is designed to
@@ -52,6 +52,10 @@ the user clears all of its annotations. A stored draft saved by the current vers
 after 30 consecutive days without an update. Drafts saved by earlier versions without an update
 time are not automatically expired. QuoteCue also removes orphaned page-session drafts created by
 earlier versions. Users can remove all locally stored QuoteCue data by uninstalling the extension.
+
+Older QuoteCue drafts without a site identifier are not automatically assigned to a conversation
+because their originating service cannot be determined. They remain in local storage under the
+retention rules above. Legacy AskGPT drafts are migrated only for ChatGPT conversations.
 
 ## Data sharing and sale
 

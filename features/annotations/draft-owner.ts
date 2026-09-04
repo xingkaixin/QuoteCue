@@ -14,7 +14,6 @@ import {
   isExpiredDraftEnvelope,
 } from "./draft-storage-codec";
 import {
-  DRAFT_KEY_PREFIX,
   DRAFT_RETENTION_MS,
   LEGACY_DRAFT_KEY_PREFIX,
   draftStorageKey,
@@ -108,9 +107,8 @@ export type DraftOwner = ReturnType<typeof createDraftOwner>;
 
 async function readDraft(conversation: IdentifiedConversation) {
   const key = scopedDraftStorageKey(conversation);
-  const unscopedKey = draftStorageKey(DRAFT_KEY_PREFIX, conversation.id);
-  const legacyKey = draftStorageKey(LEGACY_DRAFT_KEY_PREFIX, conversation.id);
-  const result = await browser.storage.local.get([key, unscopedKey, legacyKey]);
+  const legacyKey = legacyDraftKey(conversation);
+  const result = await browser.storage.local.get(legacyKey ? [key, legacyKey] : [key]);
   const storedDraft = result[key];
 
   if (storedDraft !== undefined) {
@@ -122,43 +120,51 @@ async function readDraft(conversation: IdentifiedConversation) {
     if (decoded.needsMigration && !decoded.hasUnreadableAnnotations) {
       await browser.storage.local.set({ [key]: draftEnvelope(decoded.annotations) });
     }
-    if (result[unscopedKey] !== undefined || result[legacyKey] !== undefined) {
-      await removeMigratedDraftKeys([unscopedKey, legacyKey]);
+    if (legacyKey && result[legacyKey] !== undefined) {
+      await removeMigratedDraftKey(legacyKey);
     }
     return decoded;
   }
 
-  const legacyDraft = result[unscopedKey] ?? result[legacyKey];
-  if (legacyDraft === undefined) {
+  if (!legacyKey || result[legacyKey] === undefined) {
     return emptyDecodedDraft();
   }
 
-  const decoded = decodeStoredDraft(legacyDraft);
+  const decoded = decodeStoredDraft(result[legacyKey]);
   if (decoded.hasUnreadableAnnotations) {
     return decoded;
   }
   await browser.storage.local.set({ [key]: draftEnvelope(decoded.annotations) });
-  await removeMigratedDraftKeys([unscopedKey, legacyKey]);
+  await removeMigratedDraftKey(legacyKey);
   return decoded;
 }
 
 async function writeDraft(conversation: IdentifiedConversation, annotations: DraftAnnotation[]) {
   const key = scopedDraftStorageKey(conversation);
-  const unscopedKey = draftStorageKey(DRAFT_KEY_PREFIX, conversation.id);
-  const legacyKey = draftStorageKey(LEGACY_DRAFT_KEY_PREFIX, conversation.id);
+  const legacyKey = legacyDraftKey(conversation);
 
   if (annotations.length === 0) {
-    await browser.storage.local.remove([key, unscopedKey, legacyKey]);
+    await browser.storage.local.remove(legacyKey ? [key, legacyKey] : [key]);
     return;
   }
 
   await browser.storage.local.set({ [key]: draftEnvelope(annotations) });
-  await browser.storage.local.remove([unscopedKey, legacyKey]);
+  if (legacyKey) {
+    await browser.storage.local.remove([legacyKey]);
+  }
 }
 
-async function removeMigratedDraftKeys(keys: readonly string[]) {
+function legacyDraftKey(conversation: IdentifiedConversation) {
+  // AskGPT predates multi-site support. Unscoped QuoteCue keys were shared by multiple
+  // sites, so neither migration nor conversation-local cleanup can infer their owner.
+  return conversation.siteId === "chatgpt"
+    ? draftStorageKey(LEGACY_DRAFT_KEY_PREFIX, conversation.id)
+    : null;
+}
+
+async function removeMigratedDraftKey(key: string) {
   try {
-    await browser.storage.local.remove([...keys]);
+    await browser.storage.local.remove([key]);
   } catch (error: unknown) {
     console.error("[QuoteCue] Failed to remove migrated legacy draft", error);
   }
