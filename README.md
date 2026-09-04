@@ -93,6 +93,8 @@ conversation data:
 - Leave an unidentified conversation and confirm its draft is kept separate. Restore it explicitly
   into the chosen conversation, or discard it through confirmation, before reloading the page.
 - Navigate to another conversation and back; confirm drafts remain isolated to their conversation.
+- Confirm drafts without a site identifier are not automatically restored or cleared by a
+  conversation with the same ID; legacy AskGPT drafts may be restored only on ChatGPT.
 - Open the same conversation in two tabs; confirm saved edits and confirmed-send cleanup appear
   in the other tab without reloading, while drafts in other conversations remain unchanged.
 - While editing an annotation in one tab, remove it from the other tab; confirm the unfinished

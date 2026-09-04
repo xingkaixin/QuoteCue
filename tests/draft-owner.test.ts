@@ -391,7 +391,7 @@ describe("draft storage", () => {
     const loadingB = owner.load(conversationB);
 
     await expect(loadingB).resolves.toMatchObject({ annotations: [] });
-    expect(extensionStorage.get).toHaveBeenCalledWith([keyB, "quotecue:draft:B", "askgpt:draft:B"]);
+    expect(extensionStorage.get).toHaveBeenCalledWith([keyB, "askgpt:draft:B"]);
 
     resolveA({});
     await loadingA;
@@ -406,14 +406,37 @@ describe("draft storage", () => {
     expect(extensionStorage.snapshot()).toEqual({ [currentKey]: envelope });
   });
 
-  it("migrates an unscoped draft into the current site", async () => {
-    extensionStorage.reset({ [unscopedKey]: envelope });
+  it.each(["chatgpt", "claude", "deepseek", "kimi"] as const)(
+    "leaves unscoped drafts unclaimed when %s loads, saves, or clears the same ID",
+    async (siteId) => {
+      extensionStorage.reset({ [unscopedKey]: envelope });
+      const conversation = { ...conversationA, siteId };
+      const key = `quotecue:draft:${siteId}:A`;
 
-    await expect(draftStore.load(conversationA)).resolves.toMatchObject({
-      annotations: [annotation],
-    });
-    expect(extensionStorage.snapshot()).toEqual({ [currentKey]: envelope });
-  });
+      expect((await draftStore.load(conversation)).annotations).toEqual([]);
+      await draftStore.mutate(conversation, [{ kind: "add", annotation }]);
+      expect((await draftStore.load(conversation)).annotations).toEqual([annotation]);
+      expect(extensionStorage.snapshot()).toEqual({ [unscopedKey]: envelope, [key]: envelope });
+      await draftStore.mutate(conversation, [{ kind: "clear" }]);
+      expect(extensionStorage.snapshot()).toEqual({ [unscopedKey]: envelope });
+    },
+  );
+
+  it.each(["claude", "deepseek", "kimi"] as const)(
+    "preserves AskGPT drafts for ChatGPT when %s uses the same ID",
+    async (siteId) => {
+      extensionStorage.reset({ [legacyKey]: envelope });
+      const conversation = { ...conversationA, siteId };
+
+      expect((await draftStore.load(conversation)).annotations).toEqual([]);
+      await draftStore.mutate(conversation, [{ kind: "add", annotation }]);
+      expect((await draftStore.load(conversation)).annotations).toEqual([annotation]);
+      await draftStore.mutate(conversation, [{ kind: "clear" }]);
+      expect(extensionStorage.snapshot()).toEqual({ [legacyKey]: envelope });
+      expect((await draftStore.load(conversationA)).annotations).toEqual([annotation]);
+      expect(extensionStorage.snapshot()).toEqual({ [currentKey]: envelope });
+    },
+  );
 
   it("isolates equal conversation ids from different sites", async () => {
     const claudeConversation = { ...conversationA, siteId: "claude" } as const;
