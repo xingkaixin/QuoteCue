@@ -5,13 +5,13 @@ responses before sending one focused follow-up message.
 
 ## Requirements
 
-- Node.js 24.18.0, as pinned in `.node-version` (the supported range starts at 22.12.0)
-- pnpm 11.15.1, as pinned in `package.json`
+- Node.js 24.20.0 (the supported range starts at 22.12.0)
+- pnpm 11.25.0
 
-With Corepack available, install the pinned package manager and dependencies with:
+The project pins both tools in `mise.toml`. Install them and the project dependencies with:
 
 ```bash
-corepack enable
+mise install
 pnpm install --frozen-lockfile
 pnpm exec playwright install chromium
 ```
