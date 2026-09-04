@@ -19,6 +19,7 @@ type ConfirmedSendWatcherOptions = {
   expectedText: string;
   onConfirmed: () => void;
   onTimeout: () => void;
+  onUnavailable: () => void;
   signal: AbortSignal;
 };
 
@@ -106,7 +107,39 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
     const matchesExpectedText = (message: HTMLElement) =>
       (message.textContent?.length ?? 0) >= expectedText.length &&
       normalizedRenderedText(message) === expectedText;
+    const initialPathname = hostWindow.location.pathname;
+    const initialConversationId = adapter.conversationId(initialPathname);
+    let promotedConversationId: string | null = null;
     const initialMessages = userMessages();
+    const initialConversationMessages =
+      initialConversationId === null
+        ? [
+            ...initialMessages,
+            ...hostDocument.querySelectorAll<HTMLElement>(adapter.messages.assistantSelector),
+          ]
+        : [];
+    const isSameConversation = () => {
+      const pathname = hostWindow.location.pathname;
+      const conversationId = adapter.conversationId(pathname);
+      if (initialConversationId !== null) {
+        return conversationId === initialConversationId;
+      }
+      if (pathname === initialPathname && promotedConversationId === null) {
+        return true;
+      }
+      // A new conversation may acquire an ID after sending. Preserve its DOM evidence;
+      // a replacement transcript cannot establish continuity with the unidentified source.
+      if (
+        conversationId === null ||
+        (promotedConversationId !== null && conversationId !== promotedConversationId) ||
+        initialConversationMessages.length === 0 ||
+        !initialConversationMessages.every((message) => message.isConnected)
+      ) {
+        return false;
+      }
+      promotedConversationId = conversationId;
+      return true;
+    };
     const existingMessageIds = new Set<string>();
     let hasMatchingBaseline = false;
     let hasUnidentifiedMatchingBaseline = false;
@@ -135,10 +168,12 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
     logger?.(`[QuoteCue host] send confirmation started: existing=${initialMessages.length}`);
     const candidateMessages = new Set<HTMLElement>();
     let confirmationFrame: number | undefined;
+    let stopNavigation: () => void = () => undefined;
     let stopObserving: () => void = () => undefined;
     let timeout: number | undefined;
     const cleanup = once(() => {
       stopObserving();
+      stopNavigation();
       if (confirmationFrame !== undefined) {
         hostWindow.cancelAnimationFrame(confirmationFrame);
       }
@@ -147,7 +182,18 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
       }
       options.signal.removeEventListener("abort", cleanup);
     });
+    const checkConversation = () => {
+      if (isSameConversation()) {
+        return true;
+      }
+      cleanup();
+      options.onUnavailable();
+      return false;
+    };
     const findConfirmedMessage = () => {
+      if (!checkConversation()) {
+        return;
+      }
       const messages = [...candidateMessages];
       candidateMessages.clear();
       const confirmedMessage = messages.find((message) => {
@@ -170,6 +216,9 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
       }
     };
     const scheduleConfirmationScan = (records: readonly MutationRecord[]) => {
+      if (!checkConversation()) {
+        return;
+      }
       collectUserMessageCandidates(records, candidateMessages);
       if (candidateMessages.size === 0) {
         return;
@@ -186,6 +235,7 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
       characterData: true,
       childList: true,
     });
+    stopNavigation = signals.subscribeNavigation(checkConversation);
     timeout = hostWindow.setTimeout(() => {
       logger?.("[QuoteCue host] send confirmation timed out");
       cleanup();
@@ -285,6 +335,7 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
       expectedText,
       onConfirmed: () => finish(available("confirmed")),
       onTimeout: () => finish(failure("confirmation-timeout")),
+      onUnavailable: () => finish(failure("send-unavailable")),
       signal,
     });
     if (signal.aborted) {

@@ -6,6 +6,7 @@ import { registerSendInterceptor } from "@/features/annotations/register-send-in
 import { createChatGptHost } from "@/features/chatgpt/chatgpt-host";
 
 import {
+  appendAssistantMessage,
   appendComposer as installComposer,
   appendSendButton as installSendButton,
   appendUserMessage as installUserMessage,
@@ -223,7 +224,7 @@ describe("annotated send host integration", () => {
     expect(send).not.toHaveBeenCalled();
   });
 
-  it("does not restore an earlier conversation after confirmation times out", async () => {
+  it("stops confirmation on navigation without restoring the earlier composer", async () => {
     vi.useFakeTimers();
     window.history.replaceState({}, "", "/c/conversation-a");
     const fixture = installChatGptHostFixture();
@@ -237,10 +238,10 @@ describe("annotated send host integration", () => {
       text: "compiled prompt",
     });
 
-    await vi.advanceTimersByTimeAsync(15_001);
+    await vi.advanceTimersByTimeAsync(1_001);
 
     await expect(result).resolves.toEqual({
-      reason: "confirmation-timeout",
+      reason: "send-unavailable",
       status: "unavailable",
     });
     expect(availableComposer(host).text).toBe("compiled prompt");
@@ -585,6 +586,7 @@ describe("annotated send host integration", () => {
   });
 
   it("confirms a new conversation after dispatch replaces the composer node", async () => {
+    appendAssistantMessage(annotation.anchor.messageId, annotation.anchor.quote);
     const composer = installComposer("original question");
     const onSendConfirmed = vi.fn();
     const interceptor = createInterceptor(onSendConfirmed);

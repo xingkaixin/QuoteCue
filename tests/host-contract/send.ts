@@ -92,6 +92,55 @@ export function runSendHostContract(definition: HostContractDefinition) {
       interceptor.dispose();
     });
 
+    it.each(["identified", "unidentified"] as const)(
+      "rejects another transcript after sending from an %s conversation",
+      async (source) => {
+        window.history.replaceState(
+          {},
+          "",
+          source === "identified"
+            ? definition.conversation.matchedPath
+            : definition.conversation.unmatchedPath,
+        );
+        const fixture = definition.installFixture();
+        const siteHost = host();
+        definition.setSendDisabled(fixture.sendControl, false);
+        fixture.sendControl.addEventListener("click", () => {
+          window.history.pushState({}, "", `${definition.conversation.matchedPath}-other`);
+          fixture.assistantMessage.remove();
+          fixture.userMessage.remove();
+          definition.appendUserMessage("Replacement question");
+        });
+
+        await expect(
+          siteHost.composer.submit({
+            restoreTo: availableValue(siteHost.composer.snapshot()),
+            signal: new AbortController().signal,
+            text: "Replacement question",
+          }),
+        ).resolves.toEqual({ status: "unavailable", reason: "send-unavailable" });
+      },
+    );
+
+    it("confirms an unidentified conversation after it acquires an ID", async () => {
+      window.history.replaceState({}, "", definition.conversation.unmatchedPath);
+      const fixture = definition.installFixture();
+      const siteHost = host();
+      definition.setSendDisabled(fixture.sendControl, false);
+      fixture.sendControl.addEventListener("click", () => {
+        window.history.replaceState({}, "", definition.conversation.matchedPath);
+        definition.appendUserMessage("Replacement question");
+      });
+
+      await expect(
+        siteHost.composer.submit({
+          restoreTo: availableValue(siteHost.composer.snapshot()),
+          signal: new AbortController().signal,
+          text: "Replacement question",
+        }),
+      ).resolves.toEqual({ status: "available", value: "confirmed" });
+    });
+
     it("ignores send events synthesized by host page script", () => {
       const fixture = definition.installFixture();
       const siteHost = host();
