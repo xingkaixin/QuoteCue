@@ -1,12 +1,7 @@
 import { createHostEngine } from "@/features/host/dom-host";
 import type { HostEnvironment } from "@/features/host/host-environment";
 import { pasteFirstDomFallbackComposer } from "@/features/host/rich-text-composer";
-import {
-  composerLayout,
-  messageAccess,
-  sendControlAccess,
-  type SiteAdapter,
-} from "@/features/host/site-adapter";
+import { messageAccess, sendControlAccess, type SiteAdapter } from "@/features/host/site-adapter";
 
 const MESSAGE_ITEM_SELECTOR = ".chat-content-item";
 
@@ -17,7 +12,10 @@ const KIMI_ADAPTER: SiteAdapter = {
     (text) => text.replace(/\s/g, ""),
   ),
   conversationId: (pathname) => pathname.match(/^\/chat\/([^/?#]+)/)?.[1] ?? null,
-  layout: composerLayout(".send-button-container", ".chat-editor-content"),
+  layout: {
+    actionSelector: ".send-button-container",
+    surfaceSelector: ".chat-editor-content",
+  },
   messages: messageAccess({
     assistantSelector: ".chat-content-item-assistant",
     id: (message) => message.closest<HTMLElement>(MESSAGE_ITEM_SELECTOR)?.dataset.archerId,

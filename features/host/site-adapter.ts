@@ -46,27 +46,9 @@ export type SiteAdapter = {
   sendControl: SendControlAccess;
 };
 
-export type ComposerLayoutOptions = Pick<
-  ComposerLayoutAccess,
-  "boundarySelector" | "visibleActionsOnly"
->;
-
 type MessageAccessOptions = Omit<MessageAccess, "isAssistant"> & {
   isAssistant?: MessageAccess["isAssistant"];
 };
-
-export function composerLayout(
-  actionSelector: string,
-  surfaceSelector: string,
-  options: ComposerLayoutOptions = {},
-): ComposerLayoutAccess {
-  return {
-    actionSelector,
-    surfaceSelector,
-    ...(options.boundarySelector ? { boundarySelector: options.boundarySelector } : {}),
-    ...(options.visibleActionsOnly ? { visibleActionsOnly: true } : {}),
-  };
-}
 
 export function messageAccess(options: MessageAccessOptions): MessageAccess {
   return {

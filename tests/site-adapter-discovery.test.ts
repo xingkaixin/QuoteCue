@@ -3,11 +3,7 @@ import { afterEach, describe, expect, expectTypeOf, it } from "vitest";
 import { pasteFirstDomFallbackComposer } from "@/features/host/rich-text-composer";
 import { createHostEngine } from "@/features/host/dom-host";
 import { createHostContext } from "@/features/host/host-context";
-import {
-  composerLayout,
-  type SelectionPresentationAccess,
-  type SiteAdapter,
-} from "@/features/host/site-adapter";
+import { type SelectionPresentationAccess, type SiteAdapter } from "@/features/host/site-adapter";
 import { QUOTECUE_NATIVE_ACTION_SELECTOR } from "@/lib/dom-identity";
 
 import { requiredElement, requiredNativeAction, setElementRect } from "./fixtures/fixture-utils";
@@ -53,9 +49,11 @@ describe("site adapter discovery", () => {
     const host = createHostEngine(
       { document, window },
       adapter({
-        layout: composerLayout("button", "[data-composer-surface]", {
+        layout: {
+          actionSelector: "button",
+          surfaceSelector: "[data-composer-surface]",
           boundarySelector: "[data-composer-boundary]",
-        }),
+        },
       }),
       "chatgpt",
     );
@@ -121,7 +119,7 @@ function adapter(
   return {
     composer: pasteFirstDomFallbackComposer("#composer"),
     conversationId: (pathname) => pathname.match(/^\/conversation\/([^/]+)/)?.[1] ?? null,
-    layout: composerLayout("button", "[data-composer-surface]"),
+    layout: { actionSelector: "button", surfaceSelector: "[data-composer-surface]" },
     messages: {
       assistantSelector: "[data-assistant]",
       id: (message) => message.id,

@@ -1,12 +1,7 @@
 import { createHostEngine } from "@/features/host/dom-host";
 import type { HostEnvironment } from "@/features/host/host-environment";
 import { textareaComposer } from "@/features/host/composer-access";
-import {
-  composerLayout,
-  messageAccess,
-  sendControlAccess,
-  type SiteAdapter,
-} from "@/features/host/site-adapter";
+import { messageAccess, sendControlAccess, type SiteAdapter } from "@/features/host/site-adapter";
 
 const MESSAGE_ITEM_SELECTOR = "[data-virtual-list-item-key]";
 const USER_MESSAGE_SELECTOR = `${MESSAGE_ITEM_SELECTOR}:has(> .ds-message.d29f3d7d)`;
@@ -16,7 +11,10 @@ const DEEPSEEK_SEND_ICON_PATH_PREFIX = "M8.3125 0.981587";
 const DEEPSEEK_ADAPTER: SiteAdapter = {
   composer: textareaComposer('textarea[name="search"]'),
   conversationId: (pathname) => pathname.match(/^\/a\/chat\/s\/([^/?#]+)/)?.[1] ?? null,
-  layout: composerLayout(".ds-button--circle", "div:has(textarea[name=search])"),
+  layout: {
+    actionSelector: ".ds-button--circle",
+    surfaceSelector: "div:has(textarea[name=search])",
+  },
   messages: messageAccess({
     assistantSelector: ".ds-assistant-message-main-content",
     id: (message) =>
