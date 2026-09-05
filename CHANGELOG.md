@@ -2,6 +2,24 @@
 
 Notable changes to QuoteCue are documented in this file.
 
+## [0.3.2] - 2026-09-05
+
+### Added
+
+- Redesign the QuoteCue landing page with an interactive flow hero, themed section backgrounds, and a multi-language product updates log.
+
+### Changed
+
+- Migrate extension and website icons to Phosphor Icons for unified visual consistency.
+- Streamline host adapter configuration by inlining site-specific composer layouts.
+- Simplify draft initialization flow and legacy storage key resolution.
+- Standardize tool management with mise and upgrade test suite to Vitest 5.
+
+### Fixed
+
+- Scope send confirmation strictly to its originating conversation to prevent clearing drafts across conversations during rapid switches.
+- Preserve legacy draft site ownership to ensure correct fallback isolation when recovering stored drafts.
+
 ## [0.3.1] - 2026-08-31
 
 ### Added
