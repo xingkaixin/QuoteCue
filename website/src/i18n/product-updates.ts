@@ -1,6 +1,7 @@
 import type { Locale } from "./locales";
 
 const RELEASES = [
+  { version: "0.3.2", publishedAt: "2026-09-05" },
   { version: "0.3.1", publishedAt: "2026-08-31" },
   { version: "0.3.0", publishedAt: "2026-08-24" },
   { version: "0.2.0", publishedAt: "2026-07-23" },
@@ -41,6 +42,15 @@ const COPY: Record<Locale, ProductUpdatesText> = {
       "QuoteCue 的方向很具体：在更多 AI 网站里，帮你准确指向原文、保住尚未发送的思路，并把多个重点变成一次清楚的追问。这里不罗列内部改动，只记录你真正能感受到的变化。",
     latestLabel: "最新",
     releases: {
+      "0.3.2": {
+        title: "官网视觉重构上线，多会话发送更安全",
+        summary:
+          "官网全面改版，以动态流与聚焦汇聚更直观地呈现追问工作流；扩展与全站统一迁移至精细的 Phosphor 图标体系。发送确认现精准隔离至发起会话，多标签页或快速切换会话时草稿更稳固。",
+        highlights: [
+          "多会话场景下发送确认精确匹配，防止切换会话误清空草稿。",
+          "扩展与官网界面图标全面升级，视觉更统一清爽。",
+        ],
+      },
       "0.3.1": {
         title: "草稿跨标签页同步，发送失败也不丢",
         summary:
@@ -86,6 +96,15 @@ const COPY: Record<Locale, ProductUpdatesText> = {
       "QuoteCue is becoming a reliable annotation layer across more AI sites: one that points back to the right text, protects unfinished thinking, and turns several notes into one clear follow-up. This log covers changes you can actually feel, not internal implementation work.",
     latestLabel: "Latest",
     releases: {
+      "0.3.2": {
+        title: "Redesigned landing experience and scoped send confirmation",
+        summary:
+          "The website has been overhauled with a dynamic flow hero and focused visual convergence to showcase the follow-up workflow. Extension and website icons have transitioned to Phosphor for sharper visual clarity, and send confirmations are strictly scoped to the originating conversation.",
+        highlights: [
+          "Send confirmations are strictly scoped to prevent clearing drafts during rapid conversation switching.",
+          "Icons across the extension and website now use a consistent, refined Phosphor set.",
+        ],
+      },
       "0.3.1": {
         title: "Drafts sync across tabs and survive failed sends",
         summary:
@@ -131,6 +150,15 @@ const COPY: Record<Locale, ProductUpdatesText> = {
       "QuoteCue は、より多くの AI サイトで使える信頼性の高い注釈レイヤーを目指しています。元の文章を正確に示し、送信前の考えを守り、複数の論点を 1 つの明確なフォローアップにまとめます。ここでは内部実装ではなく、実際に感じられる変化を記録します。",
     latestLabel: "最新",
     releases: {
+      "0.3.2": {
+        title: "サイトデザインの刷新と、より安全な会話間送信確認",
+        summary:
+          "ウェブサイトのデザインを刷新し、動的なフローと論点集約のビジュアルで追問の流れをより直感的に表現しました。拡張機能とサイト全体のアイコンを洗練された Phosphor に統一し、送信確認を発信元の会話に厳密に限定することで下書きの保持をより強固にしました。",
+        highlights: [
+          "複数の会話を開いていても送信確認が厳密に一致し、切り替え時の下書き誤消去を防ぎます。",
+          "拡張機能とウェブサイトのアイコンを統一し、より精細で整った視覚体験を提供します。",
+        ],
+      },
       "0.3.1": {
         title: "タブ間で下書きを同期し、送信失敗時も保持",
         summary:
