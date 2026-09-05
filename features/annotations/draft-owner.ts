@@ -16,7 +16,6 @@ import {
 import {
   DRAFT_RETENTION_MS,
   LEGACY_DRAFT_KEY_PREFIX,
-  draftStorageKey,
   scopedDraftStorageKey,
 } from "./draft-storage-key";
 
@@ -157,9 +156,7 @@ async function writeDraft(conversation: IdentifiedConversation, annotations: Dra
 function legacyDraftKey(conversation: IdentifiedConversation) {
   // AskGPT predates multi-site support. Unscoped QuoteCue keys were shared by multiple
   // sites, so neither migration nor conversation-local cleanup can infer their owner.
-  return conversation.siteId === "chatgpt"
-    ? draftStorageKey(LEGACY_DRAFT_KEY_PREFIX, conversation.id)
-    : null;
+  return conversation.siteId === "chatgpt" ? `${LEGACY_DRAFT_KEY_PREFIX}${conversation.id}` : null;
 }
 
 async function removeMigratedDraftKey(key: string) {
