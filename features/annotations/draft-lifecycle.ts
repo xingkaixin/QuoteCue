@@ -72,7 +72,9 @@ export type DraftLifecycleAction =
 export function initialDraftLifecycleState(
   conversationIdentity: ConversationIdentity,
 ): DraftLifecycleState {
-  return loadStartedState(conversationIdentity);
+  return conversationIdentity.kind === "identified"
+    ? { status: "loading", conversationIdentity }
+    : { status: "ready", conversationIdentity, annotations: [], hasUnreadableAnnotations: false };
 }
 
 export function reduceDraftLifecycle(
@@ -81,7 +83,7 @@ export function reduceDraftLifecycle(
 ): DraftLifecycleState {
   switch (action.type) {
     case "load-started":
-      return loadStartedState(action.conversationIdentity);
+      return initialDraftLifecycleState(action.conversationIdentity);
     case "load-succeeded":
       return action.hasFailedSave
         ? {
@@ -180,10 +182,4 @@ export function publicDraftState(state: DraftLifecycleState): DraftState {
         operation: state.operation,
       };
   }
-}
-
-function loadStartedState(conversationIdentity: ConversationIdentity): DraftLifecycleState {
-  return conversationIdentity.kind === "identified"
-    ? { status: "loading", conversationIdentity }
-    : { status: "ready", conversationIdentity, annotations: [], hasUnreadableAnnotations: false };
 }
