@@ -102,8 +102,6 @@ export function createDraftOwner() {
   };
 }
 
-export type DraftOwner = ReturnType<typeof createDraftOwner>;
-
 async function readDraft(conversation: IdentifiedConversation) {
   const key = scopedDraftStorageKey(conversation);
   const legacyKey = legacyDraftKey(conversation);
