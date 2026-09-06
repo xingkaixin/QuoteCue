@@ -362,6 +362,49 @@ test("protects an unsaved comment when a native action is activated by keyboard"
   expect(await storedAnnotationCount(extensionWorker, draftKey("dirty-editor"))).toBe(1);
 });
 
+test("protects unsaved comments when sending across display settings", async ({ context }) => {
+  for (const { width, colorScheme, reducedMotion, zoom } of DISPLAY_SETTINGS) {
+    const page = await openConversation(context, `dirty-send-${width}`);
+    await page.setViewportSize({ width, height: 800 });
+    await page.emulateMedia({ colorScheme, reducedMotion });
+    await page.evaluate((scale) => {
+      document.documentElement.style.zoom = String(scale);
+    }, zoom);
+    await addAnnotation(page);
+    await expect
+      .poll(() => page.frames().some((frame) => frame.url().includes("secure-field.html")))
+      .toBe(true);
+    const fieldFrame = page.frames().find((frame) => frame.url().includes("secure-field.html"))!;
+    const field = fieldFrame.locator("input");
+    await field.fill("Keep this unsaved comment");
+    const session = await context.newCDPSession(page);
+    const { nodes } = await session.send("Accessibility.getFullAXTree");
+    const send = nodes.find(
+      (node) => node.role?.value === "button" && node.name?.value === "Send annotations",
+    );
+    expect(send?.backendDOMNodeId).toBeDefined();
+    const { model } = await session.send("DOM.getBoxModel", {
+      backendNodeId: send!.backendDOMNodeId,
+    });
+    await page.mouse.click(
+      (model.content[0]! + model.content[4]!) / 2,
+      (model.content[1]! + model.content[5]!) / 2,
+    );
+    await expect(field).toBeFocused();
+    await expect(field).toHaveValue("Keep this unsaved comment");
+    await expect(page.locator('[data-message-author-role="user"]')).toHaveCount(0);
+    await field.press("Enter");
+    await expect
+      .poll(() => page.frames().some((frame) => frame.url().includes("secure-field.html")))
+      .toBe(false);
+    await page.locator("#prompt-textarea").press("Enter");
+    await expect(page.locator('[data-message-author-role="user"]')).toContainText(
+      "Keep this unsaved comment",
+    );
+    await page.close();
+  }
+});
+
 async function openConversation(context: BrowserContext, conversationId: string) {
   const page = await context.newPage();
   await page.goto(`https://chatgpt.com/c/${conversationId}`);
