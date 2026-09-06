@@ -178,7 +178,10 @@ export function AnnotationSummary({
                       <button
                         aria-label={messages.deleteNumberedAnnotation(ordinal)}
                         className="qc-danger qc-divider qc-hover qc-focus flex size-8 cursor-pointer items-center justify-center border-l"
-                        onClick={() => onRemove(annotation.id)}
+                        onClick={() => {
+                          countButtonRef.current?.focus();
+                          onRemove(annotation.id);
+                        }}
                         type="button"
                       >
                         <TrashIcon aria-hidden="true" className="size-3.5" weight="bold" />
