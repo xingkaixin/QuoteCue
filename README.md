@@ -6,7 +6,7 @@ responses before sending one focused follow-up message.
 ## Requirements
 
 - Node.js 24.20.0 (the supported range starts at 22.12.0)
-- pnpm 11.25.0
+- pnpm 12.3.4
 
 The project pins both tools in `mise.toml`. Install them and the project dependencies with:
 
