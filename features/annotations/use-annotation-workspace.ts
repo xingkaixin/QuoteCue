@@ -233,7 +233,9 @@ export function useAnnotationWorkspace() {
   }, [closeEditor, discardAllAnnotations, discardPendingDeletions]);
 
   const send = useCallback(() => {
-    sendControllerRef.current?.submit();
+    if (requestSessionDismissalRef.current?.() !== false) {
+      sendControllerRef.current?.submit();
+    }
   }, []);
   const isRetainedDraftSending = retainedDraft
     ? sendControllerRef.current?.state(retainedDraft.conversationIdentity).status === "sending"
