@@ -633,3 +633,58 @@ async function storedAnnotationCount(extensionWorker: Worker, key: string) {
     return draft?.annotations?.length ?? 0;
   }, key);
 }
+
+test("retains focus and allows keyboard undo after deletion across display settings", async ({
+  context,
+}) => {
+  for (const { width, colorScheme, reducedMotion, zoom } of DISPLAY_SETTINGS) {
+    const page = await openConversation(context, `delete-focus-${width}`);
+    await page.setViewportSize({ width, height: 800 });
+    await page.emulateMedia({ colorScheme, reducedMotion });
+    await page.evaluate((scale) => {
+      document.documentElement.style.zoom = String(scale);
+    }, zoom);
+    await addAnnotation(page);
+    await expect
+      .poll(() => page.frames().some((frame) => frame.url().includes("secure-field.html")))
+      .toBe(true);
+    const fieldFrame = page.frames().find((frame) => frame.url().includes("secure-field.html"))!;
+    await fieldFrame.locator("input").press("Enter");
+    const session = await context.newCDPSession(page);
+    let countButtonId: number | undefined;
+    await expect(async () => {
+      const { nodes } = await session.send("Accessibility.getFullAXTree");
+      countButtonId = nodes.find(
+        (node) => node.role?.value === "button" && node.name?.value === "1 annotation",
+      )?.backendDOMNodeId;
+      expect(countButtonId).toBeDefined();
+    }).toPass();
+    await session.send("DOM.focus", { backendNodeId: countButtonId });
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Tab");
+    const { nodes: deleteNodes } = await session.send("Accessibility.getFullAXTree");
+    const deleteButton = deleteNodes.find(
+      (node) => node.role?.value === "button" && node.name?.value === "Delete annotation 1",
+    );
+    expect(
+      deleteButton?.properties?.find((property) => property.name === "focused")?.value.value,
+    ).toBe(true);
+    await page.keyboard.press("Enter");
+    await expect(async () => {
+      const { nodes } = await session.send("Accessibility.getFullAXTree");
+      const count = nodes.find((node) => node.backendDOMNodeId === countButtonId);
+      expect(count?.name?.value).toBe("0 annotations");
+      expect(count?.properties?.find((property) => property.name === "focused")?.value.value).toBe(
+        true,
+      );
+    }).toPass();
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Enter");
+    await expect(async () => {
+      const { nodes } = await session.send("Accessibility.getFullAXTree");
+      expect(nodes.some((node) => node.name?.value === "Delete annotation 1")).toBe(true);
+    }).toPass();
+    await page.close();
+  }
+});
