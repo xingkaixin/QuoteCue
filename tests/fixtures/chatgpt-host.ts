@@ -52,6 +52,19 @@ export function appendUserMessage(messageId: string, text: string) {
   return message;
 }
 
+export function appendUserMessageWithBreaks(messageId: string, text: string) {
+  const message = appendUserMessage(messageId, "");
+  const lines = text.split("\n");
+  message.replaceChildren(
+    ...lines.flatMap((line, index) =>
+      index === 0 ? [line] : [document.createElement("br"), line],
+    ),
+  );
+  // jsdom does not derive innerText from rendered line breaks.
+  Object.defineProperty(message, "innerText", { configurable: true, value: text });
+  return message;
+}
+
 export function appendAssistantMessage(messageId: string, text: string) {
   const message = document.createElement("article");
   message.dataset.messageAuthorRole = "assistant";

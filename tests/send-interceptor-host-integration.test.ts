@@ -10,6 +10,7 @@ import {
   appendComposer as installComposer,
   appendSendButton as installSendButton,
   appendUserMessage as installUserMessage,
+  appendUserMessageWithBreaks,
   installChatGptHostFixture,
 } from "./fixtures/chatgpt-host";
 import { createFakeHost, fakeComposerSnapshot } from "./fixtures/fake-host";
@@ -417,45 +418,24 @@ describe("annotated send host integration", () => {
     interceptor.dispose();
   });
 
-  it("skips rendered text reads for new messages shorter than the expected send", async () => {
+  it("confirms rendered line breaks even when textContent is shorter than the expected send", async () => {
     const composer = installComposer("original question");
-    const logger = vi.fn();
-    const host = createChatGptHost({ document, logger, window });
-    let messageInnerTextReads = 0;
+    const onSendConfirmed = vi.fn();
     installSendButton(() => {
-      const message = installUserMessage("short-user-message", "short");
-      Object.defineProperty(message, "innerText", {
-        configurable: true,
-        get: () => {
-          messageInnerTextReads += 1;
-          return message.textContent ?? "";
-        },
-      });
+      const text = composer.textContent ?? "";
+      const message = appendUserMessageWithBreaks("multiline-user-message", text);
+      expect(message.textContent!.length).toBeLessThan(text.replace(/\s+/g, " ").trim().length);
       composer.replaceChildren();
-      message.textContent = "still short";
     });
-    const interceptor = registerSendInterceptor({
-      getSendInput: () => ({
-        annotations: numberAnnotations([annotation]),
-        conversationIdentity: {
-          kind: "identified",
-          id: "conversation-test",
-          siteId: "chatgpt",
-        },
-        locale: "en",
-      }),
-      host,
-      onSendConfirmed: vi.fn(),
-    });
+    const interceptor = createInterceptor(onSendConfirmed);
 
     interceptor.submit();
-    await vi.waitFor(() =>
-      expect(logger).toHaveBeenCalledWith(
-        "[QuoteCue host] send confirmation observed: candidates=1, matched=false",
-      ),
-    );
-    expect(messageInnerTextReads).toBe(0);
-
+    await vi.waitFor(() => expect(onSendConfirmed).toHaveBeenCalledOnce());
+    expect(onSendConfirmed).toHaveBeenCalledWith([annotation], {
+      kind: "identified",
+      id: "conversation-test",
+      siteId: "chatgpt",
+    });
     interceptor.dispose();
   });
 
