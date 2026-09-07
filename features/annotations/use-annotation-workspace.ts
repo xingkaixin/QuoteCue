@@ -124,14 +124,10 @@ export function useAnnotationWorkspace() {
   const sendState = sendControllerRef.current?.state(conversationIdentity) ?? { status: "idle" };
 
   useEffect(() => {
-    if (
-      draft.status !== "loading" &&
-      actionableAnnotations.length === 0 &&
-      sendState.status === "failed"
-    ) {
+    if (isDraftMutable && annotations.length === 0 && sendState.status === "failed") {
       sendControllerRef.current?.draftEmptied(conversationIdentity);
     }
-  }, [actionableAnnotations.length, conversationIdentity, draft.status, sendState.status]);
+  }, [annotations.length, conversationIdentity, isDraftMutable, sendState.status]);
 
   const replaceEditorSession = useCallback(
     (replace: () => void) => {

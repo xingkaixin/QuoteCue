@@ -10,7 +10,7 @@ import { HostProvider } from "@/features/host-port/HostProvider";
 import type { AnchoredSelection, ComposerSubmitResult } from "@/features/host-port/host-port";
 import { I18nProvider } from "@/features/i18n/I18nProvider";
 
-import { createFakeHost, type FakeHost } from "./fixtures/fake-host";
+import { createFakeHost, fakeComposerSnapshot, type FakeHost } from "./fixtures/fake-host";
 import { createDraftStoreDouble, draftResult } from "./fixtures/memory-draft-store";
 
 const anchoredSelection: AnchoredSelection = {
@@ -536,6 +536,53 @@ describe("annotation workspace", () => {
 
     await act(async () => mounted.root.unmount());
   });
+
+  it.each(["deletion undo", "refresh failure"])(
+    "preserves retry input through %s",
+    async (scenario) => {
+      const conversation = { kind: "identified", id: "conversation-a", siteId: "chatgpt" } as const;
+      await draftStoreFixture.store.mutate(conversation, [{ kind: "add", annotation }]);
+      const host = createWorkspaceHost();
+      const snapshot = vi.spyOn(host.composer, "snapshot").mockReturnValue({
+        status: "available",
+        value: fakeComposerSnapshot("Please explain the tradeoff"),
+      });
+      const submit = vi.spyOn(host.composer, "submit").mockResolvedValue({
+        reason: "confirmation-timeout",
+        status: "unavailable",
+      });
+      const mounted = await mountWorkspace(host);
+      try {
+        await act(async () => workspace.summary.send());
+        expect(workspace.summary.sendState.status).toBe("failed");
+        const originalPrompt = submit.mock.calls[0]![0].text;
+        snapshot.mockReturnValue({ status: "available", value: fakeComposerSnapshot("") });
+
+        if (scenario === "deletion undo") {
+          await act(async () => workspace.summary.remove(annotation.id));
+          expect(workspace.summary.annotations).toEqual([]);
+          expect(workspace.summary.sendState.status).toBe("failed");
+          await act(async () => workspace.summary.undoDeletion());
+        } else {
+          vi.spyOn(console, "error").mockImplementation(() => undefined);
+          draftStoreFixture.store.load.mockRejectedValueOnce(new Error("read unavailable"));
+          await act(async () => {
+            await draftStoreFixture.store.mutate(conversation, []);
+          });
+          expect(workspace.draft.state).toMatchObject({ status: "error", operation: "load" });
+          expect(workspace.summary.sendState.status).toBe("failed");
+          await act(async () => workspace.draft.retry());
+        }
+
+        await act(async () => workspace.summary.send());
+        expect(submit).toHaveBeenCalledTimes(2);
+        expect(submit.mock.calls[1]![0].text).toBe(originalPrompt);
+        expect(submit.mock.calls[1]![0].restoreText).toBe("Please explain the tradeoff");
+      } finally {
+        await act(async () => mounted.root.unmount());
+      }
+    },
+  );
 
   it("clears failed send state when the draft is cleared", async () => {
     draftStoreFixture.store.load.mockResolvedValue(draftResult([annotation]));
