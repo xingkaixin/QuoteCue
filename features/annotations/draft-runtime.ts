@@ -44,7 +44,6 @@ export function createDraftRuntime(draftPersistence: DraftPersistence) {
   };
   let activeRead: { conversationIdentity: IdentifiedConversation; invalidated: boolean } | null =
     null;
-  let unsubscribePersistence: (() => void) | null = null;
   let unsubscribeChanges: (() => void) | null = null;
   const listeners = new Set<() => void>();
 
@@ -392,8 +391,7 @@ export function createDraftRuntime(draftPersistence: DraftPersistence) {
 
   function subscribe(listener: () => void) {
     listeners.add(listener);
-    if (!unsubscribePersistence) {
-      unsubscribePersistence = draftPersistence.subscribe(handlePersistenceEvent);
+    if (listeners.size === 1) {
       const identity = snapshot.draftState?.conversationIdentity;
       if (identity?.kind === "identified") {
         observeConversation(identity);
@@ -403,8 +401,6 @@ export function createDraftRuntime(draftPersistence: DraftPersistence) {
     return () => {
       listeners.delete(listener);
       if (listeners.size === 0) {
-        unsubscribePersistence?.();
-        unsubscribePersistence = null;
         stopObservingConversation();
       }
     };
@@ -419,6 +415,8 @@ export function createDraftRuntime(draftPersistence: DraftPersistence) {
   function getSnapshot() {
     return snapshot;
   }
+
+  draftPersistence.subscribe(handlePersistenceEvent);
 
   return {
     activate,
