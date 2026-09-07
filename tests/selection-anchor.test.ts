@@ -47,6 +47,25 @@ describe("selection anchors", () => {
     expect(range).toBeNull();
   });
 
+  it.each([
+    { text: "Other target! Different:target?", prefix: "Original ", suffix: " ending" },
+    { text: "OriginaX target ending Other:target?", prefix: "Original ", suffix: " ending" },
+    { text: " target target!", prefix: " ", suffix: " " },
+  ])("rejects insufficient repeated-quote evidence: $text", ({ text, prefix, suffix }) => {
+    document.body.firstElementChild!.textContent = text;
+    expect(
+      restore({
+        format: "exact",
+        messageId: "assistant-one",
+        quote: "target",
+        prefix,
+        suffix,
+        start: 9,
+        end: 15,
+      }),
+    ).toBeNull();
+  });
+
   it("restores a repeated quote only when context identifies one candidate", () => {
     document.body.innerHTML = `
       <div>alpha target beta gamma target delta</div>
