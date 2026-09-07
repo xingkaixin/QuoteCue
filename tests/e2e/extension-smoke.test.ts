@@ -58,7 +58,7 @@ const CHATGPT_FIXTURE = `<!doctype html>
         const message = document.createElement("article");
         message.dataset.messageAuthorRole = "user";
         message.dataset.messageId = crypto.randomUUID();
-        message.textContent = composer.innerText;
+        message.innerText = composer.innerText;
         document.querySelector("main").append(message);
       });
     </script>

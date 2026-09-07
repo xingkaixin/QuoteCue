@@ -105,7 +105,6 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
 
     const expectedText = normalizedRenderedText(options.expectedText);
     const matchesExpectedText = (message: HTMLElement) =>
-      (message.textContent?.length ?? 0) >= expectedText.length &&
       normalizedRenderedText(message) === expectedText;
     const initialPathname = hostWindow.location.pathname;
     const initialConversationId = adapter.conversationId(initialPathname);
