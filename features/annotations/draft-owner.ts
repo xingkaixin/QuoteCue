@@ -114,7 +114,10 @@ async function readDraft(conversation: IdentifiedConversation) {
       return emptyDecodedDraft();
     }
     const decoded = decodeStoredDraft(storedDraft);
-    if (decoded.needsMigration && !decoded.hasUnreadableAnnotations) {
+    if (decoded.hasUnreadableAnnotations) {
+      return decoded;
+    }
+    if (decoded.needsMigration) {
       await browser.storage.local.set({ [key]: draftEnvelope(decoded.annotations) });
     }
     if (legacyKey && result[legacyKey] !== undefined) {
