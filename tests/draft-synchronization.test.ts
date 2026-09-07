@@ -2,7 +2,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { DraftAnnotation } from "@/features/annotations/annotation";
 import { createDraftPersistence } from "@/features/annotations/draft-persistence";
-import { createDraftRuntime, type DraftRuntime } from "@/features/annotations/draft-runtime";
+import {
+  createDraftRuntime,
+  visibleDraftSnapshot,
+  type DraftRuntime,
+} from "@/features/annotations/draft-runtime";
 import { canMutateDraft } from "@/features/annotations/draft-lifecycle";
 import type { DraftStore } from "@/features/annotations/draft-store";
 
@@ -158,6 +162,61 @@ describe("draft synchronization", () => {
     expect(store.load).toHaveBeenCalledTimes(4);
     stopAgain();
   });
+
+  it.each(["saved", "failed"])(
+    "settles a %s restoration while the UI is unsubscribed",
+    async (outcome) => {
+      const { store } = createDraftStoreDouble();
+      const runtime = createDraftRuntime(createDraftPersistence(store));
+      const source = { kind: "unidentified", sessionKey: "source" } as const;
+      const listener = vi.fn();
+      const stop = runtime.subscribe(listener);
+      runtime.activate(source);
+      runtime.mutate(source, { kind: "add", annotation });
+      runtime.activate(conversationA);
+      await vi.waitFor(() => expect(runtime.getSnapshot().draftState?.status).toBe("ready"));
+      const delayed = pause();
+      const mutate = store.mutate.getMockImplementation()!;
+      vi.spyOn(console, "error").mockImplementation(() => undefined);
+      store.mutate.mockImplementationOnce(async (...args) => {
+        await delayed.promise;
+        if (outcome === "failed") {
+          throw new Error("save unavailable");
+        }
+        return mutate(...args);
+      });
+      expect(runtime.restoreRetainedDraft(conversationA, source.sessionKey)).toBe(true);
+      runtime.activate(conversationB);
+      await vi.waitFor(() => expect(runtime.getSnapshot().draftState?.status).toBe("ready"));
+      stop();
+      listener.mockClear();
+      delayed.release();
+      const retainedDraft = () =>
+        visibleDraftSnapshot(runtime.getSnapshot(), conversationB).retainedDraft;
+      await vi.waitFor(() => {
+        if (outcome === "failed") {
+          expect(retainedDraft()).toMatchObject({ status: "save-failed", count: 1 });
+        } else {
+          expect(retainedDraft()).toBeNull();
+        }
+      });
+      expect(listener).not.toHaveBeenCalled();
+      const stopAgain = runtime.subscribe(listener);
+      try {
+        if (outcome === "failed") {
+          expect(runtime.restoreRetainedDraft(conversationB, source.sessionKey)).toBe(true);
+        }
+        await vi.waitFor(() => expect(retainedDraft()).toBeNull());
+        expect(currentAnnotations(runtime)).toEqual([]);
+        runtime.activate(conversationA);
+        await vi.waitFor(() => expect(currentAnnotations(runtime)).toEqual([annotation]));
+        expect((await store.load(conversationA)).annotations).toEqual([annotation]);
+        expect((await store.load(conversationB)).annotations).toEqual([]);
+      } finally {
+        stopAgain();
+      }
+    },
+  );
 
   it("does not start a trailing read after its last subscriber leaves", async () => {
     const { store } = createDraftStoreDouble();
