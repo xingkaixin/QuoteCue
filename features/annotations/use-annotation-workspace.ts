@@ -64,7 +64,17 @@ export function useAnnotationWorkspace() {
     ({ annotation }) => annotation.id === activeAnnotationId,
   );
   const activeResolution = activeProjection?.resolution;
-  const closeEditor = useCallback(() => setEditorState({ status: "hidden" }), []);
+  const editorFrameRef = useRef<number | undefined>(undefined);
+  const cancelPendingEditor = useCallback(() => {
+    if (editorFrameRef.current !== undefined) {
+      cancelAnimationFrame(editorFrameRef.current);
+      editorFrameRef.current = undefined;
+    }
+  }, []);
+  const closeEditor = useCallback(() => {
+    cancelPendingEditor();
+    setEditorState({ status: "hidden" });
+  }, [cancelPendingEditor]);
 
   useEffect(() => {
     if (draft.status === "loading" || activeResolution === "unresolved") {
@@ -108,7 +118,8 @@ export function useAnnotationWorkspace() {
 
   useEffect(() => {
     closeEditor();
-  }, [closeEditor, conversationIdentity]);
+    return cancelPendingEditor;
+  }, [cancelPendingEditor, closeEditor, conversationIdentity, host]);
 
   const sendState = sendControllerRef.current?.state(conversationIdentity) ?? { status: "idle" };
 
@@ -122,11 +133,15 @@ export function useAnnotationWorkspace() {
     }
   }, [actionableAnnotations.length, conversationIdentity, draft.status, sendState.status]);
 
-  const replaceEditorSession = useCallback((replace: () => void) => {
-    if (requestSessionDismissalRef.current?.() !== false) {
-      replace();
-    }
-  }, []);
+  const replaceEditorSession = useCallback(
+    (replace: () => void) => {
+      if (requestSessionDismissalRef.current?.() !== false) {
+        cancelPendingEditor();
+        replace();
+      }
+    },
+    [cancelPendingEditor],
+  );
 
   const startAnnotation = useCallback(
     (selection: AnchoredSelection) =>
@@ -181,7 +196,10 @@ export function useAnnotationWorkspace() {
           showEditor();
           return;
         }
-        requestAnimationFrame(showEditor);
+        editorFrameRef.current = requestAnimationFrame(() => {
+          editorFrameRef.current = undefined;
+          showEditor();
+        });
       });
     },
     [editorState, host, replaceEditorSession],
