@@ -47,11 +47,12 @@ export function decodeStoredDraft(value: unknown): DecodedDraft {
       needsMigration: true,
     };
   }
-  if (!isRecord(value) || !isDraftStorageVersion(value.version)) {
-    throw new Error("Unsupported draft storage version");
-  }
-  if (!Array.isArray(value.annotations)) {
-    throw new Error("Draft annotations must be an array");
+  if (
+    !isRecord(value) ||
+    !isDraftStorageVersion(value.version) ||
+    !Array.isArray(value.annotations)
+  ) {
+    return { annotations: [], hasUnreadableAnnotations: true, needsMigration: false };
   }
 
   const decoded = decodeAnnotations(value.annotations, value.version);

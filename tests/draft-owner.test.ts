@@ -149,12 +149,19 @@ describe("draft storage", () => {
     stopSecond();
   });
 
-  it.each([{ readable: [] }, { readable: [annotation] }])(
+  it.each([
+    { readable: [], stored: { ...envelope, annotations: [{ id: "unreadable" }] } },
+    {
+      readable: [annotation],
+      stored: { ...envelope, annotations: [annotation, { id: "unreadable" }] },
+    },
+    { readable: [], stored: { ...envelope, annotations: null } },
+    { readable: [], stored: { version: 4, annotations: [annotation] } },
+    { readable: [], stored: null },
+  ])(
     "recovers an unreadable draft through the runtime clear path: %#",
-    async ({ readable }) => {
-      extensionStorage.reset({
-        [currentKey]: { ...envelope, annotations: [...readable, { id: "unreadable" }] },
-      });
+    async ({ readable, stored }) => {
+      extensionStorage.reset({ [currentKey]: stored, [legacyKey]: legacyEnvelope });
       const runtime = createDraftRuntime(createDraftPersistence(createBrowserDraftStore()));
       const unsubscribe = runtime.subscribe(() => undefined);
       runtime.activate(conversationA);
@@ -173,6 +180,10 @@ describe("draft storage", () => {
       expect(runtime.getSnapshot().draftState).toMatchObject({
         status: "ready",
         annotations: readable,
+      });
+      expect(extensionStorage.snapshot()).toEqual({
+        [currentKey]: stored,
+        [legacyKey]: legacyEnvelope,
       });
       expect(runtime.mutate(conversationA, { kind: "clear" })).toBe(true);
       await vi.waitFor(() => expect(extensionStorage.snapshot()).toEqual({}));
@@ -589,9 +600,10 @@ describe("draft storage", () => {
     const unknownVersion = { version: 4, annotations: [annotation] };
     extensionStorage.reset({ [currentKey]: unknownVersion });
 
-    await expect(draftStore.load(conversationA)).rejects.toThrow(
-      "Unsupported draft storage version",
-    );
+    await expect(draftStore.load(conversationA)).resolves.toEqual({
+      annotations: [],
+      hasUnreadableAnnotations: true,
+    });
     expect(extensionStorage.snapshot()).toEqual({ [currentKey]: unknownVersion });
 
     const malformedDraft = [{ id: 42, anchor: null }];
