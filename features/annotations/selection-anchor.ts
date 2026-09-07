@@ -98,45 +98,23 @@ function uniqueContextMatch(
   quoteLength: number,
   candidates: number[],
 ) {
-  let bestOffset = -1;
-  let bestScore = 0;
-  let bestCount = 0;
-
+  if (anchor.prefix.trim().length === 0 && anchor.suffix.trim().length === 0) {
+    return -1;
+  }
+  let matchedOffset = -1;
   for (const candidate of candidates) {
-    const prefixStart = Math.max(0, candidate - anchor.prefix.length);
-    const prefix = messageText.slice(prefixStart, candidate);
+    const prefix = messageText.slice(Math.max(0, candidate - anchor.prefix.length), candidate);
     const suffixStart = candidate + quoteLength;
     const suffix = messageText.slice(suffixStart, suffixStart + anchor.suffix.length);
-    const prefixScore = matchingEdgeLength(prefix, anchor.prefix, "end");
-    const suffixScore = matchingEdgeLength(suffix, anchor.suffix, "start");
-    const score = prefixScore + suffixScore;
-
-    if (score > bestScore) {
-      bestOffset = candidate;
-      bestScore = score;
-      bestCount = 1;
-    } else if (score === bestScore) {
-      bestCount += 1;
+    if (prefix !== anchor.prefix || suffix !== anchor.suffix) {
+      continue;
     }
-  }
-
-  return bestScore > 0 && bestCount === 1 ? bestOffset : -1;
-}
-
-function matchingEdgeLength(left: string, right: string, edge: "start" | "end") {
-  const length = Math.min(left.length, right.length);
-  let matches = 0;
-
-  for (let index = 0; index < length; index += 1) {
-    const leftIndex = edge === "start" ? index : left.length - index - 1;
-    const rightIndex = edge === "start" ? index : right.length - index - 1;
-    if (left[leftIndex] !== right[rightIndex]) {
-      break;
+    if (matchedOffset !== -1) {
+      return -1;
     }
-    matches += 1;
+    matchedOffset = candidate;
   }
-
-  return matches;
+  return matchedOffset;
 }
 
 function rangeFromOffsets(root: HTMLElement, start: number, end: number) {
