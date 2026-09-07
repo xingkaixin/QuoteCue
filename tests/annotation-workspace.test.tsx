@@ -46,6 +46,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   document.documentElement.lang = "";
   window.history.replaceState({}, "", "/");
   document.body.replaceChildren();
@@ -372,6 +373,63 @@ describe("annotation workspace", () => {
     expect((await draftStoreFixture.store.load(identified)).annotations).toEqual(
       originalAnnotations,
     );
+    await act(async () => mounted.root.unmount());
+  });
+
+  it.each(["conversation", "close", "replacement"] as const)(
+    "cancels a delayed editor opening after %s changes",
+    async (change) => {
+      vi.useFakeTimers({ toFake: ["requestAnimationFrame", "cancelAnimationFrame"] });
+      const conversation = { kind: "identified", id: "conversation-a", siteId: "chatgpt" } as const;
+      await draftStoreFixture.store.mutate(conversation, [{ kind: "add", annotation }]);
+      const host = createWorkspaceHost();
+      const mounted = await mountWorkspace(host);
+      await act(async () => vi.advanceTimersToNextFrame());
+      vi.spyOn(host.selection, "reveal").mockReturnValue({
+        status: "available",
+        value: "scrolled",
+      });
+      act(() => workspace.summary.open(workspace.summary.annotations[0]!));
+      expect(workspace.editor.status).toBe("hidden");
+
+      const nextConversation = { ...conversation, id: "conversation-b" };
+      await act(async () => {
+        if (change === "conversation") {
+          host.conversation.identity = () => nextConversation;
+          host.controls.setConversationIdentity(nextConversation);
+        } else if (change === "close") {
+          workspace.editor.close();
+        } else {
+          workspace.selection.onActivate(anchoredSelection);
+        }
+      });
+      await act(async () => vi.advanceTimersToNextFrame());
+
+      if (change === "replacement") {
+        expect(workspace.editor.status).toBe("quick");
+        expect(workspace.editor.annotation?.id).not.toBe(annotation.id);
+      } else {
+        expect(workspace.editor.status).toBe("hidden");
+        await act(async () => workspace.editor.save("must not enter another draft"));
+        expect((await draftStoreFixture.store.load(nextConversation)).annotations).toEqual([]);
+      }
+      await act(async () => mounted.root.unmount());
+    },
+  );
+
+  it("opens the editor after scrolling when its request remains active", async () => {
+    vi.useFakeTimers({ toFake: ["requestAnimationFrame", "cancelAnimationFrame"] });
+    draftStoreFixture.store.load.mockResolvedValue(draftResult([annotation]));
+    const host = createWorkspaceHost();
+    const mounted = await mountWorkspace(host);
+    await act(async () => vi.advanceTimersToNextFrame());
+    vi.spyOn(host.selection, "reveal").mockReturnValue({ status: "available", value: "scrolled" });
+
+    act(() => workspace.summary.open(workspace.summary.annotations[0]!));
+    expect(workspace.editor.status).toBe("hidden");
+    await act(async () => vi.advanceTimersToNextFrame());
+    expect(workspace.editor.status).toBe("expanded");
+    expect(workspace.editor.annotation).toEqual(annotation);
     await act(async () => mounted.root.unmount());
   });
 
