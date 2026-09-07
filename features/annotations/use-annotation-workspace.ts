@@ -7,7 +7,6 @@ import { useI18n } from "@/features/i18n/I18nProvider";
 
 import type { DraftAnnotation } from "./annotation";
 import type { ProjectedAnnotation } from "./annotation-projection";
-import { sameConversationIdentity } from "@/features/conversation/conversation-identity";
 import { registerSendInterceptor } from "./register-send-interceptor";
 import { useAnnotationProjection } from "./use-annotation-projection";
 import { useConversationIdentity } from "./use-conversation-identity";
@@ -95,19 +94,6 @@ export function useAnnotationWorkspace() {
       onChange: notifySendChange,
       onSendConfirmed: (sentAnnotations, sentConversationIdentity) => {
         removeConfirmedAnnotationsRef.current(sentConversationIdentity, sentAnnotations);
-        if (
-          sameConversationIdentity(
-            sendInputRef.current.conversationIdentity,
-            sentConversationIdentity,
-          )
-        ) {
-          setEditorState((current) =>
-            current.status !== "hidden" &&
-            sentAnnotations.some(({ id }) => id === current.annotation.id)
-              ? { status: "hidden" }
-              : current,
-          );
-        }
       },
     });
     sendControllerRef.current = controller;

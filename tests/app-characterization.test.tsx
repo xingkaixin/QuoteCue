@@ -1,4 +1,4 @@
-import { act, useState, type ComponentProps } from "react";
+import { act, useEffect, useState, type ComponentProps } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -69,7 +69,14 @@ vi.mock("@/features/annotations/SelectionPresentation", () => ({
 }));
 
 vi.mock("@/features/annotations/AnnotationQuickInput", () => ({
-  AnnotationQuickInput({ onClose, onSave }: AnnotationQuickInputProps) {
+  AnnotationQuickInput({ bindSession, onClose, onSave }: AnnotationQuickInputProps) {
+    useEffect(() => {
+      bindSession(() => {
+        onClose();
+        return true;
+      });
+      return () => bindSession(null);
+    }, [bindSession, onClose]);
     return (
       <div data-testid="quick-editor">
         <button data-testid="save-quick" onClick={() => onSave("saved comment")} type="button">
@@ -269,7 +276,7 @@ describe("App annotation workflow", () => {
 
     expect(sendControl(mounted.container).dataset.sendState).toBe("failed");
     expect(summary(mounted.container).dataset.count).toBe("1");
-    expect(mounted.container.querySelector('[data-testid="quick-editor"]')).not.toBeNull();
+    expect(mounted.container.querySelector('[data-testid="quick-editor"]')).toBeNull();
     expect(await loadStoredDrafts("conversation-a")).toHaveLength(1);
 
     await click(mounted.container, "send-annotations");
