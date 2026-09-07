@@ -100,6 +100,40 @@ describe("annotation workspace", () => {
     await act(async () => mounted.root.unmount());
   });
 
+  it("preserves an editor opened during sending and saves its new comment after confirmation", async () => {
+    const conversation = { kind: "identified", id: "conversation-a", siteId: "chatgpt" } as const;
+    await draftStoreFixture.store.mutate(conversation, [{ kind: "add", annotation }]);
+    const host = createWorkspaceHost();
+    let confirm: () => void = () => undefined;
+    vi.spyOn(host.composer, "submit").mockImplementation(
+      () =>
+        new Promise<ComposerSubmitResult>((resolve) => {
+          confirm = () => resolve({ status: "available", value: "confirmed" });
+        }),
+    );
+    const mounted = await mountWorkspace(host);
+    await act(async () => new Promise(requestAnimationFrame));
+    await act(async () => workspace.summary.send());
+    await act(async () => workspace.summary.open(workspace.summary.annotations[0]!));
+    const refuseDismissal = vi.fn(() => false);
+    act(() => workspace.editor.bindSession(refuseDismissal));
+
+    await act(async () => confirm());
+
+    expect(workspace.summary.annotations).toEqual([]);
+    expect(workspace.editor.status).toBe("expanded");
+    expect(workspace.editor.sourceRemoved).toBe(true);
+    expect(refuseDismissal).not.toHaveBeenCalled();
+    await act(async () => workspace.editor.save("new comment after sending"));
+    const saved = (await draftStoreFixture.store.load(conversation)).annotations;
+    expect(saved).toEqual([
+      { anchor: annotation.anchor, comment: "new comment after sending", id: expect.any(String) },
+    ]);
+    expect(saved[0]?.id).not.toBe(annotation.id);
+    expect(workspace.editor.status).toBe("hidden");
+    await act(async () => mounted.root.unmount());
+  });
+
   it("keeps an editor snapshot through remote changes and saves a removed source as a new annotation", async () => {
     const conversation = { kind: "identified", id: "conversation-a", siteId: "chatgpt" } as const;
     const original = { ...annotation, comment: "original comment" };
