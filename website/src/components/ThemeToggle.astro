@@ -1,0 +1,46 @@
+---
+import { MoonIcon } from "@phosphor-icons/react/dist/ssr/Moon";
+import { SunIcon } from "@phosphor-icons/react/dist/ssr/Sun";
+
+interface Props {
+  label: string;
+}
+
+const { label } = Astro.props;
+---
+
+<button
+  type="button"
+  aria-label={label}
+  data-theme-toggle
+  class="inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full border border-line bg-transparent p-0 text-muted outline-none transition-colors hover:border-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none"
+>
+  <span class="theme-moon"><MoonIcon aria-hidden="true" size={14} weight="bold" /></span>
+  <span class="theme-sun"><SunIcon aria-hidden="true" size={14} weight="bold" /></span>
+</button>
+
+<style>
+  .theme-sun,
+  :global([data-theme="light"]) .theme-moon {
+    display: none;
+  }
+
+  :global([data-theme="light"]) .theme-sun {
+    display: inline-flex;
+  }
+</style>
+
+<script>
+  for (const button of document.querySelectorAll<HTMLButtonElement>("[data-theme-toggle]")) {
+    button.addEventListener("click", () => {
+      const nextTheme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+      document.documentElement.dataset.theme = nextTheme;
+
+      try {
+        localStorage.setItem("quotecue-theme", nextTheme);
+      } catch {
+        // Theme switching remains available when browser storage is blocked.
+      }
+    });
+  }
+</script>
