@@ -13,6 +13,10 @@
   },
   "rules": {
     "react/react-in-jsx-scope": "off",
+    "react/globals": "warn",
+    "react/immutability": "warn",
+    "react/refs": "warn",
+    "react/set-state-in-effect": "warn",
     "oxc/no-accumulating-spread": "error",
     "anti-slop/no-array-filter-map": "off",
     "anti-slop/no-reduce-accumulator-copy": "error",

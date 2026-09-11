@@ -12,7 +12,7 @@ The scoped entries live in `pnpm-workspace.yaml`, apply to local browser and web
 ## Website tooling
 
 `miniflare>sharp@0.35.4` replaces the vulnerable `sharp@0.35.2` pinned by
-`miniflare@5.20260831.0-alpha` through `website > wrangler`. This fixes
+`miniflare@5.20260908.0-alpha` through `website > wrangler`. This fixes
 [GHSA-rgj7-g3m4-5g8c](https://github.com/advisories/GHSA-rgj7-g3m4-5g8c), which affects
 AVIF decoding through libheif. The override is limited to Miniflare's dependency;
 Astro already resolves a patched Sharp version.
@@ -20,6 +20,16 @@ Astro already resolves a patched Sharp version.
 Remove this override when the installed Wrangler/Miniflare dependency chain resolves
 `sharp >=0.35.4` without it. Validate changes with `pnpm audit:high`, `pnpm check`, and
 an AVIF encode/decode smoke check using Miniflare's resolved Sharp package.
+
+`miniflare>undici@7.29.1` updates Miniflare's pinned `undici@7.29.0` within its
+existing major version. Remove this override when Miniflare resolves `undici >=7.29.1`
+without it.
+
+## TypeScript compatibility
+
+The extension uses TypeScript 7. The website stays on TypeScript 6 because
+`@astrojs/check@0.9.10` declares support for TypeScript 5 and 6 only. Upgrade the
+website compiler when Astro's checker supports TypeScript 7.
 
 ## Audit gate
 
