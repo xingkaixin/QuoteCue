@@ -1,3 +1,4 @@
+import type { browser } from "wxt/browser";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { DraftAnnotation } from "@/features/annotations/annotation";
@@ -11,9 +12,13 @@ import { createDraftOwner } from "@/features/annotations/draft-owner";
 import { createBrowserDraftStore } from "@/features/annotations/draft-store-client";
 import type { DraftOwnerRequest } from "@/features/annotations/draft-owner-protocol";
 
+type StorageChangeListener = Parameters<typeof browser.storage.onChanged.addListener>[0];
+
+/* oxlint-disable anti-slop/no-unsafe-dictionary-type -- This raw storage substitute accepts legacy envelopes and malformed values before parsing. */
 const extensionStorage = vi.hoisted(() => {
   let values: Record<string, unknown> = {};
-  const listeners = new Set<(changes: Record<string, unknown>, areaName: string) => void>();
+
+  const listeners = new Set<StorageChangeListener>();
 
   const changed = (keys: readonly string[]) => {
     if (keys.length > 0) {
@@ -45,10 +50,8 @@ const extensionStorage = vi.hoisted(() => {
       changed(removed);
     }),
     onChanged: {
-      addListener: (listener: (changes: Record<string, unknown>, areaName: string) => void) =>
-        listeners.add(listener),
-      removeListener: (listener: (changes: Record<string, unknown>, areaName: string) => void) =>
-        listeners.delete(listener),
+      addListener: (listener: StorageChangeListener) => listeners.add(listener),
+      removeListener: (listener: StorageChangeListener) => listeners.delete(listener),
     },
     reset(nextValues: Record<string, unknown> = {}) {
       values = structuredClone(nextValues);
@@ -67,8 +70,11 @@ const extensionStorage = vi.hoisted(() => {
   };
 });
 
+/* oxlint-enable anti-slop/no-unsafe-dictionary-type */
+
 const sendMessage = vi.hoisted(() => vi.fn());
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Replace the external extension runtime in jsdom.
 vi.mock("wxt/browser", () => ({
   browser: {
     runtime: { sendMessage },
@@ -399,10 +405,12 @@ describe("draft storage", () => {
   it("loads different conversations independently", async () => {
     const conversationB = { ...conversationA, id: "B" };
     const keyB = "quotecue:draft:chatgpt:B";
+    // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- The delayed storage read returns raw values for the owner to decode.
     let resolveA: (value: Record<string, unknown>) => void = () => undefined;
     extensionStorage.get
       .mockImplementationOnce(
         () =>
+          // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- The delayed storage read returns raw values for the owner to decode.
           new Promise<Record<string, unknown>>((resolve) => {
             resolveA = resolve;
           }),
@@ -936,7 +944,9 @@ describe("draft storage", () => {
       [staleKey]: { ...envelope, updatedAt: NOW - 31 * DAY_MS },
     });
     const scannedDrafts = extensionStorage.snapshot();
+    // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- The delayed storage read returns raw values for the owner to decode.
     let resolveScan: (value: Record<string, unknown>) => void = () => undefined;
+    // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- The delayed storage read returns raw values for the owner to decode.
     const scan = new Promise<Record<string, unknown>>((resolve) => (resolveScan = resolve));
     extensionStorage.get
       .mockImplementationOnce(extensionStorage.get.getMockImplementation()!)

@@ -85,6 +85,7 @@ function selectionRect(): SelectionRect {
 }
 
 function restoreProperty(
+  // oxlint-disable-next-line anti-slop/no-object-parameters -- Restoring a property descriptor requires no domain fields.
   target: object,
   property: PropertyKey,
   descriptor: PropertyDescriptor | undefined,

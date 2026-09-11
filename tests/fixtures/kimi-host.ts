@@ -81,6 +81,7 @@ export function appendKimiAssistantMessage(messageId: string, text: string) {
 }
 
 export function rebuildKimiUserMessage(message: HTMLElement, messageId?: string) {
+  // SAFETY: Cloning the fixture HTML element preserves its element type.
   const replacement = message.cloneNode(true) as HTMLElement;
 
   if (messageId) {

@@ -35,7 +35,7 @@ describe("Kimi host contract", () => {
     installSyntheticPasteSupport();
     fixture.composer.addEventListener("paste", (event) => {
       event.preventDefault();
-      const text = (event as ClipboardEvent).clipboardData?.getData("text/plain") ?? "";
+      const text = event.clipboardData?.getData("text/plain") ?? "";
       queueMicrotask(() => {
         fixture.composer.textContent = text;
         fixture.sendControl.classList.remove("disabled");

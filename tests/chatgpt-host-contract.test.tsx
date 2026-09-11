@@ -279,6 +279,8 @@ describe("ChatGPT host contract", () => {
 
       emit() {
         if (this.active) {
+          // SAFETY: The layout callback does not consume the observer argument; this object controls notifications and disconnect.
+          // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- This controlled browser substitute implements only the capabilities used by this test.
           this.callback([], this as unknown as ResizeObserver);
         }
       }

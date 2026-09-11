@@ -10,6 +10,7 @@ import { I18nProvider, useI18n } from "@/features/i18n/I18nProvider";
 import { siteForHostname } from "@/features/host/site-registry";
 import { HostThemeProvider } from "@/features/theme/HostThemeProvider";
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Replace the external extension runtime in jsdom.
 vi.mock("wxt/browser", () => ({
   browser: {
     runtime: {
@@ -323,8 +324,9 @@ class FakeMessagePort {
 
   close() {}
 
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- The message-port substitute must transport unvalidated protocol inputs.
   postMessage(data: unknown) {
-    this.peer?.onmessage?.({ data } as MessageEvent<unknown>);
+    this.peer?.onmessage?.(new MessageEvent<unknown>("message", { data }));
   }
 
   start() {}

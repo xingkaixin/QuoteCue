@@ -262,8 +262,11 @@ describe("interactive demo prompt", () => {
 
 describe("interactive demo copy", () => {
   it("formats serialized annotation counts and removal grammar for each locale", () => {
+    // SAFETY: This module-owned copy contains only JSON data; the round trip intentionally tests serialization.
     const zh = JSON.parse(JSON.stringify(getCopy("zh-CN").demo)) as DemoCopy;
+    // SAFETY: This module-owned copy contains only JSON data; the round trip intentionally tests serialization.
     const ja = JSON.parse(JSON.stringify(getCopy("ja").demo)) as DemoCopy;
+    // SAFETY: This module-owned copy contains only JSON data; the round trip intentionally tests serialization.
     const en = JSON.parse(JSON.stringify(getCopy("en").demo)) as DemoCopy;
 
     expect([formatDemoAnnotationCount(zh, 1), formatDemoRemovedNotice(zh, 2, 0)]).toEqual([

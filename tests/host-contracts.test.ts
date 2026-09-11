@@ -65,7 +65,7 @@ const contracts: HostContractDefinition[] = [
     selectionPresentation: "native-toolbar",
     siteId: "chatgpt",
     setSendDisabled(control, isDisabled) {
-      (control as HTMLButtonElement).disabled = isDisabled;
+      control.toggleAttribute("disabled", isDisabled);
     },
     supportsSyntheticPaste: true,
   },
@@ -106,7 +106,7 @@ const contracts: HostContractDefinition[] = [
     selectionPresentation: "native-toolbar",
     siteId: "claude",
     setSendDisabled(control, isDisabled) {
-      (control as HTMLButtonElement).disabled = isDisabled;
+      control.toggleAttribute("disabled", isDisabled);
     },
     supportsSyntheticPaste: true,
   },

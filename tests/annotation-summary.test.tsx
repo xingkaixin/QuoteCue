@@ -343,6 +343,12 @@ async function mountSummary(overrides: Partial<SummaryProps> = {}) {
 
   await act(async () => root.render(<AnnotationSummary {...currentProps} />));
 
+  const summary = container.firstElementChild;
+
+  if (!(summary instanceof HTMLElement)) {
+    throw new Error("Expected the rendered annotation summary");
+  }
+
   return {
     container,
     render: async (nextOverrides: Partial<SummaryProps>) => {
@@ -350,7 +356,7 @@ async function mountSummary(overrides: Partial<SummaryProps> = {}) {
       await act(async () => root.render(<AnnotationSummary {...currentProps} />));
     },
     root,
-    summary: container.firstElementChild as HTMLElement,
+    summary,
   };
 }
 

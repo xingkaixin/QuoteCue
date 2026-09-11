@@ -1,22 +1,23 @@
+import type { browser } from "wxt/browser";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DRAFT_OWNER_MESSAGE } from "@/features/annotations/draft-owner-protocol";
 import { createBrowserDraftStore } from "@/features/annotations/draft-store-client";
 
+type StorageChangeListener = Parameters<typeof browser.storage.onChanged.addListener>[0];
+
 const sendMessage = vi.hoisted(() => vi.fn());
 
 const storageChanges = vi.hoisted(() => {
-  const listeners = new Set<(changes: Record<string, unknown>, areaName: string) => void>();
+  const listeners = new Set<StorageChangeListener>();
 
   return {
-    addListener: vi.fn((listener: (changes: Record<string, unknown>, areaName: string) => void) =>
-      listeners.add(listener),
-    ),
-    removeListener: vi.fn(
-      (listener: (changes: Record<string, unknown>, areaName: string) => void) =>
-        listeners.delete(listener),
-    ),
-    emit(changes: Record<string, unknown>, areaName = "local") {
+    addListener: vi.fn((listener: StorageChangeListener) => listeners.add(listener)),
+    removeListener: vi.fn((listener: StorageChangeListener) => listeners.delete(listener)),
+    emit(
+      changes: Parameters<StorageChangeListener>[0],
+      areaName: Parameters<StorageChangeListener>[1] = "local",
+    ) {
       for (const listener of listeners) listener(changes, areaName);
     },
     reset() {
@@ -27,6 +28,7 @@ const storageChanges = vi.hoisted(() => {
   };
 });
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Replace the external extension runtime in jsdom.
 vi.mock("wxt/browser", () => ({
   browser: { runtime: { sendMessage }, storage: { onChanged: storageChanges } },
 }));

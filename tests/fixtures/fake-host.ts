@@ -35,6 +35,7 @@ export type FakeHost = Host & {
 };
 
 export function fakeComposerSnapshot(text: string): ComposerSnapshot {
+  // SAFETY: The fake host owns these opaque snapshots, just as the real composer driver does.
   return { text } as ComposerSnapshot;
 }
 

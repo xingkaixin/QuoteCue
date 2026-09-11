@@ -6,6 +6,7 @@ import { AnnotationQuickInput } from "@/features/annotations/AnnotationQuickInpu
 
 import { HostTestProvider } from "./fixtures/host-provider";
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Replace the isolated iframe input at the editor test boundary.
 vi.mock("@/features/secure-field/SecureTextField", async () => {
   const { forwardRef, useEffect, useImperativeHandle, useRef } = await import("react");
 

@@ -1,6 +1,9 @@
 import type { BrowserContext, Page, Worker } from "@playwright/test";
+import type { browser } from "wxt/browser";
 
 import { expect, test } from "./extension-fixture";
+
+declare const chrome: Pick<typeof browser, "storage">;
 
 const DISPLAY_SETTINGS = [
   { width: 1280, colorScheme: "light", reducedMotion: "no-preference", zoom: 1 },
@@ -185,12 +188,9 @@ test("preserves another tab's unsaved comment after its annotation is sent", asy
     await expect.poll(() => storedAnnotationCount(extensionWorker, key)).toBe(1);
 
     const originalAnnotationId = await extensionWorker.evaluate(async (storageKey) => {
-      const extensionApi = Reflect.get(globalThis, "chrome") as {
-        storage: { local: { get(key: string): Promise<Record<string, unknown>> } };
-      };
+      const stored = await chrome.storage.local.get(storageKey);
 
-      const stored = await extensionApi.storage.local.get(storageKey);
-
+      // SAFETY: The test has confirmed one annotation in the draft written by the loaded extension.
       return (stored[storageKey] as { annotations: { id: string }[] }).annotations[0]!.id;
     }, key);
 
@@ -272,12 +272,9 @@ test("preserves another tab's unsaved comment after its annotation is sent", asy
 
     const saved = await extensionWorker.evaluate(
       async ({ storageKey, previousId, expectedComment }) => {
-        const extensionApi = Reflect.get(globalThis, "chrome") as {
-          storage: { local: { get(key: string): Promise<Record<string, unknown>> } };
-        };
+        const stored = await chrome.storage.local.get(storageKey);
 
-        const stored = await extensionApi.storage.local.get(storageKey);
-
+        // SAFETY: The test has confirmed one annotation in the draft written by the loaded extension.
         const annotation = (
           stored[storageKey] as {
             annotations: { id: string; comment: string }[];
@@ -515,11 +512,7 @@ test("clears unreadable drafts with the keyboard across display settings", async
   for (const { width, colorScheme, reducedMotion, zoom } of DISPLAY_SETTINGS) {
     const key = draftKey("unreadable");
     await extensionWorker.evaluate(async (storageKey) => {
-      const extensionApi = Reflect.get(globalThis, "chrome") as {
-        storage: { local: { set(values: Record<string, unknown>): Promise<void> } };
-      };
-
-      await extensionApi.storage.local.set({
+      await chrome.storage.local.set({
         [storageKey]: { version: 3, annotations: [{ id: "unreadable" }], updatedAt: Date.now() },
       });
     }, key);
@@ -655,11 +648,8 @@ function draftKey(conversationId: string) {
 
 async function storedAnnotationCount(extensionWorker: Worker, key: string) {
   return extensionWorker.evaluate(async (storageKey) => {
-    const extensionApi = Reflect.get(globalThis, "chrome") as {
-      storage: { local: { get(key: string): Promise<Record<string, unknown>> } };
-    };
-
-    const stored = await extensionApi.storage.local.get(storageKey);
+    const stored = await chrome.storage.local.get(storageKey);
+    // SAFETY: The fixture reads an extension-created draft envelope; only its optional annotations array is inspected.
     const draft = stored[storageKey] as { annotations?: unknown[] } | undefined;
 
     return draft?.annotations?.length ?? 0;

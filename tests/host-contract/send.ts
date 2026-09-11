@@ -25,8 +25,7 @@ export function runSendHostContract(definition: HostContractDefinition) {
         definition.setSendDisabled(fixture.sendControl, false);
         fixture.composer.addEventListener("paste", (event) => {
           event.preventDefault();
-          fixture.composer.textContent =
-            (event as ClipboardEvent).clipboardData?.getData("text/plain") ?? "";
+          fixture.composer.textContent = event.clipboardData?.getData("text/plain") ?? "";
         });
         fixture.sendControl.addEventListener("click", () => {
           definition.appendUserMessage(availableValue(siteHost.composer.snapshot()).text);

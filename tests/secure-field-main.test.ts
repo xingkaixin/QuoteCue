@@ -181,6 +181,8 @@ function dispatchInit(
         token: overrides.token ?? TOKEN,
         config,
       },
+      // SAFETY: The frame uses only the start, postMessage, and onmessage capabilities of this controlled port.
+      // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- This controlled browser substitute implements only the capabilities used by this test.
       ports: [port as unknown as MessagePort],
       source: overrides.source ?? window.parent,
     }),
@@ -199,9 +201,11 @@ function secureField() {
 
 class FakeMessagePort {
   onmessage: ((event: MessageEvent<unknown>) => void) | null = null;
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- The message-port substitute must transport unvalidated protocol inputs.
   postMessage = vi.fn<(data: unknown) => void>();
   start = vi.fn();
 
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- The message-port substitute must transport unvalidated protocol inputs.
   receive(data: unknown) {
     this.onmessage?.(new MessageEvent("message", { data }));
   }

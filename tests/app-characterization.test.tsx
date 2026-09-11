@@ -37,6 +37,7 @@ type SelectionPresentationProps = ComponentProps<
   (typeof import("@/features/annotations/SelectionPresentation"))["SelectionPresentation"]
 >;
 
+/* oxlint-disable anti-slop/no-module-mocking -- These substitutes isolate App orchestration; component and E2E tests cover the real surfaces. */
 vi.mock("@/features/host/use-annotated-composer-layout", () => {
   const useAnnotatedComposerLayout: (typeof import("@/features/host/use-annotated-composer-layout"))["useAnnotatedComposerLayout"] =
     (isActive) => {
@@ -182,6 +183,8 @@ vi.mock("@/features/annotations/AnnotationSendControl", () => ({
     );
   },
 }));
+
+/* oxlint-enable anti-slop/no-module-mocking */
 
 const anchoredSelection: AnchoredSelection = {
   anchor: {

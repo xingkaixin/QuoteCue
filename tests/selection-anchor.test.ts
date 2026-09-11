@@ -345,10 +345,10 @@ describe("selection anchors", () => {
     const firstLine = new DOMRect(40, 80, 240, 20);
     const lastLine = new DOMRect(40, 104, 90, 20);
 
-    const range = {
+    const range = Object.assign(document.createRange(), {
       getBoundingClientRect: () => new DOMRect(40, 80, 240, 44),
       getClientRects: () => [firstLine, lastLine, new DOMRect(130, 124, 0, 0)],
-    } as unknown as Range;
+    });
 
     expect(rangeEndpointRect(range)).toBe(lastLine);
   });
