@@ -1,6 +1,6 @@
 # Dependency overrides
 
-The scoped entries live in `pnpm-workspace.yaml`, apply only to WXT's local browser runner, and are not bundled into the extension.
+The scoped entries live in `pnpm-workspace.yaml`, apply to local browser and website tooling, and are not bundled into the extension.
 
 | Override                        | Reason                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | Removal condition                                                                                            |
 | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
@@ -9,8 +9,20 @@ The scoped entries live in `pnpm-workspace.yaml`, apply only to WXT's local brow
 | `firefox-profile>adm-zip@0.6.0` | `firefox-profile@4.7.0` allows only the vulnerable 0.5 line affected by GHSA-xcpc-8h2w-3j85.                                                                                                                                                                                                                                                                                                                                                                                            | Remove when `firefox-profile` supports `adm-zip >=0.6.0` upstream.                                           |
 | `web-ext-run>multimatch@8.0.0`  | `web-ext-run@0.2.4` pins `multimatch@6`, whose `minimatch@3` reaches `brace-expansion@1.1.16`, affected by GHSA-mh99-v99m-4gvg. Only `brace-expansion >=5.0.8` is patched, and overriding it directly breaks `minimatch@3`, which calls the module as a default function while the 5.x CommonJS build exports a named `expand`. `multimatch@8` keeps the ESM default-function export `web-ext-run` imports and resolves `minimatch@10`, which depends on the patched `brace-expansion`. | Remove when `web-ext-run` depends on a `multimatch` version that resolves `brace-expansion >=5.0.8`.         |
 
+## Website tooling
+
+`miniflare>sharp@0.35.4` replaces the vulnerable `sharp@0.35.2` pinned by
+`miniflare@5.20260831.0-alpha` through `website > wrangler`. This fixes
+[GHSA-rgj7-g3m4-5g8c](https://github.com/advisories/GHSA-rgj7-g3m4-5g8c), which affects
+AVIF decoding through libheif. The override is limited to Miniflare's dependency;
+Astro already resolves a patched Sharp version.
+
+Remove this override when the installed Wrangler/Miniflare dependency chain resolves
+`sharp >=0.35.4` without it. Validate changes with `pnpm audit:high`, `pnpm check`, and
+an AVIF encode/decode smoke check using Miniflare's resolved Sharp package.
+
 ## Audit gate
 
 `pnpm audit:high` is the high-severity gate. It is deliberately kept out of `pnpm check`: it queries the registry advisory database, so it needs network access and its result changes over time independently of this repository's code. CI runs it as a separate step after `pnpm check`.
 
-When changing these entries, run `pnpm audit:high`, `pnpm check`, and Chrome and Firefox zip builds, and exercise the Firefox profile API before committing the new lockfile.
+When changing the WXT browser-runner entries, run `pnpm audit:high`, `pnpm check`, and Chrome and Firefox zip builds, and exercise the Firefox profile API before committing the new lockfile.
