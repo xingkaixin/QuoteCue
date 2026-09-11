@@ -57,6 +57,18 @@ Cloudflare Workers Builds 可使用：
 - Build command: `pnpm --dir website build`
 - Deploy command: `pnpm --dir website exec wrangler deploy`
 
+## 加载性能
+
+首屏的语言选择、主题切换和 WebGL 背景使用 Astro 原生脚本。React 只在交互演示或 FAQ
+进入视口时加载。语言选择使用浏览器原生控件；背景离开视口后暂停，返回时恢复，且遵循
+reduced motion 设置。
+
+保持 Workers Static Assets 直接分发资源，`/_astro/` 中带哈希的文件使用一年浏览器缓存。
+HTML 保留默认重新验证策略，确保发布后及时获取新版本。无需添加 R2 或 Worker 中转。
+
+性能验证应分别记录首屏和滚动到演示后的请求，比较同条件下的压缩 JS 体积，并通过已有的
+Cloudflare RUM 按地区和设备观察 TTFB、LCP 和 INP。不要同时启用手动与自动 beacon。
+
 ## SEO / AEO
 
 - 中英文分别输出静态 HTML，并配置 canonical、双向 hreflang 与 `x-default`。

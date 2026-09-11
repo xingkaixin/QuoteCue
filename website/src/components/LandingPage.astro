@@ -1,11 +1,11 @@
 ---
 import { Faq } from "./Faq";
-import { CueFlowField } from "./CueFlowField";
+import CueFlowField from "./CueFlowField.astro";
 import InstallActions from "./InstallActions.astro";
 import { InteractiveDemo } from "./InteractiveDemo";
-import { LanguageSwitcher } from "./LanguageSwitcher";
+import LanguageSwitcher from "./LanguageSwitcher.astro";
 import ProductUpdates from "./ProductUpdates.astro";
-import { ThemeToggle } from "./ThemeToggle";
+import ThemeToggle from "./ThemeToggle.astro";
 import { getCopy } from "../i18n/content";
 import { WEBSITE_LOCALE_CONFIG, WEBSITE_LOCALES, type Locale } from "../i18n/locales";
 import {
@@ -222,11 +222,10 @@ const structuredData = {
 
       <div class="header-actions">
         <LanguageSwitcher
-          client:load
           currentLocale={locale}
           label={copy.languageSwitcherLabel}
         />
-        <ThemeToggle client:load label={copy.themeLabel} />
+        <ThemeToggle label={copy.themeLabel} />
         <a
           class="header-install"
           href={copy.links.chrome}
@@ -265,7 +264,7 @@ const structuredData = {
       </div>
 
       <div class="hero-visual" role="img" aria-label={copy.meta.socialImageAlt}>
-        <CueFlowField client:load />
+        <CueFlowField />
         <div aria-hidden="true" class="product-scene">
           <div class="scene-answer-window">
             <div class="scene-window-bar">
