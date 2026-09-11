@@ -14,7 +14,10 @@ interface Props {
   socialImageAlt: string;
   canonicalPath?: string;
   indexable?: boolean;
-  structuredData?: Record<string, unknown>;
+  structuredData?: {
+    "@context": string;
+    "@graph": readonly { "@type": string }[];
+  };
 }
 
 const {

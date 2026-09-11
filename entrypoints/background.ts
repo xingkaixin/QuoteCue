@@ -23,6 +23,7 @@ export default defineBackground(() => {
 
     void result.then(
       (value) => sendResponse(value satisfies DraftOwnerResponse),
+      // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Errors crossing this boundary may contain arbitrary values.
       (error: unknown) => {
         console.error("[QuoteCue] Draft owner failed", error);
         sendResponse({

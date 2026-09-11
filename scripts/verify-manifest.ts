@@ -38,8 +38,8 @@ type ContentScript = {
   js: string[];
 };
 
-type ProductionManifest = Record<string, unknown> & {
-  background: Record<string, unknown>;
+type ProductionManifest = {
+  background: { service_worker: string };
   permissions: string[];
   host_permissions: string[];
   content_scripts: ContentScript[];
@@ -73,6 +73,7 @@ function describeResourceGroup(entry: WebAccessibleResource): string {
 
 function readManifest(): ProductionManifest {
   try {
+    // SAFETY: WXT generated this local artifact; malformed fields fail the verification below.
     return JSON.parse(readFileSync(MANIFEST_PATH, "utf8")) as ProductionManifest;
   } catch {
     console.error(`Cannot read ${MANIFEST_PATH}. Run \`pnpm build\` first.`);

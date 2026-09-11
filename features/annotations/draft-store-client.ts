@@ -16,7 +16,10 @@ export function createBrowserDraftStore(): DraftStore {
     subscribe(conversation, onChanged) {
       const key = scopedDraftStorageKey(conversation);
 
-      const changed = (changes: Record<string, unknown>, areaName: string) => {
+      const changed: Parameters<typeof browser.storage.onChanged.addListener>[0] = (
+        changes,
+        areaName,
+      ) => {
         if (areaName === "local" && Object.hasOwn(changes, key)) {
           onChanged();
         }

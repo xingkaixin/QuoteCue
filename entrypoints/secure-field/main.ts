@@ -40,6 +40,7 @@ function connect(event: MessageEvent<unknown>) {
     port.postMessage({ type: "change", value: field.value });
   });
   field.addEventListener("keydown", (fieldEvent) => {
+    // SAFETY: Both field kinds emit KeyboardEvent for keydown; their union loses the event overload.
     const keyboardEvent = fieldEvent as KeyboardEvent;
 
     if (keyboardEvent.key === "Escape") {

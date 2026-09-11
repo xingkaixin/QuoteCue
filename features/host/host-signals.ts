@@ -147,6 +147,7 @@ export function createHostSignals(
 
       for (const node of record.addedNodes) {
         if (node.nodeType === Node.ELEMENT_NODE) {
+          // SAFETY: ELEMENT_NODE identifies an Element without relying on its window's constructor.
           observeMessageRootsWithin(node as Element);
         }
       }
@@ -322,7 +323,7 @@ function subscribeNavigation(hostWindow: Window, callback: () => void) {
 }
 
 function navigationEventSource(hostWindow: Window): EventTarget | null {
-  const navigation: unknown = Reflect.get(hostWindow, "navigation");
+  const navigation = hostWindow.navigation;
 
   return navigation !== null &&
     typeof navigation === "object" &&
@@ -330,6 +331,6 @@ function navigationEventSource(hostWindow: Window): EventTarget | null {
     typeof navigation.addEventListener === "function" &&
     "removeEventListener" in navigation &&
     typeof navigation.removeEventListener === "function"
-    ? (navigation as EventTarget)
+    ? navigation
     : null;
 }

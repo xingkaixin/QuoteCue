@@ -207,6 +207,7 @@ export function createSelectionAnchoring(context: HostContext) {
       }
 
       if (node.matches(adapter.messages.assistantSelector)) {
+        // SAFETY: Site adapters select HTML assistant-message containers, as their query contract requires.
         messages.add(node as HTMLElement);
       }
 

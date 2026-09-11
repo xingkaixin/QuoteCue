@@ -50,6 +50,7 @@ export function createDraftOwner() {
     cleanupScheduled = true;
 
     const startCleanup = () =>
+      // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Errors crossing this boundary may contain arbitrary values.
       removeStoredDrafts(serialize).catch((error: unknown) => {
         console.error("[QuoteCue] Failed to clean stored drafts", error);
       });

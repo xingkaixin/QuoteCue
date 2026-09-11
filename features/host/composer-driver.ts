@@ -23,6 +23,7 @@ export function createComposerDriver(context: HostContext) {
       return unavailable("composer-unavailable", logger);
     }
 
+    // SAFETY: This owner issues the opaque identity and registers its target before returning it.
     const value = { text: composerAccess.read(element) } as ComposerSnapshot;
     targetBySnapshot.set(value, { element, pathname: hostWindow.location.pathname });
 

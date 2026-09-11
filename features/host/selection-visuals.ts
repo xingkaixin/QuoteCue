@@ -16,7 +16,7 @@ type SelectionVisualWindow = Window & {
 
 export function createSelectionVisuals(environment: HostEnvironment) {
   const { document: hostDocument, window: hostWindow } = environment;
-  const visualWindow = hostWindow as SelectionVisualWindow;
+  const visualWindow: SelectionVisualWindow = hostWindow;
 
   function highlight(range: Range | null) {
     const registry = visualWindow.CSS?.highlights;

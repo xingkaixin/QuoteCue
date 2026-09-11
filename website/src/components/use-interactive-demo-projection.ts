@@ -35,13 +35,6 @@ interface Geometry {
   badges: BadgePoint[];
 }
 
-interface HighlightRegistry {
-  delete: (name: string) => boolean;
-  set: (name: string, highlight: unknown) => void;
-}
-
-type HighlightConstructor = new (...ranges: Range[]) => unknown;
-
 export function useInteractiveDemoProjection(
   annotations: DemoAnnotation[],
   editingId: number | null,
@@ -244,8 +237,5 @@ function resolveAnnotations(
 }
 
 function getHighlightApi() {
-  const css = window.CSS as typeof CSS & { highlights?: HighlightRegistry };
-  const Highlight = (window as Window & { Highlight?: HighlightConstructor }).Highlight;
-
-  return { Highlight, registry: css.highlights };
+  return { Highlight: window.Highlight, registry: window.CSS?.highlights };
 }

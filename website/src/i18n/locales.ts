@@ -19,4 +19,5 @@ export const WEBSITE_LOCALE_CONFIG = {
 export type Locale = keyof typeof WEBSITE_LOCALE_CONFIG;
 
 export const DEFAULT_WEBSITE_LOCALE: Locale = "zh-CN";
+// SAFETY: Locale is derived from this module-owned configuration's exact keys.
 export const WEBSITE_LOCALES = Object.keys(WEBSITE_LOCALE_CONFIG) as Locale[];

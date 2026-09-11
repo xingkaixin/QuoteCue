@@ -62,6 +62,7 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
   const sendSessions = new Map<string, SendSession>();
   let isDisposed = false;
 
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Errors crossing this boundary may contain arbitrary values.
   const reportError = (message: string, error?: unknown) => {
     if (error === undefined) {
       console.error(`[QuoteCue] ${message}`);
@@ -189,6 +190,7 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
           finishFailed(attempt, result.reason);
         }
       })
+      // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Errors crossing this boundary may contain arbitrary values.
       .catch((error: unknown) => {
         reportError("Failed to replay annotated send", error);
         finishFailed(attempt, "send-unavailable");
