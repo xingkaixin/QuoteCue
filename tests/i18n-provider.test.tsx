@@ -35,6 +35,7 @@ function ChangeLanguageOnLayout() {
   useLayoutEffect(() => {
     document.documentElement.lang = "ja";
   }, []);
+
   return null;
 }
 

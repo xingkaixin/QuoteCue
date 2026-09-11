@@ -144,11 +144,14 @@ describe("deferred annotation deletion", () => {
 
 function DeletionHarness({ conversationIdentity }: { conversationIdentity: ConversationIdentity }) {
   const [currentAnnotations, setCurrentAnnotations] = useState(annotations);
+
   const commit = useCallback((annotationIds: readonly string[]) => {
     commitDeletions(annotationIds);
     const deletedIds = new Set(annotationIds);
     setCurrentAnnotations((current) => current.filter(({ id }) => !deletedIds.has(id)));
   }, []);
+
   latestDeletion = useDeferredAnnotationDeletion(currentAnnotations, conversationIdentity, commit);
+
   return null;
 }

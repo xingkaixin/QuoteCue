@@ -14,6 +14,7 @@ import { createDraftStoreDouble } from "./fixtures/memory-draft-store";
 
 const conversationA = { kind: "identified", id: "A", siteId: "chatgpt" } as const;
 const conversationB = { ...conversationA, id: "B" };
+
 const annotation: DraftAnnotation = {
   id: "annotation-a",
   anchor: {
@@ -69,6 +70,7 @@ describe("draft synchronization", () => {
     store.load.mockImplementationOnce(async (identity) => {
       const snapshot = await load(identity);
       await delayed.promise;
+
       return snapshot;
     });
     const remote = { ...annotation, id: "remote" };
@@ -82,9 +84,11 @@ describe("draft synchronization", () => {
     });
     await vi.waitFor(() => expect(currentAnnotations(runtime)).toHaveLength(2));
     const published: string[] = [];
+
     const stopTracking = runtime.subscribe(() => {
       published.push(currentAnnotations(runtime)[0]?.comment ?? "");
     });
+
     const laterRemote = { ...annotation, id: "later-remote" };
     await externalMutate(conversationA, [{ kind: "add", annotation: laterRemote }]);
     delayed.release();
@@ -110,6 +114,7 @@ describe("draft synchronization", () => {
     store.mutate.mockImplementationOnce(async (...args) => {
       const result = await externalMutate(...args);
       await response.promise;
+
       return result;
     });
     runtime.mutate(conversationA, {
@@ -144,6 +149,7 @@ describe("draft synchronization", () => {
     store.load.mockImplementationOnce(async (identity) => {
       const snapshot = await load(identity);
       await oldRead.promise;
+
       return snapshot;
     });
     await externalMutate(conversationA, [{ kind: "clear" }]);
@@ -180,9 +186,11 @@ describe("draft synchronization", () => {
       vi.spyOn(console, "error").mockImplementation(() => undefined);
       store.mutate.mockImplementationOnce(async (...args) => {
         await delayed.promise;
+
         if (outcome === "failed") {
           throw new Error("save unavailable");
         }
+
         return mutate(...args);
       });
       expect(runtime.restoreRetainedDraft(conversationA, source.sessionKey)).toBe(true);
@@ -191,8 +199,10 @@ describe("draft synchronization", () => {
       stop();
       listener.mockClear();
       delayed.release();
+
       const retainedDraft = () =>
         visibleDraftSnapshot(runtime.getSnapshot(), conversationB).retainedDraft;
+
       await vi.waitFor(() => {
         if (outcome === "failed") {
           expect(retainedDraft()).toMatchObject({ status: "save-failed", count: 1 });
@@ -202,10 +212,12 @@ describe("draft synchronization", () => {
       });
       expect(listener).not.toHaveBeenCalled();
       const stopAgain = runtime.subscribe(listener);
+
       try {
         if (outcome === "failed") {
           expect(runtime.restoreRetainedDraft(conversationB, source.sessionKey)).toBe(true);
         }
+
         await vi.waitFor(() => expect(retainedDraft()).toBeNull());
         expect(currentAnnotations(runtime)).toEqual([]);
         runtime.activate(conversationA);
@@ -228,6 +240,7 @@ describe("draft synchronization", () => {
     store.load.mockImplementationOnce(async (identity) => {
       const snapshot = await load(identity);
       await delayed.promise;
+
       return snapshot;
     });
     await externalMutate(conversationA, [{ kind: "clear" }]);
@@ -261,6 +274,7 @@ describe("draft synchronization", () => {
     const load = store.load.getMockImplementation()!;
     store.load.mockImplementationOnce(async (identity) => {
       await retried.promise;
+
       return load(identity);
     });
     runtime.retry(conversationA);
@@ -282,16 +296,19 @@ async function connect(store: DraftStore) {
   const stop = runtime.subscribe(() => undefined);
   runtime.activate(conversationA);
   await vi.waitFor(() => expect(runtime.getSnapshot().draftState?.status).toBe("ready"));
+
   return { runtime, stop };
 }
 
 function currentAnnotations(runtime: DraftRuntime) {
   const state = runtime.getSnapshot().draftState;
+
   return state && state.status !== "loading" ? state.annotations : [];
 }
 
 function pause() {
   let release: () => void = () => undefined;
   const promise = new Promise<void>((resolve) => (release = resolve));
+
   return { promise, release };
 }

@@ -65,10 +65,13 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
   const reportError = (message: string, error?: unknown) => {
     if (error === undefined) {
       console.error(`[QuoteCue] ${message}`);
+
       return;
     }
+
     console.error(`[QuoteCue] ${message}`, error);
   };
+
   const runSafely = (failureMessage: string, operation: () => void) => {
     try {
       operation();
@@ -94,6 +97,7 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
 
   const deleteSession = (conversationIdentity: ConversationIdentity) => {
     const deleted = sendSessions.delete(conversationIdentityKey(conversationIdentity));
+
     if (deleted) {
       notifyChange();
     }
@@ -101,12 +105,15 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
 
   const state = (conversationIdentity: ConversationIdentity): AnnotatedSendState => {
     const session = sendSessions.get(conversationIdentityKey(conversationIdentity));
+
     if (!session) {
       return { status: "idle" };
     }
+
     if (session.status === "sending") {
       return { status: "sending" };
     }
+
     return { status: "failed", reason: session.reason };
   };
 
@@ -117,9 +124,11 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
   ) => {
     const key = conversationIdentityKey(conversationIdentity);
     const previousSession = sendSessions.get(key);
+
     const retryText =
       originalText ??
       (previousSession?.status === "failed" ? previousSession.originalText : undefined);
+
     setSession(conversationIdentity, {
       ...(retryText === undefined ? {} : { originalText: retryText }),
       reason,
@@ -130,9 +139,11 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
   const finishConfirmed = (attempt: SendAttempt) => {
     const key = conversationIdentityKey(attempt.conversationIdentity);
     const session = sendSessions.get(key);
+
     if (session?.status !== "sending" || session.attempt !== attempt) {
       return;
     }
+
     deleteSession(attempt.conversationIdentity);
     const sentAnnotations = attempt.annotations.map(({ annotation }) => annotation);
     abortAttempt(attempt);
@@ -144,15 +155,18 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
   const finishFailed = (attempt: SendAttempt, reason: AnnotatedSendFailureReason) => {
     const key = conversationIdentityKey(attempt.conversationIdentity);
     const session = sendSessions.get(key);
+
     if (session?.status !== "sending" || session.attempt !== attempt) {
       return;
     }
+
     abortAttempt(attempt);
     recordFailure(attempt.conversationIdentity, reason, attempt.restoreText);
   };
 
   const replaySend = (attempt: SendAttempt) => {
     let submission: ReturnType<Host["composer"]["submit"]>;
+
     try {
       submission = host.composer.submit({
         restoreTo: attempt.snapshot,
@@ -163,8 +177,10 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
     } catch (error: unknown) {
       reportError("Failed to replay annotated send", error);
       finishFailed(attempt, "send-unavailable");
+
       return;
     }
+
     void submission
       .then((result) => {
         if (result.status === "available") {
@@ -187,41 +203,54 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
     const sendInput = options.getSendInput();
     const conversationKey = conversationIdentityKey(sendInput.conversationIdentity);
     const currentSession = sendSessions.get(conversationKey);
+
     if (currentSession?.status === "sending") {
       return true;
     }
+
     const annotations = snapshotAnnotations(sendInput.annotations);
+
     if (annotations.length === 0) {
       return false;
     }
 
     const snapshotResult = host.composer.snapshot();
+
     if (snapshotResult.status === "unavailable") {
       if (source === "custom") {
         recordFailure(sendInput.conversationIdentity, "composer-unavailable");
       }
+
       return false;
     }
+
     const snapshot = snapshotResult.value;
     // 空 composer 时发送控件多半只是因缺少输入而不可用；批注文本补入后即可用,
     // 所以仍接管发送。非空时保持不接管,把真正被阻塞的发送留给页面自己处理。
     const isRecoverableBySend = snapshot.text.trim().length === 0;
+
     if (source === "native" && !isSendAvailable && !isRecoverableBySend) {
       return false;
     }
+
     const retryOriginalText =
       source === "custom" && currentSession?.status === "failed"
         ? currentSession.originalText
         : undefined;
+
     const originalText =
       retryOriginalText !== undefined && snapshot.text.trim().length === 0
         ? retryOriginalText
         : snapshot.text;
+
     const compiledPrompt = compileAnnotatedPrompt(annotations, originalText, sendInput.locale);
+
     if (compiledPromptExceedsCapacity(compiledPrompt)) {
       recordFailure(sendInput.conversationIdentity, "prompt-too-long", originalText);
+
       return true;
     }
+
     const attempt = createAttempt(
       sendInput.conversationIdentity,
       snapshot,
@@ -229,9 +258,11 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
       compiledPrompt,
       annotations,
     );
+
     setSession(sendInput.conversationIdentity, { status: "sending", attempt });
 
     replaySend(attempt);
+
     return true;
   };
 
@@ -247,22 +278,27 @@ export function registerSendInterceptor(options: SendInterceptorOptions) {
     submit: () => beginSend(undefined, "custom"),
     draftEmptied(conversationIdentity: ConversationIdentity) {
       const key = conversationIdentityKey(conversationIdentity);
+
       if (sendSessions.get(key)?.status !== "failed") {
         return;
       }
+
       deleteSession(conversationIdentity);
     },
     dispose() {
       if (isDisposed) {
         return;
       }
+
       isDisposed = true;
       stopListening();
+
       for (const session of sendSessions.values()) {
         if (session.status === "sending") {
           abortAttempt(session.attempt);
         }
       }
+
       sendSessions.clear();
     },
   };

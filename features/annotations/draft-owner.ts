@@ -38,6 +38,7 @@ export function createDraftOwner() {
         conversationChains.delete(key);
       }
     });
+
     return result;
   }
 
@@ -45,11 +46,14 @@ export function createDraftOwner() {
     if (cleanupScheduled) {
       return;
     }
+
     cleanupScheduled = true;
+
     const startCleanup = () =>
       removeStoredDrafts(serialize).catch((error: unknown) => {
         console.error("[QuoteCue] Failed to clean stored drafts", error);
       });
+
     void after.then(startCleanup, startCleanup);
   }
 
@@ -57,6 +61,7 @@ export function createDraftOwner() {
     load(conversation: IdentifiedConversation) {
       const draft = serialize(scopedDraftStorageKey(conversation), () => readDraft(conversation));
       scheduleCleanup(draft);
+
       return draft.then(({ annotations, hasUnreadableAnnotations }) => ({
         annotations,
         hasUnreadableAnnotations,
@@ -64,38 +69,49 @@ export function createDraftOwner() {
     },
     mutate(conversation: IdentifiedConversation, mutations: readonly DraftMutation[]) {
       const key = scopedDraftStorageKey(conversation);
+
       return serialize(key, async (): Promise<DraftMutationResult> => {
         const decoded = await readDraft(conversation);
         const current = decoded.annotations;
         let next: readonly DraftAnnotation[] = current;
         let hasUnreadableAnnotations = decoded.hasUnreadableAnnotations;
         let reason: DraftRejectionReason | undefined;
+
         for (const mutation of mutations) {
           if (draftMutationExceedsCapacity(next, mutation)) {
             reason = "capacity";
             continue;
           }
+
           const mutated = applyDraftMutation(next, mutation);
+
           if (
             mutated === null ||
             (mutated === next && !(hasUnreadableAnnotations && mutation.kind === "clear"))
           ) {
             continue;
           }
+
           if (hasUnreadableAnnotations && mutation.kind !== "clear") {
             reason = "unreadable";
             continue;
           }
+
           next = mutated;
+
           if (mutation.kind === "clear") {
             hasUnreadableAnnotations = false;
           }
         }
+
         const annotations = [...next];
+
         if (next !== current || hasUnreadableAnnotations !== decoded.hasUnreadableAnnotations) {
           await writeDraft(conversation, annotations);
         }
+
         const snapshot = { annotations, hasUnreadableAnnotations };
+
         return reason ? { ...snapshot, status: "rejected", reason } : { ...snapshot, status: "ok" };
       });
     },
@@ -111,18 +127,24 @@ async function readDraft(conversation: IdentifiedConversation) {
   if (storedDraft !== undefined) {
     if (isExpiredDraftEnvelope(storedDraft, Date.now() - DRAFT_RETENTION_MS)) {
       await writeDraft(conversation, []);
+
       return emptyDecodedDraft();
     }
+
     const decoded = decodeStoredDraft(storedDraft);
+
     if (decoded.hasUnreadableAnnotations) {
       return decoded;
     }
+
     if (decoded.needsMigration) {
       await browser.storage.local.set({ [key]: draftEnvelope(decoded.annotations) });
     }
+
     if (legacyKey && result[legacyKey] !== undefined) {
       await removeMigratedDraftKey(legacyKey);
     }
+
     return decoded;
   }
 
@@ -131,11 +153,14 @@ async function readDraft(conversation: IdentifiedConversation) {
   }
 
   const decoded = decodeStoredDraft(result[legacyKey]);
+
   if (decoded.hasUnreadableAnnotations) {
     return decoded;
   }
+
   await browser.storage.local.set({ [key]: draftEnvelope(decoded.annotations) });
   await removeMigratedDraftKey(legacyKey);
+
   return decoded;
 }
 
@@ -145,10 +170,12 @@ async function writeDraft(conversation: IdentifiedConversation, annotations: Dra
 
   if (annotations.length === 0) {
     await browser.storage.local.remove(legacyKey ? [key, legacyKey] : [key]);
+
     return;
   }
 
   await browser.storage.local.set({ [key]: draftEnvelope(annotations) });
+
   if (legacyKey) {
     await browser.storage.local.remove([legacyKey]);
   }

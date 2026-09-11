@@ -51,9 +51,11 @@ const failures: string[] = [];
 function expectSet(label: string, actual: readonly string[], expected: readonly string[]): void {
   const missing = expected.filter((value) => !actual.includes(value));
   const unexpected = actual.filter((value) => !expected.includes(value));
+
   if (missing.length === 0 && unexpected.length === 0) {
     return;
   }
+
   failures.push(
     `${label}\n  missing:    ${missing.join(", ") || "(none)"}\n  unexpected: ${
       unexpected.join(", ") || "(none)"
@@ -65,6 +67,7 @@ function expectSet(label: string, actual: readonly string[], expected: readonly 
 // reordering passes while a new resource or a lost dynamic URL fails.
 function describeResourceGroup(entry: WebAccessibleResource): string {
   const resources = [...entry.resources].sort().join(" + ");
+
   return entry.use_dynamic_url ? `${resources} (dynamic)` : resources;
 }
 
@@ -80,8 +83,11 @@ function readManifest(): ProductionManifest {
 const manifest = readManifest();
 
 expectSet("manifest keys", Object.keys(manifest), EXPECTED_KEYS);
+
 expectSet("permissions", manifest.permissions, EXPECTED_PERMISSIONS);
+
 expectSet("background", Object.keys(manifest.background ?? {}), EXPECTED_BACKGROUND_KEYS);
+
 expectSet("host_permissions", manifest.host_permissions, SITE_URL_PATTERNS);
 
 expectSet(
@@ -89,6 +95,7 @@ expectSet(
   manifest.content_scripts.flatMap((script) => script.js),
   EXPECTED_CONTENT_SCRIPT_JS,
 );
+
 for (const script of manifest.content_scripts) {
   expectSet(
     `content_scripts matches for ${script.js.join(", ")}`,
@@ -102,6 +109,7 @@ expectSet(
   manifest.web_accessible_resources.map(describeResourceGroup),
   EXPECTED_RESOURCE_GROUPS,
 );
+
 for (const entry of manifest.web_accessible_resources) {
   expectSet(
     `web_accessible_resources matches for ${describeResourceGroup(entry)}`,

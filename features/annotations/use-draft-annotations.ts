@@ -7,11 +7,14 @@ import { visibleDraftSnapshot } from "./draft-runtime";
 import { useDraftRuntime } from "./DraftRuntimeProvider";
 
 export { canMutateDraft } from "./draft-lifecycle";
+
 export type { DraftState } from "./draft-lifecycle";
+
 export type { RetainedDraftState } from "./draft-runtime";
 
 export function useDraftAnnotations(conversationIdentity: ConversationIdentity) {
   const runtime = useDraftRuntime();
+
   const snapshot = useSyncExternalStore(
     runtime.subscribe,
     runtime.getSnapshot,
@@ -26,7 +29,9 @@ export function useDraftAnnotations(conversationIdentity: ConversationIdentity) 
     snapshot,
     conversationIdentity,
   );
+
   const retainedSessionKey = retainedDraft?.conversationIdentity.sessionKey;
+
   const mutate = useCallback(
     (mutation: Parameters<typeof runtime.mutate>[1]) =>
       runtime.mutate(conversationIdentity, mutation),

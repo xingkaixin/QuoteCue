@@ -48,6 +48,7 @@ describe("visual viewport", () => {
 
 function ViewportProbe() {
   const viewport = useVisualViewportBounds();
+
   return `${viewport.width},${viewport.height},${viewport.left},${viewport.top}`;
 }
 
@@ -59,6 +60,7 @@ function ViewportChangeOnLayout({ viewport }: { viewport: FakeVisualViewport }) 
     viewport.offsetLeft = 30;
     viewport.offsetTop = 80;
   }, [viewport]);
+
   return `${bounds.width},${bounds.height},${bounds.left},${bounds.top}`;
 }
 

@@ -28,9 +28,11 @@ export default defineContentScript({
         : undefined,
       window,
     });
+
     if (!active) {
       return;
     }
+
     const { host, site } = active;
     const draftStore = createBrowserDraftStore();
 
@@ -63,9 +65,11 @@ export default defineContentScript({
       ],
       onMount(container) {
         const shadowRoot = container.getRootNode();
+
         if (shadowRoot instanceof ShadowRoot) {
           shadowRoot.host.setAttribute(QUOTECUE_HOST_ATTR, "");
         }
+
         const app = document.createElement("div");
         app.setAttribute(QUOTECUE_ROOT_ATTR, "");
         app.style.zIndex = String(Z_LAYER.base);
@@ -85,6 +89,7 @@ export default defineContentScript({
             </HostProvider>
           </DraftRuntimeProvider>,
         );
+
         return root;
       },
       onRemove(root) {

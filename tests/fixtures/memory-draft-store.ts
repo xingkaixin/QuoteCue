@@ -8,6 +8,7 @@ import type { DraftStore } from "@/features/annotations/draft-store";
 export function createMemoryDraftStore() {
   const drafts = new Map<string, DraftAnnotation[]>();
   const listeners = new Map<string, Set<() => void>>();
+
   const store: DraftStore = {
     async load(conversation) {
       return draftResult(cloneAnnotations(drafts.get(conversationIdentityKey(conversation)) ?? []));
@@ -15,6 +16,7 @@ export function createMemoryDraftStore() {
     async mutate(conversation, mutations) {
       const key = conversationIdentityKey(conversation);
       const current = drafts.get(key) ?? [];
+
       const annotations = cloneAnnotations(
         mutations.reduce<readonly DraftAnnotation[]>(
           (currentAnnotations, mutation) =>
@@ -22,10 +24,13 @@ export function createMemoryDraftStore() {
           current,
         ),
       );
+
       drafts.set(key, annotations);
+
       for (const listener of listeners.get(key) ?? []) {
         listener();
       }
+
       return draftResult(cloneAnnotations(annotations));
     },
     subscribe(conversation, onChanged) {
@@ -33,19 +38,23 @@ export function createMemoryDraftStore() {
       const subscribers = listeners.get(key) ?? new Set<() => void>();
       subscribers.add(onChanged);
       listeners.set(key, subscribers);
+
       return () => {
         subscribers.delete(onChanged);
+
         if (subscribers.size === 0) {
           listeners.delete(key);
         }
       };
     },
   };
+
   return { store };
 }
 
 export function createDraftStoreDouble() {
   const memory = createMemoryDraftStore();
+
   return {
     ...memory,
     store: {

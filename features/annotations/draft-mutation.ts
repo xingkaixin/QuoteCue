@@ -22,36 +22,45 @@ export function applyDraftMutation(
         : [...annotations, mutation.annotation];
     case "update": {
       const index = annotations.findIndex(({ id }) => id === mutation.annotationId);
+
       if (index < 0) {
         return null;
       }
+
       if (annotations[index]?.comment === mutation.comment) {
         return annotations;
       }
+
       return annotations.map((annotation, currentIndex) =>
         currentIndex === index ? { ...annotation, comment: mutation.comment } : annotation,
       );
     }
+
     case "discard": {
       const discardedIds = new Set(mutation.annotationIds);
+
       return keepIfUnchanged(
         annotations,
         annotations.filter(({ id }) => !discardedIds.has(id)),
       );
     }
+
     case "discard-confirmed": {
       const confirmedById = new Map(
         mutation.annotations.map((annotation) => [annotation.id, annotation]),
       );
+
       // Keeps an annotation edited after the send was compiled, per the snapshot semantics.
       return keepIfUnchanged(
         annotations,
         annotations.filter((annotation) => {
           const confirmed = confirmedById.get(annotation.id);
+
           return !confirmed || !sameAnnotationSnapshot(annotation, confirmed);
         }),
       );
     }
+
     case "clear":
       return annotations.length === 0 ? annotations : [];
   }
@@ -62,9 +71,11 @@ export function applyDraftMutations(
   mutations: readonly DraftMutation[],
 ) {
   let current = annotations;
+
   for (const mutation of mutations) {
     current = applyDraftMutation(current, mutation) ?? current;
   }
+
   return [...current];
 }
 

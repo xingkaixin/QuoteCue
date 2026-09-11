@@ -11,6 +11,7 @@ export function restoreTextAnchorFromIndex(
   messageTextCache?: Map<HTMLElement, string>,
 ) {
   const message = messageIndex.get(anchor.messageId);
+
   return message
     ? restoreTextAnchorInMessage(anchor, message, readMessageText(message, messageTextCache))
     : null;
@@ -18,11 +19,14 @@ export function restoreTextAnchorFromIndex(
 
 function readMessageText(message: HTMLElement, cache?: Map<HTMLElement, string>) {
   const cached = cache?.get(message);
+
   if (cached !== undefined) {
     return cached;
   }
+
   const text = message.textContent ?? "";
   cache?.set(message, text);
+
   return text;
 }
 
@@ -34,6 +38,7 @@ function restoreTextAnchorInMessage(anchor: TextAnchor, message: HTMLElement, me
   }
 
   const range = rangeFromOffsets(message, resolved.start, resolved.start + resolved.quote.length);
+
   return range?.toString() === resolved.quote ? range : null;
 }
 
@@ -41,9 +46,12 @@ function resolveTextAnchor(messageText: string, anchor: TextAnchor) {
   if (anchor.quote.length === 0) {
     return null;
   }
+
   const positionalQuote =
     anchor.format === "legacy-rendered" ? legacyPositionalQuote(messageText, anchor) : null;
+
   const quote = positionalQuote ?? anchor.quote;
+
   // Legacy whitespace compatibility must not hide an existing stored-quote candidate.
   if (quote !== anchor.quote && messageText.includes(anchor.quote)) {
     return null;
@@ -51,11 +59,13 @@ function resolveTextAnchor(messageText: string, anchor: TextAnchor) {
 
   const candidates = quoteOffsets(messageText, quote);
   const uniqueCandidate = candidates.length === 1 ? candidates[0] : undefined;
+
   if (uniqueCandidate !== undefined) {
     return { quote, start: uniqueCandidate };
   }
 
   const start = uniqueContextMatch(messageText, anchor, quote.length, candidates);
+
   return start < 0 ? null : { quote, start };
 }
 
@@ -69,6 +79,7 @@ function legacyPositionalQuote(messageText: string, anchor: TextAnchor) {
   const prefix = messageText.slice(prefixStart, anchor.start);
   const suffix = messageText.slice(anchor.end, anchor.end + anchor.suffix.length);
   const hasExactContext = prefix === anchor.prefix && suffix === anchor.suffix;
+
   return hasExactContext && sameNonWhitespaceText(quote, anchor.quote) ? quote : null;
 }
 
@@ -101,19 +112,25 @@ function uniqueContextMatch(
   if (anchor.prefix.trim().length === 0 && anchor.suffix.trim().length === 0) {
     return -1;
   }
+
   let matchedOffset = -1;
+
   for (const candidate of candidates) {
     const prefix = messageText.slice(Math.max(0, candidate - anchor.prefix.length), candidate);
     const suffixStart = candidate + quoteLength;
     const suffix = messageText.slice(suffixStart, suffixStart + anchor.suffix.length);
+
     if (prefix !== anchor.prefix || suffix !== anchor.suffix) {
       continue;
     }
+
     if (matchedOffset !== -1) {
       return -1;
     }
+
     matchedOffset = candidate;
   }
+
   return matchedOffset;
 }
 
@@ -131,9 +148,11 @@ function rangeFromOffsets(root: HTMLElement, start: number, end: number) {
     if (!startBoundary && start >= currentOffset && start <= nextOffset) {
       startBoundary = { node, offset: start - currentOffset };
     }
+
     if (!endBoundary && end >= currentOffset && end <= nextOffset) {
       endBoundary = { node, offset: end - currentOffset };
     }
+
     if (startBoundary && endBoundary) {
       break;
     }
@@ -149,5 +168,6 @@ function rangeFromOffsets(root: HTMLElement, start: number, end: number) {
   const range = ownerDocument.createRange();
   range.setStart(startBoundary.node, startBoundary.offset);
   range.setEnd(endBoundary.node, endBoundary.offset);
+
   return range;
 }

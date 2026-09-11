@@ -37,11 +37,13 @@ describe("registerSendInterceptor", () => {
     const interceptor = createInterceptor(onSendConfirmed);
     interceptor.submit();
     let replayedText = "";
+
     const onNativeSend = vi.fn(() => {
       replayedText = composer.textContent ?? "";
       composer.replaceChildren();
       installUserMessage("user-message-1", replayedText);
     });
+
     installSendButton(onNativeSend);
 
     await vi.waitFor(() => expect(onSendConfirmed).toHaveBeenCalledOnce());
@@ -57,6 +59,7 @@ describe("registerSendInterceptor", () => {
     const composer = installComposer("original question");
     const onSendConfirmed = vi.fn();
     let currentAnnotations = [annotation];
+
     const getSendInput = vi.fn(() => ({
       annotations: numberAnnotations(currentAnnotations),
       conversationIdentity: {
@@ -66,11 +69,13 @@ describe("registerSendInterceptor", () => {
       },
       locale: "en" as const,
     }));
+
     const interceptor = registerSendInterceptor({
       getSendInput,
       host: createChatGptHost({ document, window }),
       onSendConfirmed,
     });
+
     installSendButton(() => {
       const compiledPrompt = composer.textContent ?? "";
       currentAnnotations = [{ ...annotation, comment: "edited while awaiting confirmation" }];
@@ -141,14 +146,17 @@ describe("registerSendInterceptor", () => {
 
   it("allows another conversation to send while the first awaits confirmation", () => {
     const host = createFakeHost();
+
     let identity: ConversationIdentity = {
       kind: "identified",
       id: "conversation-a",
       siteId: "chatgpt",
     };
+
     const submit = vi
       .spyOn(host.composer, "submit")
       .mockImplementation(() => new Promise(() => undefined));
+
     const interceptor = createInterceptor(undefined, {
       conversationIdentity: () => identity,
       host,
@@ -205,6 +213,7 @@ describe("registerSendInterceptor", () => {
         const compiledPrompt = composer.textContent ?? "";
         sentPrompts.push(compiledPrompt);
         composer.replaceChildren();
+
         if (sentPrompts.length === 3) {
           installUserMessage("retried-user-message", compiledPrompt);
         }
@@ -229,9 +238,11 @@ describe("registerSendInterceptor", () => {
       expect(onStateChange).toHaveBeenLastCalledWith({ status: "idle" });
       expect(sentPrompts[2]).toContain(`[Supplemental question]\n${expectedQuestion}`);
       expect(sentPrompts[2]?.match(/\[Annotation 1\]/g)).toHaveLength(1);
+
       if (composerText) {
         expect(sentPrompts[2]).not.toContain("original question");
       }
+
       interceptor.dispose();
     },
   );
@@ -252,10 +263,12 @@ describe("registerSendInterceptor", () => {
       status: "available",
       value: fakeComposerSnapshot("original question"),
     });
+
     const submit = vi.spyOn(host.composer, "submit").mockResolvedValue({
       reason: "send-unavailable",
       status: "unavailable",
     });
+
     const onStateChange = vi.fn();
     const interceptor = createInterceptor(undefined, { host, onStateChange });
 
@@ -313,9 +326,11 @@ describe("registerSendInterceptor", () => {
   it("settles a confirmed attempt when its completion callback throws", async () => {
     const composer = installComposer("original question");
     const error = new Error("confirmation callback failed");
+
     const onSendConfirmed = vi.fn(() => {
       throw error;
     });
+
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const onStateChange = vi.fn();
     const interceptor = createInterceptor(onSendConfirmed, { onStateChange });
@@ -373,15 +388,18 @@ describe("registerSendInterceptor", () => {
     host.elements.composer.textContent = "original question";
     const submit = vi.spyOn(host.composer, "submit");
     const onStateChange = vi.fn();
+
     const oversizedAnnotation = {
       ...annotation,
       anchor: { ...annotation.anchor, quote: "x".repeat(MAX_COMPILED_PROMPT_LENGTH + 1) },
     };
+
     const interceptor = createInterceptor(undefined, {
       annotations: [oversizedAnnotation],
       host,
       onStateChange,
     });
+
     const decision = host.controls.emitSubmitIntent({ isSendAvailable: true });
 
     expect(decision).toBe("claim");
@@ -410,10 +428,12 @@ describe("registerSendInterceptor", () => {
       status: "available",
       value: fakeComposerSnapshot("original question"),
     });
+
     const submit = vi
       .spyOn(host.composer, "submit")
       .mockResolvedValueOnce({ reason: "send-unavailable", status: "unavailable" })
       .mockResolvedValueOnce({ status: "available", value: "confirmed" });
+
     const onSendConfirmed = vi.fn();
     const onStateChange = vi.fn();
     const interceptor = createInterceptor(onSendConfirmed, { host, onStateChange });
@@ -442,11 +462,13 @@ describe("registerSendInterceptor", () => {
 
   it("keeps the original question after an oversized retry", async () => {
     const host = createFakeHost();
+
     const identity = {
       kind: "identified" as const,
       id: "conversation-test",
       siteId: "chatgpt" as const,
     };
+
     let annotations = [annotation];
     vi.spyOn(host.composer, "snapshot")
       .mockReturnValueOnce({
@@ -454,12 +476,15 @@ describe("registerSendInterceptor", () => {
         value: fakeComposerSnapshot("original question"),
       })
       .mockReturnValue({ status: "available", value: fakeComposerSnapshot("") });
+
     const submit = vi
       .spyOn(host.composer, "submit")
       .mockResolvedValueOnce({ reason: "confirmation-timeout", status: "unavailable" })
       .mockResolvedValueOnce({ status: "available", value: "confirmed" });
+
     const onSendConfirmed = vi.fn();
     const onStateChange = vi.fn();
+
     const interceptor = registerSendInterceptor({
       getSendInput: () => ({
         annotations: numberAnnotations(annotations),
@@ -507,19 +532,24 @@ describe("registerSendInterceptor", () => {
 
   it("forgets failed input after the draft is cleared", async () => {
     const host = createFakeHost();
+
     const identity = {
       kind: "identified" as const,
       id: "conversation-test",
       siteId: "chatgpt" as const,
     };
+
     let annotations = [annotation];
     host.elements.composer.textContent = "obsolete question";
+
     const submit = vi
       .spyOn(host.composer, "submit")
       .mockResolvedValueOnce({ reason: "send-unavailable", status: "unavailable" })
       .mockResolvedValueOnce({ status: "available", value: "confirmed" });
+
     const onSendConfirmed = vi.fn();
     const onStateChange = vi.fn();
+
     const interceptor = registerSendInterceptor({
       getSendInput: () => ({
         annotations: numberAnnotations(annotations),

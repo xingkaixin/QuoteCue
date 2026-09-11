@@ -45,9 +45,11 @@ export function createFakeHost(overrides: FakeHostOverrides = {}): FakeHost {
   let composerText = "";
   let conversationIdentity: ConversationIdentity | null = null;
   let messageIndex = new Map<string, HTMLElement>();
+
   let selectionCapture: ReturnType<Host["selection"]["capture"]> = {
     status: "unavailable",
   };
+
   let layout: HostResult<HostLayout> = {
     status: "available",
     value: {
@@ -56,6 +58,7 @@ export function createFakeHost(overrides: FakeHostOverrides = {}): FakeHost {
       summary: { left: 10, top: 10 },
     },
   };
+
   const conversationSubscribers = new Set<() => void>();
   const layoutSubscribers = new Set<(layout: HostResult<HostLayout>) => void>();
   const selectionCaptureSubscribers = new Set<(intent: SelectionCaptureIntent) => void>();
@@ -70,21 +73,27 @@ export function createFakeHost(overrides: FakeHostOverrides = {}): FakeHost {
       }),
       async submit({ restoreText, restoreTo, signal, text }) {
         const fallbackText = restoreText ?? restoreTo.text;
+
         if (signal.aborted) {
           return { reason: "send-unavailable", status: "unavailable" };
         }
+
         composerText = text;
         composer.textContent = text;
         await Promise.resolve();
+
         if (signal.aborted) {
           composerText = fallbackText;
           composer.textContent = fallbackText;
+
           return { reason: "send-unavailable", status: "unavailable" };
         }
+
         return { status: "available", value: "confirmed" };
       },
       subscribeToSubmit(callback) {
         submitSubscribers.add(callback);
+
         return () => submitSubscribers.delete(callback);
       },
     },
@@ -94,6 +103,7 @@ export function createFakeHost(overrides: FakeHostOverrides = {}): FakeHost {
       },
       subscribe(callback) {
         conversationSubscribers.add(callback);
+
         return () => conversationSubscribers.delete(callback);
       },
     },
@@ -103,6 +113,7 @@ export function createFakeHost(overrides: FakeHostOverrides = {}): FakeHost {
       subscribe(callback) {
         layoutSubscribers.add(callback);
         callback(layout);
+
         return () => layoutSubscribers.delete(callback);
       },
     },
@@ -114,10 +125,12 @@ export function createFakeHost(overrides: FakeHostOverrides = {}): FakeHost {
       messageIndex: () => new Map(messageIndex),
       observeCaptureIntent(callback) {
         selectionCaptureSubscribers.add(callback);
+
         return () => selectionCaptureSubscribers.delete(callback);
       },
       observeInvalidation(callback) {
         selectionSubscribers.add(callback);
+
         return () => selectionSubscribers.delete(callback);
       },
       presentation: "overlay",
@@ -151,10 +164,12 @@ export function createFakeHost(overrides: FakeHostOverrides = {}): FakeHost {
             return "claim";
           }
         }
+
         return "pass-through";
       },
       setConversationIdentity(identity) {
         conversationIdentity = identity;
+
         for (const subscriber of conversationSubscribers) {
           subscriber();
         }

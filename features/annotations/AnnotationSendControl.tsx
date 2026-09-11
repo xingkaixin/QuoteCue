@@ -20,6 +20,7 @@ export function AnnotationSendControl({ onSend, position, state }: AnnotationSen
   const { messages } = useI18n();
   const isPending = state.status === "sending";
   const failureReason = state.status === "failed" ? state.reason : null;
+
   const statusMessage = isPending
     ? messages.sendingAnnotations
     : failureReason
@@ -73,11 +74,14 @@ function failureMessage(
   if (reason === "confirmation-timeout") {
     return messages.sendAnnotationsConfirmationTimedOut;
   }
+
   if (reason === "composer-unavailable") {
     return messages.sendAnnotationsComposerUnavailable;
   }
+
   if (reason === "prompt-too-long") {
     return messages.sendAnnotationsPromptTooLong;
   }
+
   return messages.sendAnnotationsFailed;
 }

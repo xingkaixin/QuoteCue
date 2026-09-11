@@ -6,6 +6,7 @@ export function availableValue<T>(result: HostResult<T>) {
   if (result.status === "unavailable") {
     throw new Error("Expected available host result");
   }
+
   return result.value;
 }
 
@@ -13,10 +14,13 @@ export function requiredText(node: Node | null) {
   if (!node) {
     throw new Error("Expected fixture text");
   }
+
   const text = node.nodeType === Node.TEXT_NODE ? node : node.firstChild;
+
   if (!(text instanceof Text)) {
     throw new Error("Expected fixture text");
   }
+
   return text;
 }
 
@@ -28,19 +32,24 @@ export function selectNodeContents(node: Node) {
 
 export function selectRange(range: Range) {
   const selection = window.getSelection();
+
   if (!selection) {
     throw new Error("Expected document selection");
   }
+
   selection.removeAllRanges();
   selection.addRange(range);
+
   return selection;
 }
 
 export function clearComposer(composer: HTMLElement) {
   if (composer instanceof HTMLTextAreaElement) {
     composer.value = "";
+
     return;
   }
+
   composer.replaceChildren();
 }
 

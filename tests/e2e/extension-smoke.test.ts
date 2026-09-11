@@ -69,8 +69,10 @@ test.beforeEach(async ({ context }) => {
   await context.route("https://chatgpt.com/**", async (route) => {
     if (route.request().resourceType() === "document") {
       await route.fulfill({ body: CHATGPT_FIXTURE, contentType: "text/html" });
+
       return;
     }
+
     await route.abort();
   });
 });
@@ -134,12 +136,15 @@ test("removes sent annotations from another tab before its next native send", as
 
   const secondPage = await openConversation(context, conversationId);
   const secondSession = await context.newCDPSession(secondPage);
+
   const summaryVisible = async () => {
     const { nodes } = await secondSession.send("Accessibility.getFullAXTree");
+
     return nodes.some(
       (node) => node.role?.value === "button" && node.name?.value === "1 annotation",
     );
   };
+
   await expect.poll(summaryVisible).toBe(true);
   const nativeSend = secondPage.locator("[data-testid=send-button]");
   await expect(nativeSend).toBeHidden();
@@ -170,17 +175,22 @@ test("preserves another tab's unsaved comment after its annotation is sent", asy
     await expect
       .poll(() => firstPage.frames().some((frame) => frame.url().includes("secure-field.html")))
       .toBe(true);
+
     const firstFrame = firstPage
       .frames()
       .find((frame) => frame.url().includes("secure-field.html"))!;
+
     await firstFrame.locator("input").press("Tab");
     await firstPage.keyboard.press("Enter");
     await expect.poll(() => storedAnnotationCount(extensionWorker, key)).toBe(1);
+
     const originalAnnotationId = await extensionWorker.evaluate(async (storageKey) => {
       const extensionApi = Reflect.get(globalThis, "chrome") as {
         storage: { local: { get(key: string): Promise<Record<string, unknown>> } };
       };
+
       const stored = await extensionApi.storage.local.get(storageKey);
+
       return (stored[storageKey] as { annotations: { id: string }[] }).annotations[0]!.id;
     }, key);
 
@@ -206,9 +216,11 @@ test("preserves another tab's unsaved comment after its annotation is sent", asy
     await expect
       .poll(() => secondPage.frames().some((frame) => frame.url().includes("secure-field.html")))
       .toBe(true);
+
     const secondFrame = secondPage
       .frames()
       .find((frame) => frame.url().includes("secure-field.html"))!;
+
     const field = secondFrame.locator("textarea");
     const comment = "Unsaved synthetic cross-tab comment";
     await field.fill(comment);
@@ -221,6 +233,7 @@ test("preserves another tab's unsaved comment after its annotation is sent", asy
     await expect
       .poll(async () => {
         const { nodes } = await secondSession.send("Accessibility.getFullAXTree");
+
         return nodes.some(
           (node) => node.role?.value === "button" && node.name?.value === "1 annotation",
         );
@@ -236,9 +249,11 @@ test("preserves another tab's unsaved comment after its annotation is sent", asy
     let saveButtonId: number | undefined;
     await expect(async () => {
       const { nodes } = await secondSession.send("Accessibility.getFullAXTree");
+
       const save = nodes.find(
         (node) => node.role?.value === "button" && node.name?.value === "Save as new annotation",
       );
+
       saveButtonId = save?.backendDOMNodeId;
       expect(saveButtonId).toBeDefined();
       expect(save?.properties?.find((property) => property.name === "focused")?.value.value).toBe(
@@ -254,17 +269,21 @@ test("preserves another tab's unsaved comment after its annotation is sent", asy
     expect(Math.max(...verticalEdges)).toBeLessThanOrEqual(800);
     await secondPage.keyboard.press("Enter");
     await expect.poll(() => storedAnnotationCount(extensionWorker, key)).toBe(1);
+
     const saved = await extensionWorker.evaluate(
       async ({ storageKey, previousId, expectedComment }) => {
         const extensionApi = Reflect.get(globalThis, "chrome") as {
           storage: { local: { get(key: string): Promise<Record<string, unknown>> } };
         };
+
         const stored = await extensionApi.storage.local.get(storageKey);
+
         const annotation = (
           stored[storageKey] as {
             annotations: { id: string; comment: string }[];
           }
         ).annotations[0]!;
+
         return {
           hasNewId: annotation.id !== previousId,
           hasComment: annotation.comment === expectedComment,
@@ -272,6 +291,7 @@ test("preserves another tab's unsaved comment after its annotation is sent", asy
       },
       { storageKey: key, previousId: originalAnnotationId, expectedComment: comment },
     );
+
     expect(saved).toEqual({ hasNewId: true, hasComment: true });
     await secondPage.close();
     await firstPage.close();
@@ -291,9 +311,11 @@ test("keeps browser storage isolated by committed conversation", async ({
   await page.evaluate(() => {
     const message = document.querySelector<HTMLElement>('[data-message-author-role="assistant"]');
     const paragraph = message?.querySelector("p");
+
     if (!message || !paragraph) {
       throw new Error("Missing assistant fixture");
     }
+
     message.dataset.messageId = "assistant-b";
     paragraph.textContent = "A second answer for another conversation.";
     history.pushState({}, "", "/c/conversation-b");
@@ -379,13 +401,17 @@ test("protects unsaved comments when sending across display settings", async ({ 
     await field.fill("Keep this unsaved comment");
     const session = await context.newCDPSession(page);
     const { nodes } = await session.send("Accessibility.getFullAXTree");
+
     const send = nodes.find(
       (node) => node.role?.value === "button" && node.name?.value === "Send annotations",
     );
+
     expect(send?.backendDOMNodeId).toBeDefined();
+
     const { model } = await session.send("DOM.getBoxModel", {
       backendNodeId: send!.backendDOMNodeId,
     });
+
     await page.mouse.click(
       (model.content[0]! + model.content[4]!) / 2,
       (model.content[1]! + model.content[5]!) / 2,
@@ -410,6 +436,7 @@ async function openConversation(context: BrowserContext, conversationId: string)
   await page.goto(`https://chatgpt.com/c/${conversationId}`);
   await expect(page.locator("quotecue-ui")).toHaveCount(1);
   expect(await page.evaluate(() => document.querySelector("quotecue-ui")?.shadowRoot)).toBeNull();
+
   return page;
 }
 
@@ -491,6 +518,7 @@ test("clears unreadable drafts with the keyboard across display settings", async
       const extensionApi = Reflect.get(globalThis, "chrome") as {
         storage: { local: { set(values: Record<string, unknown>): Promise<void> } };
       };
+
       await extensionApi.storage.local.set({
         [storageKey]: { version: 3, annotations: [{ id: "unreadable" }], updatedAt: Date.now() },
       });
@@ -604,9 +632,11 @@ async function addAnnotation(page: Page) {
   await expect(async () => {
     await page.evaluate(() => {
       const paragraph = document.querySelector('[data-message-author-role="assistant"] p');
+
       if (!paragraph) {
         throw new Error("Missing assistant text");
       }
+
       const range = document.createRange();
       range.selectNodeContents(paragraph);
       const selection = window.getSelection();
@@ -628,8 +658,10 @@ async function storedAnnotationCount(extensionWorker: Worker, key: string) {
     const extensionApi = Reflect.get(globalThis, "chrome") as {
       storage: { local: { get(key: string): Promise<Record<string, unknown>> } };
     };
+
     const stored = await extensionApi.storage.local.get(storageKey);
     const draft = stored[storageKey] as { annotations?: unknown[] } | undefined;
+
     return draft?.annotations?.length ?? 0;
   }, key);
 }
@@ -664,9 +696,11 @@ test("retains focus and allows keyboard undo after deletion across display setti
     await page.keyboard.press("Tab");
     await page.keyboard.press("Tab");
     const { nodes: deleteNodes } = await session.send("Accessibility.getFullAXTree");
+
     const deleteButton = deleteNodes.find(
       (node) => node.role?.value === "button" && node.name?.value === "Delete annotation 1",
     );
+
     expect(
       deleteButton?.properties?.find((property) => property.name === "focused")?.value.value,
     ).toBe(true);

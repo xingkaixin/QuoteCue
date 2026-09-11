@@ -108,5 +108,6 @@ function TimerHarness({
     },
     dispatch,
   );
+
   return null;
 }

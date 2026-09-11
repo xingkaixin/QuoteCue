@@ -38,6 +38,7 @@ export function createDraftPersistence(draftStore: DraftStore) {
     const draft = await draftStore.load(conversation);
     const pending = pendingSaves.get(key);
     const pendingMutations = pending?.mutations ?? [];
+
     return {
       hasUnreadableAnnotations: draft.hasUnreadableAnnotations,
       annotations:
@@ -56,6 +57,7 @@ export function createDraftPersistence(draftStore: DraftStore) {
 
   function retry(conversation: IdentifiedConversation) {
     const pending = pendingSaves.get(conversationIdentityKey(conversation));
+
     if (pending) {
       persist(pending);
     }
@@ -63,6 +65,7 @@ export function createDraftPersistence(draftStore: DraftStore) {
 
   function subscribe(listener: DraftPersistenceListener) {
     listeners.add(listener);
+
     return () => {
       listeners.delete(listener);
     };
@@ -71,16 +74,20 @@ export function createDraftPersistence(draftStore: DraftStore) {
   function pendingSave(conversation: IdentifiedConversation) {
     const key = conversationIdentityKey(conversation);
     const existing = pendingSaves.get(key);
+
     if (existing) {
       return existing;
     }
+
     const pending = {
       activeSave: null,
       conversationIdentity: conversation,
       hasFailed: false,
       mutations: [],
     };
+
     pendingSaves.set(key, pending);
+
     return pending;
   }
 
@@ -88,15 +95,19 @@ export function createDraftPersistence(draftStore: DraftStore) {
     if (pending.activeSave || pending.mutations.length === 0) {
       return;
     }
+
     const activeSave = drain(pending).finally(() => {
       if (pending.activeSave !== activeSave) {
         return;
       }
+
       pending.activeSave = null;
+
       if (pending.mutations.length === 0) {
         pendingSaves.delete(conversationIdentityKey(pending.conversationIdentity));
       }
     });
+
     pending.activeSave = activeSave;
   }
 
@@ -104,6 +115,7 @@ export function createDraftPersistence(draftStore: DraftStore) {
     while (pending.mutations.length > 0) {
       const mutationCount = pending.mutations.length;
       let result: DraftMutationResult;
+
       try {
         result = await draftStore.mutate(
           pending.conversationIdentity,
@@ -116,8 +128,10 @@ export function createDraftPersistence(draftStore: DraftStore) {
           conversationIdentity: pending.conversationIdentity,
           error,
         });
+
         return;
       }
+
       pending.mutations.splice(0, mutationCount);
       pending.hasFailed = false;
       notify({

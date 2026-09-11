@@ -3,5 +3,6 @@ import { useSelectionCapture, type SelectionCaptureOptions } from "./use-selecti
 
 export function OverlaySelectionPresentation(options: SelectionCaptureOptions) {
   const { activate, selection } = useSelectionCapture(options);
+
   return selection ? <SelectionActionButton onActivate={activate} rect={selection.rect} /> : null;
 }

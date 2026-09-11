@@ -17,6 +17,7 @@ export function useInteractiveDemoStatusTimer(
       () => dispatch({ type: "expire-clear" }),
       CLEAR_CONFIRMATION_DURATION_MS,
     );
+
     return () => window.clearTimeout(timer);
   }, [dispatch, state.clearArmed]);
 
@@ -24,6 +25,7 @@ export function useInteractiveDemoStatusTimer(
     if (state.send.kind !== "sending") return;
 
     const timer = window.setTimeout(() => dispatch({ type: "complete-send" }), SEND_DURATION_MS);
+
     return () => window.clearTimeout(timer);
   }, [dispatch, state.send]);
 
@@ -31,6 +33,7 @@ export function useInteractiveDemoStatusTimer(
     if (state.pendingRemovals.length === 0) return;
 
     const timer = window.setTimeout(() => dispatch({ type: "expire-undo" }), UNDO_DURATION_MS);
+
     return () => window.clearTimeout(timer);
   }, [dispatch, state.pendingRemovals]);
 }

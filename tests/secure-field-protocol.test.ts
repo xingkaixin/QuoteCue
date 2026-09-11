@@ -38,12 +38,14 @@ describe("secure field protocol", () => {
   it("rejects malformed commands and field events", () => {
     expect(decodeSecureFieldCommand({ type: "focus" })).toEqual({ type: "focus" });
     expect(decodeSecureFieldCommand({ type: "save" })).toEqual({ type: "save" });
+
     const update = {
       ariaLabel: "批注内容",
       lang: "zh-CN",
       placeholder: "添加批注",
       theme: "dark",
     } as const;
+
     expect(decodeSecureFieldCommand({ type: "update", update })).toEqual({
       type: "update",
       update,

@@ -55,6 +55,7 @@ export function parseTextAnchor(value: unknown): TextAnchor | null {
     start: value.start,
     end: value.end,
   };
+
   return value.format === "exact"
     ? {
         ...anchor,

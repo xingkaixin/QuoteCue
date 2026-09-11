@@ -20,6 +20,7 @@ export function SelectionActionButton({ onActivate, rect }: SelectionActionButto
   const buttonRef = useRef<HTMLButtonElement>(null);
   const viewport = useVisualViewportBounds();
   const [size, setSize] = useState({ height: BUTTON_HEIGHT, width: BUTTON_WIDTH });
+
   const { left, top } = positionAdjacentToRect(rect, size, {
     gap: VIEWPORT_MARGIN,
     margin: VIEWPORT_MARGIN,
@@ -28,18 +29,23 @@ export function SelectionActionButton({ onActivate, rect }: SelectionActionButto
 
   useLayoutEffect(() => {
     const button = buttonRef.current;
+
     if (!button) {
       return;
     }
+
     const measure = () => {
       const bounds = button.getBoundingClientRect();
+
       if (bounds.width > 0 && bounds.height > 0) {
         setSize({ height: bounds.height, width: bounds.width });
       }
     };
+
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
     observer?.observe(button);
     measure();
+
     return () => observer?.disconnect();
   }, []);
 

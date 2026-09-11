@@ -20,6 +20,7 @@ export function unavailable(
   logger?: HostEnvironment["logger"],
 ): { status: "unavailable" } {
   logger?.(`[QuoteCue host] unavailable: ${reason}`);
+
   return { status: "unavailable" };
 }
 

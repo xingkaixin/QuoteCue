@@ -28,11 +28,13 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
 
   function normalizedRenderedText(value: HTMLElement | string) {
     const text = typeof value === "string" ? value : readRenderedText(value);
+
     return adapter.composer.normalize(text);
   }
 
   const currentSendButton = () => {
     const composer = composerDriver.current();
+
     return composer ? context.sendControl(composer) : null;
   };
 
@@ -48,10 +50,13 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
 
   function waitForButton(signal: AbortSignal) {
     const current = currentSendButton();
+
     if (isButtonAvailable(current)) {
       logger?.("[QuoteCue host] send control ready: immediate");
+
       return Promise.resolve(available(current));
     }
+
     if (signal.aborted) {
       return Promise.resolve(unavailable("send-control-unavailable"));
     }
@@ -60,25 +65,32 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
       let isFinished = false;
       let stopObserving: () => void = () => undefined;
       let timeout: number | undefined;
+
       const finish = (result: HostResult<HTMLElement>) => {
         if (isFinished) {
           return;
         }
+
         isFinished = true;
         stopObserving();
+
         if (timeout !== undefined) {
           hostWindow.clearTimeout(timeout);
         }
+
         signal.removeEventListener("abort", onAbort);
         resolve(result);
       };
+
       const findButton = () => {
         const button = currentSendButton();
+
         if (isButtonAvailable(button)) {
           logger?.("[QuoteCue host] send control ready: observed");
           finish(available(button));
         }
       };
+
       const onAbort = () => finish(unavailable("send-control-unavailable"));
       const observer = new MutationObserver(findButton);
       observer.observe(sendControlObservationRoot(current), {
@@ -100,16 +112,20 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
   function watchConfirmedSend(options: ConfirmedSendWatcherOptions) {
     if (options.signal.aborted) {
       logger?.("[QuoteCue host] send confirmation skipped: aborted");
+
       return () => undefined;
     }
 
     const expectedText = normalizedRenderedText(options.expectedText);
+
     const matchesExpectedText = (message: HTMLElement) =>
       normalizedRenderedText(message) === expectedText;
+
     const initialPathname = hostWindow.location.pathname;
     const initialConversationId = adapter.conversationId(initialPathname);
     let promotedConversationId: string | null = null;
     const initialMessages = userMessages();
+
     const initialConversationMessages =
       initialConversationId === null
         ? [
@@ -117,15 +133,19 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
             ...hostDocument.querySelectorAll<HTMLElement>(adapter.messages.assistantSelector),
           ]
         : [];
+
     const isSameConversation = () => {
       const pathname = hostWindow.location.pathname;
       const conversationId = adapter.conversationId(pathname);
+
       if (initialConversationId !== null) {
         return conversationId === initialConversationId;
       }
+
       if (pathname === initialPathname && promotedConversationId === null) {
         return true;
       }
+
       // A new conversation may acquire an ID after sending. Preserve its DOM evidence;
       // a replacement transcript cannot establish continuity with the unidentified source.
       if (
@@ -136,100 +156,132 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
       ) {
         return false;
       }
+
       promotedConversationId = conversationId;
+
       return true;
     };
+
     const existingMessageIds = new Set<string>();
     let hasMatchingBaseline = false;
     let hasUnidentifiedMatchingBaseline = false;
+
     for (const message of initialMessages) {
       const messageId = adapter.messages.id(message);
+
       if (messageId) {
         existingMessageIds.add(messageId);
       }
+
       if (matchesExpectedText(message)) {
         hasMatchingBaseline = true;
         hasUnidentifiedMatchingBaseline ||= !messageId;
       }
     }
+
     const initialMessageNodes = new WeakSet(initialMessages);
+
     const isNewMessage = (message: HTMLElement) => {
       if (initialMessageNodes.has(message)) {
         return false;
       }
+
       const messageId = adapter.messages.id(message);
+
       if (messageId) {
         return !hasUnidentifiedMatchingBaseline && !existingMessageIds.has(messageId);
       }
+
       // A repeated optimistic message cannot distinguish a new send from reconciliation.
       return !hasMatchingBaseline;
     };
+
     logger?.(`[QuoteCue host] send confirmation started: existing=${initialMessages.length}`);
     const candidateMessages = new Set<HTMLElement>();
     let confirmationFrame: number | undefined;
     let stopNavigation: () => void = () => undefined;
     let stopObserving: () => void = () => undefined;
     let timeout: number | undefined;
+
     const cleanup = once(() => {
       stopObserving();
       stopNavigation();
+
       if (confirmationFrame !== undefined) {
         hostWindow.cancelAnimationFrame(confirmationFrame);
       }
+
       if (timeout !== undefined) {
         hostWindow.clearTimeout(timeout);
       }
+
       options.signal.removeEventListener("abort", cleanup);
     });
+
     const checkConversation = () => {
       if (isSameConversation()) {
         return true;
       }
+
       cleanup();
       options.onUnavailable();
+
       return false;
     };
+
     const findConfirmedMessage = () => {
       if (!checkConversation()) {
         return;
       }
+
       const messages = [...candidateMessages];
       candidateMessages.clear();
+
       const confirmedMessage = messages.find((message) => {
         if (!message.isConnected || !message.matches(adapter.messages.userSelector)) {
           return false;
         }
+
         if (!isNewMessage(message)) {
           return false;
         }
+
         return matchesExpectedText(message);
       });
+
       if (logger) {
         logger(
           `[QuoteCue host] send confirmation observed: candidates=${messages.length}, matched=${Boolean(confirmedMessage)}`,
         );
       }
+
       if (confirmedMessage) {
         cleanup();
         options.onConfirmed();
       }
     };
+
     const scheduleConfirmationScan = (records: readonly MutationRecord[]) => {
       if (!checkConversation()) {
         return;
       }
+
       collectUserMessageCandidates(records, candidateMessages);
+
       if (candidateMessages.size === 0) {
         return;
       }
+
       if (confirmationFrame !== undefined) {
         return;
       }
+
       confirmationFrame = hostWindow.requestAnimationFrame(() => {
         confirmationFrame = undefined;
         findConfirmedMessage();
       });
     };
+
     stopObserving = signals.observeMutations(scheduleConfirmationScan, {
       characterData: true,
       childList: true,
@@ -242,6 +294,7 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
     }, SEND_CONFIRM_TIMEOUT_MS);
 
     options.signal.addEventListener("abort", cleanup, { once: true });
+
     return cleanup;
   }
 
@@ -249,14 +302,18 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
     if (options.signal.aborted) {
       return failure("send-unavailable");
     }
+
     const replaced = await replaceComposer(options);
+
     if (!replaced) {
       logger?.("[QuoteCue host] composer replacement failed");
       restoreComposer(options);
+
       return failure("send-unavailable");
     }
 
     let result: ComposerSubmitResult;
+
     try {
       const sendButtonResult = await waitForButton(options.signal);
       result =
@@ -271,6 +328,7 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
     if (result.status === "unavailable") {
       restoreComposer(options);
     }
+
     return result;
   }
 
@@ -279,6 +337,7 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
       return composerDriver.replaceText(options.restoreTo, options.text, options.signal);
     } catch (error: unknown) {
       logger?.("[QuoteCue host] composer replacement failed", error);
+
       return false;
     }
   }
@@ -301,15 +360,19 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
       !isButtonAvailable(sendButton)
     ) {
       logger?.("[QuoteCue host] send target changed before dispatch");
+
       return failure("send-unavailable");
     }
+
     const confirmation = createConfirmation(options.text, options.signal);
+
     try {
       sendButton.click();
     } catch (error: unknown) {
       logger?.("[QuoteCue host] send dispatch failed", error);
       confirmation.cancel();
     }
+
     return confirmation.result;
   }
 
@@ -317,18 +380,22 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
     let isFinished = false;
     let stopWatching: () => void = () => undefined;
     let resolveResult: (result: ComposerSubmitResult) => void = () => undefined;
+
     const result = new Promise<ComposerSubmitResult>((resolve) => {
       resolveResult = resolve;
     });
+
     const finish = (nextResult: ComposerSubmitResult) => {
       if (isFinished) {
         return;
       }
+
       isFinished = true;
       stopWatching();
       signal.removeEventListener("abort", onAbort);
       resolveResult(nextResult);
     };
+
     const onAbort = () => finish(failure("send-unavailable"));
     stopWatching = watchConfirmedSend({
       expectedText,
@@ -337,6 +404,7 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
       onUnavailable: () => finish(failure("send-unavailable")),
       signal,
     });
+
     if (signal.aborted) {
       onAbort();
     } else {
@@ -354,27 +422,35 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
       if (callback({ isSendAvailable }) === "pass-through") {
         return;
       }
+
       event.preventDefault();
       event.stopImmediatePropagation();
     };
+
     const onClick = (event: MouseEvent) => {
       if (!event.isTrusted) {
         return;
       }
+
       const target = event.target;
+
       const button =
         target instanceof Element
           ? target.closest<HTMLElement>(adapter.sendControl.selector)
           : null;
+
       if (button) {
         dispatchIntent(event, isButtonAvailable(button));
       }
     };
+
     const onKeyDown = (event: KeyboardEvent) => {
       if (!event.isTrusted) {
         return;
       }
+
       const target = event.target;
+
       const isSubmitKey =
         target instanceof Element &&
         target.closest(adapter.composer.selector) !== null &&
@@ -384,6 +460,7 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
         !event.ctrlKey &&
         !event.metaKey &&
         !event.isComposing;
+
       if (isSubmitKey) {
         dispatchIntent(event, isButtonAvailable(currentSendButton()));
       }
@@ -391,6 +468,7 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
 
     hostWindow.addEventListener("click", onClick, true);
     hostWindow.addEventListener("keydown", onKeyDown, true);
+
     return () => {
       hostWindow.removeEventListener("click", onClick, true);
       hostWindow.removeEventListener("keydown", onKeyDown, true);
@@ -406,18 +484,23 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
     candidates: Set<HTMLElement>,
   ) {
     const selector = adapter.messages.userSelector;
+
     const collectContainingMessage = (node: Node) => {
       const element = node instanceof Element ? node : node.parentElement;
       const containingMessage = element?.closest<HTMLElement>(selector);
+
       if (containingMessage) {
         candidates.add(containingMessage);
       }
     };
+
     const collectAddedMessages = (node: Node) => {
       collectContainingMessage(node);
+
       if (!(node instanceof Element)) {
         return;
       }
+
       for (const message of node.querySelectorAll<HTMLElement>(selector)) {
         candidates.add(message);
       }
@@ -425,9 +508,11 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
 
     for (const record of records) {
       collectContainingMessage(record.target);
+
       if (record.type !== "childList") {
         continue;
       }
+
       for (const node of record.addedNodes) {
         collectAddedMessages(node);
       }
@@ -436,21 +521,25 @@ export function createSendPipeline(context: HostContext, composerDriver: Compose
 
   function sendControlObservationRoot(button: HTMLElement | null) {
     const composer = composerDriver.current();
+
     if (!composer) {
       return hostDocument.body;
     }
 
     if (button) {
       let commonAncestor: HTMLElement | null = composer;
+
       while (commonAncestor && !commonAncestor.contains(button)) {
         commonAncestor = commonAncestor.parentElement;
       }
+
       if (commonAncestor) {
         return commonAncestor;
       }
     }
 
     const boundary = context.composerBoundary(composer);
+
     return boundary ?? composer.parentElement ?? hostDocument.body;
   }
 

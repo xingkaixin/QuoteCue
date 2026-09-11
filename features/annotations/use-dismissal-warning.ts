@@ -9,6 +9,7 @@ const SHAKE_KEYFRAMES = [
   { transform: "translateX(6px)" },
   { transform: "translateX(0)" },
 ];
+
 const SHAKE_OPTIONS = {
   duration: 280,
   easing: "cubic-bezier(0.77, 0, 0.175, 1)",
@@ -38,20 +39,26 @@ export function useDismissalWarning({
     if (isDismissingRef.current) {
       return true;
     }
+
     if (!isDirtyRef.current || hasWarnedRef.current) {
       isDismissingRef.current = true;
       onDismissRef.current();
+
       return true;
     }
 
     hasWarnedRef.current = true;
+
     const shouldReduceMotion =
       typeof window.matchMedia === "function" &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
     if (!shouldReduceMotion) {
       rootRef.current?.animate(SHAKE_KEYFRAMES, SHAKE_OPTIONS);
     }
+
     requestAnimationFrame(focusEditor);
+
     return false;
   }, [focusEditor, rootRef]);
 

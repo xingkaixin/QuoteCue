@@ -25,9 +25,12 @@ export function DraftPersistenceStatus(props: DraftPersistenceStatusProps) {
   useEffect(() => {
     if (!isLoading) {
       setIsLoadingVisible(false);
+
       return;
     }
+
     const timer = window.setTimeout(() => setIsLoadingVisible(true), LOADING_DELAY_MS);
+
     return () => window.clearTimeout(timer);
   }, [isLoading]);
 

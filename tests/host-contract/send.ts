@@ -59,12 +59,15 @@ export function runSendHostContract(definition: HostContractDefinition) {
         sentText = availableValue(siteHost.composer.snapshot()).text;
         definition.appendUserMessage(sentText);
       });
+
       const annotation: DraftAnnotation = {
         anchor,
         comment: "Explain the tradeoff",
         id: "annotation-contract",
       };
+
       const onSendConfirmed = vi.fn();
+
       const interceptor = registerSendInterceptor({
         getSendInput: () => ({
           annotations: numberAnnotations([annotation]),
@@ -151,6 +154,7 @@ export function runSendHostContract(definition: HostContractDefinition) {
       fixture.sendControl.addEventListener("click", hostClick);
       const onSendConfirmed = vi.fn();
       const onStateChange = vi.fn();
+
       const interceptor = registerSendInterceptor({
         getSendInput: () => ({
           annotations: numberAnnotations([
@@ -167,6 +171,7 @@ export function runSendHostContract(definition: HostContractDefinition) {
         onChange: onStateChange,
         onSendConfirmed,
       });
+
       const composerText = availableValue(siteHost.composer.snapshot()).text;
       onStateChange.mockClear();
 

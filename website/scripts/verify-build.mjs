@@ -14,6 +14,7 @@ function occurrences(source, pattern) {
 function readStructuredData(html) {
   const match = html.match(/<script type="application\/ld\+json">(.+?)<\/script>/s);
   assert(match, "JSON-LD is missing");
+
   return JSON.parse(match[1]);
 }
 
@@ -65,6 +66,7 @@ for (const page of pages) {
   const umamiScripts = html.match(
     /<script\b[^>]*\bsrc="https:\/\/umami\.xingkaixin\.me\/script\.js"[^>]*><\/script>/g,
   );
+
   assert.equal(umamiScripts?.length, 1, `${page.path} must load Umami exactly once`);
   assert.match(umamiScripts[0], /\bdefer(?:\s|>)/);
   assert.match(umamiScripts[0], /data-website-id="7d43d6ea-7e27-4c6b-9037-917d977a9af3"/);
@@ -74,9 +76,11 @@ for (const page of pages) {
   const graph = structuredData["@graph"];
   assert(Array.isArray(graph), `${page.path} JSON-LD must use @graph`);
   const types = new Set(graph.map((entry) => entry["@type"]));
+
   for (const type of ["WebSite", "Organization", "SoftwareApplication", "WebPage", "FAQPage"]) {
     assert(types.has(type), `${page.path} is missing ${type} schema`);
   }
+
   const faq = graph.find((entry) => entry["@type"] === "FAQPage");
   assert.equal(faq.mainEntity.length, 5, `${page.path} FAQ schema must match visible questions`);
   const software = graph.find((entry) => entry["@type"] === "SoftwareApplication");
@@ -86,41 +90,65 @@ for (const page of pages) {
 }
 
 const notFound = await read("404.html");
+
 assert.match(notFound, /<meta name="robots" content="noindex, nofollow">/);
+
 assert.equal(occurrences(notFound, /<h1\b/g), 1);
 
 const sitemap = await read("sitemap.xml");
+
 assert.match(sitemap, /<loc>https:\/\/quotecue\.xingkaixin\.me\/<\/loc>/);
+
 assert.match(sitemap, /<loc>https:\/\/quotecue\.xingkaixin\.me\/en\/<\/loc>/);
+
 assert.match(sitemap, /<loc>https:\/\/quotecue\.xingkaixin\.me\/ja\/<\/loc>/);
+
 assert.equal(occurrences(sitemap, /<lastmod>2026-09-05<\/lastmod>/g), 3);
+
 assert.match(sitemap, /hreflang="x-default" href="https:\/\/quotecue\.xingkaixin\.me\/"/);
+
 assert.doesNotMatch(sitemap, /404/);
+
 assert.equal(occurrences(sitemap, /<url>/g), 3);
+
 assert.equal(occurrences(sitemap, /hreflang="x-default"/g), 3);
 
 const robots = await read("robots.txt");
+
 assert.match(robots, /^User-agent: \*\nAllow: \//);
+
 assert.match(robots, /Sitemap: https:\/\/quotecue\.xingkaixin\.me\/sitemap\.xml/);
 
 const manifest = JSON.parse(await read("site.webmanifest"));
+
 assert.equal(manifest.name, "QuoteCue");
+
 assert.equal(manifest.icons.length, 2);
 
 const headers = await read("_headers");
+
 assert.match(headers, /Content-Security-Policy:/);
+
 assert.match(headers, /static\.cloudflareinsights\.com/);
+
 assert.match(headers, /script-src[^;]* https:\/\/umami\.xingkaixin\.me(?:\s|;)/);
+
 assert.match(headers, /connect-src[^;]* https:\/\/umami\.xingkaixin\.me(?:\s|;)/);
+
 assert.doesNotMatch(headers, /no-transform/);
 
 const llms = await read("llms.txt");
+
 assert.match(llms, /^# QuoteCue/m);
+
 assert.match(llms, /## Privacy facts/);
+
 assert.match(llms, /## Latest product update/);
+
 assert.match(llms, /Version 0\.3\.2 was released on 2026-09-05/);
 
 const socialImage = await stat(new URL("og-cover.png", distUrl));
+
 assert(socialImage.size > 10_000, "Social preview image is unexpectedly small");
 
 console.log("Verified landing SEO, analytics, and deployment artifacts");

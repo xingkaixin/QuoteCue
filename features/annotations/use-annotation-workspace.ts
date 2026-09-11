@@ -14,6 +14,7 @@ import { useDeferredAnnotationDeletion } from "./use-deferred-annotation-deletio
 import { canMutateDraft, useDraftAnnotations } from "./use-draft-annotations";
 
 type SendController = ReturnType<typeof registerSendInterceptor>;
+
 type AnnotationEditorState =
   | { status: "hidden" }
   | { status: "quick" | "expanded"; annotation: DraftAnnotation };
@@ -22,6 +23,7 @@ export function useAnnotationWorkspace() {
   const host = useHost();
   const { locale } = useI18n();
   const conversationIdentity = useConversationIdentity();
+
   const {
     draft,
     capacityExceeded,
@@ -35,10 +37,12 @@ export function useAnnotationWorkspace() {
     discardRetainedDraft,
     retry,
   } = useDraftAnnotations(conversationIdentity);
+
   const annotations = draft.status === "loading" ? [] : draft.annotations;
   const isDraftMutable = canMutateDraft(draft);
   const [, notifySendChange] = useReducer((version: number) => version + 1, 0);
   const [editorState, setEditorState] = useState<AnnotationEditorState>({ status: "hidden" });
+
   const {
     discardPendingDeletions,
     pendingDeletionCount,
@@ -46,31 +50,40 @@ export function useAnnotationWorkspace() {
     requestDeletion,
     visibleAnnotations,
   } = useDeferredAnnotationDeletion(annotations, conversationIdentity, discardAnnotations);
+
   const actionableAnnotations = isDraftMutable ? visibleAnnotations : [];
   const activeAnnotation = editorState.status === "hidden" ? null : editorState.annotation;
   const activeAnnotationId = activeAnnotation?.id ?? null;
+
   const sourceRemoved =
     isDraftMutable &&
     activeAnnotation !== null &&
     !annotations.some(({ id }) => id === activeAnnotation.id);
+
   const preserveEditorProjection =
     draft.status !== "loading" && activeAnnotation !== null && (!isDraftMutable || sourceRemoved);
+
   const projections = useAnnotationProjection(
     preserveEditorProjection ? [...actionableAnnotations, activeAnnotation] : actionableAnnotations,
     activeAnnotationId,
   );
+
   const projectedAnnotations = projections.slice(0, actionableAnnotations.length);
+
   const activeProjection = projections.find(
     ({ annotation }) => annotation.id === activeAnnotationId,
   );
+
   const activeResolution = activeProjection?.resolution;
   const editorFrameRef = useRef<number | undefined>(undefined);
+
   const cancelPendingEditor = useCallback(() => {
     if (editorFrameRef.current !== undefined) {
       cancelAnimationFrame(editorFrameRef.current);
       editorFrameRef.current = undefined;
     }
   }, []);
+
   const closeEditor = useCallback(() => {
     cancelPendingEditor();
     setEditorState({ status: "hidden" });
@@ -87,9 +100,11 @@ export function useAnnotationWorkspace() {
     conversationIdentity,
     locale,
   });
+
   const removeConfirmedAnnotationsRef = useRef(removeConfirmedAnnotations);
   const sendControllerRef = useRef<SendController | null>(null);
   const requestSessionDismissalRef = useRef<(() => boolean) | null>(null);
+
   const bindEditorSession = useCallback((requestDismissal: (() => boolean) | null) => {
     requestSessionDismissalRef.current = requestDismissal;
   }, []);
@@ -106,18 +121,21 @@ export function useAnnotationWorkspace() {
         removeConfirmedAnnotationsRef.current(sentConversationIdentity, sentAnnotations);
       },
     });
+
     sendControllerRef.current = controller;
 
     return () => {
       if (sendControllerRef.current === controller) {
         sendControllerRef.current = null;
       }
+
       controller.dispose();
     };
   }, [host]);
 
   useEffect(() => {
     closeEditor();
+
     return cancelPendingEditor;
   }, [cancelPendingEditor, closeEditor, conversationIdentity, host]);
 
@@ -147,9 +165,11 @@ export function useAnnotationWorkspace() {
           anchor: selection.anchor,
           comment: "",
         };
+
         if (!addAnnotation(annotation)) {
           return;
         }
+
         setEditorState({ status: "quick", annotation });
         host.selection.clear();
       }),
@@ -161,9 +181,11 @@ export function useAnnotationWorkspace() {
       if (!activeAnnotation) {
         return;
       }
+
       const saved = sourceRemoved
         ? addAnnotation({ ...activeAnnotation, id: crypto.randomUUID(), comment })
         : updateAnnotation(activeAnnotation.id, comment);
+
       if (saved) {
         closeEditor();
       }
@@ -180,18 +202,23 @@ export function useAnnotationWorkspace() {
       ) {
         return;
       }
+
       replaceEditorSession(() => {
         const reveal = host.selection.reveal(projection.geometry.range);
+
         if (reveal.status === "unavailable") {
           return;
         }
 
         const showEditor = () =>
           setEditorState({ status: "expanded", annotation: projection.annotation });
+
         if (reveal.value === "visible") {
           showEditor();
+
           return;
         }
+
         editorFrameRef.current = requestAnimationFrame(() => {
           editorFrameRef.current = undefined;
           showEditor();
@@ -206,6 +233,7 @@ export function useAnnotationWorkspace() {
       if (!requestDeletion(annotationId)) {
         return;
       }
+
       if (activeAnnotationId === annotationId) {
         closeEditor();
       }
@@ -217,6 +245,7 @@ export function useAnnotationWorkspace() {
     if (!isDraftMutable) {
       return;
     }
+
     if (sourceRemoved) {
       closeEditor();
     } else if (activeAnnotation) {
@@ -228,6 +257,7 @@ export function useAnnotationWorkspace() {
     if (!discardAllAnnotations()) {
       return;
     }
+
     discardPendingDeletions();
     closeEditor();
   }, [closeEditor, discardAllAnnotations, discardPendingDeletions]);
@@ -237,9 +267,11 @@ export function useAnnotationWorkspace() {
       sendControllerRef.current?.submit();
     }
   }, []);
+
   const isRetainedDraftSending = retainedDraft
     ? sendControllerRef.current?.state(retainedDraft.conversationIdentity).status === "sending"
     : false;
+
   const restoreRetained = useCallback(() => {
     if (
       retainedDraft &&
@@ -248,6 +280,7 @@ export function useAnnotationWorkspace() {
       restoreRetainedDraft();
     }
   }, [retainedDraft, restoreRetainedDraft]);
+
   const discardRetained = useCallback(() => {
     if (
       retainedDraft &&
@@ -256,6 +289,7 @@ export function useAnnotationWorkspace() {
       discardRetainedDraft();
     }
   }, [discardRetainedDraft, retainedDraft]);
+
   return {
     draft: {
       capacityExceeded,

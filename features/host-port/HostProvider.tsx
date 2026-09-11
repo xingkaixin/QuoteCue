@@ -15,8 +15,10 @@ export function HostProvider({ children, host }: HostProviderProps) {
 
 export function useHost() {
   const host = useContext(HostContext);
+
   if (!host) {
     throw new Error("HostProvider is missing");
   }
+
   return host;
 }

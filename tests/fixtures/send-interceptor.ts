@@ -57,13 +57,16 @@ export function createInterceptor(
     onSendConfirmed,
   });
   onStateChange?.(interceptor.state(getConversationIdentity()));
+
   return interceptor;
 }
 
 export function availableComposer(host: Host) {
   const snapshot = host.composer.snapshot();
+
   if (snapshot.status === "unavailable") {
     throw new Error("Expected composer snapshot");
   }
+
   return snapshot.value;
 }

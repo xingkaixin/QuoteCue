@@ -16,18 +16,23 @@ import { createMemoryDraftStore } from "./fixtures/memory-draft-store";
 type AnnotationBadgeProps = ComponentProps<
   (typeof import("@/features/annotations/AnnotationBadge"))["AnnotationBadge"]
 >;
+
 type AnnotationEditorProps = ComponentProps<
   (typeof import("@/features/annotations/AnnotationEditor"))["AnnotationEditor"]
 >;
+
 type AnnotationQuickInputProps = ComponentProps<
   (typeof import("@/features/annotations/AnnotationQuickInput"))["AnnotationQuickInput"]
 >;
+
 type AnnotationSendControlProps = ComponentProps<
   (typeof import("@/features/annotations/AnnotationSendControl"))["AnnotationSendControl"]
 >;
+
 type AnnotationSummaryProps = ComponentProps<
   (typeof import("@/features/annotations/AnnotationSummary"))["AnnotationSummary"]
 >;
+
 type SelectionPresentationProps = ComponentProps<
   (typeof import("@/features/annotations/SelectionPresentation"))["SelectionPresentation"]
 >;
@@ -50,6 +55,7 @@ vi.mock("@/features/host/use-annotated-composer-layout", () => {
           }
         : null;
     };
+
   return { useAnnotatedComposerLayout };
 });
 
@@ -73,10 +79,13 @@ vi.mock("@/features/annotations/AnnotationQuickInput", () => ({
     useEffect(() => {
       bindSession(() => {
         onClose();
+
         return true;
       });
+
       return () => bindSession(null);
     }, [bindSession, onClose]);
+
     return (
       <div data-testid="quick-editor">
         <button data-testid="save-quick" onClick={() => onSave("saved comment")} type="button">
@@ -95,6 +104,7 @@ vi.mock("@/features/annotations/AnnotationEditor", () => ({
   // reused instance would keep the previous target's text.
   AnnotationEditor({ annotation, onCancel, onSave }: AnnotationEditorProps) {
     const [comment, setComment] = useState(annotation.comment);
+
     return (
       <div data-testid="expanded-editor">
         <input
@@ -141,6 +151,7 @@ vi.mock("@/features/annotations/AnnotationSummary", () => ({
           disabled={annotations.length === 0}
           onClick={() => {
             const first = annotations[0];
+
             if (first) {
               onRemove(first.annotation.id);
             }
@@ -211,6 +222,7 @@ afterEach(() => {
   document.body.replaceChildren();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+
   if (rangeRectsDescriptor) {
     Object.defineProperty(Range.prototype, "getClientRects", rangeRectsDescriptor);
   } else {
@@ -266,6 +278,7 @@ describe("App annotation workflow", () => {
 
   it("keeps drafts and routes the next send through retry after failure", async () => {
     const mounted = await mountApp();
+
     const submit = vi.spyOn(mounted.host.composer, "submit").mockResolvedValue({
       reason: "send-unavailable",
       status: "unavailable",
@@ -356,6 +369,7 @@ describe("App annotation workflow", () => {
     let confirmSubmit: (() => void) | undefined;
     vi.spyOn(mounted.host.composer, "submit").mockImplementation((options) => {
       pendingSubmit = options;
+
       return new Promise((resolve) => {
         confirmSubmit = () => resolve({ status: "available", value: "confirmed" });
       });
@@ -426,11 +440,13 @@ describe("App annotation workflow", () => {
         siteId: "chatgpt",
       }),
     );
+
     // Another context edits the sent annotation while the attempt is still in flight.
     const edited = cloneAnnotations(await loadStoredDrafts("conversation-a")).map((annotation) => ({
       ...annotation,
       comment: "edited after the send was compiled",
     }));
+
     await draftStore.mutate(
       identifiedConversation("conversation-a"),
       edited.map(({ comment, id }) => ({ kind: "update", annotationId: id, comment })),
@@ -480,18 +496,22 @@ async function loadStoredDrafts(id: string) {
 
 async function click(container: HTMLElement, testId: string) {
   const button = container.querySelector<HTMLButtonElement>(`[data-testid="${testId}"]`);
+
   if (!button) {
     throw new Error(`Missing ${testId}`);
   }
+
   await act(async () => button.click());
   await act(async () => nextFrame());
 }
 
 async function type(container: HTMLElement, testId: string, value: string) {
   const field = container.querySelector<HTMLInputElement>(`[data-testid="${testId}"]`);
+
   if (!field) {
     throw new Error(`Missing ${testId}`);
   }
+
   // React tracks the value property, so assigning it directly is treated as no change.
   const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
   await act(async () => {
@@ -502,17 +522,21 @@ async function type(container: HTMLElement, testId: string, value: string) {
 
 function summary(container: HTMLElement) {
   const element = container.querySelector<HTMLElement>('[data-testid="annotation-summary"]');
+
   if (!element) {
     throw new Error("Missing annotation summary");
   }
+
   return element;
 }
 
 function sendControl(container: HTMLElement) {
   const element = container.querySelector<HTMLElement>('[data-testid="send-annotations"]');
+
   if (!element) {
     throw new Error("Missing annotation send control");
   }
+
   return element;
 }
 
@@ -534,6 +558,7 @@ function createAppHost(): FakeHost {
   message.textContent = "A focused answer for the contract fixture.";
   document.body.append(message);
   host.controls.setMessageIndex(new Map([["assistant-one", message]]));
+
   return host;
 }
 

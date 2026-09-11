@@ -43,9 +43,11 @@ export function installDeepSeekHostFixture(): DeepSeekHostFixture {
 
   const assistantContent = requiredElement<HTMLElement>(".ds-assistant-message-main-content");
   const composer = requiredElement<HTMLTextAreaElement>('textarea[name="search"]');
+
   const sendButton = requiredElement<HTMLElement>(
     `.ds-button--circle:has(path[d="${DEEPSEEK_SEND_ICON_PATH}"])`,
   );
+
   const stopButton = requiredElement<HTMLElement>('[data-fixture="stop-control"]');
   const surface = requiredElement<HTMLElement>('[data-fixture="composer-surface"]');
   const thinkContent = requiredElement<HTMLElement>(".ds-think-content");
@@ -65,6 +67,7 @@ export function appendUserMessageItem(itemKey: string, text: string) {
   message.textContent = text;
   item.append(message);
   (document.querySelector("main") ?? document.body).append(item);
+
   return item;
 }
 
@@ -79,6 +82,7 @@ export function appendAssistantMessageItem(itemKey: string, text: string) {
   message.append(content);
   item.append(message);
   (document.querySelector("main") ?? document.body).append(item);
+
   return item;
 }
 

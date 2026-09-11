@@ -19,6 +19,7 @@ afterEach(() => {
 
 function LayoutProbe() {
   const layout = useAnnotatedComposerLayout(true);
+
   return (
     <output data-send-present={layout?.isSendControlPresent}>
       {layout
@@ -68,6 +69,7 @@ describe("useAnnotatedComposerLayout", () => {
       ),
     );
     const current = host.layout.current();
+
     if (current.status !== "available") throw new Error("Missing fixture layout");
     host.controls.setLayout({
       status: "available",
@@ -100,6 +102,7 @@ describe("useAnnotatedComposerLayout", () => {
       ),
     );
     measure.mockClear();
+
     for (let elapsed = 0; elapsed < 200; elapsed += 20) {
       await act(async () => {
         window.dispatchEvent(new Event("resize"));
@@ -131,11 +134,13 @@ describe("useAnnotatedComposerLayout", () => {
 
     const getComputedStyle = vi.spyOn(window, "getComputedStyle");
     const querySelector = vi.spyOn(document, "querySelector");
+
     for (let index = 0; index < 10; index += 1) {
       const node = document.createElement("div");
       document.body.append(node);
       await act(async () => vi.advanceTimersByTimeAsync(20));
     }
+
     await act(async () => vi.advanceTimersByTimeAsync(80));
 
     expect(querySelector).not.toHaveBeenCalled();

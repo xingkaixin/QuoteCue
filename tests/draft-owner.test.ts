@@ -14,9 +14,11 @@ import type { DraftOwnerRequest } from "@/features/annotations/draft-owner-proto
 const extensionStorage = vi.hoisted(() => {
   let values: Record<string, unknown> = {};
   const listeners = new Set<(changes: Record<string, unknown>, areaName: string) => void>();
+
   const changed = (keys: readonly string[]) => {
     if (keys.length > 0) {
       const changes = Object.fromEntries(keys.map((key) => [key, {}]));
+
       for (const listener of listeners) listener(changes, "local");
     }
   };
@@ -34,10 +36,12 @@ const extensionStorage = vi.hoisted(() => {
     }),
     remove: vi.fn(async (keys: string | string[]) => {
       const removed: string[] = [];
+
       for (const key of Array.isArray(keys) ? keys : [keys]) {
         if (key in values) removed.push(key);
         delete values[key];
       }
+
       changed(removed);
     }),
     onChanged: {
@@ -62,6 +66,7 @@ const extensionStorage = vi.hoisted(() => {
     },
   };
 });
+
 const sendMessage = vi.hoisted(() => vi.fn());
 
 vi.mock("wxt/browser", () => ({
@@ -77,6 +82,7 @@ const legacyKey = "askgpt:draft:A";
 const NOW = Date.UTC(2026, 6, 27);
 const DAY_MS = 24 * 60 * 60 * 1_000;
 const conversationA = { kind: "identified", id: "A", siteId: "chatgpt" } as const;
+
 const unmarkedAnchor = {
   messageId: "message-a",
   quote: "selected text",
@@ -85,19 +91,23 @@ const unmarkedAnchor = {
   start: 4,
   end: 17,
 };
+
 const unmarkedAnnotation = {
   id: "annotation-a",
   anchor: unmarkedAnchor,
   comment: "draft A",
 };
+
 const annotation: DraftAnnotation = {
   ...unmarkedAnnotation,
   anchor: { ...unmarkedAnchor, format: "exact" },
 };
+
 const legacyAnnotation: DraftAnnotation = {
   ...unmarkedAnnotation,
   anchor: { ...unmarkedAnchor, format: "legacy-rendered" },
 };
+
 const envelope = { version: 3, annotations: [annotation], updatedAt: NOW };
 const legacyEnvelope = { version: 3, annotations: [legacyAnnotation], updatedAt: NOW };
 let draftStore = createDraftOwner();
@@ -201,6 +211,7 @@ describe("draft storage", () => {
       ...annotation,
       id: `stored-${index}`,
     }));
+
     extensionStorage.reset({ [currentKey]: { ...envelope, annotations } });
     const runtime = createDraftRuntime(createDraftPersistence(createBrowserDraftStore()));
     const unsubscribe = runtime.subscribe(() => undefined);
@@ -226,6 +237,7 @@ describe("draft storage", () => {
       ...annotation,
       id: `stored-${index}`,
     }));
+
     extensionStorage.reset({ [currentKey]: { ...envelope, annotations: stored } });
     const runtime = createDraftRuntime(createDraftPersistence(createBrowserDraftStore()));
     const unsubscribe = runtime.subscribe(() => undefined);
@@ -483,15 +495,18 @@ describe("draft storage", () => {
       ...unmarkedAnnotation,
       anchor: { ...unmarkedAnchor, end: 9, quote: "alpha beta", start: 0 },
     };
+
     const migratedAnnotation = {
       ...renderedAnnotation,
       anchor: { ...renderedAnnotation.anchor, format: "legacy-rendered" },
     };
+
     const migratedEnvelope = {
       version: 3,
       annotations: [migratedAnnotation],
       updatedAt: NOW,
     };
+
     extensionStorage.reset({
       [currentKey]: { version: 1, annotations: [renderedAnnotation] },
     });
@@ -528,10 +543,12 @@ describe("draft storage", () => {
         quote: "alphabeta",
       },
     };
+
     const tableAnnotation: DraftAnnotation = {
       ...storedTableAnnotation,
       anchor: { ...storedTableAnnotation.anchor, format: "exact" },
     };
+
     const tableEnvelope = { version: 3, annotations: [tableAnnotation], updatedAt: NOW };
     extensionStorage.reset({
       [currentKey]: { version: 2, annotations: [storedTableAnnotation] },
@@ -618,6 +635,7 @@ describe("draft storage", () => {
       version: 2,
       annotations: [{ ...unmarkedAnnotation, anchor: { ...unmarkedAnchor, displayQuote: 42 } }],
     };
+
     extensionStorage.reset({ [currentKey]: malformedDisplayQuote });
     await expect(draftStore.load(conversationA)).resolves.toEqual({
       annotations: [],
@@ -629,6 +647,7 @@ describe("draft storage", () => {
       version: 3,
       annotations: [unmarkedAnnotation],
     };
+
     extensionStorage.reset({ [currentKey]: missingFormat });
     await expect(draftStore.load(conversationA)).resolves.toEqual({
       annotations: [],
@@ -643,10 +662,12 @@ describe("draft storage", () => {
       id: "unreadable",
       anchor: { ...unmarkedAnchor, format: "unknown" },
     };
+
     const storedEnvelope = {
       version: 3,
       annotations: [annotation, unreadableAnnotation],
     };
+
     extensionStorage.reset({ [currentKey]: storedEnvelope });
 
     await expect(draftStore.load(conversationA)).resolves.toMatchObject({
@@ -661,10 +682,12 @@ describe("draft storage", () => {
       id: "unreadable",
       anchor: { ...unmarkedAnchor, format: "unknown" },
     };
+
     const storedEnvelope = {
       version: 3,
       annotations: [annotation, unreadableAnnotation],
     };
+
     extensionStorage.reset({ [currentKey]: storedEnvelope });
 
     await expect(
@@ -685,10 +708,12 @@ describe("draft storage", () => {
       id: "unreadable",
       anchor: { ...unmarkedAnchor, format: "unknown" },
     };
+
     const storedEnvelope = {
       version: 3,
       annotations: [annotation, unreadableAnnotation],
     };
+
     extensionStorage.reset({ [currentKey]: storedEnvelope });
 
     await expect(
@@ -703,6 +728,7 @@ describe("draft storage", () => {
       id: "unreadable",
       anchor: { ...unmarkedAnchor, format: "unknown" },
     };
+
     extensionStorage.reset({
       [currentKey]: { version: 3, annotations: [annotation, unreadableAnnotation] },
     });
@@ -719,15 +745,18 @@ describe("draft storage", () => {
       id: "empty-message-id",
       anchor: { ...unmarkedAnchor, messageId: "" },
     };
+
     const emptyQuote = {
       ...unmarkedAnnotation,
       id: "empty-quote",
       anchor: { ...unmarkedAnchor, quote: "" },
     };
+
     const storedEnvelope = {
       version: 2,
       annotations: [emptyMessageId, unmarkedAnnotation, emptyQuote],
     };
+
     extensionStorage.reset({ [currentKey]: storedEnvelope });
 
     await expect(draftStore.load(conversationA)).resolves.toMatchObject({
@@ -790,6 +819,7 @@ describe("draft storage", () => {
         id: `annotation-${index}`,
       })),
     ];
+
     extensionStorage.reset({ [currentKey]: { ...envelope, annotations } });
 
     await expect(

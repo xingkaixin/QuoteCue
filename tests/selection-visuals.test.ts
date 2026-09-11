@@ -24,9 +24,11 @@ describe("selection visuals", () => {
       configurable: true,
       value: { highlights: { delete: removeHighlight, set: setHighlight } },
     });
+
     class FakeHighlight {
       constructor(readonly range: Range) {}
     }
+
     Object.defineProperty(window, "Highlight", {
       configurable: true,
       value: FakeHighlight,

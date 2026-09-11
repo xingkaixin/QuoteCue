@@ -35,6 +35,7 @@ export function InteractiveDemoEditor({
         onChange={(event) => onChange(event.target.value)}
         onKeyDown={(event) => {
           if (event.key === "Escape") onCancel();
+
           if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) onSave();
         }}
         placeholder={copy.optionalComment}

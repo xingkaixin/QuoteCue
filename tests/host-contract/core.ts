@@ -20,10 +20,12 @@ export function runCoreHostContract(definition: HostContractDefinition) {
 
     it("identifies supported conversation paths and marks unmatched paths unidentified", () => {
       const siteHost = host();
+
       const matchedPaths = [
         definition.conversation.matchedPath,
         ...(definition.conversation.additionalMatchedPaths ?? []),
       ];
+
       for (const path of matchedPaths) {
         window.history.replaceState({}, "", path);
         expect(siteHost.conversation.identity("session-contract")).toEqual({
@@ -208,6 +210,7 @@ export function runCoreHostContract(definition: HostContractDefinition) {
         signal: controller.signal,
         text: "Replacement question",
       });
+
       controller.abort();
 
       await expect(result).resolves.toEqual({
@@ -243,13 +246,16 @@ export function runCoreHostContract(definition: HostContractDefinition) {
       const siteHost = host();
       definition.setSendDisabled(fixture.sendControl, false);
       let notifyDispatched: () => void = () => undefined;
+
       const dispatched = new Promise<void>((resolve) => {
         notifyDispatched = resolve;
       });
+
       fixture.sendControl.addEventListener("click", () => {
         definition.appendAssistantMessage("first \n second");
         notifyDispatched();
       });
+
       const result = siteHost.composer.submit({
         restoreTo: availableValue(siteHost.composer.snapshot()),
         signal: new AbortController().signal,
@@ -274,13 +280,16 @@ export function runCoreHostContract(definition: HostContractDefinition) {
       definition.setSendDisabled(fixture.sendControl, false);
       let userMessage: HTMLElement | null = null;
       let notifyDispatched: () => void = () => undefined;
+
       const dispatched = new Promise<void>((resolve) => {
         notifyDispatched = resolve;
       });
+
       fixture.sendControl.addEventListener("click", () => {
         userMessage = definition.appendUserMessage("pending");
         notifyDispatched();
       });
+
       const result = siteHost.composer.submit({
         restoreTo: availableValue(siteHost.composer.snapshot()),
         signal: new AbortController().signal,

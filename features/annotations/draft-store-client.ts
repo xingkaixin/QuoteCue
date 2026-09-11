@@ -15,12 +15,15 @@ export function createBrowserDraftStore(): DraftStore {
   return {
     subscribe(conversation, onChanged) {
       const key = scopedDraftStorageKey(conversation);
+
       const changed = (changes: Record<string, unknown>, areaName: string) => {
         if (areaName === "local" && Object.hasOwn(changes, key)) {
           onChanged();
         }
       };
+
       browser.storage.onChanged.addListener(changed);
+
       return () => browser.storage.onChanged.removeListener(changed);
     },
     load: async (conversation) => {
@@ -29,9 +32,11 @@ export function createBrowserDraftStore(): DraftStore {
         kind: "load",
         conversation,
       });
+
       if (response.kind !== "loaded") {
         throw new Error("Draft owner returned a response for the wrong operation");
       }
+
       return response.draft;
     },
     mutate: async (conversation, mutations) => {
@@ -41,9 +46,11 @@ export function createBrowserDraftStore(): DraftStore {
         conversation,
         mutations,
       });
+
       if (response.kind !== "mutated") {
         throw new Error("Draft owner returned a response for the wrong operation");
       }
+
       return response.result;
     },
   };
@@ -51,11 +58,14 @@ export function createBrowserDraftStore(): DraftStore {
 
 async function request(message: DraftOwnerRequest): Promise<DraftOwnerSuccessResponse> {
   const response: unknown = await browser.runtime.sendMessage(message);
+
   if (!isDraftOwnerResponse(response)) {
     throw new Error("Draft owner returned an unexpected response");
   }
+
   if (response.kind === "error") {
     throw new Error(response.message);
   }
+
   return response;
 }

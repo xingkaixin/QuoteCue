@@ -30,13 +30,16 @@ export function useAnnotationCommentSurface({
   const rootRef = useRef<HTMLDivElement>(null);
   const fieldRef = useRef<SecureTextFieldHandle>(null);
   const focusEditor = useCallback(() => fieldRef.current?.focus(), []);
+
   const { requestDismissal, resetWarning } = useDismissalWarning({
     focusEditor,
     isDirty: comment !== initialComment,
     onDismiss,
     rootRef,
   });
+
   const position = useAnnotationEditorPosition(rect, rootRef, size);
+
   const changeComment = useCallback(
     (value: string) => {
       resetWarning();
@@ -44,6 +47,7 @@ export function useAnnotationCommentSurface({
     },
     [resetWarning],
   );
+
   const saveValue = useCallback((value: string) => onSave(value.trim()), [onSave]);
   const saveComment = useCallback(() => fieldRef.current?.save(), []);
 
@@ -53,6 +57,7 @@ export function useAnnotationCommentSurface({
   // so switching runs through the same dismissal decision as any other outside interaction.
   useEffect(() => {
     bindSession(requestDismissal);
+
     return () => bindSession(null);
   }, [bindSession, requestDismissal]);
 

@@ -4,8 +4,10 @@ import { DRAFT_OWNER_MESSAGE } from "@/features/annotations/draft-owner-protocol
 import { createBrowserDraftStore } from "@/features/annotations/draft-store-client";
 
 const sendMessage = vi.hoisted(() => vi.fn());
+
 const storageChanges = vi.hoisted(() => {
   const listeners = new Set<(changes: Record<string, unknown>, areaName: string) => void>();
+
   return {
     addListener: vi.fn((listener: (changes: Record<string, unknown>, areaName: string) => void) =>
       listeners.add(listener),

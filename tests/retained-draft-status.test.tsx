@@ -12,6 +12,7 @@ it("requires discard confirmation and reserves failed restoration for retry", as
   const root = createRoot(container);
   const onRestore = vi.fn();
   const onDiscard = vi.fn();
+
   const render = (
     status: RetainedDraftState["status"],
     isSending = false,
@@ -32,6 +33,7 @@ it("requires discard confirmation and reserves failed restoration for retry", as
         />,
       ),
     );
+
   try {
     await render("retained", true);
     const [restore, discard] = [...container.querySelectorAll("button")];

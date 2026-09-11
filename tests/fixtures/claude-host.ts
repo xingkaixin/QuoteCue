@@ -60,6 +60,7 @@ export function enableClaudeSend(onSend: (text: string) => void) {
     const composer = requiredElement<HTMLElement>('[data-testid="chat-input"]');
     onSend(composer.innerText);
   });
+
   return sendButton;
 }
 
@@ -84,6 +85,7 @@ export function appendClaudeUserMessage(index: number, text: string) {
   message.append(content);
   wrapper.append(message);
   (document.querySelector("main") ?? document.body).append(wrapper);
+
   return message;
 }
 
@@ -95,6 +97,7 @@ export function appendClaudeAssistantMessage(index: number, text: string) {
   message.textContent = text;
   wrapper.append(message);
   (document.querySelector("main") ?? document.body).append(wrapper);
+
   return message;
 }
 
@@ -109,6 +112,7 @@ export function appendClaudeSelectionToolbar(rect = new DOMRect(100, 150, 72, 34
   toolbar.append(actionRow);
   setElementRect(toolbar, rect);
   document.body.append(toolbar);
+
   return { actionRow, replyButton };
 }
 

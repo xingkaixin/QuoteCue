@@ -31,6 +31,7 @@ export default defineBackground(() => {
         } satisfies DraftOwnerResponse);
       },
     );
+
     return true;
   });
 });

@@ -16,6 +16,7 @@ type TooltipContentProps = ComponentProps<typeof TooltipPrimitive.Popup> & {
 
 export function TooltipContent({ children, className, ...props }: TooltipContentProps) {
   const container = usePortalContainer();
+
   return (
     <TooltipPrimitive.Portal container={container}>
       <TooltipPrimitive.Positioner sideOffset={7} style={{ zIndex: Z_LAYER.tooltip }}>

@@ -38,6 +38,7 @@ afterEach(() => {
 describe("ChatGPT host contract", () => {
   it("mounts a delayed native-styled first action without localized text", async () => {
     const onActivate = vi.fn();
+
     const stop = requiredNativeAction(createChatGptHost({ document, window })).mount({
       label: "Add QuoteCue annotation",
       onActivate,
@@ -50,6 +51,7 @@ describe("ChatGPT host contract", () => {
         width: 260,
       },
     });
+
     const { actionRow, firstAction } = appendSelectionToolbar();
     await nextFrame();
 
@@ -70,6 +72,7 @@ describe("ChatGPT host contract", () => {
     const nativeRequestAnimationFrame = window.requestAnimationFrame.bind(window);
     const requestAnimationFrame = vi.spyOn(window, "requestAnimationFrame");
     const getComputedStyle = vi.spyOn(window, "getComputedStyle");
+
     const stop = requiredNativeAction(createChatGptHost({ document, window })).mount({
       label: "Add QuoteCue annotation",
       onActivate: vi.fn(),
@@ -82,6 +85,7 @@ describe("ChatGPT host contract", () => {
         width: 260,
       },
     });
+
     getComputedStyle.mockClear();
 
     const { actionRow } = appendSelectionToolbar();
@@ -105,6 +109,7 @@ describe("ChatGPT host contract", () => {
 
   it("finds the native toolbar after block and inline position fallbacks", () => {
     const { actionRow } = appendSelectionToolbar(new DOMRect(768, 49, 196, 36));
+
     const stop = requiredNativeAction(createChatGptHost({ document, window })).mount({
       label: "Add QuoteCue annotation",
       onActivate: vi.fn(),
@@ -151,13 +156,16 @@ describe("ChatGPT host contract", () => {
     const start = walker.nextNode();
     let end = start;
     let node = walker.nextNode();
+
     while (node) {
       end = node;
       node = walker.nextNode();
     }
+
     if (!start || !end) {
       throw new Error("Expected structured selection text");
     }
+
     const range = document.createRange();
     range.setStart(start, 0);
     range.setEnd(end, end.textContent?.length ?? 0);
@@ -167,6 +175,7 @@ describe("ChatGPT host contract", () => {
     const captured = host.selection.capture();
     selectionTextSpy.mockRestore();
     expect(captured.status).toBe("available");
+
     if (captured.status === "unavailable") {
       return;
     }
@@ -186,9 +195,11 @@ describe("ChatGPT host contract", () => {
     const fixture = installChatGptHostFixture();
     fixture.assistantMessage.innerHTML = "<p>  alpha  </p>";
     const text = fixture.assistantMessage.querySelector("p")?.firstChild;
+
     if (!text) {
       throw new Error("Expected selection text with surrounding whitespace");
     }
+
     const range = document.createRange();
     range.selectNodeContents(text);
     const selectionTextSpy = selectRangeWithRenderedText(range, "  alpha  ");
@@ -197,6 +208,7 @@ describe("ChatGPT host contract", () => {
     const captured = host.selection.capture();
     selectionTextSpy.mockRestore();
     expect(captured.status).toBe("available");
+
     if (captured.status === "unavailable") {
       return;
     }
@@ -231,6 +243,7 @@ describe("ChatGPT host contract", () => {
 
     const stopLayoutObservation = host.layout.subscribe(vi.fn());
     const stopSelectionObservation = host.selection.observeInvalidation(vi.fn());
+
     const stopActionObservation = requiredNativeAction(host).mount({
       label: "Add QuoteCue annotation",
       onActivate: vi.fn(),
@@ -252,6 +265,7 @@ describe("ChatGPT host contract", () => {
 
   it("keeps resize updates active for every layout subscriber", async () => {
     const observers: TestResizeObserver[] = [];
+
     class TestResizeObserver {
       private active = false;
 
@@ -273,6 +287,7 @@ describe("ChatGPT host contract", () => {
         this.active = true;
       }
     }
+
     vi.stubGlobal("ResizeObserver", TestResizeObserver);
     installChatGptHostFixture();
     const host = createChatGptHost({ document, window });
@@ -284,9 +299,11 @@ describe("ChatGPT host contract", () => {
     secondSubscriber.mockClear();
 
     expect(observers).toHaveLength(1);
+
     for (const observer of observers) {
       observer.emit();
     }
+
     await vi.waitFor(() => expect(firstSubscriber).toHaveBeenCalledOnce());
     expect(firstSubscriber).toHaveBeenCalledOnce();
     expect(secondSubscriber).toHaveBeenCalledOnce();
@@ -294,18 +311,22 @@ describe("ChatGPT host contract", () => {
     stopFirst();
     firstSubscriber.mockClear();
     secondSubscriber.mockClear();
+
     for (const observer of observers) {
       observer.emit();
     }
+
     await vi.waitFor(() => expect(secondSubscriber).toHaveBeenCalledOnce());
     expect(firstSubscriber).not.toHaveBeenCalled();
     expect(secondSubscriber).toHaveBeenCalledOnce();
     stopSecond();
 
     secondSubscriber.mockClear();
+
     for (const observer of observers) {
       observer.emit();
     }
+
     expect(secondSubscriber).not.toHaveBeenCalled();
   });
 
@@ -313,6 +334,7 @@ describe("ChatGPT host contract", () => {
     document.body.innerHTML = "<main></main>";
     const logs: string[] = [];
     const host = createChatGptHost({ document, logger: (message) => logs.push(message), window });
+
     const privateAnnotation: DraftAnnotation = {
       id: "private-annotation",
       anchor: {
@@ -326,7 +348,9 @@ describe("ChatGPT host contract", () => {
       },
       comment: "private comment",
     };
+
     const onStateChange = vi.fn();
+
     const interceptor = registerSendInterceptor({
       getSendInput: () => ({
         annotations: numberAnnotations([privateAnnotation]),
@@ -357,6 +381,7 @@ describe("ChatGPT host contract", () => {
 
 function LayoutProbe() {
   const layout = useAnnotatedComposerLayout(true);
+
   return (
     <output>
       {layout
@@ -368,11 +393,14 @@ function LayoutProbe() {
 
 function selectRangeWithRenderedText(range: Range, renderedText: string) {
   const selection = window.getSelection();
+
   if (!selection) {
     throw new Error("Expected a document selection");
   }
+
   selection.removeAllRanges();
   selection.addRange(range);
+
   return vi.spyOn(selection, "toString").mockReturnValue(renderedText);
 }
 

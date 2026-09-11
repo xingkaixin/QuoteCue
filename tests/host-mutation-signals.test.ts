@@ -21,16 +21,19 @@ describe("host mutation signals", () => {
     const host = createChatGptHost({ document, window });
     const stop = host.selection.observeInvalidation(() => undefined);
     const counters = installCounters();
+
     const unrelated = Array.from({ length: 100 }, () => {
       const node = document.createElement("div");
       node.className = "host-popover";
       document.body.append(node);
+
       return node;
     });
 
     for (const node of unrelated) {
       node.remove();
     }
+
     await flushMutations();
 
     expect(counters.messageScans()).toBe(0);
@@ -74,6 +77,7 @@ describe("host mutation signals", () => {
     const { messages } = installMessages(3);
     const host = createChatGptHost({ document, window });
     const invalidations: string[] = [];
+
     const stop = host.selection.observeInvalidation((invalidation) => {
       invalidations.push(invalidation.reason);
     });
@@ -85,9 +89,11 @@ describe("host mutation signals", () => {
     invalidations.length = 0;
 
     const text = replacement.firstChild;
+
     if (text) {
       text.textContent = "streamed answer";
     }
+
     await flushMutations();
 
     expect(invalidations).toContain("content");
@@ -114,7 +120,9 @@ function installMessages(count: number) {
   const messages = Array.from({ length: count }, (_, index) =>
     appendAssistantMessage(`message-${index}`, `answer ${index}`),
   );
+
   appendUserMessage("user-0", "question");
+
   return { messages };
 }
 
@@ -122,6 +130,7 @@ function installCounters() {
   const querySelectorAll = vi.spyOn(document, "querySelectorAll");
   const disconnect = vi.spyOn(MutationObserver.prototype, "disconnect");
   const observe = vi.spyOn(MutationObserver.prototype, "observe");
+
   return {
     disconnects: () => disconnect.mock.calls.length,
     messageScans: () =>

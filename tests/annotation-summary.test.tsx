@@ -57,9 +57,11 @@ describe("AnnotationSummary", () => {
     expect(container.textContent).toContain("selected text");
     expect(container.textContent).not.toContain("User comment:");
     expect(container.textContent).not.toContain("No comment added");
+
     const editButton = container.querySelector<HTMLButtonElement>(
       '[aria-label="Edit annotation 1"]',
     );
+
     expect(editButton?.type).toBe("button");
     expect(editButton?.disabled).toBe(false);
     expect(document.activeElement).not.toBe(editButton);
@@ -72,6 +74,7 @@ describe("AnnotationSummary", () => {
 
   it("shows the comment section only when the annotation has content", async () => {
     const commentedAnnotation = { ...annotation, comment: "Make this more specific" };
+
     const { container, root, summary } = await mountSummary({
       annotations: projectAnnotations([commentedAnnotation]),
     });
@@ -87,9 +90,11 @@ describe("AnnotationSummary", () => {
   it("keeps the popover and focus when the pointer leaves a focused control", async () => {
     const { container, root, summary } = await mountSummary();
     await hover(summary);
+
     const editButton = container.querySelector<HTMLButtonElement>(
       '[aria-label="Edit annotation 1"]',
     );
+
     await act(async () => editButton?.focus());
     await leave(summary);
     expect(container.querySelector('[role="dialog"]')).not.toBeNull();
@@ -115,6 +120,7 @@ describe("AnnotationSummary", () => {
       ...annotation,
       anchor: { ...annotation.anchor, displayQuote: "alpha beta", quote: "alphabeta" },
     };
+
     const { container, root, summary } = await mountSummary({
       annotations: projectAnnotations([tableAnnotation]),
     });
@@ -131,6 +137,7 @@ describe("AnnotationSummary", () => {
     const onEdit = vi.fn();
     const { container, root, summary } = await mountSummary({ onEdit });
     const countButton = findCountButton(container);
+
     const clearButton = container.querySelector<HTMLButtonElement>(
       '[aria-label="Clear all annotations"]',
     );
@@ -148,6 +155,7 @@ describe("AnnotationSummary", () => {
     const editButton = container.querySelector<HTMLButtonElement>(
       '[aria-label="Edit annotation 1"]',
     );
+
     expect(editButton).not.toBeNull();
     expect(editButton?.tabIndex).toBe(0);
     await act(async () => editButton?.click());
@@ -169,6 +177,7 @@ describe("AnnotationSummary", () => {
 
   it("keeps deletion and clear controls enabled while an undo batch is pending", async () => {
     const onRemove = vi.fn();
+
     const mounted = await mountSummary({
       annotations: projectAnnotations([annotation, secondAnnotation]),
       onRemove,
@@ -176,9 +185,11 @@ describe("AnnotationSummary", () => {
     });
 
     await hover(mounted.summary);
+
     const deleteButtons = Array.from(
       mounted.container.querySelectorAll<HTMLButtonElement>('[aria-label^="Delete annotation"]'),
     );
+
     const clearButton = mounted.container.querySelector<HTMLButtonElement>(
       '[aria-label="Clear all annotations"]',
     );
@@ -240,14 +251,17 @@ describe("AnnotationSummary", () => {
     const clearButton = mounted.container.querySelector<HTMLButtonElement>(
       '[aria-label="Clear all annotations"]',
     );
+
     await act(async () => clearButton?.click());
     expect(onClear).not.toHaveBeenCalled();
     expect(mounted.container.querySelector('[role="status"]')?.textContent).toContain(
       "Click again to confirm",
     );
+
     const confirmButton = mounted.container.querySelector<HTMLButtonElement>(
       '[aria-label="Confirm clearing all annotations"]',
     );
+
     await act(async () => confirmButton?.click());
     expect(onClear).toHaveBeenCalledOnce();
 
@@ -262,9 +276,11 @@ describe("AnnotationSummary", () => {
     await hover(summary);
 
     expect(container.textContent).toContain("Source position changed");
+
     const editButton = container.querySelector<HTMLButtonElement>(
       '[aria-label="Edit annotation 1"]',
     );
+
     expect(editButton?.disabled).toBe(true);
     expect(document.activeElement).not.toBe(
       container.querySelector('[aria-label="Delete annotation 1"]'),
@@ -310,6 +326,7 @@ async function mountSummary(overrides: Partial<SummaryProps> = {}) {
   const container = document.createElement("div");
   document.body.append(container);
   const root = createRoot(container);
+
   const baseProps: SummaryProps = {
     annotations: projectAnnotations([annotation]),
     onClear: vi.fn(),
@@ -321,6 +338,7 @@ async function mountSummary(overrides: Partial<SummaryProps> = {}) {
     position: { left: 10, top: 10 },
     ...overrides,
   };
+
   let currentProps = baseProps;
 
   await act(async () => root.render(<AnnotationSummary {...currentProps} />));
@@ -350,6 +368,7 @@ function projectAnnotation(
   if (!isResolved) {
     return { annotation: item, ordinal, resolution: "unresolved" };
   }
+
   return {
     annotation: item,
     geometry: {

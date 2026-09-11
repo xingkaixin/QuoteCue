@@ -20,6 +20,7 @@ export function useVisualViewportBounds() {
     window.visualViewport?.addEventListener("resize", updateBounds);
     window.visualViewport?.addEventListener("scroll", updateBounds);
     updateBounds();
+
     return () => {
       window.removeEventListener("resize", updateBounds);
       window.visualViewport?.removeEventListener("resize", updateBounds);
@@ -32,6 +33,7 @@ export function useVisualViewportBounds() {
 
 export function currentVisualViewportBounds(sourceWindow: Window = window): VisualViewportBounds {
   const viewport = sourceWindow.visualViewport;
+
   return viewport
     ? {
         height: viewport.height,

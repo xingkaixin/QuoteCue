@@ -16,8 +16,10 @@ export function PortalContainerProvider({
 
 export function usePortalContainer() {
   const container = useContext(PortalContainerContext);
+
   if (!container) {
     throw new Error("QuoteCue portal container is unavailable");
   }
+
   return container;
 }

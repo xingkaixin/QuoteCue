@@ -31,9 +31,11 @@ export function isDraftOwnerRequest(value: unknown): value is DraftOwnerRequest 
   ) {
     return false;
   }
+
   if (value.kind === "load") {
     return true;
   }
+
   return (
     value.kind === "mutate" &&
     Array.isArray(value.mutations) &&
@@ -46,6 +48,7 @@ export function isDraftOwnerResponse(value: unknown): value is DraftOwnerRespons
   if (!isRecord(value)) {
     return false;
   }
+
   switch (value.kind) {
     case "loaded":
       return isDraftSnapshot(value.draft);
@@ -62,6 +65,7 @@ function isDraftMutationResult(value: unknown): value is DraftMutationResult {
   if (!isRecord(value)) {
     return false;
   }
+
   return (
     (value.status === "ok" ||
       (value.status === "rejected" &&
@@ -92,6 +96,7 @@ function isDraftMutation(value: unknown): value is DraftMutation {
   if (!isRecord(value)) {
     return false;
   }
+
   switch (value.kind) {
     case "add":
       return isDraftAnnotation(value.annotation);

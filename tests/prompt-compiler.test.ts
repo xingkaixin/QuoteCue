@@ -32,7 +32,9 @@ const annotations: DraftAnnotation[] = [
     comment: "有没有真实的迁移成本数据？",
   },
 ];
+
 const firstAnnotation = annotations[0];
+
 if (!firstAnnotation) {
   throw new Error("Missing prompt annotation fixture");
 }

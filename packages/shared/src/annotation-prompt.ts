@@ -19,9 +19,12 @@ export function compileAnnotationPrompt(
 ) {
   const annotationSections = annotations.map(({ comment, ordinal, selectedText }) => {
     const commentLine = comment ? `\n${messages.comment}${comment}` : "";
+
     return `${messages.annotation(ordinal)}\n${messages.selectedText}${selectedText}${commentLine}`;
   });
+
   const trimmedPrompt = userPrompt.trim();
+
   const supplementalQuestionSection =
     trimmedPrompt.length > 0 ? `${messages.supplementalQuestion}\n${trimmedPrompt}` : "";
 

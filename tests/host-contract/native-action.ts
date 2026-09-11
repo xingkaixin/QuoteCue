@@ -13,6 +13,7 @@ export function runNativeActionHostContract(definition: HostContractDefinition) 
       "mounts a delayed native selection action",
       async () => {
         const siteHost = host();
+
         const stop = requiredNativeAction(siteHost).mount({
           label: "Add QuoteCue annotation",
           onActivate: vi.fn(),
@@ -32,6 +33,7 @@ export function runNativeActionHostContract(definition: HostContractDefinition) 
       async () => {
         const nativeRequestAnimationFrame = window.requestAnimationFrame.bind(window);
         const requestAnimationFrame = vi.spyOn(window, "requestAnimationFrame");
+
         const stop = requiredNativeAction(host()).mount({
           label: "Add QuoteCue annotation",
           onActivate: vi.fn(),
@@ -61,6 +63,7 @@ export function runNativeActionHostContract(definition: HostContractDefinition) 
         vi.spyOn(window.performance, "now").mockImplementation(() => now);
         const nativeRequestAnimationFrame = window.requestAnimationFrame.bind(window);
         const requestAnimationFrame = vi.spyOn(window, "requestAnimationFrame");
+
         const stop = requiredNativeAction(host()).mount({
           label: "Add QuoteCue annotation",
           onActivate: vi.fn(),
@@ -86,6 +89,7 @@ export function runNativeActionHostContract(definition: HostContractDefinition) 
       () => {
         const { actionRow } =
           definition.installSelectionToolbar?.(new DOMRect(768, 49, 196, 36)) ?? missingToolbar();
+
         const stop = requiredNativeAction(host()).mount({
           label: "Add QuoteCue annotation",
           onActivate: vi.fn(),
@@ -103,6 +107,7 @@ export function runNativeActionHostContract(definition: HostContractDefinition) 
         stop();
       },
     );
+
     function host() {
       return definition.createHost({ document, window });
     }

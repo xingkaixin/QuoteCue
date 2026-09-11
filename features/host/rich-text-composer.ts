@@ -14,19 +14,24 @@ export function pasteFirstDomFallbackComposer(
     selector,
     write(composer, text, environment) {
       selectComposerContents(composer, environment);
+
       if (dispatchSyntheticPaste(composer, text)) {
         environment.logger?.("[QuoteCue host] composer paste replacement accepted");
+
         return true;
       }
+
       if (
         typeof environment.document.execCommand === "function" &&
         environment.document.execCommand("insertText", false, text)
       ) {
         const isSynced = normalize(readRenderedText(composer)) === normalize(text);
         environment.logger?.(`[QuoteCue host] composer command replacement: synced=${isSynced}`);
+
         if (!isSynced) {
           logMismatch("command", composer, text, environment, normalize);
         }
+
         return true;
       }
 
@@ -38,9 +43,11 @@ export function pasteFirstDomFallbackComposer(
       );
       const isReplaced = normalize(readRenderedText(composer)) === normalize(text);
       environment.logger?.(`[QuoteCue host] composer fallback replacement: matched=${isReplaced}`);
+
       if (!isReplaced) {
         logMismatch("fallback", composer, text, environment, normalize);
       }
+
       return isReplaced;
     },
   };
@@ -58,8 +65,10 @@ function dispatchSyntheticPaste(composer: HTMLElement, text: string) {
   if (typeof ClipboardEvent !== "function" || typeof DataTransfer !== "function") {
     return false;
   }
+
   const clipboardData = new DataTransfer();
   clipboardData.setData("text/plain", text);
+
   return !composer.dispatchEvent(
     new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData }),
   );
@@ -75,6 +84,7 @@ function logMismatch(
   if (!environment.logger) {
     return;
   }
+
   const actual = normalize(readRenderedText(composer));
   const expected = normalize(expectedText);
   const compact = (value: string) => value.replace(/\s/g, "");

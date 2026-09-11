@@ -17,6 +17,7 @@ export default function App() {
   const isSendControlVisible = summary.isVisible || hasSendFeedback;
   const composerLayout = useAnnotatedComposerLayout(isSendControlVisible);
   const activeProjection = editor.projection;
+
   const isRetainedDraftVisible =
     retainedDraft.state !== null &&
     selection.conversationIdentity.kind === "identified" &&
@@ -83,7 +84,9 @@ export default function App() {
           if (projection.resolution !== "resolved") {
             return null;
           }
+
           const position = projection.geometry.badge;
+
           return position ? (
             <AnnotationBadge
               entry={projection}

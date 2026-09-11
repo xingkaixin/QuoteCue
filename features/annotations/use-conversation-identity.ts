@@ -6,6 +6,7 @@ import { sameConversationIdentity } from "@/features/conversation/conversation-i
 
 export function useConversationIdentity() {
   const host = useHost();
+
   const [conversationIdentity, setConversationIdentity] = useState(() =>
     host.conversation.identity(crypto.randomUUID()),
   );
@@ -20,8 +21,10 @@ export function useConversationIdentity() {
           : nextIdentity;
       });
     };
+
     const unsubscribe = host.conversation.subscribe(refresh);
     refresh();
+
     return unsubscribe;
   }, [host]);
 

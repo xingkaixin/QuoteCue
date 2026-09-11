@@ -25,29 +25,37 @@ export function useAnnotationEditorPosition(
 
   useLayoutEffect(() => {
     let refreshFrame: number | undefined;
+
     const refresh = () => {
       refreshFrame = undefined;
       const elementRect = elementRef.current?.getBoundingClientRect();
+
       const nextSize = {
         height: elementRect?.height || fallbackSize.height,
         width: elementRect?.width || fallbackSize.width,
       };
+
       setSize((current) => (sameSize(current, nextSize) ? current : nextSize));
     };
+
     const scheduleRefresh = () => {
       if (refreshFrame === undefined) {
         refreshFrame = requestAnimationFrame(refresh);
       }
     };
+
     const resizeObserver =
       typeof ResizeObserver === "undefined" ? null : new ResizeObserver(scheduleRefresh);
 
     if (elementRef.current) {
       resizeObserver?.observe(elementRef.current);
     }
+
     refresh();
+
     return () => {
       resizeObserver?.disconnect();
+
       if (refreshFrame !== undefined) {
         cancelAnimationFrame(refreshFrame);
       }

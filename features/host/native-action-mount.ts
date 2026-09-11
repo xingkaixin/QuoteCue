@@ -5,6 +5,7 @@ import type { HostContext } from "./host-context";
 import type { SelectionToolbarBounds } from "./site-adapter";
 
 const NATIVE_ACTION_DISCOVERY_WINDOW_MS = 2_000;
+
 const DEFAULT_SELECTION_TOOLBAR_BOUNDS: SelectionToolbarBounds = {
   maxHeight: 80,
   maxVerticalDistance: 24,
@@ -34,21 +35,26 @@ export function createNativeActionMount(
       event.preventDefault();
       event.stopImmediatePropagation();
     };
+
     const removeAction = () => {
       action?.remove();
       action = null;
     };
+
     const stopDiscovery = () => {
       stopObserving();
+
       if (discoveryTimer !== undefined) {
         hostWindow.clearTimeout(discoveryTimer);
         discoveryTimer = undefined;
       }
+
       if (insertFrame !== null) {
         hostWindow.cancelAnimationFrame(insertFrame);
         insertFrame = null;
       }
     };
+
     const insertAction = () => {
       if (action?.isConnected) {
         return;
@@ -56,6 +62,7 @@ export function createNativeActionMount(
 
       const toolbar = selectionToolbar(options.rect);
       const sourceAction = toolbar?.querySelector<HTMLButtonElement>("button");
+
       if (!toolbar || !sourceAction) {
         return;
       }
@@ -74,6 +81,7 @@ export function createNativeActionMount(
       });
       toolbar.prepend(action);
     };
+
     const scheduleInsert = () => {
       if (
         action?.isConnected ||
@@ -82,11 +90,13 @@ export function createNativeActionMount(
       ) {
         return;
       }
+
       insertFrame = hostWindow.requestAnimationFrame(() => {
         insertFrame = null;
         insertAction();
       });
     };
+
     stopObserving = signals.observeMutations(scheduleInsert, { childList: true });
     discoveryTimer = hostWindow.setTimeout(stopDiscovery, NATIVE_ACTION_DISCOVERY_WINDOW_MS);
 
@@ -100,8 +110,10 @@ export function createNativeActionMount(
 
   function selectionToolbar(selectionRect: SelectionRect) {
     let closest: SelectionToolbarCandidate | null = null;
+
     for (const element of hostDocument.body.children) {
       const candidate = selectionToolbarCandidate(element, selectionRect);
+
       if (candidate && (!closest || candidate.distance < closest.distance)) {
         closest = candidate;
       }
@@ -122,35 +134,42 @@ export function createNativeActionMount(
     }
 
     const rect = candidate.getBoundingClientRect();
+
     const horizontalOverlap =
       Math.min(selectionRect.right, rect.right) - Math.max(selectionRect.left, rect.left);
+
     const verticalDistance = Math.max(
       selectionRect.top - rect.bottom,
       rect.top - selectionRect.bottom,
       0,
     );
+
     const isNearbyToolbar =
       rect.width <= toolbarBounds.maxWidth &&
       rect.height >= toolbarBounds.minHeight &&
       rect.height <= toolbarBounds.maxHeight &&
       horizontalOverlap > 0 &&
       verticalDistance <= toolbarBounds.maxVerticalDistance;
+
     if (!isNearbyToolbar) {
       return null;
     }
 
     const actionRow = actionRowWithin(candidate);
+
     return actionRow ? { actionRow, distance: verticalDistance } : null;
   }
 }
 
 function actionRowWithin(candidate: Element) {
   const parents = new Set<HTMLElement>();
+
   for (const button of candidate.querySelectorAll("button")) {
     if (button.parentElement) {
       parents.add(button.parentElement);
     }
   }
+
   for (const parent of parents) {
     if (
       parent.children.length > 0 &&
@@ -159,5 +178,6 @@ function actionRowWithin(candidate: Element) {
       return parent;
     }
   }
+
   return null;
 }

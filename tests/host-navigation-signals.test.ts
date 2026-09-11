@@ -12,6 +12,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers();
   window.history.replaceState({}, "", "/");
+
   if (navigationDescriptor) {
     Object.defineProperty(window, "navigation", navigationDescriptor);
   } else {
@@ -100,5 +101,6 @@ describe("host navigation signals", () => {
 function installNavigationSource() {
   const navigation = new EventTarget();
   Object.defineProperty(window, "navigation", { configurable: true, value: navigation });
+
   return navigation;
 }

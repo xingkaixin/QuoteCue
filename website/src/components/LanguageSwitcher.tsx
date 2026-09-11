@@ -44,6 +44,7 @@ export function LanguageSwitcher({ currentLocale, label }: LanguageSwitcherProps
           <Menu.Popup className="origin-[var(--transform-origin)] rounded-xl border border-line bg-panel p-1.5 shadow-[var(--surface-shadow)] outline-none transition-[transform,opacity] duration-150 data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0 motion-reduce:transition-none">
             {WEBSITE_LOCALES.map((locale) => {
               const config = WEBSITE_LOCALE_CONFIG[locale];
+
               const content = (
                 <>
                   <span>{config.label}</span>

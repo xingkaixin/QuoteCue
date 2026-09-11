@@ -33,6 +33,7 @@ export function AnnotationEditor({
   canSave,
 }: AnnotationEditorProps) {
   const { messages } = useI18n();
+
   const { commentFieldProps, position, resetWarning, rootRef, saveComment } =
     useAnnotationCommentSurface({
       bindSession,
