@@ -464,13 +464,13 @@ test("retains summary keyboard focus when the pointer leaves across display sett
       )?.backendDOMNodeId;
       expect(countButtonId).toBeDefined();
     }).toPass();
-    const { model } = await session.send("DOM.getBoxModel", { backendNodeId: countButtonId });
-    await page.mouse.move(
-      (model.content[0]! + model.content[4]!) / 2,
-      (model.content[1]! + model.content[5]!) / 2,
-    );
     let editButtonId: number | undefined;
     await expect(async () => {
+      const { model } = await session.send("DOM.getBoxModel", { backendNodeId: countButtonId });
+      await page.mouse.move(
+        (model.content[0]! + model.content[4]!) / 2,
+        (model.content[1]! + model.content[5]!) / 2,
+      );
       const { nodes } = await session.send("Accessibility.getFullAXTree");
       editButtonId = nodes.find(
         (node) => node.role?.value === "button" && node.name?.value === "Edit annotation 1",
