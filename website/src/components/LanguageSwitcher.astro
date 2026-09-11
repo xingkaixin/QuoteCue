@@ -29,8 +29,13 @@ const { currentLocale, label } = Astro.props;
 
 <script>
   for (const select of document.querySelectorAll<HTMLSelectElement>("[data-language-switcher]")) {
+    const currentPath = select.value;
+
     select.addEventListener("change", () => {
-      window.location.assign(select.value);
+      const nextPath = select.value;
+      // Keep browser history from restoring the destination as this page's language.
+      select.value = currentPath;
+      window.location.assign(nextPath);
     });
   }
 </script>
