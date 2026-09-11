@@ -1,6 +1,6 @@
 ---
 import { Faq } from "./Faq";
-import { CueFlowField } from "./CueFlowField";
+import CueFlowField from "./CueFlowField.astro";
 import InstallActions from "./InstallActions.astro";
 import { InteractiveDemo } from "./InteractiveDemo";
 import LanguageSwitcher from "./LanguageSwitcher.astro";
@@ -264,7 +264,7 @@ const structuredData = {
       </div>
 
       <div class="hero-visual" role="img" aria-label={copy.meta.socialImageAlt}>
-        <CueFlowField client:load />
+        <CueFlowField />
         <div aria-hidden="true" class="product-scene">
           <div class="scene-answer-window">
             <div class="scene-window-bar">
