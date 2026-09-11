@@ -211,6 +211,8 @@ describe("AnnotationSummary", () => {
     const onClear = vi.fn();
     const onUndo = vi.fn();
     const mounted = await mountSummary({ onClear, onUndo });
+    const countButton = findCountButton(mounted.container);
+    expect(countButton).toBeDefined();
 
     await mounted.render({
       annotations: projectAnnotations([secondAnnotation]),
@@ -231,11 +233,15 @@ describe("AnnotationSummary", () => {
     expect(status?.getAttribute("data-exiting")).toBe("false");
     expect(mounted.container.querySelector(".qc-undo-progress")).not.toBe(firstProgress);
     await act(async () => {
-      Array.from(mounted.container.querySelectorAll("button"))
-        .find((button) => button.textContent === "Undo")
-        ?.click();
+      const undoButton = Array.from(mounted.container.querySelectorAll("button")).find(
+        (button) => button.textContent === "Undo",
+      );
+
+      undoButton?.focus();
+      undoButton?.click();
     });
     expect(onUndo).toHaveBeenCalledOnce();
+    expect(document.activeElement).toBe(countButton);
 
     await mounted.render({
       annotations: projectAnnotations([annotation]),
@@ -247,6 +253,7 @@ describe("AnnotationSummary", () => {
     );
     await act(async () => vi.advanceTimersByTimeAsync(180));
     expect(mounted.container.querySelector('[role="status"]')).toBeNull();
+    expect(document.activeElement).toBe(countButton);
 
     const clearButton = mounted.container.querySelector<HTMLButtonElement>(
       '[aria-label="Clear all annotations"]',

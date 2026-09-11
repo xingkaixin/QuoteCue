@@ -21,6 +21,18 @@ Two upstream policies are narrowed:
 `pnpm test:lint` protects these distinctions with RuleTester cases. Run it when
 changing the vendored rules; `pnpm check` also includes it.
 
+## React Compiler diagnostics
+
+Oxlint 1.79 added React Compiler rules to the correctness category. On 1.82,
+`react/globals`, `react/immutability`, `react/refs`, and `react/set-state-in-effect`
+run as warnings while the existing error gates remain enabled.
+
+These diagnostics cover test render probes, DOM synchronization, render-time ref
+access, and effect-driven state resets. Review the findings against conversation
+changes, send confirmation, and focus behavior before promoting these rules to
+errors. The dependency upgrade does not establish that these findings are safe;
+they remain visible for a separate behavioral migration.
+
 ## Disabled checks
 
 | Rule                                 | Reason                                                                                                                                                      |

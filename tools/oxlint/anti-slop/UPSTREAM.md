@@ -42,7 +42,7 @@ The pristine plugin can be recovered from the source commit and directory above.
 - `.oxlintrc.json` enables 14 generic anti-slop rules and native
   `oxc/no-accumulating-spread` at error severity. Four rules remain explicitly
   disabled; see `docs/lint-policy.md` for the decisions and exception policy.
-- `@oxlint/plugins` is pinned to `1.78.0`, matching installed Oxlint `1.78.0`.
+- `@oxlint/plugins` is pinned to `1.82.0`, matching installed Oxlint `1.82.0`.
   Update these packages together.
 - Lint and formatter ignore the vendored plugin and local agent assets. The
   plugin remains included in the repository's TypeScript check.

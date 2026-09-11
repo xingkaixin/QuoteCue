@@ -217,7 +217,10 @@ export function AnnotationSummary({
               <button
                 className="qc-accent-text qc-hover qc-focus shrink-0 cursor-pointer rounded px-1.5 py-1 font-semibold"
                 disabled={isStatusExiting}
-                onClick={onUndo}
+                onClick={() => {
+                  countButtonRef.current?.focus();
+                  onUndo();
+                }}
                 type="button"
               >
                 {messages.undo}
