@@ -45,7 +45,7 @@ token 是公开的站点标识，不是密钥。未配置时不输出 beacon，�
 `quotecue.xingkaixin.me` Custom Domain：
 
 ```bash
-pnpm --dir website deploy
+pnpm --dir website run deploy
 ```
 
 首次部署前需要登录 Wrangler，并确保 `xingkaixin.me` zone 已由同一 Cloudflare 账号管理。如果
