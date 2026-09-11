@@ -34,6 +34,7 @@ export type ComposerSubmitDecision = "claim" | "pass-through";
 export type SelectionInvalidation =
   | { reason: "layout" }
   | { dirtyMessageIds: ReadonlySet<string> | "all"; reason: "content" };
+
 export type SelectionCaptureIntent = "capture" | "dismiss";
 
 export type SelectionRect = Pick<DOMRect, "bottom" | "height" | "left" | "right" | "top" | "width">;

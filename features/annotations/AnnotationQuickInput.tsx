@@ -27,6 +27,7 @@ export function AnnotationQuickInput({
   canSave,
 }: AnnotationQuickInputProps) {
   const { messages } = useI18n();
+
   const { commentFieldProps, position, resetWarning, rootRef, saveComment } =
     useAnnotationCommentSurface({
       bindSession,

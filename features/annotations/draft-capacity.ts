@@ -16,18 +16,22 @@ export function draftMutationExceedsCapacity(
     if (annotations.some(({ id }) => id === mutation.annotation.id)) {
       return false;
     }
+
     return (
       annotations.length >= MAX_DRAFT_ANNOTATIONS || !annotationFitsCapacity(mutation.annotation)
     );
   }
+
   if (mutation.kind !== "update") {
     return false;
   }
 
   const current = annotations.find(({ id }) => id === mutation.annotationId);
+
   if (!current) {
     return false;
   }
+
   return (
     mutation.comment.length > MAX_ANNOTATION_COMMENT_LENGTH &&
     mutation.comment.length >= current.comment.length

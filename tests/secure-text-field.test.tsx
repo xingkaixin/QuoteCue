@@ -10,6 +10,7 @@ import { I18nProvider, useI18n } from "@/features/i18n/I18nProvider";
 import { siteForHostname } from "@/features/host/site-registry";
 import { HostThemeProvider } from "@/features/theme/HostThemeProvider";
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Replace the external extension runtime in jsdom.
 vi.mock("wxt/browser", () => ({
   browser: {
     runtime: {
@@ -66,9 +67,11 @@ describe("SecureTextField", () => {
       );
     });
     const iframe = container.querySelector("iframe");
+
     if (!iframe?.contentWindow) {
       throw new Error("Expected secure field iframe");
     }
+
     const postMessage = vi.spyOn(iframe.contentWindow, "postMessage").mockImplementation(() => {});
     iframe.setAttribute("srcdoc", "");
 
@@ -120,12 +123,15 @@ describe("SecureTextField", () => {
       );
     });
     const updatedIframe = container.querySelector("iframe");
+
     if (!updatedIframe?.contentWindow) {
       throw new Error("Expected updated secure field iframe");
     }
+
     const updatedPostMessage = vi
       .spyOn(updatedIframe.contentWindow, "postMessage")
       .mockImplementation(() => {});
+
     markExtensionFrameLoaded(updatedIframe);
     await act(async () => updatedIframe.dispatchEvent(new Event("load")));
 
@@ -155,6 +161,7 @@ describe("SecureTextField", () => {
     const container = document.createElement("div");
     document.body.append(container);
     const root = createRoot(container);
+
     const renderField = (initialValue: string) =>
       root.render(
         <SecureTextField
@@ -172,16 +179,20 @@ describe("SecureTextField", () => {
 
     await act(async () => renderField("initial annotation"));
     const iframe = container.querySelector("iframe");
+
     if (!iframe?.contentWindow) {
       throw new Error("Expected secure field iframe");
     }
+
     const postMessage = vi.spyOn(iframe.contentWindow, "postMessage").mockImplementation(() => {});
     markExtensionFrameLoaded(iframe);
     await act(async () => iframe.dispatchEvent(new Event("load")));
     const channel = FakeMessageChannel.instances[0];
+
     if (!channel) {
       throw new Error("Expected secure field channel");
     }
+
     const receive = vi.fn();
     channel.port2.onmessage = (event) => receive(event.data);
 
@@ -212,9 +223,11 @@ describe("SecureTextField", () => {
     const root = createRoot(container);
 
     const site = siteForHostname("chatgpt.com");
+
     if (!site) {
       throw new Error("Expected ChatGPT site registration");
     }
+
     await act(async () =>
       root.render(
         <HostThemeProvider accentTokens={site.accentTokens} container={container}>
@@ -223,18 +236,22 @@ describe("SecureTextField", () => {
       ),
     );
     const iframe = container.querySelector("iframe");
+
     if (!iframe?.contentWindow) {
       throw new Error("Expected secure field iframe");
     }
+
     vi.spyOn(iframe.contentWindow, "postMessage").mockImplementation(() => {});
     markExtensionFrameLoaded(iframe);
     await act(async () => iframe.dispatchEvent(new Event("load")));
 
     const channel = FakeMessageChannel.instances[0];
     const receive = vi.fn();
+
     if (!channel) {
       throw new Error("Expected secure field channel");
     }
+
     channel.port2.onmessage = (event) => receive(event.data);
 
     await act(async () => {
@@ -286,6 +303,7 @@ function markExtensionFrameLoaded(iframe: HTMLIFrameElement) {
 
 function LocalizedField() {
   const { messages } = useI18n();
+
   return (
     <SecureTextField
       ariaLabel={messages.annotationContent}
@@ -306,8 +324,9 @@ class FakeMessagePort {
 
   close() {}
 
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- The message-port substitute must transport unvalidated protocol inputs.
   postMessage(data: unknown) {
-    this.peer?.onmessage?.({ data } as MessageEvent<unknown>);
+    this.peer?.onmessage?.(new MessageEvent<unknown>("message", { data }));
   }
 
   start() {}

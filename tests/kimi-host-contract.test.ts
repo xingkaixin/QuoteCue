@@ -35,7 +35,7 @@ describe("Kimi host contract", () => {
     installSyntheticPasteSupport();
     fixture.composer.addEventListener("paste", (event) => {
       event.preventDefault();
-      const text = (event as ClipboardEvent).clipboardData?.getData("text/plain") ?? "";
+      const text = event.clipboardData?.getData("text/plain") ?? "";
       queueMicrotask(() => {
         fixture.composer.textContent = text;
         fixture.sendControl.classList.remove("disabled");
@@ -45,6 +45,7 @@ describe("Kimi host contract", () => {
       appendKimiUserMessage("user-two", fixture.composer.innerText);
     });
     const onSendConfirmed = vi.fn();
+
     const interceptor = registerSendInterceptor({
       getSendInput: kimiSendInput,
       host: createKimiHost({ document, window }),
@@ -65,12 +66,14 @@ describe("Kimi host contract", () => {
       if (command === "insertText") {
         fixture.composer.textContent = String(value).replaceAll("\n", "");
       }
+
       return true;
     });
     fixture.sendControl.addEventListener("click", () => {
       appendKimiUserMessage("user-two", fixture.composer.innerText);
     });
     const onSendConfirmed = vi.fn();
+
     const interceptor = registerSendInterceptor({
       getSendInput: kimiSendInput,
       host: createKimiHost({ document, window }),
@@ -98,6 +101,7 @@ describe("Kimi host contract", () => {
       appendKimiUserMessage(undefined, sent);
     });
     const onSendConfirmed = vi.fn();
+
     const interceptor = registerSendInterceptor({
       getSendInput: kimiSendInput,
       host,
@@ -118,6 +122,7 @@ describe("Kimi host contract", () => {
     const compiled = compileAnnotatedPrompt(numberAnnotations([annotation()]), "", "zh-CN");
     appendKimiUserMessage(undefined, compiled);
     const onStateChange = vi.fn();
+
     const interceptor = registerSendInterceptor({
       getSendInput: kimiSendInput,
       host,
@@ -151,6 +156,7 @@ describe("Kimi host contract", () => {
         rebuildKimiUserMessage(baseline, messageId);
       });
       const onSendConfirmed = vi.fn();
+
       const interceptor = registerSendInterceptor({
         getSendInput: kimiSendInput,
         host: createKimiHost({ document, window }),
@@ -178,6 +184,7 @@ describe("Kimi host contract", () => {
       appendKimiUserMessage("new-user", fixture.composer.innerText);
     });
     const onSendConfirmed = vi.fn();
+
     const interceptor = registerSendInterceptor({
       getSendInput: kimiSendInput,
       host: createKimiHost({ document, window }),
@@ -200,6 +207,7 @@ describe("Kimi host contract", () => {
       appendKimiUserMessage(undefined, fixture.composer.innerText);
     });
     const onSendConfirmed = vi.fn();
+
     const interceptor = registerSendInterceptor({
       getSendInput: kimiSendInput,
       host,

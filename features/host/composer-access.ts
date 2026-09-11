@@ -13,10 +13,12 @@ export function textareaComposer(selector: string): ComposerAccess {
       if (!(composer instanceof HTMLTextAreaElement)) {
         return false;
       }
+
       setNativeTextareaValue(composer, text);
       composer.dispatchEvent(
         new InputEvent("input", { bubbles: true, data: text, inputType: "insertText" }),
       );
+
       return composer.value === text;
     },
   };
@@ -25,6 +27,7 @@ export function textareaComposer(selector: string): ComposerAccess {
 function setNativeTextareaValue(composer: HTMLTextAreaElement, text: string) {
   // React 受控 textarea 会忽略直接赋值，必须走原生 setter 再派发 input 事件
   const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
+
   if (setter) {
     setter.call(composer, text);
   } else {

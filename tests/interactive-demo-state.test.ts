@@ -28,6 +28,7 @@ function reduce(actions: InteractiveDemoAction[]) {
 describe("interactive demo state", () => {
   it("replaces clear confirmation with send progress and returns to idle", () => {
     const prompt = compileDemoPrompt([annotation()], "en");
+
     const state = reduce([
       { type: "add-annotation", annotation: annotation() },
       { type: "save-editor" },
@@ -49,6 +50,7 @@ describe("interactive demo state", () => {
 
   it("preserves an existing empty annotation when editing is cancelled", () => {
     const item = annotation();
+
     const state = reduce([
       { type: "add-annotation", annotation: item },
       { type: "save-editor" },
@@ -126,6 +128,7 @@ describe("interactive demo state", () => {
       { type: "change-editor-comment", comment: "  current note  " },
       { type: "start-send", locale: "en" },
     ]);
+
     const prompt = compileDemoPrompt([annotation(1, "current note")], "en");
 
     expect(sending.annotations).toEqual([annotation(1, "current note")]);
@@ -141,6 +144,7 @@ describe("interactive demo state", () => {
   it("restores a removed annotation at its original position", () => {
     const first = annotation(1);
     const second = annotation(2);
+
     const state = reduce([
       { type: "add-annotation", annotation: first },
       { type: "save-editor" },
@@ -157,6 +161,7 @@ describe("interactive demo state", () => {
   it("keeps a pending removal undoable while clear confirmation is armed", () => {
     const first = annotation(1);
     const second = annotation(2);
+
     const clearArmed = reduce([
       { type: "add-annotation", annotation: first },
       { type: "save-editor" },
@@ -165,6 +170,7 @@ describe("interactive demo state", () => {
       { type: "remove-annotation", annotationId: first.id },
       { type: "request-clear" },
     ]);
+
     const restored = reduceInteractiveDemo(clearArmed, { type: "undo-removal" });
 
     expect(restored.annotations).toEqual([first, second]);
@@ -174,6 +180,7 @@ describe("interactive demo state", () => {
   it("commits pending removals when the remaining annotations are sent", () => {
     const first = annotation(1);
     const second = annotation(2);
+
     const sent = reduce([
       { type: "add-annotation", annotation: first },
       { type: "save-editor" },
@@ -183,6 +190,7 @@ describe("interactive demo state", () => {
       { type: "start-send", locale: "en" },
       { type: "complete-send" },
     ]);
+
     const restored = reduceInteractiveDemo(sent, { type: "undo-removal" });
 
     expect(restored).toBe(sent);
@@ -195,6 +203,7 @@ describe("interactive demo state", () => {
     const first = annotation(1);
     const second = annotation(2);
     const third = annotation(3);
+
     const state = reduce([
       { type: "add-annotation", annotation: first },
       { type: "save-editor" },
@@ -212,6 +221,7 @@ describe("interactive demo state", () => {
 
   it("keeps sending authoritative until it completes", () => {
     const prompt = compileDemoPrompt([annotation()], "en");
+
     const state = reduce([
       { type: "add-annotation", annotation: annotation() },
       { type: "save-editor" },
@@ -233,6 +243,7 @@ describe("interactive demo state", () => {
       { type: "save-editor" },
       { type: "request-clear" },
     ]);
+
     const cleared = reduceInteractiveDemo(armed, { type: "request-clear" });
 
     expect(armed.clearArmed).toBe(true);
@@ -251,8 +262,11 @@ describe("interactive demo prompt", () => {
 
 describe("interactive demo copy", () => {
   it("formats serialized annotation counts and removal grammar for each locale", () => {
+    // SAFETY: This module-owned copy contains only JSON data; the round trip intentionally tests serialization.
     const zh = JSON.parse(JSON.stringify(getCopy("zh-CN").demo)) as DemoCopy;
+    // SAFETY: This module-owned copy contains only JSON data; the round trip intentionally tests serialization.
     const ja = JSON.parse(JSON.stringify(getCopy("ja").demo)) as DemoCopy;
+    // SAFETY: This module-owned copy contains only JSON data; the round trip intentionally tests serialization.
     const en = JSON.parse(JSON.stringify(getCopy("en").demo)) as DemoCopy;
 
     expect([formatDemoAnnotationCount(zh, 1), formatDemoRemovedNotice(zh, 2, 0)]).toEqual([

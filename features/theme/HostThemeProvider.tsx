@@ -32,14 +32,17 @@ export function HostThemeProvider({ accentTokens, children, container }: HostThe
       attributeFilter: ["class", "data-color-scheme", "data-mode", "data-theme", "style"],
       attributes: true,
     });
+
     if (document.body) {
       observer.observe(document.body, {
         attributeFilter: ["class", "data-color-scheme", "data-mode", "data-theme", "style"],
         attributes: true,
       });
     }
+
     mediaQuery?.addEventListener("change", updateTheme);
     updateTheme();
+
     return () => {
       observer.disconnect();
       mediaQuery?.removeEventListener("change", updateTheme);
@@ -51,13 +54,16 @@ export function HostThemeProvider({ accentTokens, children, container }: HostThe
     container.dataset.quotecueTheme = theme;
     container.style.color = tokens.text;
     container.style.colorScheme = theme;
+
     for (const [role, value] of Object.entries(tokens)) {
       container.style.setProperty(`--qc-${role}`, value);
     }
+
     return () => {
       delete container.dataset.quotecueTheme;
       container.style.removeProperty("color");
       container.style.removeProperty("color-scheme");
+
       for (const role of Object.keys(tokens)) {
         container.style.removeProperty(`--qc-${role}`);
       }
@@ -105,19 +111,25 @@ export function detectHostTheme(
     if (!element) {
       continue;
     }
+
     const declaredTheme = `${element.dataset.theme ?? ""} ${element.dataset.colorScheme ?? ""} ${element.dataset.mode ?? ""}`;
+
     if (/\bdark\b/i.test(declaredTheme) || element.classList.contains("dark")) {
       return "dark";
     }
+
     if (/\blight\b/i.test(declaredTheme) || element.classList.contains("light")) {
       return "light";
     }
+
     if (element.style.colorScheme === "dark") {
       return "dark";
     }
+
     if (element.style.colorScheme === "light") {
       return "light";
     }
   }
+
   return prefersDark ? "dark" : "light";
 }

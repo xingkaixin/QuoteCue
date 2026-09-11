@@ -17,9 +17,11 @@ export function sameConversationIdentity(left: ConversationIdentity, right: Conv
   if (left.kind === "identified" && right.kind === "identified") {
     return left.siteId === right.siteId && left.id === right.id;
   }
+
   if (left.kind === "unidentified" && right.kind === "unidentified") {
     return left.sessionKey === right.sessionKey;
   }
+
   return false;
 }
 

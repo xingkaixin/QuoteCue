@@ -34,33 +34,40 @@ describe("Claude host contract", () => {
     const fixture = installClaudeHostFixture("hello");
     const host = createClaudeHost({ document, window });
     const release = host.layout.reserveAnnotationRow(40);
+
     const readings = Array.from({ length: 3 }, () => {
       const layout = host.layout.current();
+
       return {
         left: layout.status === "available" ? layout.value.send.left : null,
         send: fixture.sendButton.style.visibility,
         voice: fixture.voiceButton.style.visibility,
       };
     });
+
     expect(readings).toEqual(Array(3).fill({ left: 828, send: "hidden", voice: "" }));
     setClaudeComposerText("");
     await vi.waitFor(() => expect(fixture.voiceButton.style.visibility).toBe("hidden"));
+
     for (let index = 0; index < 3; index++) {
       expect(host.layout.current()).toMatchObject({ value: { send: { left: 828 } } });
       expect(fixture.voiceButton.style.visibility).toBe("hidden");
       expect(fixture.sendButton.style.visibility).toBe("");
     }
+
     release();
     expect(fixture.voiceButton.style.visibility).toBe("");
   });
 
   it("prepends QuoteCue to the localized narrow native action row", async () => {
     const onActivate = vi.fn();
+
     const stop = requiredNativeAction(createClaudeHost({ document, window })).mount({
       label: "Add QuoteCue annotation",
       onActivate,
       rect: { bottom: 220, height: 20, left: 100, right: 260, top: 200, width: 160 },
     });
+
     const { actionRow, replyButton } = appendClaudeSelectionToolbar();
     replyButton.disabled = true;
     replyButton.setAttribute("aria-controls", "host-popover");
@@ -93,6 +100,7 @@ describe("Claude host contract", () => {
       }
     });
     const onSendConfirmed = vi.fn();
+
     const interceptor = registerSendInterceptor({
       getSendInput: () => ({
         annotations: numberAnnotations([annotation()]),

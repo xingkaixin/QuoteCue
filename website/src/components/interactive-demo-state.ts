@@ -66,7 +66,9 @@ export function reduceInteractiveDemo(
       if (state.send.kind === "sending") {
         return state;
       }
+
       const saved = saveEditor(state);
+
       return {
         ...saved,
         annotations: [...saved.annotations, action.annotation],
@@ -79,11 +81,14 @@ export function reduceInteractiveDemo(
         sentPrompt: "",
       };
     }
+
     case "open-editor": {
       if (state.send.kind === "sending" || state.editor?.annotationId === action.annotationId) {
         return state;
       }
+
       const annotation = state.annotations.find(({ id }) => id === action.annotationId);
+
       return annotation
         ? {
             ...saveEditor(state),
@@ -96,6 +101,7 @@ export function reduceInteractiveDemo(
           }
         : state;
     }
+
     case "change-editor-comment":
       return state.editor
         ? { ...state, editor: { ...state.editor, comment: action.comment } }
@@ -116,15 +122,21 @@ export function reduceInteractiveDemo(
       if (state.send.kind === "sending") {
         return state;
       }
+
       const index = state.annotations.findIndex(({ id }) => id === action.annotationId);
+
       if (index < 0) {
         return state;
       }
+
       const annotation = state.annotations[index];
+
       if (!annotation) {
         return state;
       }
+
       const annotations = state.annotations.filter(({ id }) => id !== action.annotationId);
+
       return {
         ...state,
         annotations,
@@ -134,20 +146,26 @@ export function reduceInteractiveDemo(
         summaryOpen: annotations.length > 0 && state.summaryOpen,
       };
     }
+
     case "undo-removal": {
       if (state.pendingRemovals.length === 0) {
         return state;
       }
+
       const annotations = [...state.annotations];
+
       for (const removal of state.pendingRemovals.toReversed()) {
         annotations.splice(removal.index, 0, removal.annotation);
       }
+
       return { ...state, annotations, pendingRemovals: [] };
     }
+
     case "request-clear":
       if (state.annotations.length === 0 || state.send.kind === "sending") {
         return state;
       }
+
       return state.clearArmed
         ? {
             ...state,
@@ -166,7 +184,9 @@ export function reduceInteractiveDemo(
       if (state.annotations.length === 0 || state.send.kind === "sending") {
         return state;
       }
+
       const saved = saveEditor(state);
+
       return {
         ...saved,
         pendingRemovals: [],
@@ -174,6 +194,7 @@ export function reduceInteractiveDemo(
         summaryOpen: false,
       };
     }
+
     case "complete-send":
       return state.send.kind === "sending"
         ? {
@@ -193,9 +214,11 @@ export function reduceInteractiveDemo(
 
 function saveEditor(state: InteractiveDemoState): InteractiveDemoState {
   const editor = state.editor;
+
   if (!editor) {
     return state;
   }
+
   return {
     ...state,
     annotations: state.annotations.map((annotation) =>

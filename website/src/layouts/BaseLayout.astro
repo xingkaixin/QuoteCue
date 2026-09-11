@@ -14,7 +14,10 @@ interface Props {
   socialImageAlt: string;
   canonicalPath?: string;
   indexable?: boolean;
-  structuredData?: Record<string, unknown>;
+  structuredData?: {
+    "@context": string;
+    "@graph": readonly { "@type": string }[];
+  };
 }
 
 const {
@@ -26,14 +29,18 @@ const {
   indexable = true,
   structuredData,
 } = Astro.props;
+
 const canonicalUrl = new URL(canonicalPath, Astro.site);
+
 const localeAlternates = WEBSITE_LOCALES.map((locale) => ({
   locale,
   url: new URL(WEBSITE_LOCALE_CONFIG[locale].path, Astro.site),
 }));
+
 const alternateOgLocales = WEBSITE_LOCALES.filter((locale) => locale !== lang).map(
   (locale) => WEBSITE_LOCALE_CONFIG[locale].ogLocale,
 );
+
 const defaultUrl = new URL(WEBSITE_LOCALE_CONFIG[DEFAULT_WEBSITE_LOCALE].path, Astro.site);
 const socialImageUrl = new URL("/og-cover.png", Astro.site);
 const analyticsToken = import.meta.env.PUBLIC_CLOUDFLARE_WEB_ANALYTICS_TOKEN;

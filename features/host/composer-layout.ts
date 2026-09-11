@@ -28,6 +28,7 @@ const FALLBACK_ACTION = {
   rightInset: 8,
   width: 36,
 };
+
 const LAYOUT_REFRESH_INTERVAL_MS = 80;
 
 export function createComposerLayout(
@@ -48,12 +49,14 @@ export function createComposerLayout(
 
   function current(): HostResult<HostLayout> {
     const elements = currentElements();
+
     return publicLayout(elements);
   }
 
   function refreshLayout(): HostResult<HostLayout> {
     lastRefreshAt = Date.now();
     const elements = currentElements();
+
     if (elements.status === "unavailable") {
       reconcileReservation(null);
       observeSurface(null);
@@ -61,6 +64,7 @@ export function createComposerLayout(
       reconcileReservation(elements.value);
       observeSurface(elements.value.surface);
     }
+
     return publicLayout(elements);
   }
 
@@ -68,6 +72,7 @@ export function createComposerLayout(
     if (elements.status === "unavailable") {
       return elements;
     }
+
     return available({
       isSendControlPresent: elements.value.isSendControlPresent,
       send: elements.value.send,
@@ -78,14 +83,18 @@ export function createComposerLayout(
   function observeSurface(surface: HTMLElement | null) {
     if (!needsObservation()) {
       observedSurface = null;
+
       return;
     }
+
     if (surface === observedSurface) {
       return;
     }
+
     resizeObserver?.disconnect();
     actionObserver?.disconnect();
     observedSurface = surface;
+
     if (surface) {
       resizeObserver?.observe(surface);
       actionObserver ??= new MutationObserver(() => scheduleRefresh());
@@ -95,15 +104,19 @@ export function createComposerLayout(
 
   function currentElements(): HostResult<ComposerLayoutElements> {
     const composer = currentComposer();
+
     if (!composer) {
       return unavailable("composer-unavailable", logger);
     }
 
     const boundary = context.composerBoundary(composer);
+
     if (!boundary) {
       return unavailable("composer-surface-unavailable", logger);
     }
+
     const surface = findComposerSurface(composer, boundary);
+
     if (!surface) {
       return unavailable("composer-surface-unavailable", logger);
     }
@@ -112,6 +125,7 @@ export function createComposerLayout(
     const action = findComposerAction(boundary, rect);
     const actionRect = action?.getBoundingClientRect();
     const send = actionRect ? toSelectionRect(actionRect) : fallbackRectangle(rect);
+
     return available({
       action,
       isSendControlPresent: context.sendControl(composer) !== null,
@@ -136,8 +150,10 @@ export function createComposerLayout(
       if (activeReservation !== reservation) {
         return;
       }
+
       activeReservation = null;
       restoreReservation();
+
       if (layoutSubscribers.size === 0) {
         stopObservation();
       } else {
@@ -153,6 +169,7 @@ export function createComposerLayout(
 
     return once(() => {
       layoutSubscribers.delete(callback);
+
       if (!needsObservation()) {
         stopObservation();
       }
@@ -163,9 +180,11 @@ export function createComposerLayout(
     if (stopSignalObservation) {
       return;
     }
+
     resizeObserver =
       typeof ResizeObserver === "undefined" ? null : new ResizeObserver(scheduleRefresh);
     hostDocument.addEventListener("input", handleComposerInput, true);
+
     const stopMutationObservation = signals.observeMutations(
       (records) => {
         if (mutationsAffectComposer(records)) {
@@ -174,6 +193,7 @@ export function createComposerLayout(
       },
       { childList: true },
     );
+
     const stopViewportObservation = signals.observeViewport(scheduleRefresh);
     stopSignalObservation = () => {
       hostDocument.removeEventListener("input", handleComposerInput, true);
@@ -190,10 +210,12 @@ export function createComposerLayout(
     actionObserver?.disconnect();
     actionObserver = null;
     observedSurface = null;
+
     if (refreshTimer !== undefined) {
       hostWindow.clearTimeout(refreshTimer);
       refreshTimer = undefined;
     }
+
     lastRefreshAt = Number.NEGATIVE_INFINITY;
   }
 
@@ -205,11 +227,15 @@ export function createComposerLayout(
     if (refreshTimer !== undefined) {
       return;
     }
+
     const delay = LAYOUT_REFRESH_INTERVAL_MS - (Date.now() - lastRefreshAt);
+
     if (delay <= 0) {
       publishRefresh();
+
       return;
     }
+
     refreshTimer = hostWindow.setTimeout(publishRefresh, delay);
   }
 
@@ -218,7 +244,9 @@ export function createComposerLayout(
       hostWindow.clearTimeout(refreshTimer);
       refreshTimer = undefined;
     }
+
     const layout = refreshLayout();
+
     for (const subscriber of [...layoutSubscribers]) {
       subscriber(layout);
     }
@@ -226,6 +254,7 @@ export function createComposerLayout(
 
   function handleComposerInput(event: Event) {
     const composer = currentComposer();
+
     if (composer && event.target instanceof Node && composer.contains(event.target)) {
       scheduleRefresh();
     }
@@ -233,6 +262,7 @@ export function createComposerLayout(
 
   function mutationsAffectComposer(records: readonly MutationRecord[]) {
     const surface = observedSurface;
+
     if (!surface?.isConnected) {
       return true;
     }
@@ -249,9 +279,12 @@ export function createComposerLayout(
   function reconcileReservation(elements: ComposerLayoutElements | null) {
     if (!activeReservation || !elements) {
       restoreReservation();
+
       return;
     }
+
     styleSurface(elements.surface, activeReservation.height);
+
     if (elements.isSendControlPresent && elements.action) {
       hideAction(elements.action);
     } else {
@@ -263,6 +296,7 @@ export function createComposerLayout(
     if (surface === styledSurface?.element && isInlineStyleApplied(styledSurface)) {
       return;
     }
+
     restoreSurface();
     const paddingTop = Number.parseFloat(hostWindow.getComputedStyle(surface).paddingTop);
     styledSurface = overrideInlineStyle(surface, "padding-top", `${paddingTop + height}px`);
@@ -277,6 +311,7 @@ export function createComposerLayout(
     if (action === hiddenAction?.element && isInlineStyleApplied(hiddenAction)) {
       return;
     }
+
     restoreAction();
     hiddenAction = overrideInlineStyle(action, "visibility", "hidden");
   }
@@ -290,10 +325,13 @@ export function createComposerLayout(
     if (action !== hiddenAction?.element) {
       return hostWindow.getComputedStyle(action).visibility === "hidden";
     }
+
     if (!isInlineStyleApplied(hiddenAction)) {
       return hostWindow.getComputedStyle(action).visibility === "hidden";
     }
+
     restoreInlineStyle(hiddenAction);
+
     try {
       return hostWindow.getComputedStyle(action).visibility === "hidden";
     } finally {
@@ -310,7 +348,9 @@ export function createComposerLayout(
       restoredPriority: element.style.getPropertyPriority(property),
       restoredValue: element.style.getPropertyValue(property),
     };
+
     applyInlineStyle(override);
+
     return override;
   }
 
@@ -350,6 +390,7 @@ export function createComposerLayout(
     if (actionObserver?.takeRecords().length) {
       scheduleRefresh();
     }
+
     element.style.setProperty(property, value, priority);
     actionObserver?.takeRecords();
   }
@@ -361,16 +402,19 @@ export function createComposerLayout(
 
   function findComposerSurface(composer: HTMLElement, boundary: HTMLElement) {
     const surface = composer.closest<HTMLElement>(adapter.layout.surfaceSelector);
+
     return surface && surface !== boundary && boundary.contains(surface) ? surface : null;
   }
 
   function findComposerAction(root: HTMLElement, surfaceRect: DOMRect) {
     let rightmostAction: HTMLElement | null = null;
     let rightmostEdge = Number.NEGATIVE_INFINITY;
+
     for (const action of root.querySelectorAll<HTMLElement>(adapter.layout.actionSelector)) {
       const rect = action.getBoundingClientRect();
       const centerX = rect.left + rect.width / 2;
       const centerY = rect.top + rect.height / 2;
+
       if (
         (adapter.layout.visibleActionsOnly && isHostHidden(action)) ||
         rect.width <= 0 ||
@@ -383,9 +427,11 @@ export function createComposerLayout(
       ) {
         continue;
       }
+
       rightmostAction = action;
       rightmostEdge = rect.right;
     }
+
     return rightmostAction;
   }
 
@@ -395,6 +441,7 @@ export function createComposerLayout(
 function fallbackRectangle(surface: DOMRect): SelectionRect {
   const left = surface.right - FALLBACK_ACTION.width - FALLBACK_ACTION.rightInset;
   const top = surface.bottom - FALLBACK_ACTION.height - FALLBACK_ACTION.bottomInset;
+
   return {
     bottom: top + FALLBACK_ACTION.height,
     height: FALLBACK_ACTION.height,

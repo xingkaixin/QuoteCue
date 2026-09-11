@@ -25,7 +25,9 @@ const FULL_REANCHOR_INTERVAL_MS = 5_000;
 const PENDING_RESOLUTION: AnnotationResolution = { resolution: "pending" };
 const UNRESOLVED_RESOLUTION: SettledAnnotationResolution = { resolution: "unresolved" };
 const EMPTY_RESOLUTIONS = new Map<string, SettledAnnotationResolution>();
+
 type AnnotationProjectionInput = Pick<DraftAnnotation, "anchor" | "id">;
+
 type ProjectionSelection = Pick<
   HostSelection,
   "highlight" | "isObscured" | "messageIndex" | "observeInvalidation"
@@ -37,11 +39,15 @@ export function useAnnotationProjection(
 ) {
   const selection = useHost().selection;
   const projectionInputs = useStableProjectionInputs(annotations);
+
   const [resolutionByAnnotationId, setResolutionByAnnotationId] =
     useState<ReadonlyMap<string, SettledAnnotationResolution>>(EMPTY_RESOLUTIONS);
+
   const resolutionRef =
     useRef<ReadonlyMap<string, SettledAnnotationResolution>>(resolutionByAnnotationId);
+
   const numberedAnnotations = useMemo(() => numberAnnotations(annotations), [annotations]);
+
   const projectedAnnotations = useMemo(
     () =>
       numberedAnnotations.map<ProjectedAnnotation>((entry) => ({
@@ -50,15 +56,18 @@ export function useAnnotationProjection(
       })),
     [numberedAnnotations, resolutionByAnnotationId],
   );
+
   const activeProjection = projectedAnnotations.find(
     ({ annotation }) => annotation.id === activeAnnotationId,
   );
+
   const activeRange =
     activeProjection?.resolution === "resolved" ? activeProjection.geometry.range : null;
 
   useEffect(() => {
     if (projectionInputs.length === 0) {
       commitResolutions(EMPTY_RESOLUTIONS);
+
       return;
     }
 
@@ -66,24 +75,30 @@ export function useAnnotationProjection(
     let lastFullResolutionAt = Number.NEGATIVE_INFINITY;
     let pendingInvalidation: SelectionInvalidation | undefined;
     let rangeByAnnotationId = new Map<string, Range | null>();
+
     const scheduleProjection = (nextInvalidation: SelectionInvalidation) => {
       pendingInvalidation = mergeInvalidations(pendingInvalidation, nextInvalidation);
+
       if (projectionFrame !== undefined) {
         return;
       }
+
       projectionFrame = requestAnimationFrame(() => {
         projectionFrame = undefined;
         const invalidation = pendingInvalidation ?? { reason: "layout" };
         pendingInvalidation = undefined;
+
         if (invalidation.reason === "content") {
           const dirtyMessageIds =
             invalidation.dirtyMessageIds === "all" ||
             Date.now() - lastFullResolutionAt >= FULL_REANCHOR_INTERVAL_MS
               ? "all"
               : invalidation.dirtyMessageIds;
+
           if (dirtyMessageIds === "all") {
             lastFullResolutionAt = Date.now();
           }
+
           rangeByAnnotationId = resolveAnnotationRanges(
             projectionInputs,
             selection,
@@ -91,6 +106,7 @@ export function useAnnotationProjection(
             dirtyMessageIds,
           );
         }
+
         commitResolutions(
           projectAnnotationResolutions(
             projectionInputs,
@@ -101,11 +117,13 @@ export function useAnnotationProjection(
         );
       });
     };
+
     const stopObserving = selection.observeInvalidation(scheduleProjection);
     scheduleProjection({ dirtyMessageIds: "all", reason: "content" });
 
     return () => {
       stopObserving();
+
       if (projectionFrame !== undefined) {
         cancelAnimationFrame(projectionFrame);
       }
@@ -115,6 +133,7 @@ export function useAnnotationProjection(
       if (sameResolutions(resolutionRef.current, next)) {
         return;
       }
+
       resolutionRef.current = next;
       setResolutionByAnnotationId(next);
     }
@@ -122,6 +141,7 @@ export function useAnnotationProjection(
 
   useEffect(() => {
     selection.highlight(activeRange);
+
     return () => selection.highlight(null);
   }, [activeRange, selection]);
 
@@ -130,9 +150,11 @@ export function useAnnotationProjection(
 
 function useStableProjectionInputs(annotations: readonly DraftAnnotation[]) {
   const inputsRef = useRef<readonly AnnotationProjectionInput[]>([]);
+
   if (!sameProjectionInputs(inputsRef.current, annotations)) {
     inputsRef.current = annotations.map(({ anchor, id }) => ({ anchor, id }));
   }
+
   return inputsRef.current;
 }
 
@@ -144,6 +166,7 @@ function sameProjectionInputs(
     current.length === annotations.length &&
     current.every((input, index) => {
       const candidate = annotations[index];
+
       return (
         candidate !== undefined &&
         input.id === candidate.id &&
@@ -161,13 +184,16 @@ function resolveAnnotationRanges(
 ) {
   const annotationIdsToResolve = new Set<string>();
   const messageIdsToResolve = new Set<string>();
+
   for (const annotation of annotations) {
     const currentRange = currentRanges.get(annotation.id);
+
     const shouldResolve =
       dirtyMessageIds === "all" ||
       dirtyMessageIds.has(annotation.anchor.messageId) ||
       !currentRanges.has(annotation.id) ||
       (currentRange !== undefined && currentRange !== null && !isRangeConnected(currentRange));
+
     if (shouldResolve) {
       annotationIdsToResolve.add(annotation.id);
       messageIdsToResolve.add(annotation.anchor.messageId);
@@ -178,12 +204,15 @@ function resolveAnnotationRanges(
     annotationIdsToResolve.size === 0
       ? new Map<string, HTMLElement>()
       : selection.messageIndex(dirtyMessageIds === "all" ? undefined : messageIdsToResolve);
+
   const messageTextCache = new Map<HTMLElement, string>();
+
   return new Map(
     annotations.map((annotation) => {
       const range = annotationIdsToResolve.has(annotation.id)
         ? restoreTextAnchorFromIndex(annotation.anchor, messageIndex, messageTextCache)
         : (currentRanges.get(annotation.id) ?? null);
+
       return [annotation.id, range];
     }),
   );
@@ -200,12 +229,15 @@ function mergeInvalidations(
   if (!current || current.reason === "layout") {
     return next;
   }
+
   if (next.reason === "layout") {
     return current;
   }
+
   if (current.dirtyMessageIds === "all" || next.dirtyMessageIds === "all") {
     return { dirtyMessageIds: "all", reason: "content" };
   }
+
   return {
     dirtyMessageIds: new Set([...current.dirtyMessageIds, ...next.dirtyMessageIds]),
     reason: "content",
@@ -219,19 +251,25 @@ function projectAnnotationResolutions(
   previousResolutions: ReadonlyMap<string, SettledAnnotationResolution>,
 ) {
   const resolutions = new Map<string, SettledAnnotationResolution>();
+
   for (const annotation of annotations) {
     const resolvedRange = rangeByAnnotationId.get(annotation.id);
+
     if (!resolvedRange) {
       resolutions.set(annotation.id, UNRESOLVED_RESOLUTION);
       continue;
     }
+
     const previousResolution = previousResolutions.get(annotation.id);
+
     const previousRange =
       previousResolution?.resolution === "resolved" ? previousResolution.geometry.range : undefined;
+
     const range =
       previousRange && sameRangeBoundaries(previousRange, resolvedRange)
         ? previousRange
         : resolvedRange;
+
     const rect = toSelectionRect(rangeEndpointRect(range));
     resolutions.set(annotation.id, {
       resolution: "resolved",
@@ -242,6 +280,7 @@ function projectAnnotationResolutions(
       },
     });
   }
+
   return resolutions;
 }
 
@@ -251,9 +290,11 @@ function badgePosition(selection: ProjectionSelection, range: Range, rect: Selec
   if (rect.width === 0 || rect.bottom < viewport.top || rect.top > viewport.top + viewport.height) {
     return null;
   }
+
   if (selection.isObscured(range, rect)) {
     return null;
   }
+
   return clampPositionToViewport(
     { left: rect.right + 5, top: rect.top - 10 },
     { height: 24, width: 24 },
@@ -268,14 +309,18 @@ function sameResolutions(
   if (left.size !== right.size) {
     return false;
   }
+
   for (const [annotationId, resolution] of left) {
     const other = right.get(annotationId);
+
     if (!other || resolution.resolution !== other.resolution) {
       return false;
     }
+
     if (resolution.resolution === "unresolved" || other.resolution === "unresolved") {
       continue;
     }
+
     if (
       !sameRangeBoundaries(resolution.geometry.range, other.geometry.range) ||
       !sameRect(resolution.geometry.rect, other.geometry.rect) ||
@@ -284,6 +329,7 @@ function sameResolutions(
       return false;
     }
   }
+
   return true;
 }
 

@@ -6,8 +6,10 @@ import { AnnotationQuickInput } from "@/features/annotations/AnnotationQuickInpu
 
 import { HostTestProvider } from "./fixtures/host-provider";
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Replace the isolated iframe input at the editor test boundary.
 vi.mock("@/features/secure-field/SecureTextField", async () => {
   const { forwardRef, useEffect, useImperativeHandle, useRef } = await import("react");
+
   type FakeSecureFieldProps = {
     ariaLabel: string;
     className?: string;
@@ -18,6 +20,7 @@ vi.mock("@/features/secure-field/SecureTextField", async () => {
     initialValue: string;
     onSave: (value: string) => void;
   };
+
   return {
     SecureTextField: forwardRef<{ focus: () => void; save: () => void }, FakeSecureFieldProps>(
       function FakeSecureTextField(
@@ -34,6 +37,7 @@ vi.mock("@/features/secure-field/SecureTextField", async () => {
           [onSave],
         );
         useEffect(() => fieldRef.current?.focus(), []);
+
         return (
           <input
             aria-label={ariaLabel}
@@ -203,6 +207,7 @@ async function renderQuickInput(onClose: () => void, onSave: (comment: string) =
       </HostTestProvider>,
     );
   });
+
   return { container, root };
 }
 
@@ -210,6 +215,7 @@ function changeInput(input: HTMLInputElement | null, value: string) {
   if (!input) {
     throw new Error("Missing annotation input");
   }
+
   const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
   setValue?.call(input, value);
   input.dispatchEvent(new Event("input", { bubbles: true }));
@@ -221,6 +227,8 @@ function outsidePointerDown() {
     cancelable: true,
     composed: true,
   });
+
   document.body.dispatchEvent(event);
+
   return event;
 }

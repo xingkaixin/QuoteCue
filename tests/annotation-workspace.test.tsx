@@ -25,6 +25,7 @@ const anchoredSelection: AnchoredSelection = {
   },
   rect: { bottom: 120, height: 20, left: 80, right: 180, top: 100, width: 100 },
 };
+
 const annotation: DraftAnnotation = {
   anchor: anchoredSelection.anchor,
   comment: "",
@@ -90,10 +91,13 @@ describe("annotation workspace", () => {
     await act(async () => new Promise(requestAnimationFrame));
     const projection = workspace.summary.annotations[0]!;
     await act(async () => workspace.summary.open(projection));
+
     const request = vi.fn(() => {
       workspace.editor.close();
+
       return true;
     });
+
     act(() => workspace.editor.bindSession(request));
     await act(async () => workspace.summary.open(projection));
     expect(request).not.toHaveBeenCalled();
@@ -413,6 +417,7 @@ describe("annotation workspace", () => {
         await act(async () => workspace.editor.save("must not enter another draft"));
         expect((await draftStoreFixture.store.load(nextConversation)).annotations).toEqual([]);
       }
+
       await act(async () => mounted.root.unmount());
     },
   );
@@ -459,6 +464,7 @@ describe("annotation workspace", () => {
     const mounted = await mountWorkspace();
     await act(async () => new Promise(requestAnimationFrame));
     const [first, second] = workspace.summary.annotations;
+
     if (!first || !second) {
       throw new Error("Missing projections");
     }
@@ -543,15 +549,19 @@ describe("annotation workspace", () => {
       const conversation = { kind: "identified", id: "conversation-a", siteId: "chatgpt" } as const;
       await draftStoreFixture.store.mutate(conversation, [{ kind: "add", annotation }]);
       const host = createWorkspaceHost();
+
       const snapshot = vi.spyOn(host.composer, "snapshot").mockReturnValue({
         status: "available",
         value: fakeComposerSnapshot("Please explain the tradeoff"),
       });
+
       const submit = vi.spyOn(host.composer, "submit").mockResolvedValue({
         reason: "confirmation-timeout",
         status: "unavailable",
       });
+
       const mounted = await mountWorkspace(host);
+
       try {
         await act(async () => workspace.summary.send());
         expect(workspace.summary.sendState.status).toBe("failed");
@@ -611,6 +621,7 @@ async function mountWorkspace(
   if (!container.isConnected) {
     document.body.append(container);
   }
+
   const root = createRoot(container);
   await act(async () =>
     root.render(
@@ -623,6 +634,7 @@ async function mountWorkspace(
       </DraftRuntimeProvider>,
     ),
   );
+
   return { host: providedHost, root };
 }
 
@@ -632,14 +644,17 @@ function createWorkspaceHost(): FakeHost {
       identity: () => ({ kind: "identified", id: "conversation-a", siteId: "chatgpt" }),
     },
   });
+
   const message = document.createElement("article");
   message.textContent = "A focused answer for the contract fixture.";
   document.body.append(message);
   host.controls.setMessageIndex(new Map([["assistant-one", message]]));
+
   return host;
 }
 
 function WorkspaceProbe() {
   workspace = useAnnotationWorkspace();
+
   return null;
 }

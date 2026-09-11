@@ -9,8 +9,10 @@ import { QUOTECUE_HOST_ATTR, QUOTECUE_NATIVE_ACTION_ATTR } from "@/lib/dom-ident
 
 import { HostTestProvider } from "./fixtures/host-provider";
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Replace the isolated iframe input at the editor test boundary.
 vi.mock("@/features/secure-field/SecureTextField", async () => {
   const { forwardRef, useEffect, useImperativeHandle, useRef } = await import("react");
+
   type FakeSecureFieldProps = {
     ariaLabel: string;
     className?: string;
@@ -21,6 +23,7 @@ vi.mock("@/features/secure-field/SecureTextField", async () => {
     initialValue: string;
     onSave: (value: string) => void;
   };
+
   return {
     SecureTextField: forwardRef<{ focus: () => void; save: () => void }, FakeSecureFieldProps>(
       function FakeSecureTextField(
@@ -37,6 +40,7 @@ vi.mock("@/features/secure-field/SecureTextField", async () => {
           [onSave],
         );
         useEffect(() => fieldRef.current?.focus(), []);
+
         return (
           <textarea
             aria-label={ariaLabel}
@@ -94,6 +98,7 @@ describe("AnnotationEditor", () => {
     for (let index = 0; index < 20; index += 1) {
       window.dispatchEvent(new Event("scroll"));
     }
+
     await act(async () => vi.advanceTimersByTimeAsync(17));
     expect(messageIndex).not.toHaveBeenCalled();
 
@@ -109,6 +114,7 @@ describe("AnnotationEditor", () => {
     const textarea = container.querySelector<HTMLTextAreaElement>("textarea");
     const cancelButton = findButton(container, "Cancel");
     const saveButton = findButton(container, "Save");
+
     const deleteButton = container.querySelector<HTMLButtonElement>(
       '[aria-label="Delete annotation"]',
     );
@@ -186,9 +192,11 @@ describe("AnnotationEditor", () => {
       value: vi.fn(),
     });
     const session: { requestDismissal: (() => boolean) | null } = { requestDismissal: null };
+
     const bindSession = (request: (() => boolean) | null) => {
       session.requestDismissal = request;
     };
+
     const container = document.createElement("div");
     document.body.append(container);
     const root = createRoot(container);
@@ -334,12 +342,14 @@ describe("AnnotationEditor", () => {
       const container = document.createElement("div");
       const otherControl = document.createElement("button");
       shadowRoot.append(container);
+
       if (location === "shadow") {
         shadowRoot.append(otherControl);
       } else {
         otherControl.setAttribute(QUOTECUE_NATIVE_ACTION_ATTR, "");
         document.body.append(otherControl);
       }
+
       document.body.append(host);
       const root = createRoot(container);
 
@@ -370,6 +380,7 @@ describe("AnnotationEditor", () => {
         cancelable: true,
         composed: true,
       });
+
       await act(async () => otherControl.dispatchEvent(otherInteraction));
       expect(otherInteraction.defaultPrevented).toBe(false);
       await act(async () => {
@@ -405,6 +416,7 @@ async function renderEditor(
   document.body.append(container);
   const root = createRoot(container);
   await act(async () => root.render(editor(onCancel, host, actions)));
+
   return { container, root };
 }
 
@@ -435,7 +447,9 @@ function outsidePointerDown() {
     cancelable: true,
     composed: true,
   });
+
   document.body.dispatchEvent(event);
+
   return event;
 }
 
@@ -443,6 +457,7 @@ function changeTextarea(textarea: HTMLTextAreaElement | null, value: string) {
   if (!textarea) {
     throw new Error("Missing annotation textarea");
   }
+
   const setValue = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
   setValue?.call(textarea, value);
   textarea.dispatchEvent(new Event("input", { bubbles: true }));

@@ -28,6 +28,7 @@ const annotation: DraftAnnotation = {
   },
   comment: "draft A",
 };
+
 const conversationA = identifiedConversation("A");
 const conversationB = identifiedConversation("B");
 
@@ -80,12 +81,15 @@ describe("draft annotation lifecycle", () => {
 
   it("confirms the retained source while the destination draft is still loading", async () => {
     let releaseLoad: () => void = () => undefined;
+
     const loaded = new Promise<void>((resolve) => {
       releaseLoad = resolve;
     });
+
     const load = draftStoreFixture.store.load.getMockImplementation()!;
     draftStoreFixture.store.load.mockImplementationOnce(async (...args) => {
       await loaded;
+
       return load(...args);
     });
     const root = await mountUnidentifiedDraft();
@@ -106,10 +110,12 @@ describe("draft annotation lifecycle", () => {
 
   it("isolates identical conversation ids across sites", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+
     const claudeConversationA: IdentifiedConversation = {
       ...conversationA,
       siteId: "claude",
     };
+
     const claudeAnnotation = { ...annotation, id: "annotation-claude", comment: "draft Claude" };
     const container = document.createElement("div");
     document.body.append(container);
@@ -187,6 +193,7 @@ describe("draft annotation lifecycle", () => {
       if (sameConversationIdentity(conversation, conversationA)) {
         throw new Error("A storage unavailable");
       }
+
       return draftResult(
         mutations.reduce<DraftAnnotation[]>(
           (annotations, mutation) => [
@@ -380,6 +387,7 @@ describe("draft annotation lifecycle", () => {
     const mutate = draftStoreFixture.store.mutate.getMockImplementation()!;
     draftStoreFixture.store.mutate.mockImplementationOnce(async (...args) => {
       await saved;
+
       return mutate(...args);
     });
     await act(async () => {
@@ -410,6 +418,7 @@ describe("draft annotation lifecycle", () => {
     const mutate = draftStoreFixture.store.mutate.getMockImplementation()!;
     draftStoreFixture.store.mutate.mockImplementationOnce(async (...args) => {
       await saved;
+
       return mutate(...args);
     });
     await act(async () => latestDrafts.restoreRetainedDraft());
@@ -584,10 +593,12 @@ describe("draft annotation lifecycle", () => {
 
   it("loads the latest queued edit after returning to a conversation", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+
     const storedDrafts = new Map<string, DraftAnnotation[]>([
       ["A", []],
       ["B", []],
     ]);
+
     const pendingSaves: Array<{ resolve: () => void }> = [];
     draftStoreFixture.store.load.mockImplementation(async (conversation: IdentifiedConversation) =>
       draftResult(structuredClone(storedDrafts.get(conversation.id) ?? [])),
@@ -600,6 +611,7 @@ describe("draft annotation lifecycle", () => {
           pendingSaves.push({
             resolve: () => {
               const current = storedDrafts.get(conversation.id) ?? [];
+
               const annotations = structuredClone([
                 ...mutations.reduce<readonly DraftAnnotation[]>(
                   (accumulatedAnnotations, mutation) =>
@@ -607,6 +619,7 @@ describe("draft annotation lifecycle", () => {
                   current,
                 ),
               ]);
+
               storedDrafts.set(conversation.id, annotations);
               resolve(draftResult(annotations));
             },
@@ -901,6 +914,7 @@ describe("draft annotation lifecycle", () => {
     const root = createRoot(container);
 
     await act(async () => root.render(<DraftHarness conversationIdentity={conversationA} />));
+
     const sentAnnotation: DraftAnnotation = {
       ...annotation,
       anchor: {
@@ -932,6 +946,7 @@ function DraftHarness({ conversationIdentity }: { conversationIdentity: Conversa
 
 function DraftProbe({ conversationIdentity }: { conversationIdentity: ConversationIdentity }) {
   latestDrafts = useDraftAnnotations(conversationIdentity);
+
   return null;
 }
 
@@ -950,6 +965,7 @@ async function mountUnidentifiedDraft() {
     ),
   );
   await act(async () => latestDrafts.addAnnotation(annotation));
+
   return root;
 }
 

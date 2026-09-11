@@ -92,6 +92,7 @@ function createShader(
   source: string,
 ): WebGLShader | null {
   const shader = context.createShader(type);
+
   if (!shader) return null;
 
   context.shaderSource(shader, source);
@@ -99,6 +100,7 @@ function createShader(
 
   if (!context.getShaderParameter(shader, context.COMPILE_STATUS)) {
     context.deleteShader(shader);
+
     return null;
   }
 
@@ -108,9 +110,11 @@ function createShader(
 function createProgram(context: WebGLRenderingContext): WebGLProgram | null {
   const vertexShader = createShader(context, context.VERTEX_SHADER, vertexShaderSource);
   const fragmentShader = createShader(context, context.FRAGMENT_SHADER, fragmentShaderSource);
+
   if (!vertexShader || !fragmentShader) return null;
 
   const program = context.createProgram();
+
   if (!program) return null;
 
   context.attachShader(program, vertexShader);
@@ -121,6 +125,7 @@ function createProgram(context: WebGLRenderingContext): WebGLProgram | null {
 
   if (!context.getProgramParameter(program, context.LINK_STATUS)) {
     context.deleteProgram(program);
+
     return null;
   }
 
@@ -132,14 +137,17 @@ export function CueFlowField() {
 
   useEffect(() => {
     const canvasElement = canvasRef.current;
+
     if (!canvasElement) return;
 
     const gl = canvasElement.getContext("webgl", { alpha: false, antialias: false });
+
     if (!gl) return;
 
     const activeCanvas: HTMLCanvasElement = canvasElement;
     const context: WebGLRenderingContext = gl;
     const program = createProgram(context);
+
     if (!program) return;
 
     const buffer = context.createBuffer();
@@ -166,6 +174,7 @@ export function CueFlowField() {
 
     function draw(now: number) {
       animationFrame = 0;
+
       if (!visible) return;
 
       const width = activeCanvas.clientWidth;
@@ -208,11 +217,14 @@ export function CueFlowField() {
     }
 
     const resizeObserver = new ResizeObserver(requestDraw);
+
     const visibilityObserver = new IntersectionObserver(([entry]) => {
       visible = entry.isIntersecting;
+
       if (visible) requestDraw();
       else if (animationFrame) cancelAnimationFrame(animationFrame);
     });
+
     const themeObserver = new MutationObserver(requestDraw);
 
     resizeObserver.observe(activeCanvas);

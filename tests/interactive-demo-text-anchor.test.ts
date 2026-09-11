@@ -11,9 +11,11 @@ describe("interactive demo text anchor", () => {
     transcript.innerHTML = "<span>before </span><strong>selected</strong><span> after</span>";
     const firstText = transcript.querySelector("span")?.firstChild;
     const lastText = transcript.querySelector("span:last-child")?.firstChild;
+
     if (!firstText || !lastText) {
       throw new Error("Expected transcript fixture text");
     }
+
     const range = document.createRange();
     range.setStart(firstText, 6);
     range.setEnd(lastText, 1);
@@ -29,9 +31,11 @@ describe("interactive demo text anchor", () => {
     const transcript = document.createElement("div");
     transcript.textContent = "before selected after";
     const text = transcript.firstChild;
+
     if (!text) {
       throw new Error("Expected transcript fixture text");
     }
+
     const range = document.createRange();
     range.setStart(text, 7);
     range.setEnd(text, 15);

@@ -203,6 +203,7 @@ export const LATEST_PRODUCT_UPDATE_DATE = RELEASES[0].publishedAt;
 
 export function getProductUpdates(locale: Locale): ProductUpdatesCopy {
   const copy = COPY[locale];
+
   const formatter = new Intl.DateTimeFormat(locale, {
     year: "numeric",
     month: "long",

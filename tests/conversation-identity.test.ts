@@ -13,11 +13,13 @@ const navigationDescriptor = Object.getOwnPropertyDescriptor(window, "navigation
 
 afterEach(() => {
   window.history.replaceState({}, "", "/");
+
   if (navigationDescriptor) {
     Object.defineProperty(window, "navigation", navigationDescriptor);
   } else {
     Reflect.deleteProperty(window, "navigation");
   }
+
   vi.restoreAllMocks();
 });
 

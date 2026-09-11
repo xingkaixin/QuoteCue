@@ -17,6 +17,7 @@ export function createSelectionReveal(context: HostContext) {
 
     const endpointRect = rangeEndpointRect(range);
     const scrollContainer = nearestScrollContainer(range.endContainer);
+
     const viewportRect = scrollContainer
       ? scrollContainer.getBoundingClientRect()
       : viewportRectangle();
@@ -27,11 +28,13 @@ export function createSelectionReveal(context: HostContext) {
 
     const offset =
       endpointRect.top + endpointRect.height / 2 - (viewportRect.top + viewportRect.height / 2);
+
     if (scrollContainer) {
       scrollContainer.scrollTop = scrollContainer.scrollTop + offset;
     } else {
       hostWindow.scrollBy({ behavior: "instant", top: offset });
     }
+
     return available("scrolled");
   };
 
@@ -40,12 +43,14 @@ export function createSelectionReveal(context: HostContext) {
 
     while (element) {
       const { overflowY } = hostWindow.getComputedStyle(element);
+
       if (
         SCROLLABLE_OVERFLOW_PATTERN.test(overflowY) &&
         element.scrollHeight > element.clientHeight
       ) {
         return element;
       }
+
       element = element.parentElement;
     }
 
@@ -54,6 +59,7 @@ export function createSelectionReveal(context: HostContext) {
 
   function viewportRectangle() {
     const viewport = currentVisualViewportBounds(hostWindow);
+
     return { bottom: viewport.top + viewport.height, height: viewport.height, top: viewport.top };
   }
 }

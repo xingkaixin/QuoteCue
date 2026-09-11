@@ -12,12 +12,14 @@ export function useAnnotatedComposerLayout(isActive: boolean) {
   useEffect(() => {
     if (!isActive) {
       setLayout(null);
+
       return;
     }
 
     function publish(result: HostResult<HostLayout>) {
       if (result.status === "unavailable") {
         setLayout(null);
+
         return;
       }
 

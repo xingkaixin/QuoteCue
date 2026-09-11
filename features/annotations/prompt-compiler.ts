@@ -10,6 +10,7 @@ export function compileAnnotatedPrompt(
   locale: SupportedLocale = "zh-CN",
 ) {
   const messages = messagesFor(locale).prompt;
+
   return compileAnnotationPrompt(
     annotations.map(({ annotation, ordinal }) => ({
       comment: annotation.comment,

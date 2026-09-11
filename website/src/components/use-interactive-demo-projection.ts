@@ -35,13 +35,6 @@ interface Geometry {
   badges: BadgePoint[];
 }
 
-interface HighlightRegistry {
-  delete: (name: string) => boolean;
-  set: (name: string, highlight: unknown) => void;
-}
-
-type HighlightConstructor = new (...ranges: Range[]) => unknown;
-
 export function useInteractiveDemoProjection(
   annotations: DemoAnnotation[],
   editingId: number | null,
@@ -57,6 +50,7 @@ export function useInteractiveDemoProjection(
     const updateLayout = () => setLayoutVersion((version) => version + 1);
     window.addEventListener("resize", updateLayout);
     window.addEventListener("scroll", updateLayout, { passive: true });
+
     return () => {
       window.removeEventListener("resize", updateLayout);
       window.removeEventListener("scroll", updateLayout);
@@ -67,6 +61,7 @@ export function useInteractiveDemoProjection(
     const style = document.createElement("style");
     style.textContent = `::highlight(${highlightName}) { background: var(--mark); }`;
     document.head.append(style);
+
     return () => {
       getHighlightApi().registry?.delete(highlightName);
       style.remove();
@@ -75,15 +70,20 @@ export function useInteractiveDemoProjection(
 
   useEffect(() => {
     const { Highlight, registry } = getHighlightApi();
+
     if (!Highlight || !registry) return;
 
     const transcript = transcriptRef.current;
+
     const ranges = transcript
       ? resolveAnnotations(transcript, annotations).map(({ range }) => range)
       : [];
+
     if (candidate) ranges.push(candidate.range);
+
     if (ranges.length === 0) {
       registry.delete(highlightName);
+
       return;
     }
 
@@ -104,15 +104,19 @@ export function useInteractiveDemoProjection(
   const captureSelection = useCallback(() => {
     const selection = window.getSelection();
     const transcript = transcriptRef.current;
+
     if (!selection || selection.isCollapsed || !transcript) {
       setCandidate(null);
+
       return;
     }
 
     const range = selection.getRangeAt(0);
     const anchor = captureDemoTextAnchor(transcript, range);
+
     if (!anchor || anchor.quote.length < 2) {
       setCandidate(null);
+
       return;
     }
 
@@ -151,6 +155,7 @@ function clamp(value: number, minimum: number, maximum: number) {
 
 function getLastRect(range: Range) {
   const rectangles = Array.from(range.getClientRects());
+
   return rectangles.at(-1) ?? range.getBoundingClientRect();
 }
 
@@ -162,12 +167,14 @@ function measureGeometry(
   editingId: number | null,
 ): Geometry {
   const stageRect = stage.getBoundingClientRect();
+
   const toStagePoint = (rect: DOMRect) => ({
     left: rect.left - stageRect.left,
     top: rect.top - stageRect.top,
   });
 
   let action: Point | null = null;
+
   if (candidate) {
     const rect = getLastRect(candidate.range);
     const point = toStagePoint(rect);
@@ -178,10 +185,13 @@ function measureGeometry(
   }
 
   const resolvedAnnotations = resolveAnnotations(transcript, annotations);
+
   const badges = resolvedAnnotations.flatMap(({ annotation, range }) => {
     const rect = getLastRect(range);
+
     if (rect.width === 0) return [];
     const point = toStagePoint(rect);
+
     return [
       {
         id: annotation.id,
@@ -193,6 +203,7 @@ function measureGeometry(
 
   let editor: Point | null = null;
   const editing = resolvedAnnotations.find(({ annotation }) => annotation.id === editingId);
+
   if (editing) {
     const rectangles = Array.from(editing.range.getClientRects());
     const firstRect = rectangles[0] ?? editing.range.getBoundingClientRect();
@@ -203,6 +214,7 @@ function measureGeometry(
     const cardWidth = Math.min(340, stage.clientWidth - 32);
     const maximumTop = Math.max(16, stage.clientHeight - cardHeight - 16);
     let top = last.top + lastRect.height + 10;
+
     if (top > maximumTop) top = first.top - cardHeight - 10;
     editor = {
       left: clamp(last.left, 16, Math.max(16, stage.clientWidth - cardWidth - 16)),
@@ -219,12 +231,11 @@ function resolveAnnotations(
 ): ResolvedDemoAnnotation[] {
   return annotations.flatMap((annotation) => {
     const range = restoreDemoTextAnchor(transcript, annotation.anchor);
+
     return range ? [{ annotation, range }] : [];
   });
 }
 
 function getHighlightApi() {
-  const css = window.CSS as typeof CSS & { highlights?: HighlightRegistry };
-  const Highlight = (window as Window & { Highlight?: HighlightConstructor }).Highlight;
-  return { Highlight, registry: css.highlights };
+  return { Highlight: window.Highlight, registry: window.CSS?.highlights };
 }

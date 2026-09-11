@@ -40,7 +40,9 @@ export function decodeSecureFieldInit(
   if (!isRecord(value) || value.type !== SECURE_FIELD_INIT || value.token !== token) {
     return null;
   }
+
   const config = decodeConfig(value.config);
+
   return config ? { type: SECURE_FIELD_INIT, token, config } : null;
 }
 
@@ -48,10 +50,13 @@ export function decodeSecureFieldCommand(value: unknown): SecureFieldCommand | n
   if (!isRecord(value)) {
     return null;
   }
+
   if (value.type === "focus" || value.type === "save") {
     return { type: value.type };
   }
+
   const update = value.type === "update" ? decodeUpdate(value.update) : null;
+
   return update ? { type: "update", update } : null;
 }
 
@@ -59,17 +64,21 @@ export function decodeSecureFieldEvent(value: unknown): SecureFieldEvent | null 
   if (!isRecord(value)) {
     return null;
   }
+
   if (value.type === "cancel") {
     return { type: value.type };
   }
+
   if ((value.type === "change" || value.type === "save") && typeof value.value === "string") {
     return { type: value.type, value: value.value };
   }
+
   return null;
 }
 
 function decodeConfig(value: unknown): SecureFieldConfig | null {
   const update = decodeUpdate(value);
+
   if (
     !isRecord(value) ||
     !update ||
@@ -80,6 +89,7 @@ function decodeConfig(value: unknown): SecureFieldConfig | null {
   ) {
     return null;
   }
+
   return {
     ...update,
     initialValue: value.initialValue,
@@ -99,6 +109,7 @@ function decodeUpdate(value: unknown): SecureFieldUpdate | null {
   ) {
     return null;
   }
+
   return {
     ariaLabel: value.ariaLabel,
     lang: value.lang,

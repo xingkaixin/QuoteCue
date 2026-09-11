@@ -24,9 +24,11 @@ describe("selection visuals", () => {
       configurable: true,
       value: { highlights: { delete: removeHighlight, set: setHighlight } },
     });
+
     class FakeHighlight {
       constructor(readonly range: Range) {}
     }
+
     Object.defineProperty(window, "Highlight", {
       configurable: true,
       value: FakeHighlight,
@@ -83,6 +85,7 @@ function selectionRect(): SelectionRect {
 }
 
 function restoreProperty(
+  // oxlint-disable-next-line anti-slop/no-object-parameters -- Restoring a property descriptor requires no domain fields.
   target: object,
   property: PropertyKey,
   descriptor: PropertyDescriptor | undefined,

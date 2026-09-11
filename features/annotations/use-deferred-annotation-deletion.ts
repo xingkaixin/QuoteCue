@@ -23,16 +23,20 @@ export function useDeferredAnnotationDeletion(
   const [pendingDeletionBatch, setPendingDeletionBatch] = useState<PendingDeletionBatch | null>(
     null,
   );
+
   const currentBatch =
     pendingDeletionBatch &&
     sameConversationIdentity(pendingDeletionBatch.conversationIdentity, conversationIdentity)
       ? pendingDeletionBatch
       : null;
+
   const visibleAnnotations = useMemo(() => {
     if (!currentBatch) {
       return annotations;
     }
+
     const pendingIds = new Set(currentBatch.annotationIds);
+
     return annotations.filter(({ id }) => !pendingIds.has(id));
   }, [annotations, currentBatch]);
 
@@ -40,6 +44,7 @@ export function useDeferredAnnotationDeletion(
     if (!currentBatch) {
       return;
     }
+
     const timer = window.setTimeout(
       () => {
         commitDeletions(currentBatch.annotationIds);
@@ -47,6 +52,7 @@ export function useDeferredAnnotationDeletion(
       },
       Math.max(0, currentBatch.expiresAt - Date.now()),
     );
+
     return () => window.clearTimeout(timer);
   }, [commitDeletions, currentBatch]);
 
@@ -63,14 +69,17 @@ export function useDeferredAnnotationDeletion(
   const requestDeletion = useCallback(
     (annotationId: string) => {
       const annotationExists = annotations.some((annotation) => annotation.id === annotationId);
+
       if (!annotationExists || currentBatch?.annotationIds.includes(annotationId)) {
         return false;
       }
+
       setPendingDeletionBatch({
         annotationIds: [...(currentBatch?.annotationIds ?? []), annotationId],
         conversationIdentity,
         expiresAt: Date.now() + DELETE_UNDO_WINDOW_MS,
       });
+
       return true;
     },
     [annotations, conversationIdentity, currentBatch],

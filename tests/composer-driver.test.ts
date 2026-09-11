@@ -46,11 +46,13 @@ describe("composer driver", () => {
     const composer = installComposer("original");
 
     const composerDriver = driver();
+
     const replaced = composerDriver.replaceText(
       availableSnapshot(composerDriver),
       "replacement",
       new AbortController().signal,
     );
+
     expect(execCommand).toHaveBeenCalledWith("insertText", false, "replacement");
     expect(composer.textContent).toBe("original");
     composer.textContent = "replacement";
@@ -97,14 +99,17 @@ describe("composer driver", () => {
 
 function driver(composer = pasteFirstDomFallbackComposer("[contenteditable]")) {
   const hostAdapter = adapter(composer);
+
   return createComposerDriver(createHostContext({ document, window }, hostAdapter));
 }
 
 function availableSnapshot(composerDriver: ReturnType<typeof createComposerDriver>) {
   const result = composerDriver.snapshot();
+
   if (result.status === "unavailable") {
     throw new Error("Expected an available composer snapshot");
   }
+
   return result.value;
 }
 
@@ -113,12 +118,14 @@ function installComposer(text = "") {
   composer.setAttribute("contenteditable", "true");
   composer.textContent = text;
   document.body.append(composer);
+
   return composer;
 }
 
 function installExecCommand(result: boolean) {
   const execCommand = vi.fn(() => result);
   Object.defineProperty(document, "execCommand", { configurable: true, value: execCommand });
+
   return execCommand;
 }
 

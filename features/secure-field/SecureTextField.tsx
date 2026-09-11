@@ -56,6 +56,7 @@ export const SecureTextField = forwardRef<SecureTextFieldHandle, SecureTextField
     const frameKey = JSON.stringify([kind, maxLength ?? null, name]);
     const frameRef = useRef<HTMLIFrameElement>(null);
     const portRef = useRef<MessagePort | null>(null);
+
     const configRef = useRef<SecureFieldConfig>({
       ariaLabel,
       initialValue,
@@ -66,31 +67,38 @@ export const SecureTextField = forwardRef<SecureTextFieldHandle, SecureTextField
       placeholder,
       theme,
     });
+
     const handlersRef = useRef({ onCancel, onChange, onSave });
 
     const update = useMemo<SecureFieldUpdate>(
       () => ({ ariaLabel, lang: locale, placeholder, theme }),
       [ariaLabel, locale, placeholder, theme],
     );
+
     configRef.current = { ...update, initialValue, kind, maxLength, name };
     handlersRef.current = { onCancel, onChange, onSave };
 
     const handleFieldEvent = useCallback((event: MessageEvent<unknown>) => {
       const fieldEvent = decodeSecureFieldEvent(event.data);
+
       if (!fieldEvent) {
         return;
       }
+
       dispatchFieldEvent(fieldEvent, handlersRef.current);
     }, []);
 
     const connect = useCallback(() => {
       const frame = frameRef.current;
       const contentWindow = frame?.contentWindow;
+
       if (frame?.hasAttribute("srcdoc")) {
         // An injected empty srcdoc overrides src and leaves the isolated field on about:srcdoc.
         frame.removeAttribute("srcdoc");
+
         return;
       }
+
       // React can receive the inherited about:blank load before assigning the extension URL.
       if (!contentWindow || frame.contentDocument) {
         return;
@@ -156,11 +164,15 @@ function dispatchFieldEvent(
 ) {
   if (event.type === "cancel") {
     handlers.onCancel();
+
     return;
   }
+
   if (event.type === "change") {
     handlers.onChange(event.value);
+
     return;
   }
+
   handlers.onSave(event.value);
 }

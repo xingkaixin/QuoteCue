@@ -33,6 +33,7 @@ export function InteractiveDemo({ copy }: InteractiveDemoProps) {
   const editingId = editor?.annotationId ?? null;
   const editorComment = editor?.comment ?? "";
   const sending = send.kind === "sending";
+
   const {
     candidate,
     captureSelection,
@@ -43,15 +44,18 @@ export function InteractiveDemo({ copy }: InteractiveDemoProps) {
     stageRef,
     transcriptRef,
   } = useInteractiveDemoProjection(annotations, editingId);
+
   useInteractiveDemoStatusTimer({ clearArmed, pendingRemovals, send }, dispatch);
 
   function createAnnotation() {
     if (!candidate) return;
+
     const annotation: DemoAnnotation = {
       anchor: candidate.anchor,
       id: ++sequenceRef.current,
       comment: "",
     };
+
     dispatch({ type: "add-annotation", annotation });
     clearCandidate();
   }
@@ -87,6 +91,7 @@ export function InteractiveDemo({ copy }: InteractiveDemoProps) {
   const actionStyle = geometry.action
     ? ({ left: geometry.action.left, top: geometry.action.top } satisfies CSSProperties)
     : undefined;
+
   const editorStyle = geometry.editor
     ? ({ left: geometry.editor.left, top: geometry.editor.top } satisfies CSSProperties)
     : undefined;
@@ -222,7 +227,9 @@ export function InteractiveDemo({ copy }: InteractiveDemoProps) {
 
         {geometry.badges.map((badge, index) => {
           const annotation = annotations.find((item) => item.id === badge.id);
+
           if (!annotation) return null;
+
           return (
             <button
               aria-label={copy.edit}

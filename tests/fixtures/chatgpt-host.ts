@@ -27,6 +27,7 @@ export function installChatGptHostFixture(): ChatGptHostFixture {
   const assistantMessage = requiredElement<HTMLElement>(
     '[data-message-author-role="assistant"][data-message-id]',
   );
+
   const composer = requiredElement<HTMLElement>("#prompt-textarea");
   const form = requiredElement<HTMLFormElement>("form");
   const surface = requiredElement<HTMLElement>('[data-fixture="composer-surface"]');
@@ -49,6 +50,7 @@ export function appendUserMessage(messageId: string, text: string) {
   message.dataset.messageId = messageId;
   message.textContent = text;
   (document.querySelector("main") ?? document.body).append(message);
+
   return message;
 }
 
@@ -62,6 +64,7 @@ export function appendUserMessageWithBreaks(messageId: string, text: string) {
   );
   // jsdom does not derive innerText from rendered line breaks.
   Object.defineProperty(message, "innerText", { configurable: true, value: text });
+
   return message;
 }
 
@@ -71,6 +74,7 @@ export function appendAssistantMessage(messageId: string, text: string) {
   message.dataset.messageId = messageId;
   message.textContent = text;
   document.body.append(message);
+
   return message;
 }
 
@@ -88,6 +92,7 @@ export function appendComposer(text = "") {
   surface.append(composer);
   form.append(surface);
   document.body.append(form);
+
   return composer;
 }
 
@@ -97,6 +102,7 @@ export function appendSendButton(onClick: () => void = () => undefined) {
   sendButton.dataset.testid = "send-button";
   sendButton.addEventListener("click", onClick);
   requiredElement("form:has(#prompt-textarea) > div").append(sendButton);
+
   return sendButton;
 }
 
@@ -114,6 +120,7 @@ export function appendSelectionToolbar(rect = new DOMRect(100, 150, 200, 36)) {
   toolbar.append(actionRow);
   setElementRect(toolbar, rect);
   document.body.append(toolbar);
+
   return { actionRow, firstAction, lastAction, toolbar };
 }
 

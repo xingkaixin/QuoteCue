@@ -273,18 +273,23 @@ export function resolveHostLocale(
 export function resolveLocale(languageTags: Array<string | null | undefined>): SupportedLocale {
   for (const languageTag of languageTags) {
     const normalized = languageTag?.toLowerCase();
+
     if (!normalized) {
       continue;
     }
+
     if (normalized.startsWith("zh-hant") || normalized.startsWith("zh-tw")) {
       return "zh-TW";
     }
+
     if (normalized.startsWith("zh")) {
       return "zh-CN";
     }
+
     if (normalized.startsWith("en")) {
       return "en";
     }
+
     if (normalized.startsWith("ja")) {
       return "ja";
     }

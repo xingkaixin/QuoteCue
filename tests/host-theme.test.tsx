@@ -126,6 +126,7 @@ function ChangeThemeOnLayout() {
   useLayoutEffect(() => {
     document.documentElement.dataset.mode = "dark";
   }, []);
+
   return null;
 }
 
@@ -135,8 +136,10 @@ function ThemeProbe() {
 
 function requiredSite(hostname: string) {
   const site = siteForHostname(hostname);
+
   if (!site) {
     throw new Error(`Missing site registration for ${hostname}`);
   }
+
   return site;
 }

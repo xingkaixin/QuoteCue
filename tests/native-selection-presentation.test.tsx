@@ -209,6 +209,7 @@ function selectText(node: ChildNode | null) {
   if (!node) {
     throw new Error("Expected a text node");
   }
+
   const range = document.createRange();
   range.selectNodeContents(node);
   Object.defineProperty(range, "getBoundingClientRect", {

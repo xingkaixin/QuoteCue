@@ -103,6 +103,7 @@ function ConversationIdentityProbe({ host }: { host: FakeHost }) {
 
 function ConversationIdentityValue() {
   const identity = useConversationIdentity();
+
   return (
     <output data-kind={identity.kind}>
       {identity.kind === "identified" ? identity.id : identity.sessionKey}
@@ -118,11 +119,13 @@ function CommitConversationIdentity({ host }: { host: FakeHost }) {
       siteId: "chatgpt",
     });
   }, [host]);
+
   return null;
 }
 
 function readIdentity(container: HTMLElement) {
   const output = container.querySelector("output");
+
   return {
     kind: output?.dataset.kind,
     value: output?.textContent,

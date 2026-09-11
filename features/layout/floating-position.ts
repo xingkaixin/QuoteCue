@@ -27,6 +27,7 @@ export function positionAdjacentToRect(
   options: AdjacentPositionOptions,
 ): FloatingPosition {
   const bounds = positionBounds(size, options);
+
   return {
     ...bounds.size,
     left: adjacentPosition(
@@ -50,6 +51,7 @@ export function clampPositionToViewport(
   options: PositionOptions,
 ): FloatingPosition {
   const bounds = positionBounds(size, options);
+
   return {
     ...bounds.size,
     left: clamp(position.left, bounds.minLeft, bounds.maxLeft),
@@ -67,6 +69,7 @@ function positionBounds(size: FloatingElementSize, options: PositionOptions) {
   const height = Math.min(size.height, maxHeight);
   const minLeft = viewport.left + horizontalMargin;
   const minTop = viewport.top + verticalMargin;
+
   return {
     height,
     maxLeft: Math.max(minLeft, viewport.left + viewport.width - width - horizontalMargin),
@@ -82,9 +85,11 @@ function adjacentPosition(after: number, before: number, minimum: number, maximu
   if (after >= minimum && after <= maximum) {
     return after;
   }
+
   if (before >= minimum && before <= maximum) {
     return before;
   }
+
   return clamp(after, minimum, maximum);
 }
 

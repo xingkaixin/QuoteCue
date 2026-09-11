@@ -13,13 +13,16 @@ type DraftRuntimeProviderProps = {
 
 export function DraftRuntimeProvider({ children, store }: DraftRuntimeProviderProps) {
   const runtime = useMemo(() => createDraftRuntime(createDraftPersistence(store)), [store]);
+
   return <DraftRuntimeContext.Provider value={runtime}>{children}</DraftRuntimeContext.Provider>;
 }
 
 export function useDraftRuntime() {
   const runtime = useContext(DraftRuntimeContext);
+
   if (!runtime) {
     throw new Error("DraftRuntimeProvider is missing");
   }
+
   return runtime;
 }

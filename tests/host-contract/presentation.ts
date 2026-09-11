@@ -78,6 +78,7 @@ export function runPresentationHostContract(definition: HostContractDefinition) 
       const fixture = definition.installFixture();
       const onSubmit = vi.fn();
       const stop = host().composer.subscribeToSubmit(onSubmit);
+
       const event = new KeyboardEvent("keydown", {
         bubbles: true,
         cancelable: true,
@@ -96,6 +97,7 @@ export function runPresentationHostContract(definition: HostContractDefinition) 
       const fixture = definition.installFixture();
       const surfaceRect = fixture.surface.getBoundingClientRect();
       fixture.sendControl.remove();
+
       for (const action of fixture.surface.querySelectorAll("button, [role='button']")) {
         action.remove();
       }

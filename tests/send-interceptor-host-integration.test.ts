@@ -75,9 +75,11 @@ describe("annotated send host integration", () => {
   it("waits for asynchronous editor rendering before using an enabled send control", async () => {
     const composer = installComposer("original question");
     vi.mocked(document.execCommand).mockReturnValue(true);
+
     const send = vi.fn(() => {
       installUserMessage("submitted-message", composer.textContent ?? "");
     });
+
     installSendButton(send);
     const host = createChatGptHost({ document, window });
 
@@ -86,6 +88,7 @@ describe("annotated send host integration", () => {
       signal: new AbortController().signal,
       text: "compiled prompt",
     });
+
     await Promise.resolve();
 
     expect(send).not.toHaveBeenCalled();
@@ -108,6 +111,7 @@ describe("annotated send host integration", () => {
       signal: new AbortController().signal,
       text: "compiled prompt",
     });
+
     await Promise.resolve();
     expect(observe).toHaveBeenCalledWith(
       fixture.surface,
@@ -155,11 +159,13 @@ describe("annotated send host integration", () => {
       const host = createChatGptHost({ document, window });
       const send = vi.fn();
       fixture.action.addEventListener("click", send);
+
       const result = host.composer.submit({
         restoreTo: availableComposer(host),
         signal: new AbortController().signal,
         text: "compiled prompt",
       });
+
       await Promise.resolve();
 
       if (change === "navigation") {
@@ -169,6 +175,7 @@ describe("annotated send host integration", () => {
       } else {
         fixture.composer.replaceWith(fixture.composer.cloneNode(true));
       }
+
       const currentText = availableComposer(host).text;
       fixture.action.disabled = false;
 
@@ -188,6 +195,7 @@ describe("annotated send host integration", () => {
     const host = createChatGptHost({ document, window });
     const send = vi.fn();
     fixture.action.addEventListener("click", send);
+
     const result = host.composer.submit({
       restoreTo: availableComposer(host),
       signal: new AbortController().signal,
@@ -208,11 +216,13 @@ describe("annotated send host integration", () => {
     const host = createChatGptHost({ document, window });
     const send = vi.fn();
     fixture.action.addEventListener("click", send);
+
     const result = host.composer.submit({
       restoreTo: availableComposer(host),
       signal: new AbortController().signal,
       text: "compiled prompt",
     });
+
     await Promise.resolve();
 
     fixture.action.disabled = false;
@@ -233,6 +243,7 @@ describe("annotated send host integration", () => {
     fixture.action.addEventListener("click", () => {
       window.history.replaceState({}, "", "/c/conversation-b");
     });
+
     const result = host.composer.submit({
       restoreTo: availableComposer(host),
       signal: new AbortController().signal,
@@ -255,6 +266,7 @@ describe("annotated send host integration", () => {
     fixture.action.click = () => {
       throw error;
     };
+
     const logger = vi.fn();
     const host = createChatGptHost({ document, logger, window });
 
@@ -272,24 +284,29 @@ describe("annotated send host integration", () => {
     vi.useFakeTimers();
     const fixture = installChatGptHostFixture();
     fixture.action.disabled = false;
+
     for (let index = 0; index < 200; index += 1) {
       installUserMessage(`existing-${index}`, `old message ${index}`);
     }
+
     const logger = vi.fn();
     const host = createChatGptHost({ document, logger, window });
     const querySelectorAll = vi.spyOn(document, "querySelectorAll");
     const requestAnimationFrame = vi.spyOn(window, "requestAnimationFrame");
     const controller = new AbortController();
+
     const result = host.composer.submit({
       restoreTo: availableComposer(host),
       signal: controller.signal,
       text: "message that does not exist",
     });
+
     await Promise.resolve();
     await Promise.resolve();
     querySelectorAll.mockClear();
     requestAnimationFrame.mockClear();
     logger.mockClear();
+
     const userMessageScanCount = () =>
       querySelectorAll.mock.calls.filter(
         ([selector]) => selector === '[data-message-author-role="user"][data-message-id]',
@@ -366,6 +383,7 @@ describe("annotated send host integration", () => {
       value: fakeComposerSnapshot("original question"),
     });
     let submittedSignal: AbortSignal | undefined;
+
     const submit = vi.spyOn(host.composer, "submit").mockImplementation(
       ({ signal }) =>
         new Promise((resolve) => {
@@ -377,6 +395,7 @@ describe("annotated send host integration", () => {
           );
         }),
     );
+
     const interceptor = registerSendInterceptor({
       getSendInput: () => ({
         annotations: numberAnnotations([annotation]),
@@ -451,6 +470,7 @@ describe("annotated send host integration", () => {
       sendCount += 1;
       const compiledPrompt = composer.textContent ?? "";
       composer.replaceChildren();
+
       if (sendCount === 2) {
         retriedText = compiledPrompt;
         installUserMessage("retried-user-message", compiledPrompt);
@@ -480,16 +500,20 @@ describe("annotated send host integration", () => {
   it("never reuses a failed question from another conversation", async () => {
     vi.useFakeTimers();
     const composer = installComposer("question from conversation A");
+
     let identity: ConversationIdentity = {
       kind: "identified",
       id: "conversation-a",
       siteId: "chatgpt",
     };
+
     const onStateChange = vi.fn();
+
     const interceptor = createInterceptor(vi.fn(), {
       conversationIdentity: () => identity,
       onStateChange,
     });
+
     let sentText = "";
     installSendButton(() => {
       sentText = composer.textContent ?? "";
@@ -518,16 +542,20 @@ describe("annotated send host integration", () => {
   it("reports idle after leaving the conversation that failed", async () => {
     vi.useFakeTimers();
     installComposer("question from conversation A");
+
     let identity: ConversationIdentity = {
       kind: "identified",
       id: "conversation-a",
       siteId: "chatgpt",
     };
+
     const onStateChange = vi.fn();
+
     const interceptor = createInterceptor(vi.fn(), {
       conversationIdentity: () => identity,
       onStateChange,
     });
+
     installSendButton();
 
     interceptor.submit();

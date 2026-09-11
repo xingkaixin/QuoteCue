@@ -11,6 +11,7 @@ import { HostTestProvider } from "./fixtures/host-provider";
 const geometry = vi.hoisted(() => ({
   top: 200,
 }));
+
 let renderCount = 0;
 const rangeRectsDescriptor = Object.getOwnPropertyDescriptor(Range.prototype, "getClientRects");
 
@@ -27,16 +28,19 @@ const annotation: DraftAnnotation = {
   },
   comment: "",
 };
+
 const annotationList = [annotation];
 
 afterEach(() => {
   geometry.top = 200;
   renderCount = 0;
+
   if (rangeRectsDescriptor) {
     Object.defineProperty(Range.prototype, "getClientRects", rangeRectsDescriptor);
   } else {
     Reflect.deleteProperty(Range.prototype, "getClientRects");
   }
+
   vi.useRealTimers();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
@@ -251,6 +255,7 @@ function ProjectionHarness({
 function ProjectionProbe({ activeAnnotationId }: { activeAnnotationId: string | null }) {
   renderCount += 1;
   const [projection] = useAnnotationProjection(annotationList, activeAnnotationId);
+
   return (
     <output
       data-ordinal={projection?.ordinal}
@@ -280,12 +285,15 @@ function createProjectionHost(isResolved = true) {
     value: () => [annotationRect()],
   });
   const host = createFakeHost();
+
   if (!isResolved) {
     return host;
   }
+
   const message = document.createElement("p");
   message.textContent = "selected text";
   document.body.append(message);
   host.controls.setMessageIndex(new Map([["message-1", message]]));
+
   return host;
 }

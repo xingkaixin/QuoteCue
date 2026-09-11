@@ -41,12 +41,14 @@ export function draftEnvelope(annotations: DraftAnnotation[]): StoredDraftEnvelo
 export function decodeStoredDraft(value: unknown): DecodedDraft {
   if (Array.isArray(value)) {
     const decoded = decodeAnnotations(value, RENDERED_QUOTE_DRAFT_STORAGE_VERSION);
+
     return {
       annotations: decoded.annotations,
       hasUnreadableAnnotations: decoded.hasUnreadableAnnotations,
       needsMigration: true,
     };
   }
+
   if (
     !isRecord(value) ||
     !isDraftStorageVersion(value.version) ||
@@ -56,6 +58,7 @@ export function decodeStoredDraft(value: unknown): DecodedDraft {
   }
 
   const decoded = decodeAnnotations(value.annotations, value.version);
+
   return {
     annotations: decoded.annotations,
     hasUnreadableAnnotations: decoded.hasUnreadableAnnotations,
@@ -82,14 +85,17 @@ function decodeAnnotations(values: unknown[], version: DraftStorageVersion): Dec
 
   for (const value of values) {
     const annotation = decodeAnnotation(value, version);
+
     if (!annotation) {
       hasUnreadableAnnotations = true;
       continue;
     }
+
     if (annotationIds.has(annotation.id)) {
       hasDuplicateAnnotations = true;
       continue;
     }
+
     annotationIds.add(annotation.id);
     annotations.push(annotation);
   }
@@ -101,7 +107,9 @@ function decodeAnnotation(value: unknown, version: DraftStorageVersion): DraftAn
   if (!isRecord(value) || typeof value.id !== "string" || typeof value.comment !== "string") {
     return null;
   }
+
   const anchor = decodeTextAnchor(value.anchor, version);
+
   return anchor ? { id: value.id, anchor, comment: value.comment } : null;
 }
 
@@ -109,6 +117,7 @@ function decodeTextAnchor(value: unknown, version: DraftStorageVersion) {
   if (version === DRAFT_STORAGE_VERSION) {
     return parseTextAnchor(value);
   }
+
   if (!isRecord(value)) {
     return null;
   }
@@ -118,6 +127,7 @@ function decodeTextAnchor(value: unknown, version: DraftStorageVersion) {
     version === UNMARKED_ANCHOR_DRAFT_STORAGE_VERSION && value.displayQuote !== undefined
       ? "exact"
       : "legacy-rendered";
+
   return parseTextAnchor({ ...value, format });
 }
 

@@ -7,6 +7,7 @@ import {
 } from "@/features/annotations/draft-owner-protocol";
 
 const conversation = { kind: "identified", id: "conversation-a", siteId: "chatgpt" } as const;
+
 const annotation = {
   id: "annotation-a",
   anchor: {

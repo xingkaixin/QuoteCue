@@ -21,23 +21,28 @@ export function createSelectionAnchoring(context: HostContext) {
 
   function observeCaptureIntent(callback: (intent: SelectionCaptureIntent) => void) {
     let captureFrame: number | undefined;
+
     const scheduleCapture = (event: Event) => {
       if (isQuoteCueEvent(event) || (event instanceof KeyboardEvent && event.key === "Escape")) {
         return;
       }
+
       if (captureFrame !== undefined) {
         hostWindow.cancelAnimationFrame(captureFrame);
       }
+
       captureFrame = hostWindow.requestAnimationFrame(() => {
         captureFrame = undefined;
         callback("capture");
       });
     };
+
     const dismissOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         callback("dismiss");
       }
     };
+
     const stopViewportObservation = signals.observeViewport(() => callback("dismiss"));
 
     hostDocument.addEventListener("mouseup", scheduleCapture, true);
@@ -48,6 +53,7 @@ export function createSelectionAnchoring(context: HostContext) {
       if (captureFrame !== undefined) {
         hostWindow.cancelAnimationFrame(captureFrame);
       }
+
       hostDocument.removeEventListener("mouseup", scheduleCapture, true);
       hostDocument.removeEventListener("keyup", scheduleCapture, true);
       hostDocument.removeEventListener("keydown", dismissOnEscape, true);
@@ -59,6 +65,7 @@ export function createSelectionAnchoring(context: HostContext) {
     const stopMutationObservation = signals.observeMutations(
       (records) => {
         const dirtyMessageIds = dirtyAssistantMessageIds(records);
+
         if (dirtyMessageIds === "all" || dirtyMessageIds.size > 0) {
           callback({ dirtyMessageIds, reason: "content" });
         }
@@ -68,6 +75,7 @@ export function createSelectionAnchoring(context: HostContext) {
         childList: true,
       },
     );
+
     const stopViewportObservation = signals.observeViewport(() => callback({ reason: "layout" }));
 
     return () => {
@@ -85,12 +93,15 @@ export function createSelectionAnchoring(context: HostContext) {
     ) {
       rebuildMessageIndex();
     }
+
     if (!messageIds) {
       return new Map(messageById);
     }
+
     return new Map(
       [...messageIds].flatMap((messageId) => {
         const message = messageById.get(messageId);
+
         return message ? [[messageId, message] as const] : [];
       }),
     );
@@ -99,33 +110,41 @@ export function createSelectionAnchoring(context: HostContext) {
   function rebuildMessageIndex() {
     const nextAmbiguousMessageIds = new Set<string>();
     const nextMessageById = new Map<string, HTMLElement>();
+
     for (const message of hostDocument.querySelectorAll<HTMLElement>(
       adapter.messages.assistantSelector,
     )) {
       if (!adapter.messages.isAssistant(message)) {
         continue;
       }
+
       const messageId = adapter.messages.id(message);
+
       if (!messageId) {
         continue;
       }
+
       if (nextAmbiguousMessageIds.has(messageId)) {
         continue;
       }
+
       if (nextMessageById.has(messageId)) {
         reportDuplicateIdentity(messageId);
         nextMessageById.delete(messageId);
         nextAmbiguousMessageIds.add(messageId);
         continue;
       }
+
       nextMessageById.set(messageId, message);
     }
+
     ambiguousMessageIds = nextAmbiguousMessageIds;
     messageById = nextMessageById;
   }
 
   function isCachedMessageValid(messageId: string) {
     const message = messageById.get(messageId);
+
     return (
       message?.isConnected === true &&
       adapter.messages.isAssistant(message) &&
@@ -135,24 +154,31 @@ export function createSelectionAnchoring(context: HostContext) {
 
   function dirtyAssistantMessageIds(records: readonly MutationRecord[]) {
     const dirtyMessageIds = new Set<string>();
+
     for (const record of records) {
       for (const message of assistantMessagesAffectedBy(record)) {
         if (!adapter.messages.isAssistant(message)) {
           continue;
         }
+
         const messageId = adapter.messages.id(message);
+
         if (!messageId) {
           return "all" as const;
         }
+
         const cachedMessage = messageById.get(messageId);
+
         if (cachedMessage && cachedMessage !== message && cachedMessage.isConnected) {
           reportDuplicateIdentity(messageId);
           messageById.delete(messageId);
           ambiguousMessageIds.add(messageId);
         }
+
         dirtyMessageIds.add(messageId);
       }
     }
+
     return dirtyMessageIds;
   }
 
@@ -166,25 +192,32 @@ export function createSelectionAnchoring(context: HostContext) {
     const messages = new Set<HTMLElement>();
     const target = record.target instanceof Element ? record.target : record.target.parentElement;
     const targetMessage = target?.closest<HTMLElement>(adapter.messages.assistantSelector);
+
     if (targetMessage) {
       messages.add(targetMessage);
     }
+
     if (record.type !== "childList") {
       return messages;
     }
+
     for (const node of [...record.addedNodes, ...record.removedNodes]) {
       if (!(node instanceof Element)) {
         continue;
       }
+
       if (node.matches(adapter.messages.assistantSelector)) {
+        // SAFETY: Site adapters select HTML assistant-message containers, as their query contract requires.
         messages.add(node as HTMLElement);
       }
+
       for (const message of node.querySelectorAll<HTMLElement>(
         adapter.messages.assistantSelector,
       )) {
         messages.add(message);
       }
     }
+
     return messages;
   }
 
@@ -197,9 +230,11 @@ export function createSelectionAnchoring(context: HostContext) {
     const message = assistantMessageForRange(range);
     const displayQuote = selection.toString().trim();
     const quote = range.toString();
+
     if (!message || displayQuote.length === 0 || quote.length === 0) {
       return unavailable("assistant-message-unavailable", logger);
     }
+
     if (displayQuote !== quote) {
       logger?.(
         `[QuoteCue host] selection text mismatch: rendered=${displayQuote.length}, dom=${quote.length}`,
@@ -210,6 +245,7 @@ export function createSelectionAnchoring(context: HostContext) {
     const end = textOffset(message, range.endContainer, range.endOffset);
     const messageText = message.textContent ?? "";
     const actionRect = rangeRect(range);
+
     const anchor = parseTextAnchor({
       end,
       format: "exact",
@@ -220,9 +256,11 @@ export function createSelectionAnchoring(context: HostContext) {
       start,
       suffix: messageText.slice(end, end + CONTEXT_LENGTH),
     });
+
     if (!anchor) {
       return unavailable("anchor-unavailable", logger);
     }
+
     messageById.set(anchor.messageId, message);
 
     return available({
@@ -239,6 +277,7 @@ export function createSelectionAnchoring(context: HostContext) {
   function assistantMessageForRange(range: Range) {
     const startMessage = closestAssistantMessage(range.startContainer);
     const endMessage = closestAssistantMessage(range.endContainer);
+
     return startMessage === endMessage ? startMessage : null;
   }
 
@@ -246,12 +285,14 @@ export function createSelectionAnchoring(context: HostContext) {
     const range = hostDocument.createRange();
     range.setStart(root, 0);
     range.setEnd(node, offset);
+
     return range.toString().length;
   }
 
   function closestAssistantMessage(node: Node) {
     const element = node instanceof Element ? node : node.parentElement;
     const message = element?.closest<HTMLElement>(adapter.messages.assistantSelector) ?? null;
+
     return message && adapter.messages.isAssistant(message) ? message : null;
   }
 
@@ -269,5 +310,6 @@ function rangeRect(range: Range) {
     typeof range.getBoundingClientRect === "function"
       ? range.getBoundingClientRect()
       : new DOMRect();
+
   return toSelectionRect(rect);
 }

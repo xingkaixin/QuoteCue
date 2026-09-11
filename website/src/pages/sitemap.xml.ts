@@ -14,13 +14,16 @@ export const GET: APIRoute = ({ site }) => {
     locale,
     url: new URL(WEBSITE_LOCALE_CONFIG[locale].path, site).href,
   }));
+
   const defaultUrl = new URL(WEBSITE_LOCALE_CONFIG[DEFAULT_WEBSITE_LOCALE].path, site).href;
+
   const alternateLinks = localizedUrls
     .map(
       ({ locale, url }) => `    <xhtml:link rel="alternate" hreflang="${locale}" href="${url}" />`,
     )
     .concat(`    <xhtml:link rel="alternate" hreflang="x-default" href="${defaultUrl}" />`)
     .join("\n");
+
   const entries = localizedUrls
     .map(
       ({ url }) => `  <url>

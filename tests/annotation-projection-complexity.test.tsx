@@ -31,6 +31,7 @@ describe("annotation projection complexity", () => {
       configurable: true,
       get: () => {
         messageTextReads += 1;
+
         return "selected text";
       },
     });
@@ -151,6 +152,7 @@ describe("annotation projection complexity", () => {
       for (let index = 0; index < 100; index += 1) {
         message.append(document.createElement("span"));
       }
+
       await Promise.resolve();
       await vi.advanceTimersByTimeAsync(17);
     });
@@ -177,6 +179,7 @@ describe("annotation projection complexity", () => {
       configurable: true,
       get: () => {
         messageATextReads += 1;
+
         return textA.data;
       },
     });
@@ -184,16 +187,19 @@ describe("annotation projection complexity", () => {
       configurable: true,
       get: () => {
         messageBTextReads += 1;
+
         return textB.data;
       },
     });
     const host = createChatGptHost({ document, window });
     const messageIndex = vi.spyOn(host.selection, "messageIndex");
     const documentQuery = vi.spyOn(document, "querySelectorAll");
+
     const annotations = [
       annotationForMessage("annotation-a", "message-a", " A"),
       annotationForMessage("annotation-b", "message-b", " B"),
     ];
+
     const container = document.createElement("div");
     document.body.append(container);
     const root = createRoot(container);
@@ -247,6 +253,7 @@ function ProjectionHarness({ annotations, host }: { annotations: DraftAnnotation
 
 function Projection({ annotations }: { annotations: DraftAnnotation[] }) {
   const projectedAnnotations = useAnnotationProjection(annotations, null);
+
   return projectedAnnotations.map((entry) => entry.annotation.comment).join("|");
 }
 
@@ -284,8 +291,10 @@ function annotationForMessage(id: string, messageId: string, suffix: string): Dr
 
 function requiredTextNode(element: Element) {
   const node = element.firstChild;
+
   if (!(node instanceof Text)) {
     throw new Error("Expected message text node");
   }
+
   return node;
 }

@@ -53,6 +53,7 @@ describe("DeepSeek host contract", () => {
       appendUserMessageItem("user-two", fixture.composer.value);
     });
     const snapshot = host.composer.snapshot();
+
     if (snapshot.status === "unavailable") {
       throw new Error("Expected the DeepSeek composer");
     }
@@ -81,11 +82,13 @@ describe("DeepSeek host contract", () => {
         configurable: true,
         get: () => {
           assistantInnerTextReads += 1;
+
           return assistant.textContent ?? "";
         },
       });
       assistant.textContent = "streaming response";
     });
+
     const interceptor = registerSendInterceptor({
       getSendInput: () => ({
         annotations: numberAnnotations([
@@ -145,6 +148,7 @@ describe("DeepSeek host contract", () => {
     const action = container.querySelector<HTMLButtonElement>(
       'button[aria-label="QuoteCue 注釈を追加"]',
     );
+
     expect(action).not.toBeNull();
     expect(action?.textContent).toContain("QuoteCue");
 
@@ -171,6 +175,7 @@ function selectNodeContents(node: ChildNode | null | undefined) {
   if (!node) {
     throw new Error("Expected a text node");
   }
+
   const range = document.createRange();
   range.selectNodeContents(node);
   Object.defineProperty(range, "getBoundingClientRect", {

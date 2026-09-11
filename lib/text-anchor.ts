@@ -28,6 +28,7 @@ const textAnchorFields = {
   suffix: true,
 } satisfies Record<KeysOfUnion<TextAnchor>, true>;
 
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- This is the parser for untrusted stored anchors.
 export function parseTextAnchor(value: unknown): TextAnchor | null {
   if (
     !isRecord(value) ||
@@ -55,6 +56,7 @@ export function parseTextAnchor(value: unknown): TextAnchor | null {
     start: value.start,
     end: value.end,
   };
+
   return value.format === "exact"
     ? {
         ...anchor,
@@ -69,8 +71,9 @@ export function selectedTextFor(anchor: TextAnchor) {
 }
 
 export function sameTextAnchor(current: TextAnchor, other: TextAnchor) {
+  // SAFETY: This local object literal contains only the TextAnchor keys checked by satisfies.
   return (Object.keys(textAnchorFields) as KeysOfUnion<TextAnchor>[]).every(
-    (field) => Reflect.get(current, field) === Reflect.get(other, field),
+    (field) => current[field] === other[field],
   );
 }
 

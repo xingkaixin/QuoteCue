@@ -13,8 +13,10 @@ window.addEventListener("message", connect, { once: true });
 function connect(event: MessageEvent<unknown>) {
   const init = decodeSecureFieldInit(event.data, token);
   const port = event.ports[0];
+
   if (event.source !== window.parent || !init || !port) {
     window.addEventListener("message", connect, { once: true });
+
     return;
   }
 
@@ -23,6 +25,7 @@ function connect(event: MessageEvent<unknown>) {
   applyUpdate(field, init.config);
   port.onmessage = (message: MessageEvent<unknown>) => {
     const command = decodeSecureFieldCommand(message.data);
+
     if (command?.type === "focus") {
       field.focus();
     } else if (command?.type === "save") {
@@ -31,17 +34,22 @@ function connect(event: MessageEvent<unknown>) {
       applyUpdate(field, command.update);
     }
   };
+
   port.start();
   field.addEventListener("input", () => {
     port.postMessage({ type: "change", value: field.value });
   });
   field.addEventListener("keydown", (fieldEvent) => {
+    // SAFETY: Both field kinds emit KeyboardEvent for keydown; their union loses the event overload.
     const keyboardEvent = fieldEvent as KeyboardEvent;
+
     if (keyboardEvent.key === "Escape") {
       keyboardEvent.preventDefault();
       port.postMessage({ type: "cancel" });
+
       return;
     }
+
     if (isSecureFieldSaveShortcut(keyboardEvent, init.config.kind)) {
       keyboardEvent.preventDefault();
       save();
@@ -54,11 +62,14 @@ function connect(event: MessageEvent<unknown>) {
 function createField(config: SecureFieldConfig) {
   const field = document.createElement(config.kind);
   field.setAttribute("autocomplete", "off");
+
   if (config.maxLength !== undefined) {
     field.maxLength = config.maxLength;
   }
+
   field.name = config.name;
   field.value = config.initialValue;
+
   return field;
 }
 

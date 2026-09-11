@@ -24,6 +24,7 @@ export function createHostEngine(
   const anchoring = createSelectionAnchoring(context);
   const reveal = createSelectionReveal(context);
   const visuals = createSelectionVisuals(context);
+
   const selection: Host["selection"] =
     adapter.selectionPresentation.mode === "native-toolbar"
       ? {
@@ -51,6 +52,7 @@ export function createHostEngine(
     conversation: {
       identity(sessionKey: string) {
         const conversationId = adapter.conversationId(context.window.location.pathname);
+
         return conversationId
           ? { kind: "identified" as const, id: conversationId, siteId }
           : { kind: "unidentified" as const, sessionKey };

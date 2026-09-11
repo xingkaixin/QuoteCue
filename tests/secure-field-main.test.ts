@@ -6,6 +6,7 @@ import {
 } from "@/features/secure-field/secure-field-protocol";
 
 const TOKEN = "frame-token";
+
 const config = {
   ariaLabel: "Annotation content",
   kind: "textarea",
@@ -24,6 +25,7 @@ beforeEach(() => {
   delete document.documentElement.dataset.theme;
   vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
     callback(0);
+
     return 1;
   });
 });
@@ -57,9 +59,11 @@ describe("secure field frame", () => {
     const foreignFrame = document.createElement("iframe");
     document.body.append(foreignFrame);
     const source = foreignFrame.contentWindow;
+
     if (!source) {
       throw new Error("Expected a foreign window");
     }
+
     const rejectedPort = new FakeMessagePort();
 
     dispatchInit(rejectedPort, { source });
@@ -101,18 +105,22 @@ describe("secure field frame", () => {
     field.value = "updated annotation";
 
     field.dispatchEvent(new Event("input"));
+
     const escape = new KeyboardEvent("keydown", {
       bubbles: true,
       cancelable: true,
       key: "Escape",
     });
+
     field.dispatchEvent(escape);
+
     const save = new KeyboardEvent("keydown", {
       bubbles: true,
       cancelable: true,
       ctrlKey: true,
       key: "Enter",
     });
+
     field.dispatchEvent(save);
 
     expect(escape.defaultPrevented).toBe(true);
@@ -173,6 +181,8 @@ function dispatchInit(
         token: overrides.token ?? TOKEN,
         config,
       },
+      // SAFETY: The frame uses only the start, postMessage, and onmessage capabilities of this controlled port.
+      // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- This controlled browser substitute implements only the capabilities used by this test.
       ports: [port as unknown as MessagePort],
       source: overrides.source ?? window.parent,
     }),
@@ -181,17 +191,21 @@ function dispatchInit(
 
 function secureField() {
   const field = document.querySelector("textarea");
+
   if (!(field instanceof HTMLTextAreaElement)) {
     throw new Error("Expected a secure textarea");
   }
+
   return field;
 }
 
 class FakeMessagePort {
   onmessage: ((event: MessageEvent<unknown>) => void) | null = null;
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- The message-port substitute must transport unvalidated protocol inputs.
   postMessage = vi.fn<(data: unknown) => void>();
   start = vi.fn();
 
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- The message-port substitute must transport unvalidated protocol inputs.
   receive(data: unknown) {
     this.onmessage?.(new MessageEvent("message", { data }));
   }

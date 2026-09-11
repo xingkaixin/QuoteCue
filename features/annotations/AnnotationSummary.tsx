@@ -45,7 +45,9 @@ export function AnnotationSummary({
     if (!isConfirmingClear) {
       return;
     }
+
     const timer = window.setTimeout(() => setIsConfirmingClear(false), 5_000);
+
     return () => window.clearTimeout(timer);
   }, [isConfirmingClear]);
 
@@ -56,16 +58,19 @@ export function AnnotationSummary({
     : hasPendingDeletion
       ? "deletion"
       : null;
+
   const statusMessage = isConfirmingClear
     ? messages.clearAnnotationsConfirmation
     : hasPendingDeletion
       ? messages.annotationRemoved(pendingDeletionCount, annotations.length)
       : "";
+
   const renderedStatus = useRetainedStatus(
     statusKind,
     statusMessage,
     statusKind === "deletion" ? pendingDeletionExpiresAt : null,
   );
+
   const isStatusExiting = renderedStatus !== null && statusKind === null;
 
   return (
@@ -81,6 +86,7 @@ export function AnnotationSummary({
         if (event.key !== "Escape" || !isOpen) {
           return;
         }
+
         event.preventDefault();
         event.stopPropagation();
         countButtonRef.current?.focus();
@@ -113,8 +119,10 @@ export function AnnotationSummary({
             if (isConfirmingClear) {
               setIsConfirmingClear(false);
               onClear();
+
               return;
             }
+
             setIsConfirmingClear(true);
           }}
           type="button"
@@ -139,6 +147,7 @@ export function AnnotationSummary({
                 const isResolved = projection.resolution === "resolved";
                 const isUnresolved = projection.resolution === "unresolved";
                 const comment = annotation.comment.trim();
+
                 return (
                   <div className="group/row relative flex gap-2.5 px-3 py-3" key={annotation.id}>
                     <span className="qc-accent-bg flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
@@ -249,9 +258,12 @@ function useRetainedStatus(kind: SummaryStatusKind, message: string, progressKey
           ? current
           : { kind, message, progressKey },
       );
+
       return;
     }
+
     const timer = window.setTimeout(() => setRetainedStatus(null), STATUS_EXIT_DURATION_MS);
+
     return () => window.clearTimeout(timer);
   }, [kind, message, progressKey]);
 

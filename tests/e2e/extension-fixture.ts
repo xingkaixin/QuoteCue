@@ -9,6 +9,7 @@ type ExtensionFixtures = {
 export const test = base.extend<ExtensionFixtures>({
   context: async ({ playwright }, use) => {
     const extensionPath = path.resolve(".output/chrome-mv3");
+
     const context = await playwright.chromium.launchPersistentContext("", {
       args: [`--disable-extensions-except=${extensionPath}`, `--load-extension=${extensionPath}`],
       channel: "chromium",
@@ -21,6 +22,7 @@ export const test = base.extend<ExtensionFixtures>({
   extensionWorker: async ({ context }, use) => {
     const extensionWorker =
       context.serviceWorkers()[0] ?? (await context.waitForEvent("serviceworker"));
+
     await use(extensionWorker);
   },
 });

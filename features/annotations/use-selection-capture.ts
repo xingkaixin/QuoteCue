@@ -18,10 +18,12 @@ export function useSelectionCapture({
   const host = useHost();
   const [selection, setSelection] = useState<SelectionCapture | null>(null);
   const dismiss = useCallback(() => setSelection(null), []);
+
   const activate = useCallback(() => {
     if (!selection) {
       return;
     }
+
     onActivate({ anchor: selection.anchor, rect: selection.rect });
     dismiss();
   }, [dismiss, onActivate, selection]);
@@ -31,6 +33,7 @@ export function useSelectionCapture({
   useEffect(() => {
     if (!isEnabled) {
       dismiss();
+
       return;
     }
 

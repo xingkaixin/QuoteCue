@@ -23,6 +23,7 @@ interface Props {
 const { locale } = Astro.props;
 const copy = getCopy(locale);
 const updates = getProductUpdates(locale);
+
 const labels = {
   "zh-CN": {
     live: "实时演示 / 浏览器内",
@@ -100,12 +101,14 @@ const labels = {
     },
   },
 }[locale];
+
 const sceneSpace = locale === "en" ? " " : "";
 const pagePath = WEBSITE_LOCALE_CONFIG[locale].path;
 const pageUrl = new URL(pagePath, Astro.site).href;
 const organizationId = new URL("/#organization", Astro.site).href;
 const softwareId = new URL("/#software", Astro.site).href;
 const websiteId = new URL("/#website", Astro.site).href;
+
 const structuredData = {
   "@context": "https://schema.org",
   "@graph": [

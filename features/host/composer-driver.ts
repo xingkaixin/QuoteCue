@@ -8,6 +8,7 @@ const COMPOSER_REPLACEMENT_TIMEOUT_MS = 2_000;
 export function createComposerDriver(context: HostContext) {
   const { adapter, document: hostDocument, logger, window: hostWindow } = context;
   const composerAccess = adapter.composer;
+
   const targetBySnapshot = new WeakMap<
     ComposerSnapshot,
     { element: HTMLElement; pathname: string }
@@ -17,37 +18,48 @@ export function createComposerDriver(context: HostContext) {
 
   function snapshot(): HostResult<ComposerSnapshot> {
     const element = current();
+
     if (!element) {
       return unavailable("composer-unavailable", logger);
     }
+
+    // SAFETY: This owner issues the opaque identity and registers its target before returning it.
     const value = { text: composerAccess.read(element) } as ComposerSnapshot;
     targetBySnapshot.set(value, { element, pathname: hostWindow.location.pathname });
+
     return available(value);
   }
 
   function replaceText(composerSnapshot: ComposerSnapshot, text: string, signal: AbortSignal) {
     const composer = targetComposer(composerSnapshot);
+
     if (!composer || !writeText(composer, text)) {
       return Promise.resolve(false);
     }
+
     return waitForText(composerSnapshot, text, signal);
   }
 
   function waitForText(composerSnapshot: ComposerSnapshot, text: string, signal: AbortSignal) {
     const composer = targetComposer(composerSnapshot);
+
     if (!composer) {
       return Promise.resolve(false);
     }
+
     if (isCurrent(composerSnapshot, text)) {
       return Promise.resolve(true);
     }
+
     if (signal.aborted) {
       return Promise.resolve(false);
     }
 
     logger?.("[QuoteCue host] composer replacement waiting for render");
+
     return new Promise<boolean>((resolve) => {
       let timeout: number | undefined;
+
       const observer = new MutationObserver(() => {
         if (!targetComposer(composerSnapshot)) {
           finish(false);
@@ -55,14 +67,18 @@ export function createComposerDriver(context: HostContext) {
           finish(true);
         }
       });
+
       const finish = (replaced: boolean) => {
         observer.disconnect();
+
         if (timeout !== undefined) {
           hostWindow.clearTimeout(timeout);
         }
+
         signal.removeEventListener("abort", onAbort);
         resolve(replaced);
       };
+
       const onAbort = () => finish(false);
       observer.observe(composer.parentElement ?? composer, {
         characterData: true,
@@ -83,6 +99,7 @@ export function createComposerDriver(context: HostContext) {
     }
 
     composer.focus();
+
     return adapter.composer.write(composer, text, context);
   }
 
@@ -92,14 +109,17 @@ export function createComposerDriver(context: HostContext) {
     restoredText = composerSnapshot.text,
   ) {
     const composer = targetComposer(composerSnapshot);
+
     if (!composer || !isCurrent(composerSnapshot, expectedText)) {
       return false;
     }
+
     return writeText(composer, restoredText);
   }
 
   function targetComposer(composerSnapshot: ComposerSnapshot) {
     const target = targetBySnapshot.get(composerSnapshot);
+
     return target &&
       target.pathname === hostWindow.location.pathname &&
       current() === target.element
@@ -109,6 +129,7 @@ export function createComposerDriver(context: HostContext) {
 
   function isCurrent(composerSnapshot: ComposerSnapshot, expectedText: string) {
     const composer = targetComposer(composerSnapshot);
+
     return (
       composer !== null &&
       composerAccess.normalize(composerAccess.read(composer)) ===

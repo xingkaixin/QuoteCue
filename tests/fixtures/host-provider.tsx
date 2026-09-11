@@ -12,5 +12,6 @@ type HostTestProviderProps = {
 
 export function HostTestProvider({ children, host: providedHost }: HostTestProviderProps) {
   const [host] = useState(() => providedHost ?? createFakeHost());
+
   return <HostProvider host={host}>{children}</HostProvider>;
 }

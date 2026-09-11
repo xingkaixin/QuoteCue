@@ -40,6 +40,7 @@ const contracts: HostContractDefinition[] = [
     createHost: createChatGptHost,
     installFixture() {
       const fixture = installChatGptHostFixture();
+
       return {
         assistantMessage: fixture.assistantMessage,
         composer: fixture.composer,
@@ -64,7 +65,7 @@ const contracts: HostContractDefinition[] = [
     selectionPresentation: "native-toolbar",
     siteId: "chatgpt",
     setSendDisabled(control, isDisabled) {
-      (control as HTMLButtonElement).disabled = isDisabled;
+      control.toggleAttribute("disabled", isDisabled);
     },
     supportsSyntheticPaste: true,
   },
@@ -75,6 +76,7 @@ const contracts: HostContractDefinition[] = [
     installFixture() {
       const fixture = installClaudeHostFixture();
       const sendControl = enableClaudeSend(() => undefined);
+
       return {
         assistantMessage: fixture.assistantMessage,
         composer: fixture.composer,
@@ -86,6 +88,7 @@ const contracts: HostContractDefinition[] = [
     appendAssistantMessage: (text) => appendClaudeAssistantMessage(2, text),
     appendUserMessage: (text) => {
       const message = appendClaudeUserMessage(3, text);
+
       return requiredElement<HTMLElement>("[data-testid='user-message']", message);
     },
     conversation: {
@@ -103,7 +106,7 @@ const contracts: HostContractDefinition[] = [
     selectionPresentation: "native-toolbar",
     siteId: "claude",
     setSendDisabled(control, isDisabled) {
-      (control as HTMLButtonElement).disabled = isDisabled;
+      control.toggleAttribute("disabled", isDisabled);
     },
     supportsSyntheticPaste: true,
   },
@@ -113,6 +116,7 @@ const contracts: HostContractDefinition[] = [
     createHost: createDeepSeekHost,
     installFixture() {
       const fixture = installDeepSeekHostFixture();
+
       return {
         assistantMessage: fixture.assistantContent,
         composer: fixture.composer,
@@ -123,10 +127,12 @@ const contracts: HostContractDefinition[] = [
     },
     appendAssistantMessage(text) {
       const item = appendAssistantMessageItem("assistant-contract", text);
+
       return requiredElement<HTMLElement>(".ds-assistant-message-main-content", item);
     },
     appendUserMessage: (text) => {
       const item = appendUserMessageItem("user-contract", text);
+
       return requiredElement<HTMLElement>(".d29f3d7d", item);
     },
     conversation: {
@@ -153,6 +159,7 @@ const contracts: HostContractDefinition[] = [
     createHost: createKimiHost,
     installFixture() {
       const fixture = installKimiHostFixture();
+
       return {
         assistantMessage: fixture.assistantMessage,
         composer: fixture.composer,
@@ -164,6 +171,7 @@ const contracts: HostContractDefinition[] = [
     appendAssistantMessage: (text) => appendKimiAssistantMessage("assistant-contract", text),
     appendUserMessage: (text) => {
       const message = appendKimiUserMessage("user-contract", text);
+
       return requiredElement<HTMLElement>(".user-content", message);
     },
     conversation: {

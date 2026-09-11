@@ -50,9 +50,11 @@ export function installKimiHostFixture(composerText = "Original question"): Kimi
 export function appendKimiUserMessage(messageId: string | undefined, text: string) {
   const message = document.createElement("div");
   message.className = "chat-content-item chat-content-item-user";
+
   if (messageId) {
     message.dataset.archerId = messageId;
   }
+
   const content = document.createElement("div");
   content.className = "user-content";
   content.textContent = text;
@@ -61,6 +63,7 @@ export function appendKimiUserMessage(messageId: string | undefined, text: strin
   actions.textContent = "Edit Copy Share";
   message.append(content, actions);
   (document.querySelector("main") ?? document.body).append(message);
+
   return message;
 }
 
@@ -73,15 +76,20 @@ export function appendKimiAssistantMessage(messageId: string, text: string) {
   content.textContent = text;
   message.append(content);
   (document.querySelector("main") ?? document.body).append(message);
+
   return message;
 }
 
 export function rebuildKimiUserMessage(message: HTMLElement, messageId?: string) {
+  // SAFETY: Cloning the fixture HTML element preserves its element type.
   const replacement = message.cloneNode(true) as HTMLElement;
+
   if (messageId) {
     replacement.dataset.archerId = messageId;
   }
+
   message.replaceWith(replacement);
+
   return replacement;
 }
 

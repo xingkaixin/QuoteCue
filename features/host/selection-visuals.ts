@@ -8,6 +8,7 @@ const HIGHLIGHT_NAME = "quotecue-annotations";
 const HIGHLIGHT_STYLE_ID = "quotecue-highlight-style";
 
 type HighlightConstructor = new (...ranges: AbstractRange[]) => Highlight;
+
 type SelectionVisualWindow = Window & {
   CSS?: typeof CSS;
   Highlight?: HighlightConstructor;
@@ -15,16 +16,18 @@ type SelectionVisualWindow = Window & {
 
 export function createSelectionVisuals(environment: HostEnvironment) {
   const { document: hostDocument, window: hostWindow } = environment;
-  const visualWindow = hostWindow as SelectionVisualWindow;
+  const visualWindow: SelectionVisualWindow = hostWindow;
 
   function highlight(range: Range | null) {
     const registry = visualWindow.CSS?.highlights;
     registry?.delete(HIGHLIGHT_NAME);
+
     if (!range || !registry) {
       return;
     }
 
     const HighlightClass = visualWindow.Highlight;
+
     if (!HighlightClass) {
       return;
     }
@@ -53,12 +56,14 @@ export function createSelectionVisuals(environment: HostEnvironment) {
 
     const anchor =
       range.endContainer instanceof Element ? range.endContainer : range.endContainer.parentElement;
+
     if (!anchor) {
       return false;
     }
 
     const viewport = currentVisualViewportBounds(hostWindow);
     const x = Math.min(Math.max(rect.right - 1, viewport.left), viewport.left + viewport.width - 1);
+
     const y = Math.min(
       Math.max(rect.top + rect.height / 2, viewport.top),
       viewport.top + viewport.height - 1,
@@ -68,6 +73,7 @@ export function createSelectionVisuals(environment: HostEnvironment) {
     const hit = hostDocument
       .elementsFromPoint(x, y)
       .find((element) => !element.closest(QUOTECUE_HOST_SELECTOR));
+
     return hit !== undefined && !anchor.contains(hit) && !hit.contains(anchor);
   }
 

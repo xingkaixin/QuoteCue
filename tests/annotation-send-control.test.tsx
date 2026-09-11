@@ -12,6 +12,7 @@ afterEach(() => {
 describe("AnnotationSendControl", () => {
   it("disables sending while pending and exposes retry after failure", async () => {
     const onSend = vi.fn();
+
     const mounted = await mountSendControl({
       onSend,
       state: { status: "sending" },
@@ -31,9 +32,11 @@ describe("AnnotationSendControl", () => {
     expect(mounted.container.querySelector('[role="status"]')?.textContent).toContain(
       "annotation draft was kept",
     );
+
     const retryButton = mounted.container.querySelector<HTMLButtonElement>(
       '[aria-label="Retry sending annotations"]',
     );
+
     expect(retryButton?.disabled).toBe(false);
     await act(async () => retryButton?.click());
     expect(onSend).toHaveBeenCalledOnce();
@@ -75,6 +78,7 @@ async function mountSendControl(overrides: Partial<SendControlProps> = {}) {
   const container = document.createElement("div");
   document.body.append(container);
   const root = createRoot(container);
+
   const baseProps: SendControlProps = {
     onSend: vi.fn(),
     position: {
@@ -88,6 +92,7 @@ async function mountSendControl(overrides: Partial<SendControlProps> = {}) {
     state: { status: "idle" },
     ...overrides,
   };
+
   let currentProps = baseProps;
 
   await act(async () => root.render(<AnnotationSendControl {...currentProps} />));

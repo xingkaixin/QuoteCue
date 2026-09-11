@@ -23,6 +23,7 @@ describe("selection anchors", () => {
       start: 8,
       end: 28,
     };
+
     document.querySelector("strong")?.replaceWith("全球雇佣与薪资合规 SaaS 平台");
 
     expect(restore(anchor)?.toString()).toBe(anchor.quote);
@@ -34,6 +35,7 @@ describe("selection anchors", () => {
         alpha target beta gamma target delta
       </div>
     `;
+
     const range = restore({
       format: "exact",
       messageId: "assistant-one",
@@ -70,6 +72,7 @@ describe("selection anchors", () => {
     document.body.innerHTML = `
       <div>alpha target beta gamma target delta</div>
     `;
+
     const range = restore({
       format: "exact",
       messageId: "assistant-one",
@@ -181,9 +184,11 @@ describe("selection anchors", () => {
     const isolatedDocument = document.implementation.createHTMLDocument();
     isolatedDocument.body.innerHTML = "<div>isolated phrase</div>";
     const message = isolatedDocument.body.firstElementChild;
+
     if (!(message instanceof HTMLElement)) {
       throw new Error("Expected an isolated message");
     }
+
     const createRange = vi.spyOn(isolatedDocument, "createRange");
 
     const range = restoreTextAnchorFromIndex(
@@ -339,10 +344,11 @@ describe("selection anchors", () => {
   it("uses the last visible line as the annotation endpoint", () => {
     const firstLine = new DOMRect(40, 80, 240, 20);
     const lastLine = new DOMRect(40, 104, 90, 20);
-    const range = {
+
+    const range = Object.assign(document.createRange(), {
       getBoundingClientRect: () => new DOMRect(40, 80, 240, 44),
       getClientRects: () => [firstLine, lastLine, new DOMRect(130, 124, 0, 0)],
-    } as unknown as Range;
+    });
 
     expect(rangeEndpointRect(range)).toBe(lastLine);
   });
@@ -350,8 +356,10 @@ describe("selection anchors", () => {
 
 function restore(anchor: TextAnchor) {
   const message = document.body.firstElementChild;
+
   if (!(message instanceof HTMLElement)) {
     throw new Error("Expected message fixture");
   }
+
   return restoreTextAnchorFromIndex(anchor, new Map([[anchor.messageId, message]]));
 }
