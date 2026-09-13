@@ -49,7 +49,7 @@ for (const page of pages) {
   assert(html.includes(page.marker), `${page.path} must contain localized landing copy`);
   assert(html.includes(page.updatesMarker), `${page.path} must contain localized product updates`);
   assert.match(html, /<section[^>]*id="updates"/);
-  assert.match(html, /<time[^>]*datetime="2026-09-05"/);
+  assert.match(html, /<time[^>]*datetime="2026-09-13"/);
   assert.match(html, /<meta name="description" content="[^"]+">/);
   assert.match(html, /<meta name="robots" content="index, follow, max-image-preview:large">/);
   assert.match(html, /<link rel="alternate" hreflang="zh-CN"/);
@@ -84,9 +84,9 @@ for (const page of pages) {
   const faq = graph.find((entry) => entry["@type"] === "FAQPage");
   assert.equal(faq.mainEntity.length, 5, `${page.path} FAQ schema must match visible questions`);
   const software = graph.find((entry) => entry["@type"] === "SoftwareApplication");
-  assert.equal(software.softwareVersion, "0.3.2");
+  assert.equal(software.softwareVersion, "0.3.3");
   const webPage = graph.find((entry) => entry["@type"] === "WebPage");
-  assert.equal(webPage.dateModified, "2026-09-05");
+  assert.equal(webPage.dateModified, "2026-09-13");
 }
 
 const notFound = await read("404.html");
@@ -103,7 +103,7 @@ assert.match(sitemap, /<loc>https:\/\/quotecue\.xingkaixin\.me\/en\/<\/loc>/);
 
 assert.match(sitemap, /<loc>https:\/\/quotecue\.xingkaixin\.me\/ja\/<\/loc>/);
 
-assert.equal(occurrences(sitemap, /<lastmod>2026-09-05<\/lastmod>/g), 3);
+assert.equal(occurrences(sitemap, /<lastmod>2026-09-13<\/lastmod>/g), 3);
 
 assert.match(sitemap, /hreflang="x-default" href="https:\/\/quotecue\.xingkaixin\.me\/"/);
 
@@ -145,7 +145,7 @@ assert.match(llms, /## Privacy facts/);
 
 assert.match(llms, /## Latest product update/);
 
-assert.match(llms, /Version 0\.3\.2 was released on 2026-09-05/);
+assert.match(llms, /Version 0\.3\.3 was released on 2026-09-13/);
 
 const socialImage = await stat(new URL("og-cover.png", distUrl));
 

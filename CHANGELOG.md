@@ -2,6 +2,23 @@
 
 Notable changes to QuoteCue are documented in this file.
 
+## [0.3.3] - 2026-09-13
+
+### Changed
+
+- Reduce the website's initial JavaScript by using native header controls and loading interactive content when it becomes visible.
+- Upgrade compatible dependencies, Node.js to 24.21.0, and pnpm to 12.3.4; strengthen project lint policies.
+
+### Fixed
+
+- Protect unsaved annotation comments before sending and keep active editors open when earlier sends are confirmed.
+- Cancel stale editor openings and restore keyboard focus after deleting or restoring annotations.
+- Confirm sent messages containing rendered line breaks and preserve retry state until the draft is empty.
+- Finish pending draft operations even when no UI subscribers remain, and allow explicit recovery actions for malformed stored drafts.
+- Require exact surrounding context when restoring repeated quotes to avoid anchoring annotations to the wrong passage.
+- Preserve the website language when returning through browser history and fix the website deployment command.
+- Patch the vulnerable Sharp dependency used by Miniflare.
+
 ## [0.3.2] - 2026-09-05
 
 ### Added
