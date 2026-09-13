@@ -1,6 +1,7 @@
 import type { Locale } from "./locales";
 
 const RELEASES = [
+  { version: "0.3.3", publishedAt: "2026-09-13" },
   { version: "0.3.2", publishedAt: "2026-09-05" },
   { version: "0.3.1", publishedAt: "2026-08-31" },
   { version: "0.3.0", publishedAt: "2026-08-24" },
@@ -42,6 +43,15 @@ const COPY: Record<Locale, ProductUpdatesText> = {
       "QuoteCue 的方向很具体：在更多 AI 网站里，帮你准确指向原文、保住尚未发送的思路，并把多个重点变成一次清楚的追问。这里不罗列内部改动，只记录你真正能感受到的变化。",
     latestLabel: "最新",
     releases: {
+      "0.3.3": {
+        title: "编辑与发送更可靠，官网加载更轻量",
+        summary:
+          "发送前保护未保存的批注评论，发送确认时保留正在使用的编辑器。包含换行的消息现在能更可靠地确认，草稿未清空时仍可重试发送。",
+        highlights: [
+          "删除或撤销删除批注后恢复键盘焦点，重复引用按精确前后文恢复位置。",
+          "格式损坏的草稿可显式处理；官网减少首屏脚本，并修复历史返回时的语言保留。",
+        ],
+      },
       "0.3.2": {
         title: "官网视觉重构上线，多会话发送更安全",
         summary:
@@ -96,6 +106,15 @@ const COPY: Record<Locale, ProductUpdatesText> = {
       "QuoteCue is becoming a reliable annotation layer across more AI sites: one that points back to the right text, protects unfinished thinking, and turns several notes into one clear follow-up. This log covers changes you can actually feel, not internal implementation work.",
     latestLabel: "Latest",
     releases: {
+      "0.3.3": {
+        title: "More reliable editing and sending, with a lighter website",
+        summary:
+          "Unsaved annotation comments are protected before sending, and active editors stay open when earlier sends are confirmed. Messages with line breaks are confirmed more reliably, and retries remain available until the draft is empty.",
+        highlights: [
+          "Keyboard focus returns after deleting or restoring annotations, and repeated quotes require exact surrounding context.",
+          "Malformed drafts can be handled explicitly; the website loads less initial JavaScript and preserves language on history return.",
+        ],
+      },
       "0.3.2": {
         title: "Redesigned landing experience and scoped send confirmation",
         summary:
@@ -150,6 +169,15 @@ const COPY: Record<Locale, ProductUpdatesText> = {
       "QuoteCue は、より多くの AI サイトで使える信頼性の高い注釈レイヤーを目指しています。元の文章を正確に示し、送信前の考えを守り、複数の論点を 1 つの明確なフォローアップにまとめます。ここでは内部実装ではなく、実際に感じられる変化を記録します。",
     latestLabel: "最新",
     releases: {
+      "0.3.3": {
+        title: "編集と送信の信頼性を改善し、サイトを軽量化",
+        summary:
+          "送信前に未保存の注釈コメントを保護し、以前の送信が確認されても編集中の画面を保持します。改行を含むメッセージをより確実に確認し、下書きが空になるまで送信を再試行できます。",
+        highlights: [
+          "注釈の削除や復元後にキーボードフォーカスを戻し、重複する引用は前後の文脈が完全に一致する場合に復元します。",
+          "形式が壊れた下書きへの対処が可能になりました。サイトの初期スクリプトを削減し、履歴で戻った際の言語保持も修正しました。",
+        ],
+      },
       "0.3.2": {
         title: "サイトデザインの刷新と、より安全な会話間送信確認",
         summary:
