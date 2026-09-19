@@ -1,0 +1,224 @@
+---
+import { compileAnnotationPrompt } from "@quotecue/shared/annotation-prompt";
+import { annotationPromptMessagesFor } from "@quotecue/shared/annotation-prompt-messages";
+import { SUPPORTED_SITES } from "@quotecue/shared/supported-sites";
+import { getCopy } from "../i18n/content";
+import { GUIDE_COPY } from "../i18n/getting-started";
+import type { Locale } from "../i18n/locales";
+import { WEBSITE_PAGES, websitePagePath } from "../i18n/pages";
+import BaseLayout from "../layouts/BaseLayout.astro";
+import InstallActions from "./InstallActions.astro";
+import LanguageSwitcher from "./LanguageSwitcher.astro";
+import ThemeToggle from "./ThemeToggle.astro";
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const copy = GUIDE_COPY[locale];
+const landing = getCopy(locale);
+const homePath = websitePagePath(locale);
+const pageUrl = new URL(websitePagePath(locale, "guide"), Astro.site).href;
+const modified = WEBSITE_PAGES.guide.modified;
+
+const prompt = compileAnnotationPrompt(
+  copy.annotations.map((entry, index) => ({ ...entry, ordinal: index + 1 })),
+  "",
+  annotationPromptMessagesFor(locale),
+);
+
+const structuredData = {
+  "@context": "https://schema.org",
+  "@graph": [{
+    "@type": "WebPage",
+    "@id": `${pageUrl}#webpage`,
+    url: pageUrl,
+    name: copy.title,
+    description: copy.description,
+    inLanguage: locale,
+    dateModified: modified,
+    isPartOf: { "@id": new URL("/#website", Astro.site).href },
+    about: { "@id": new URL("/#software", Astro.site).href },
+  }],
+};
+---
+
+<BaseLayout lang={locale} page="guide" title={`${copy.title} | QuoteCue`} description={copy.description} socialImageAlt={landing.meta.socialImageAlt} structuredData={structuredData}>
+  <a class="skip-link" href="#main">{landing.skipToContent}</a>
+  <header class="site-header">
+    <div class="site-shell header-inner guide-header">
+      <a class="brand-lockup" href={homePath} aria-label={`QuoteCue · ${copy.home}`}>
+        <img src="/brand/quotecue-icon-128.png" width="26" height="26" alt="" />
+        <span>QuoteCue</span>
+      </a>
+      <div class="header-actions">
+        <LanguageSwitcher currentLocale={locale} label={landing.languageSwitcherLabel} page="guide" />
+        <ThemeToggle label={landing.themeLabel} />
+      </div>
+    </div>
+  </header>
+  <main id="main" class="guide">
+    <article>
+      <header class="guide-intro">
+        <p class="section-kicker">{copy.label}</p>
+        <h1>{copy.title}</h1>
+        <p>{copy.intro}</p>
+        <p class="guide-date">{copy.updated} <time datetime={modified}>{modified}</time></p>
+        <a href={`${homePath}#demo`}>{copy.demo}</a>
+      </header>
+      <ol class="guide-steps">
+        {copy.steps.map((step, index) => (
+          <li>
+            <h2><span class="guide-step-number" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>{step.title}</h2>
+            <p>{step.body}</p>
+            {index === 0 && <InstallActions chromeLabel={landing.hero.chrome} edgeLabel={landing.hero.edge} chromeUrl={landing.links.chrome} edgeUrl={landing.links.edge} compact />}
+          </li>
+        ))}
+      </ol>
+      <section aria-labelledby="example-title">
+        <h2 id="example-title">{copy.example}</h2>
+        <ol class="guide-examples">
+          {copy.annotations.map((entry) => (
+            <li>
+              <dl>
+                <dt>{copy.selectedText}</dt>
+                <dd><q>{entry.selectedText}</q></dd>
+                <dt>{copy.comment}</dt>
+                <dd>{entry.comment}</dd>
+              </dl>
+            </li>
+          ))}
+        </ol>
+        <h3>{copy.output}</h3>
+        <p>{copy.outputIntro}</p>
+        <pre class="guide-prompt">{prompt}</pre>
+      </section>
+      <section>
+        <h2>{copy.recovery}</h2>
+        <p>{copy.recoveryBody}</p>
+        <h3>{copy.troubleshooting}</h3>
+        <p>{copy.troubleshootingBody}</p>
+      </section>
+      <section>
+        <h2>{copy.platforms}</h2>
+        <p>{copy.platformsBody}</p>
+        <ul>
+          {SUPPORTED_SITES.map((site) => <li><a href={`https://${site.hostname}/`}>{site.name} · {site.hostname}</a></li>)}
+        </ul>
+      </section>
+      <section>
+        <h2>{copy.privacy}</h2>
+        <p>{copy.privacyBody}</p>
+      </section>
+    </article>
+    <footer class="guide-footer">
+      <a href={homePath}>{copy.home}</a>
+      <a href={`${homePath}#demo`}>{copy.demo}</a>
+    </footer>
+  </main>
+</BaseLayout>
+
+<style>
+  .guide-header {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+  .guide-header :global(.header-actions > :first-child) {
+    display: inline-flex;
+  }
+  .guide {
+    max-width: 48rem;
+    margin-inline: auto;
+    padding: clamp(2.5rem, 7vw, 5rem) 1.25rem;
+    overflow-wrap: anywhere;
+  }
+  h1 {
+    margin: 1rem 0 1.5rem;
+    font-size: clamp(1.875rem, 4.5vw, 3rem);
+    line-height: 1.25;
+    letter-spacing: -0.025em;
+    text-wrap: balance;
+  }
+  h2 {
+    margin: 0 0 1rem;
+    font-size: 1.375rem;
+    line-height: 1.45;
+  }
+  h3 {
+    margin: 2rem 0 0.75rem;
+    font-size: 1.125rem;
+    line-height: 1.5;
+  }
+  p, li {
+    line-height: 1.85;
+  }
+  p {
+    color: var(--muted);
+    margin: 0 0 1.25rem;
+  }
+  .guide a {
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 0.25em;
+  }
+  a:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 4px;
+    border-radius: 2px;
+  }
+  .guide-date {
+    font-size: 0.875rem;
+  }
+  .guide-steps {
+    padding: 0;
+    list-style: none;
+    margin: 3rem 0;
+  }
+  .guide-steps > li, section {
+    margin-top: 2.75rem;
+  }
+  .guide-step-number {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    color: var(--accent);
+  }
+  .guide-examples {
+    padding-left: 1.5rem;
+  }
+  .guide-examples > li {
+    padding-left: 0.5rem;
+    margin: 1.5rem 0;
+  }
+  dt {
+    color: var(--muted);
+    font-size: 0.8125rem;
+  }
+  dd {
+    margin: 0.25rem 0 0.75rem;
+  }
+  .guide-prompt {
+    margin: 1.5rem 0 0;
+    padding: 1.25rem;
+    border: 1px solid var(--line);
+    border-radius: 0.875rem;
+    background: var(--panel);
+    font: 0.875rem/1.85 var(--font-mono);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  .guide-footer {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--line);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem 2rem;
+  }
+  .guide-footer a {
+    padding-block: 0.5rem;
+  }
+</style>

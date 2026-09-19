@@ -1427,7 +1427,7 @@
     justify-content: center;
   }
 
-  .footer-inner > :last-child {
+  .footer-inner > .footer-note {
     display: none;
   }
 }
