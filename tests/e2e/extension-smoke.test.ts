@@ -455,6 +455,10 @@ test("retains summary keyboard focus when the pointer leaves across display sett
     await fieldFrame.locator("input, textarea").press("Tab");
     await page.keyboard.press("Enter");
 
+    await expect
+      .poll(() => page.frames().some((frame) => frame.url().includes("secure-field.html")))
+      .toBe(false);
+
     const session = await context.newCDPSession(page);
     let countButtonId: number | undefined;
     await expect(async () => {
