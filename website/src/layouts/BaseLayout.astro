@@ -1,5 +1,6 @@
 ---
 import "../styles/global.css";
+import { websitePagePath, type WebsitePage } from "../i18n/pages";
 import {
   DEFAULT_WEBSITE_LOCALE,
   WEBSITE_LOCALE_CONFIG,
@@ -13,6 +14,7 @@ interface Props {
   description: string;
   socialImageAlt: string;
   canonicalPath?: string;
+  page?: WebsitePage;
   indexable?: boolean;
   structuredData?: {
     "@context": string;
@@ -25,7 +27,8 @@ const {
   title,
   description,
   socialImageAlt,
-  canonicalPath = WEBSITE_LOCALE_CONFIG[lang].path,
+  page = "home",
+  canonicalPath = websitePagePath(lang, page),
   indexable = true,
   structuredData,
 } = Astro.props;
@@ -34,14 +37,14 @@ const canonicalUrl = new URL(canonicalPath, Astro.site);
 
 const localeAlternates = WEBSITE_LOCALES.map((locale) => ({
   locale,
-  url: new URL(WEBSITE_LOCALE_CONFIG[locale].path, Astro.site),
+  url: new URL(websitePagePath(locale, page), Astro.site),
 }));
 
 const alternateOgLocales = WEBSITE_LOCALES.filter((locale) => locale !== lang).map(
   (locale) => WEBSITE_LOCALE_CONFIG[locale].ogLocale,
 );
 
-const defaultUrl = new URL(WEBSITE_LOCALE_CONFIG[DEFAULT_WEBSITE_LOCALE].path, Astro.site);
+const defaultUrl = new URL(websitePagePath(DEFAULT_WEBSITE_LOCALE, page), Astro.site);
 const socialImageUrl = new URL("/og-cover.png", Astro.site);
 const analyticsToken = import.meta.env.PUBLIC_CLOUDFLARE_WEB_ANALYTICS_TOKEN;
 const jsonLd = structuredData ? JSON.stringify(structuredData).replaceAll("<", "\\u003c") : null;

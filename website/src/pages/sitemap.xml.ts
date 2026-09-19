@@ -1,7 +1,7 @@
 import type { APIRoute } from "astro";
 
-import { DEFAULT_WEBSITE_LOCALE, WEBSITE_LOCALE_CONFIG, WEBSITE_LOCALES } from "../i18n/locales";
-import { LATEST_PRODUCT_UPDATE_DATE } from "../i18n/product-updates";
+import { DEFAULT_WEBSITE_LOCALE, WEBSITE_LOCALES } from "../i18n/locales";
+import { WEBSITE_PAGES, websitePagePath, type WebsitePage } from "../i18n/pages";
 
 export const prerender = true;
 
@@ -10,28 +10,34 @@ export const GET: APIRoute = ({ site }) => {
     throw new Error("Astro site URL is required to generate sitemap.xml");
   }
 
-  const localizedUrls = WEBSITE_LOCALES.map((locale) => ({
-    locale,
-    url: new URL(WEBSITE_LOCALE_CONFIG[locale].path, site).href,
-  }));
+  // SAFETY: WebsitePage is derived from the exact keys of WEBSITE_PAGES.
+  const entries = (Object.keys(WEBSITE_PAGES) as WebsitePage[])
+    .map((page) => {
+      const localizedUrls = WEBSITE_LOCALES.map((locale) => ({
+        locale,
+        url: new URL(websitePagePath(locale, page), site).href,
+      }));
 
-  const defaultUrl = new URL(WEBSITE_LOCALE_CONFIG[DEFAULT_WEBSITE_LOCALE].path, site).href;
+      const defaultUrl = new URL(websitePagePath(DEFAULT_WEBSITE_LOCALE, page), site).href;
 
-  const alternateLinks = localizedUrls
-    .map(
-      ({ locale, url }) => `    <xhtml:link rel="alternate" hreflang="${locale}" href="${url}" />`,
-    )
-    .concat(`    <xhtml:link rel="alternate" hreflang="x-default" href="${defaultUrl}" />`)
-    .join("\n");
+      const alternateLinks = localizedUrls
+        .map(
+          ({ locale, url }) =>
+            `    <xhtml:link rel="alternate" hreflang="${locale}" href="${url}" />`,
+        )
+        .concat(`    <xhtml:link rel="alternate" hreflang="x-default" href="${defaultUrl}" />`)
+        .join("\n");
 
-  const entries = localizedUrls
-    .map(
-      ({ url }) => `  <url>
+      return localizedUrls
+        .map(
+          ({ url }) => `  <url>
     <loc>${url}</loc>
-    <lastmod>${LATEST_PRODUCT_UPDATE_DATE}</lastmod>
+    <lastmod>${WEBSITE_PAGES[page].modified}</lastmod>
 ${alternateLinks}
   </url>`,
-    )
+        )
+        .join("\n");
+    })
     .join("\n");
 
   return new Response(

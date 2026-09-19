@@ -2,13 +2,15 @@
 import { CaretDownIcon } from "@phosphor-icons/react/dist/ssr/CaretDown";
 import { TranslateIcon } from "@phosphor-icons/react/dist/ssr/Translate";
 import { WEBSITE_LOCALE_CONFIG, WEBSITE_LOCALES, type Locale } from "../i18n/locales";
+import { websitePagePath, type WebsitePage } from "../i18n/pages";
 
 interface Props {
   currentLocale: Locale;
   label: string;
+  page?: WebsitePage;
 }
 
-const { currentLocale, label } = Astro.props;
+const { currentLocale, label, page = "home" } = Astro.props;
 ---
 
 <label class="relative inline-flex items-center text-muted">
@@ -19,7 +21,7 @@ const { currentLocale, label } = Astro.props;
     class="font-mono h-8 cursor-pointer appearance-none rounded-full border border-line bg-transparent pr-8 pl-8 text-xs font-medium text-muted outline-none transition-colors hover:border-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none"
   >
     {WEBSITE_LOCALES.map((locale) => (
-      <option value={WEBSITE_LOCALE_CONFIG[locale].path} selected={locale === currentLocale} lang={locale}>
+      <option value={websitePagePath(locale, page)} selected={locale === currentLocale} lang={locale}>
         {WEBSITE_LOCALE_CONFIG[locale].label}
       </option>
     ))}
