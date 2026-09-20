@@ -59,19 +59,21 @@ const zh = {
   hero: {
     eyebrow: "Chrome / Edge 扩展 · ChatGPT · Claude · DeepSeek · Kimi",
     before: "给 AI 的回答",
-    highlight: "划个重点",
-    after: "，再追问。",
+    highlight: "划个重点，",
+    after: "再追问。",
     description:
       "在 AI 的回复里选中任意一段文字，写下你的想法。QuoteCue 把所有批注编译成一条聚焦的追问，一次发出去——不用复制粘贴，也不用重新描述“我说的是第三段那句”。",
     chrome: "添加到 Chrome",
     edge: "添加到 Edge",
+    desktopNote: "扩展适用于电脑端 Chrome 和 Edge。",
+    demo: "先试一试",
     note: "免费 · 无账号 · 无服务器",
   },
   demo: {
     locale: "zh-CN",
     title: "现在就试一遍",
     intro:
-      "用鼠标选中下面这段回答里的任意一句话，QuoteCue 按钮就会浮出来。这就是它装进 AI 对话页面后的样子。",
+      "用鼠标拖选，或在触屏上长按并调整选区，选中下面回答里的一句话。点击浮出的 QuoteCue 按钮，就能添加批注。演示无需安装。",
     userMessage: "帮我规划一个三天的京都行程。",
     answer: [
       "三天可以按区域来分，这样能省下大量在路上的时间。第一天走东山线：清水寺开门早，八点前到人最少，之后沿二年坂、三年坂步行到高台寺，傍晚在祇园一带吃饭。",
@@ -215,19 +217,21 @@ const ja = {
   hero: {
     eyebrow: "Chrome・Edge 拡張機能 · ChatGPT · Claude · DeepSeek · Kimi",
     before: "AI の回答で",
-    highlight: "気になる箇所を示し",
-    after: "、そのまま聞く。",
+    highlight: "気になる箇所を示し、",
+    after: "そのまま聞く。",
     description:
       "AI の回答から気になる箇所を選び、考えを書き留めます。QuoteCue はすべての注釈を 1 つの的確なフォローアップにまとめて送信します。コピー＆ペーストも、『3 段落目のあの文です』と説明し直す必要もありません。",
     chrome: "Chrome に追加",
     edge: "Edge に追加",
+    desktopNote: "拡張機能はパソコン版 Chrome・Edge 向けです。",
+    demo: "まずはデモを試す",
     note: "無料 · アカウント不要 · サーバーなし",
   },
   demo: {
     locale: "ja",
     title: "一連の流れを試す",
     intro:
-      "下の回答から好きな文を選択すると、QuoteCue ボタンが表示されます。対応する AI チャットにインストールしたときと同じ操作を試せます。",
+      "マウスでドラッグするか、タッチ画面で長押しして選択範囲を調整し、下の回答から一文を選びます。表示される QuoteCue ボタンを押すと注釈を追加できます。インストールは不要です。",
     userMessage: "京都を 3 日間で巡る旅程を考えてください。",
     answer: [
       "移動時間を抑えるため、3 日間をエリアごとに分けましょう。1 日目は東山です。清水寺は朝早く開き、8 時前なら比較的空いています。その後は二年坂と三年坂を歩いて高台寺へ向かい、夕食は祇園周辺がおすすめです。",
@@ -378,13 +382,15 @@ const en = {
       "Select any part of an AI response and write what you think. QuoteCue compiles every note into one focused follow-up and sends it in a single message—no copy-pasting and no “I meant the sentence in the third paragraph.”",
     chrome: "Add to Chrome",
     edge: "Add to Edge",
+    desktopNote: "For Chrome and Edge on desktop.",
+    demo: "Try the demo",
     note: "Free · No account · No server",
   },
   demo: {
     locale: "en",
     title: "Try the whole flow",
     intro:
-      "Select any sentence in the answer below and the QuoteCue button floats up. This is how it behaves inside a supported AI conversation.",
+      "Drag with a mouse, or touch and hold then adjust the selection, to select a sentence below. Tap the floating QuoteCue button to add a note. No installation needed for this demo.",
     userMessage: "Plan me a three-day itinerary for Kyoto.",
     answer: [
       "Split the three days by district so you spend less time in transit. Day one is the Higashiyama route: Kiyomizu-dera opens early and is quietest before eight, then walk down Ninenzaka and Sannenzaka to Kodai-ji and have dinner around Gion.",
