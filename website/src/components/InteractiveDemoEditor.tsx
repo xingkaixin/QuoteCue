@@ -31,7 +31,7 @@ export function InteractiveDemoEditor({
       style={style}
     >
       <textarea
-        className="h-24 w-full resize-none border-0 bg-transparent text-sm leading-[1.55] text-foreground outline-none placeholder:text-muted"
+        className="h-24 w-full resize-none border-0 bg-transparent text-base leading-[1.55] text-foreground outline-none placeholder:text-muted"
         onChange={(event) => onChange(event.target.value)}
         onKeyDown={(event) => {
           if (event.key === "Escape") onCancel();

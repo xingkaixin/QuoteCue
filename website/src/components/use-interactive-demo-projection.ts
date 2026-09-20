@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type TouchEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import type { DemoAnnotation } from "./interactive-demo-state";
 import {
@@ -41,10 +41,12 @@ export function useInteractiveDemoProjection(
 ) {
   const stageRef = useRef<HTMLDivElement>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
+  const actionRef = useRef<HTMLButtonElement>(null);
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const [candidate, setCandidate] = useState<SelectionCandidate | null>(null);
   const [layoutVersion, setLayoutVersion] = useState(0);
   const [geometry, setGeometry] = useState<Geometry>({ action: null, badges: [], editor: null });
+  const positionedEditorId = geometry.editor ? editingId : null;
 
   useEffect(() => {
     const updateLayout = () => setLayoutVersion((version) => version + 1);
@@ -98,15 +100,16 @@ export function useInteractiveDemoProjection(
   }, [annotations, candidate, editingId, layoutVersion]);
 
   useEffect(() => {
-    if (editingId !== null) editorRef.current?.focus();
-  }, [editingId]);
+    if (positionedEditorId !== null) editorRef.current?.focus();
+  }, [positionedEditorId]);
 
   const captureSelection = useCallback(() => {
     const selection = window.getSelection();
     const transcript = transcriptRef.current;
 
     if (!selection || selection.isCollapsed || !transcript) {
-      setCandidate(null);
+      // WebKit collapses the selection when the action receives keyboard focus.
+      if (document.activeElement !== actionRef.current) setCandidate(null);
 
       return;
     }
@@ -124,13 +127,13 @@ export function useInteractiveDemoProjection(
     setCandidate(anchoredRange ? { anchor, range: anchoredRange } : null);
   }, []);
 
-  const captureTouchSelection = useCallback(
-    (event: TouchEvent<HTMLDivElement>) => {
-      event.persist();
-      window.setTimeout(captureSelection, 0);
-    },
-    [captureSelection],
-  );
+  useEffect(() => {
+    if (editingId !== null) return;
+
+    document.addEventListener("selectionchange", captureSelection);
+
+    return () => document.removeEventListener("selectionchange", captureSelection);
+  }, [captureSelection, editingId]);
 
   const clearCandidate = useCallback(() => {
     setCandidate(null);
@@ -138,9 +141,8 @@ export function useInteractiveDemoProjection(
   }, []);
 
   return {
+    actionRef,
     candidate,
-    captureSelection,
-    captureTouchSelection,
     clearCandidate,
     editorRef,
     geometry,

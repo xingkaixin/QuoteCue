@@ -4,67 +4,80 @@ interface Props {
   edgeLabel: string;
   chromeUrl: string;
   edgeUrl: string;
+  desktopNote: string;
+  demoLabel?: string;
   note?: string;
   compact?: boolean;
 }
 
-const { chromeLabel, edgeLabel, chromeUrl, edgeUrl, note, compact = false } = Astro.props;
+const { chromeLabel, edgeLabel, chromeUrl, edgeUrl, desktopNote, demoLabel, note, compact = false } = Astro.props;
 const buttonHeight = compact ? "h-[3.125rem]" : "h-[3.25rem]";
 ---
 
-<div class="flex flex-wrap items-center gap-3 max-sm:flex-col max-sm:items-stretch">
-  <a
-    class:list={[
-      "focus-visible:ring-ring inline-flex items-center justify-center gap-2.5 rounded-full bg-accent px-6 text-[0.96875rem] font-semibold text-accent-foreground transition-[filter,transform] outline-none hover:brightness-110 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.98] motion-reduce:transition-none max-sm:w-full",
-      buttonHeight,
-    ]}
-    href={chromeUrl}
-    target="_blank"
-    rel="noopener noreferrer"
-  >
-    <svg
-      aria-hidden="true"
-      width="19"
-      height="19"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="1.8"
+<div>
+  <p class="mb-3 max-w-prose text-sm leading-relaxed text-muted">{desktopNote}</p>
+  <div class="install-actions flex flex-wrap items-center gap-3">
+    <a
+      class:list={[
+        "install-store focus-visible:ring-ring inline-flex items-center justify-center gap-2.5 rounded-full bg-accent px-6 text-[0.96875rem] font-semibold text-accent-foreground transition-[filter,transform] outline-none hover:brightness-110 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.98] motion-reduce:transition-none",
+        buttonHeight,
+      ]}
+      href={chromeUrl}
+      target="_blank"
+      rel="noopener noreferrer"
     >
-      <circle cx="12" cy="12" r="10"></circle>
-      <circle cx="12" cy="12" r="4"></circle>
-      <path d="M21.17 8H12M3.95 6.06 8.54 14M10.88 21.94 15.46 14"></path>
-    </svg>
-    {chromeLabel}
-  </a>
-  <a
-    class:list={[
-      "focus-visible:ring-ring inline-flex items-center justify-center gap-2.5 rounded-full border border-line bg-panel px-6 text-[0.96875rem] font-semibold text-foreground transition-[border-color,transform] outline-none hover:border-muted focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.98] motion-reduce:transition-none max-sm:w-full",
-      buttonHeight,
-    ]}
-    href={edgeUrl}
-    target="_blank"
-    rel="noopener noreferrer"
-  >
-    <svg
-      aria-hidden="true"
-      width="19"
-      height="19"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="1.8"
+      <svg
+        aria-hidden="true"
+        width="19"
+        height="19"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.8"
+      >
+        <circle cx="12" cy="12" r="10"></circle>
+        <circle cx="12" cy="12" r="4"></circle>
+        <path d="M21.17 8H12M3.95 6.06 8.54 14M10.88 21.94 15.46 14"></path>
+      </svg>
+      {chromeLabel}
+    </a>
+    <a
+      class:list={[
+        "install-store focus-visible:ring-ring inline-flex items-center justify-center gap-2.5 rounded-full border border-line bg-panel px-6 text-[0.96875rem] font-semibold text-foreground transition-[border-color,transform] outline-none hover:border-muted focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.98] motion-reduce:transition-none",
+        buttonHeight,
+      ]}
+      href={edgeUrl}
+      target="_blank"
+      rel="noopener noreferrer"
     >
-      <circle cx="12" cy="12" r="10"></circle>
-      <path d="M2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20Z"></path>
-    </svg>
-    {edgeLabel}
-  </a>
+      <svg
+        aria-hidden="true"
+        width="19"
+        height="19"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.8"
+      >
+        <circle cx="12" cy="12" r="10"></circle>
+        <path d="M2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20Z"></path>
+      </svg>
+      {edgeLabel}
+    </a>
+    {demoLabel && (
+      <a
+        class="install-demo inline-flex min-h-11 items-center justify-center gap-1 rounded-full px-4 text-sm font-semibold text-accent underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
+        href="#demo"
+      >
+        {demoLabel}<span aria-hidden="true">↓</span>
+      </a>
+    )}
+  </div>
   {
     note && (
-      <span class="font-mono ml-1.5 self-center text-xs text-muted max-sm:w-full max-sm:text-center">
+      <p class="mt-3 font-mono text-xs text-muted">
         {note}
-      </span>
+      </p>
     )
   }
 </div>

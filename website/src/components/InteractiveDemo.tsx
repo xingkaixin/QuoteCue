@@ -34,16 +34,8 @@ export function InteractiveDemo({ copy }: InteractiveDemoProps) {
   const editorComment = editor?.comment ?? "";
   const sending = send.kind === "sending";
 
-  const {
-    candidate,
-    captureSelection,
-    captureTouchSelection,
-    clearCandidate,
-    editorRef,
-    geometry,
-    stageRef,
-    transcriptRef,
-  } = useInteractiveDemoProjection(annotations, editingId);
+  const { actionRef, candidate, clearCandidate, editorRef, geometry, stageRef, transcriptRef } =
+    useInteractiveDemoProjection(annotations, editingId);
 
   useInteractiveDemoStatusTimer({ clearArmed, pendingRemovals, send }, dispatch);
 
@@ -138,8 +130,6 @@ export function InteractiveDemo({ copy }: InteractiveDemoProps) {
           </div>
           <div
             className="cursor-text text-[0.96875rem] leading-[1.78] select-text"
-            onMouseUp={captureSelection}
-            onTouchEnd={captureTouchSelection}
             ref={transcriptRef}
           >
             {copy.answer.map((paragraph) => (
@@ -248,10 +238,12 @@ export function InteractiveDemo({ copy }: InteractiveDemoProps) {
 
         {candidate && actionStyle && (
           <button
-            className="animate-pop absolute z-40 flex h-8 cursor-pointer items-center rounded-full border border-line bg-panel px-3 text-[0.84375rem] font-medium text-foreground shadow-[var(--surface-shadow)] outline-none hover:border-muted focus-visible:ring-2 focus-visible:ring-ring"
+            className="animate-pop absolute z-40 flex h-8 cursor-pointer items-center rounded-full border border-line bg-panel px-3 text-[0.84375rem] font-medium text-foreground shadow-[var(--surface-shadow)] outline-none hover:border-muted focus-visible:ring-2 focus-visible:ring-ring pointer-coarse:min-h-11"
             onClick={createAnnotation}
             onMouseDown={(event) => event.preventDefault()}
+            onBlur={clearCandidate}
             disabled={sending}
+            ref={actionRef}
             style={actionStyle}
             type="button"
           >
