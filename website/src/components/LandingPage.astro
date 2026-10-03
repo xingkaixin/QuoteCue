@@ -228,6 +228,8 @@ const structuredData = {
         <a
           class="header-install"
           href={copy.links.chrome}
+          data-umami-event="chrome-store-click"
+          data-umami-event-placement="header"
           target="_blank"
           rel="noopener noreferrer"
         >
@@ -254,6 +256,7 @@ const structuredData = {
         <p class="hero-description">{copy.hero.description}</p>
 
         <InstallActions
+          placement="hero"
           chromeLabel={copy.hero.chrome}
           edgeLabel={copy.hero.edge}
           chromeUrl={copy.links.chrome}
@@ -430,6 +433,7 @@ const structuredData = {
         <p>{copy.closing.description}</p>
         <div class="closing-actions">
           <InstallActions
+            placement="closing"
             chromeLabel={copy.hero.chrome}
             edgeLabel={copy.hero.edge}
             chromeUrl={copy.links.chrome}

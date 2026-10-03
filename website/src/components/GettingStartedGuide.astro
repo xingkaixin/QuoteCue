@@ -72,7 +72,7 @@ const structuredData = {
           <li>
             <h2><span class="guide-step-number" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>{step.title}</h2>
             <p>{step.body}</p>
-            {index === 0 && <InstallActions chromeLabel={landing.hero.chrome} edgeLabel={landing.hero.edge} chromeUrl={landing.links.chrome} edgeUrl={landing.links.edge} desktopNote={landing.hero.desktopNote} compact />}
+            {index === 0 && <InstallActions placement="guide" chromeLabel={landing.hero.chrome} edgeLabel={landing.hero.edge} chromeUrl={landing.links.chrome} edgeUrl={landing.links.edge} desktopNote={landing.hero.desktopNote} compact />}
           </li>
         ))}
       </ol>

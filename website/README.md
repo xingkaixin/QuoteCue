@@ -23,8 +23,13 @@ sitemap、robots.txt、404、Umami 脚本与 CSP，以及 Cloudflare 部署产�
 正式域名 `quotecue.xingkaixin.me`，避免本地预览和其他部署域名的访问计入统计；开发模式不加载
 脚本。`_headers` 仅在 `script-src` 和 `connect-src` 中放行该 Umami 来源。
 
-统计只用于产品网站的页面访问，不添加自定义事件，不上报演示中的批注或输入内容，也不进入扩展
-或 AI 宿主页面。扩展继续不收集使用统计；详见 [PRIVACY.md](../PRIVACY.md)。
+统计只用于产品网站的页面访问和商店链接点击。`chrome-store-click` 与 `edge-store-click`
+使用 Umami 原生 `data-umami-event` 属性，唯一的自定义属性 `placement` 为固定按钮位置
+（header、hero、closing、guide）。不采集演示中的批注或输入内容，不进入扩展或 AI 宿主页面。
+商店点击代表安装意向，不能当作安装成功；详见 [PRIVACY.md](../PRIVACY.md)。
+
+在 Umami 的 Goals 中分别按上述事件名创建 Triggered event 目标。按 30 天范围和落地页、
+来源筛选，观察访问到商店点击的比例；小样本不作确定的转化率结论。
 
 ## Cloudflare Web Analytics
 

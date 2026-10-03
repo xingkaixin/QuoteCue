@@ -67,7 +67,9 @@ analytics providers.
 ## Product website analytics
 
 The product website at `https://quotecue.xingkaixin.me` uses self-hosted Umami at
-`https://umami.xingkaixin.me` to measure page visits. This sends website visit metadata, including
+`https://umami.xingkaixin.me` to measure page visits and clicks on the Chrome and Edge store links. Store-click events contain
+only the store event name and a fixed button placement label (header, hero, closing, or guide);
+they do not confirm an extension installation. This sends website visit metadata, including
 the page URL and title, referrer, browser language, and screen size, to the developer's Umami
 instance. Umami does not use tracking cookies. The website also supports Cloudflare Web Analytics
 for aggregate performance measurement.

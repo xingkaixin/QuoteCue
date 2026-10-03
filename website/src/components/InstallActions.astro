@@ -8,9 +8,10 @@ interface Props {
   demoLabel?: string;
   note?: string;
   compact?: boolean;
+  placement: "hero" | "closing" | "guide";
 }
 
-const { chromeLabel, edgeLabel, chromeUrl, edgeUrl, desktopNote, demoLabel, note, compact = false } = Astro.props;
+const { chromeLabel, edgeLabel, chromeUrl, edgeUrl, desktopNote, demoLabel, note, compact = false, placement } = Astro.props;
 const buttonHeight = compact ? "h-[3.125rem]" : "h-[3.25rem]";
 ---
 
@@ -23,6 +24,8 @@ const buttonHeight = compact ? "h-[3.125rem]" : "h-[3.25rem]";
         buttonHeight,
       ]}
       href={chromeUrl}
+      data-umami-event="chrome-store-click"
+      data-umami-event-placement={placement}
       target="_blank"
       rel="noopener noreferrer"
     >
@@ -47,6 +50,8 @@ const buttonHeight = compact ? "h-[3.125rem]" : "h-[3.25rem]";
         buttonHeight,
       ]}
       href={edgeUrl}
+      data-umami-event="edge-store-click"
+      data-umami-event-placement={placement}
       target="_blank"
       rel="noopener noreferrer"
     >

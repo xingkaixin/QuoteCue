@@ -18,6 +18,30 @@ function readStructuredData(html) {
   return JSON.parse(match[1]);
 }
 
+function verifyStoreEvents(html) {
+  for (const [domain, event] of [
+    ["chromewebstore.google.com", "chrome-store-click"],
+    ["microsoftedge.microsoft.com", "edge-store-click"],
+  ]) {
+    const links = [...html.matchAll(/<a\b[^>]*>/g)]
+      .map(([tag]) => tag)
+      .filter((tag) => tag.includes(`href="https://${domain}/`));
+
+    assert(links.length > 0, "Each page must offer both stores");
+
+    for (const link of links) {
+      assert(link.includes(`data-umami-event="${event}"`));
+      assert.match(link, /data-umami-event-placement="(?:header|hero|closing|guide)"/);
+    }
+  }
+
+  const properties = [...html.matchAll(/data-umami-event-([\w-]+)=/g)].map(([, name]) => name);
+  assert(
+    properties.every((name) => name === "placement"),
+    "Analytics must only send the fixed placement property",
+  );
+}
+
 const pages = [
   {
     path: "index.html",
@@ -44,6 +68,7 @@ const pages = [
 
 for (const page of pages) {
   const html = await read(page.path);
+  verifyStoreEvents(html);
   assert.match(html, new RegExp(`<html lang="${page.lang}"`));
   assert.match(html, new RegExp(`<link rel="canonical" href="${page.canonical}"`));
   assert(html.includes(page.marker), `${page.path} must contain localized landing copy`);
@@ -93,6 +118,7 @@ for (const page of pages) {
   const guidePath = page.path.replace("index.html", "guides/getting-started/index.html");
   const guideUrl = `${page.canonical}guides/getting-started/`;
   const guide = await read(guidePath);
+  verifyStoreEvents(guide);
   const home = await read(page.path);
   assert(guide.includes(`<link rel="canonical" href="${guideUrl}"`));
   assert(guide.includes(`<html lang="${page.lang}"`));
