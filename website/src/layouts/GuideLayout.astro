@@ -1,0 +1,87 @@
+---
+import "../styles/guide.css";
+import { getCopy } from "../i18n/content";
+import { GUIDE_COPY } from "../i18n/getting-started";
+import type { Locale } from "../i18n/locales";
+import { WEBSITE_PAGES, websitePagePath, type WebsitePage } from "../i18n/pages";
+import BaseLayout from "./BaseLayout.astro";
+import LanguageSwitcher from "../components/LanguageSwitcher.astro";
+import ThemeToggle from "../components/ThemeToggle.astro";
+
+interface Props {
+  locale: Locale;
+  page: Exclude<WebsitePage, "home">;
+  title: string;
+  description: string;
+  intro: string;
+  label: string;
+}
+
+const { locale, page, title, description, intro, label } = Astro.props;
+const landing = getCopy(locale);
+const copy = GUIDE_COPY[locale];
+const homePath = websitePagePath(locale);
+const homeUrl = new URL(homePath, Astro.site).href;
+const pageUrl = new URL(websitePagePath(locale, page), Astro.site).href;
+const modified = WEBSITE_PAGES[page].modified;
+
+const structuredData = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": `${pageUrl}#webpage`,
+      url: pageUrl,
+      name: title,
+      description,
+      inLanguage: locale,
+      dateModified: modified,
+      isPartOf: { "@id": new URL("/#website", Astro.site).href },
+      about: { "@id": new URL("/#software", Astro.site).href },
+      breadcrumb: { "@id": `${pageUrl}#breadcrumb` },
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": `${pageUrl}#breadcrumb`,
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "QuoteCue", item: homeUrl },
+        { "@type": "ListItem", position: 2, name: title, item: pageUrl },
+      ],
+    },
+  ],
+};
+---
+
+<BaseLayout lang={locale} page={page} title={`${title} | QuoteCue`} description={description} socialImageAlt={landing.meta.socialImageAlt} structuredData={structuredData}>
+  <a class="skip-link" href="#main">{landing.skipToContent}</a>
+  <header class="site-header">
+    <div class="site-shell header-inner guide-header">
+      <a class="brand-lockup" href={homePath} aria-label={`QuoteCue · ${copy.home}`}>
+        <img src="/brand/quotecue-icon-128.png" width="26" height="26" alt="" />
+        <span>QuoteCue</span>
+      </a>
+      <div class="header-actions">
+        <LanguageSwitcher currentLocale={locale} label={landing.languageSwitcherLabel} page={page} />
+        <ThemeToggle label={landing.themeLabel} />
+      </div>
+    </div>
+  </header>
+  <main id="main" class="guide">
+    <nav class="guide-breadcrumb" aria-label={landing.mainNavigationLabel}>
+      <ol><li><a href={homePath}>QuoteCue</a></li><li aria-current="page">{label}</li></ol>
+    </nav>
+    <article>
+      <header class="guide-intro">
+        <h1>{title}</h1>
+        <p>{intro}</p>
+        <p class="guide-date">{copy.updated} <time datetime={modified}>{modified}</time></p>
+        <a href={`${homePath}#demo`}>{copy.demo}</a>
+      </header>
+      <slot />
+    </article>
+    <footer class="guide-footer">
+      <a href={homePath}>{copy.home}</a>
+      <a href={`${homePath}#demo`}>{copy.demo}</a>
+    </footer>
+  </main>
+</BaseLayout>

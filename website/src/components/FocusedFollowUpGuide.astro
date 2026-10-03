@@ -1,0 +1,54 @@
+---
+import { getCopy } from "../i18n/content";
+import { FOCUSED_FOLLOW_UP_COPY } from "../i18n/focused-follow-up";
+import { GUIDE_COPY } from "../i18n/getting-started";
+import type { Locale } from "../i18n/locales";
+import { websitePagePath } from "../i18n/pages";
+import GuideLayout from "../layouts/GuideLayout.astro";
+import InstallActions from "./InstallActions.astro";
+
+interface Props { locale: Locale; }
+
+const { locale } = Astro.props;
+const copy = FOCUSED_FOLLOW_UP_COPY[locale];
+const landing = getCopy(locale);
+---
+
+<GuideLayout locale={locale} page="focusedFollowUp" title={copy.title} description={copy.description} intro={copy.intro} label={copy.label}>
+  <section>
+    <h2>{copy.stepsTitle}</h2>
+    <ol>
+      {copy.steps.map((step) => <li><h3>{step.title}</h3><p>{step.body}</p></li>)}
+    </ol>
+  </section>
+  <section>
+    <h2>{copy.templateTitle}</h2>
+    <p>{copy.templateIntro}</p>
+    <pre class="guide-prompt">{copy.template}</pre>
+  </section>
+  <section>
+    <h2>{copy.exampleTitle}</h2>
+    <p>{copy.exampleIntro}</p>
+    <ol class="guide-examples">
+      {copy.examples.map((example) => <li><dl>
+        <dt>{GUIDE_COPY[locale].selectedText}</dt><dd><q>{example.quote}</q></dd>
+        <dt>{GUIDE_COPY[locale].comment}</dt><dd>{example.comment}</dd>
+      </dl></li>)}
+    </ol>
+    <p>{copy.exampleEnd}</p>
+  </section>
+  <section>
+    <h2>{copy.extensionTitle}</h2>
+    <p>{copy.extensionBody}</p>
+    <p>{copy.extensionNote}</p>
+    <InstallActions placement="guide" chromeLabel={landing.hero.chrome} edgeLabel={landing.hero.edge} chromeUrl={landing.links.chrome} edgeUrl={landing.links.edge} desktopNote={landing.hero.desktopNote} compact />
+  </section>
+  <section>
+    <h2>{copy.checksTitle}</h2>
+    <ul>{copy.checks.map((check) => <li>{check}</li>)}</ul>
+  </section>
+  <section>
+    <h2>{copy.related}</h2>
+    <a href={websitePagePath(locale, "guide")}>{GUIDE_COPY[locale].title}</a>
+  </section>
+</GuideLayout>

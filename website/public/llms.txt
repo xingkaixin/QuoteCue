@@ -8,6 +8,12 @@ Japanese page: https://quotecue.xingkaixin.me/ja/
 Source code: https://github.com/xingkaixin/QuoteCue
 Extension privacy policy: https://github.com/xingkaixin/QuoteCue/blob/main/PRIVACY.md
 
+## Guides
+
+- [Getting started](https://quotecue.xingkaixin.me/en/guides/getting-started/): Install QuoteCue and send your first annotations.
+- [Targeted revisions in ChatGPT](https://quotecue.xingkaixin.me/en/guides/change-part-of-chatgpt-answer/): Quote passages, write specific feedback, and state what should stay unchanged. Includes a copyable prompt.
+- Both guides are also available in Chinese and Japanese through their language selectors.
+
 ## What QuoteCue does
 
 - Select part of an AI answer and attach an optional annotation.
@@ -43,4 +49,4 @@ Version 0.3.3 was released on 2026-09-13.
 - Current-version drafts expire after 30 days without an update.
 - The extension itself collects no analytics. The product website uses self-hosted, cookie-free Umami for pageview and store-link click analytics and supports Cloudflare Web Analytics for aggregate performance measurement. Website analytics do not include annotation or demo input content.
 
-Last updated: 2026-09-13
+Last updated: 2026-10-03

@@ -44,7 +44,7 @@ const zh = {
   skipToContent: "跳到主要内容",
   themeLabel: "切换亮色或暗色主题",
   meta: {
-    title: "QuoteCue：给 AI 回答做批注，一次聚焦追问",
+    title: "ChatGPT、Claude 批注与追问插件 | QuoteCue",
     description:
       "QuoteCue 是适用于 ChatGPT、Claude、DeepSeek 和 Kimi 的 Chrome 与 Edge 扩展。选中 AI 回答、添加批注，再把多个重点编译成一次聚焦追问。",
     socialImageAlt: "QuoteCue：给 AI 回答添加批注并发起一次聚焦追问",
@@ -202,7 +202,7 @@ const ja = {
   skipToContent: "メインコンテンツへ移動",
   themeLabel: "ライトテーマとダークテーマを切り替える",
   meta: {
-    title: "QuoteCue：AI の回答に注釈を付け、的確にフォローアップ",
+    title: "ChatGPT・Claude の回答に注釈を付ける拡張機能 | QuoteCue",
     description:
       "QuoteCue は ChatGPT、Claude、DeepSeek、Kimi 向けの無料 Chrome・Edge 拡張機能です。AI の回答を選択して注釈を付け、複数のポイントを 1 つの的確なフォローアップにまとめます。",
     socialImageAlt: "QuoteCue：AI の回答に注釈を付け、的確にフォローアップ",
@@ -361,7 +361,7 @@ const en = {
   skipToContent: "Skip to content",
   themeLabel: "Switch between light and dark theme",
   meta: {
-    title: "QuoteCue – Annotate AI Answers, Ask Better Follow-ups",
+    title: "ChatGPT & Claude Annotation Extension | QuoteCue",
     description:
       "QuoteCue is a free Chrome and Edge extension for annotating ChatGPT, Claude, DeepSeek, and Kimi answers, then sending one focused follow-up.",
     socialImageAlt: "QuoteCue — annotate an AI answer and ask one focused follow-up",

@@ -6,6 +6,7 @@ import { InteractiveDemo } from "./InteractiveDemo";
 import LanguageSwitcher from "./LanguageSwitcher.astro";
 import ProductUpdates from "./ProductUpdates.astro";
 import ThemeToggle from "./ThemeToggle.astro";
+import { FOCUSED_FOLLOW_UP_COPY } from "../i18n/focused-follow-up";
 import { GUIDE_COPY } from "../i18n/getting-started";
 import { WEBSITE_PAGES, websitePagePath } from "../i18n/pages";
 import { getCopy } from "../i18n/content";
@@ -349,7 +350,10 @@ const structuredData = {
         <p class="section-kicker">{labels.live}</p>
         <h2>{copy.demo.title}</h2>
         <p>{copy.demo.intro}</p>
-        <a class="guide-link" href={websitePagePath(locale, "guide")}>{GUIDE_COPY[locale].link}</a>
+        <ul class="guide-links">
+          <li><a class="guide-link" href={websitePagePath(locale, "guide")}>{GUIDE_COPY[locale].link}</a></li>
+          <li><a class="guide-link" href={websitePagePath(locale, "focusedFollowUp")}>{FOCUSED_FOLLOW_UP_COPY[locale].title}</a></li>
+        </ul>
         <span class="interaction-hint" aria-hidden="true">{labels.hint}</span>
       </header>
       <div class="demo-stage">
@@ -470,6 +474,11 @@ const structuredData = {
 </BaseLayout>
 
 <style>
+  .guide-links {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
   .guide-link {
     display: inline-block;
     padding-block: 0.5rem;

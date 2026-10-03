@@ -76,9 +76,11 @@ Cloudflare RUM 按地区和设备观察 TTFB、LCP 和 INP。不要同时启用�
 
 ## SEO / AEO
 
-- 中英文分别输出静态 HTML，并配置 canonical、双向 hreflang 与 `x-default`。
-- `/sitemap.xml` 只包含三个 canonical 页面；404 返回独立页面并标记 `noindex`。
+- 中、英、日三语分别输出静态 HTML，并配置 canonical、双向 hreflang 与 `x-default`。
+- `/sitemap.xml` 包含 9 个 canonical 页面（三语首页、入门指南、局部修改指南）；404 返回独立页面并标记 `noindex`。
 - JSON-LD 同步可见内容，包含 WebSite、Organization、SoftwareApplication、WebPage 和 FAQPage。
 - 落地页提供面向用户的本地化产品更新记录，并同步最新版本、页面更新时间与 sitemap `lastmod`。
-- `llms.txt` 提供可独立引用的产品、支持范围与隐私事实。
+- 指南提供可复制的提示词和具体反馈示例，从首页进入，并在两篇指南之间互相链接。
+- 指南共享阅读布局、语言切换、可见面包屑及 BreadcrumbList；新增页面需同步页面目录与构建验证。
+- `llms.txt` 提供产品、支持范围、指南链接与隐私事实；不把该文件视为排名信号。
 - Open Graph 与 Twitter Card 使用 1200×630 的品牌预览图。

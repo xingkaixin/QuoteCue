@@ -4,9 +4,10 @@ import { LATEST_PRODUCT_UPDATE_DATE } from "./product-updates";
 export const WEBSITE_PAGES = {
   home: {
     suffix: "",
-    modified: LATEST_PRODUCT_UPDATE_DATE > "2026-09-19" ? LATEST_PRODUCT_UPDATE_DATE : "2026-09-19",
+    modified: LATEST_PRODUCT_UPDATE_DATE > "2026-10-03" ? LATEST_PRODUCT_UPDATE_DATE : "2026-10-03",
   },
-  guide: { suffix: "guides/getting-started/", modified: "2026-09-19" },
+  focusedFollowUp: { suffix: "guides/change-part-of-chatgpt-answer/", modified: "2026-10-03" },
+  guide: { suffix: "guides/getting-started/", modified: "2026-10-03" },
 } as const;
 
 export type WebsitePage = keyof typeof WEBSITE_PAGES;

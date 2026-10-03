@@ -68,7 +68,6 @@ const pages = [
 
 for (const page of pages) {
   const html = await read(page.path);
-  verifyStoreEvents(html);
   assert.match(html, new RegExp(`<html lang="${page.lang}"`));
   assert.match(html, new RegExp(`<link rel="canonical" href="${page.canonical}"`));
   assert(html.includes(page.marker), `${page.path} must contain localized landing copy`);
@@ -111,47 +110,57 @@ for (const page of pages) {
   const software = graph.find((entry) => entry["@type"] === "SoftwareApplication");
   assert.equal(software.softwareVersion, "0.3.3");
   const webPage = graph.find((entry) => entry["@type"] === "WebPage");
-  assert.equal(webPage.dateModified, "2026-09-19");
+  assert.equal(webPage.dateModified, "2026-10-03");
 }
 
+const guideSlugs = ["getting-started", "change-part-of-chatgpt-answer"];
+
 for (const page of pages) {
-  const guidePath = page.path.replace("index.html", "guides/getting-started/index.html");
-  const guideUrl = `${page.canonical}guides/getting-started/`;
-  const guide = await read(guidePath);
-  verifyStoreEvents(guide);
   const home = await read(page.path);
-  assert(guide.includes(`<link rel="canonical" href="${guideUrl}"`));
-  assert(guide.includes(`<html lang="${page.lang}"`));
-  assert.equal(occurrences(guide, /<h1\b/g), 1);
-  assert.match(guide, /<meta name="robots" content="index, follow, max-image-preview:large">/);
-  assert.match(guide, /<pre[^>]*class="guide-prompt/);
-  assert.match(guide, /chromewebstore\.google\.com\/detail\/quotecue\//);
-  assert.match(guide, /microsoftedge\.microsoft\.com\/addons\/detail\//);
 
-  const guideData = readStructuredData(guide)["@graph"].find(
-    (entry) => entry["@type"] === "WebPage",
-  );
+  for (const slug of guideSlugs) {
+    const guidePath = page.path.replace("index.html", `guides/${slug}/index.html`);
+    const guideUrl = `${page.canonical}guides/${slug}/`;
+    const guide = await read(guidePath);
+    assert(guide.includes(`<link rel="canonical" href="${guideUrl}"`));
+    assert(guide.includes(`<html lang="${page.lang}"`));
+    assert.equal(occurrences(guide, /<h1\b/g), 1);
+    assert.match(guide, /<meta name="robots" content="index, follow, max-image-preview:large">/);
+    assert.match(guide, /<pre[^>]*class="guide-prompt/);
+    verifyStoreEvents(guide);
 
-  assert.equal(guideData.url, guideUrl);
-  assert.equal(guideData.dateModified, "2026-09-19");
-  const guideRelativePath = new URL(guideUrl).pathname;
-  assert(home.includes(`href="${guideRelativePath}"`), "Home must link to its localized guide");
-  assert(guide.includes(`href="${new URL(page.canonical).pathname}#demo"`));
-
-  for (const alternate of pages) {
-    const alternateUrl = `${alternate.canonical}guides/getting-started/`;
-    assert(guide.includes(`hreflang="${alternate.lang}" href="${alternateUrl}"`));
+    const graph = readStructuredData(guide)["@graph"];
+    const guideData = graph.find((entry) => entry["@type"] === "WebPage");
+    assert.equal(guideData.url, guideUrl);
+    assert.equal(guideData.dateModified, "2026-10-03");
+    const breadcrumb = graph.find((entry) => entry["@type"] === "BreadcrumbList");
+    assert.deepEqual(
+      breadcrumb.itemListElement.map((item) => item.item),
+      [page.canonical, guideUrl],
+    );
     assert(
-      guide.includes(`value="${new URL(alternateUrl).pathname}"`),
-      "Language switch must stay on the guide",
+      home.includes(`href="${new URL(guideUrl).pathname}"`),
+      "Home must link to each localized guide",
+    );
+    assert(guide.includes(`href="${new URL(page.canonical).pathname}#demo"`));
+    const relatedSlug = guideSlugs.find((value) => value !== slug);
+    assert(guide.includes(`href="${new URL(page.canonical).pathname}guides/${relatedSlug}/"`));
+
+    for (const alternate of pages) {
+      const alternateUrl = `${alternate.canonical}guides/${slug}/`;
+      assert(guide.includes(`hreflang="${alternate.lang}" href="${alternateUrl}"`));
+      assert(
+        guide.includes(`value="${new URL(alternateUrl).pathname}"`),
+        "Language switch must stay on the same guide",
+      );
+    }
+
+    assert(
+      guide.includes(`hreflang="x-default" href="https://quotecue.xingkaixin.me/guides/${slug}/"`),
     );
   }
 
-  assert(
-    guide.includes(
-      'hreflang="x-default" href="https://quotecue.xingkaixin.me/guides/getting-started/"',
-    ),
-  );
+  verifyStoreEvents(home);
 }
 
 const notFound = await read("404.html");
@@ -168,29 +177,29 @@ assert.match(sitemap, /<loc>https:\/\/quotecue\.xingkaixin\.me\/en\/<\/loc>/);
 
 assert.match(sitemap, /<loc>https:\/\/quotecue\.xingkaixin\.me\/ja\/<\/loc>/);
 
-assert.equal(occurrences(sitemap, /<lastmod>2026-09-19<\/lastmod>/g), 6);
+assert.equal(occurrences(sitemap, /<lastmod>2026-10-03<\/lastmod>/g), 9);
 
 assert.match(sitemap, /hreflang="x-default" href="https:\/\/quotecue\.xingkaixin\.me\/"/);
 
 for (const page of pages) {
-  const guideUrl = `${page.canonical}guides/getting-started/`;
-  const entry = sitemap.match(new RegExp(`<url>\\s*<loc>${guideUrl}</loc>[\\s\\S]*?</url>`))?.[0];
-  assert(entry, "Sitemap must include each guide");
+  for (const slug of guideSlugs) {
+    const guideUrl = `${page.canonical}guides/${slug}/`;
+    const entry = sitemap.match(new RegExp(`<url>\\s*<loc>${guideUrl}</loc>[\\s\\S]*?</url>`))?.[0];
+    assert(entry, "Sitemap must include each guide");
 
-  for (const alternate of pages) {
-    assert(
-      entry.includes(
-        `hreflang="${alternate.lang}" href="${alternate.canonical}guides/getting-started/"`,
-      ),
-    );
+    for (const alternate of pages) {
+      assert(
+        entry.includes(`hreflang="${alternate.lang}" href="${alternate.canonical}guides/${slug}/"`),
+      );
+    }
   }
 }
 
 assert.doesNotMatch(sitemap, /404/);
 
-assert.equal(occurrences(sitemap, /<url>/g), 6);
+assert.equal(occurrences(sitemap, /<url>/g), 9);
 
-assert.equal(occurrences(sitemap, /hreflang="x-default"/g), 6);
+assert.equal(occurrences(sitemap, /hreflang="x-default"/g), 9);
 
 const robots = await read("robots.txt");
 
