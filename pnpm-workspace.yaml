@@ -9,10 +9,17 @@ allowBuilds:
 
 overrides:
   brace-expansion: 5.0.9
+  devalue@>=5.1.0 <5.9.3: 5.9.3
   firefox-profile>adm-zip: 0.6.0
   fx-runner>shell-quote: 1.10.0
   miniflare>sharp: 0.35.4
   miniflare>undici: 7.29.1
   nanoid: 3.3.18
+  undici@>=8.0.0 <8.10.2: 8.10.2
   web-ext-run>multimatch: 8.0.0
   web-ext-run>tmp: 0.2.7
+
+audit:
+  ignore:
+    # Astro's build-only image cache has no shared user requests; see docs/dependency-overrides.md.
+    - GHSA-ch52-4w7c-c8xp

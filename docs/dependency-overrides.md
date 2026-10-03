@@ -25,6 +25,32 @@ an AVIF encode/decode smoke check using Miniflare's resolved Sharp package.
 existing major version. Remove this override when Miniflare resolves `undici >=7.29.1`
 without it.
 
+`undici@>=8.0.0 <8.10.2` is constrained to `8.10.2` for jsdom and Astro's unifont
+dependency. This fixes GHSA-rfgv-xxqx-mfg5, GHSA-w293-vg96-wgc3, and
+GHSA-vp8m-p9jh-q5pm without moving Miniflare off its supported 7.x line.
+`devalue@>=5.1.0 <5.9.3` is constrained to `5.9.3` for Astro and its React integration,
+fixing GHSA-j22f-vq7h-c4qm, GHSA-mcm9-63f2-9j32, and GHSA-x5rw-q4pp-hg5g within 5.x.
+Remove these constraints when the dependency chains resolve patched versions without them.
+
+### Scoped audit exception
+
+Reviewed on 2026-10-03: [GHSA-ch52-4w7c-c8xp](https://github.com/advisories/GHSA-ch52-4w7c-c8xp)
+affects `http-cache-semantics <=4.2.0` and has no published fix. It requires a shared
+cache to honor a caller's `max-stale` request when reusing another user's response.
+
+The only installed consumer is Astro 7.3.2's build-time remote-image cache in
+`astro/dist/assets/build/remote.js`. It creates its own requests, does not forward
+visitor headers, and calls `storable()` and `timeToLive()`, not the vulnerable
+`satisfiesWithoutRevalidation()` method. QuoteCue uses local images and deploys
+static files through Workers Static Assets; no Astro server or shared user-response
+cache is deployed. The advisory therefore does not apply to this deployment.
+
+Only this GHSA is excluded from the audit gate. Reassess the exception when changing
+Astro, adding SSR, a Worker entrypoint, authenticated remote image fetching, or any
+new consumer of `http-cache-semantics`. Remove it when a patched upstream release
+is available. The build verification rejects a Worker entrypoint or server output
+so the static-deployment assumption cannot silently change.
+
 ## TypeScript compatibility
 
 The extension uses TypeScript 7. The website stays on TypeScript 6 because
