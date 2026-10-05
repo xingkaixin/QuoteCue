@@ -3,6 +3,7 @@ node_modules/
 .wxt/
 website/.astro/
 website/dist/
+website/.cloudflare/
 website/.wrangler/
 coverage/
 test-results/

@@ -238,11 +238,14 @@ const socialImage = await stat(new URL("og-cover.png", distUrl));
 
 assert(socialImage.size > 10_000, "Social preview image is unexpectedly small");
 
-const deployment = await readFile(new URL("../wrangler.jsonc", import.meta.url), "utf8");
+const deployment = await readFile(
+  new URL("../.cloudflare/output/v0/workers/default/worker.config.json", import.meta.url),
+  "utf8",
+);
 
 assert.doesNotMatch(
   deployment,
-  /"main"\s*:/,
+  /"(?:entrypoint|manifest)"\s*:/,
   "Reassess the build-only cache audit exception before deploying a Worker entrypoint",
 );
 

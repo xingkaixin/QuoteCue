@@ -11,23 +11,9 @@ The scoped entries live in `pnpm-workspace.yaml`, apply to local browser and web
 
 ## Website tooling
 
-`miniflare>sharp@0.35.4` replaces the vulnerable `sharp@0.35.2` pinned by
-`miniflare@5.20260908.0-alpha` through `website > wrangler`. This fixes
-[GHSA-rgj7-g3m4-5g8c](https://github.com/advisories/GHSA-rgj7-g3m4-5g8c), which affects
-AVIF decoding through libheif. The override is limited to Miniflare's dependency;
-Astro already resolves a patched Sharp version.
-
-Remove this override when the installed Wrangler/Miniflare dependency chain resolves
-`sharp >=0.35.4` without it. Validate changes with `pnpm audit:high`, `pnpm check`, and
-an AVIF encode/decode smoke check using Miniflare's resolved Sharp package.
-
-`miniflare>undici@7.29.1` updates Miniflare's pinned `undici@7.29.0` within its
-existing major version. Remove this override when Miniflare resolves `undici >=7.29.1`
-without it.
-
 `undici@>=8.0.0 <8.10.2` is constrained to `8.10.2` for jsdom and Astro's unifont
 dependency. This fixes GHSA-rfgv-xxqx-mfg5, GHSA-w293-vg96-wgc3, and
-GHSA-vp8m-p9jh-q5pm without moving Miniflare off its supported 7.x line.
+GHSA-vp8m-p9jh-q5pm.
 `devalue@>=5.1.0 <5.9.3` is constrained to `5.9.3` for Astro and its React integration,
 fixing GHSA-j22f-vq7h-c4qm, GHSA-mcm9-63f2-9j32, and GHSA-x5rw-q4pp-hg5g within 5.x.
 Remove these constraints when the dependency chains resolve patched versions without them.

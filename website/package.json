@@ -5,11 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build",
+    "build": "astro build && node scripts/prepare-deploy.mjs",
     "preview": "astro preview",
-    "check": "astro check && astro build && pnpm verify:build",
+    "check": "astro check && pnpm build && pnpm verify:build",
     "verify:build": "node scripts/verify-build.mjs",
-    "deploy": "pnpm build && wrangler deploy"
+    "deploy": "pnpm build && pnpm verify:build && cf deploy --prebuilt"
   },
   "dependencies": {
     "@astrojs/react": "^6.0.5",
@@ -32,7 +32,6 @@
     "@astrojs/check": "^0.9.10",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "typescript": "^6.0.3",
-    "wrangler": "^4.130.0"
+    "typescript": "^6.0.3"
   }
 }

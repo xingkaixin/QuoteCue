@@ -33,21 +33,30 @@ sitemap、robots.txt、404、Umami 脚本与 CSP，以及 Cloudflare 部署产�
 
 ## 部署到 Cloudflare Workers
 
-`wrangler.jsonc` 将 `dist` 作为静态资源部署，并把 Worker 绑定到
-`quotecue.xingkaixin.me` Custom Domain：
+部署使用通过 mise 全局安装并已登录的 `cf`，不在项目中安装 `cf` 或 Wrangler。
+`cloudflare.config.ts` 保留 Worker 名称、自定义域名、HTML 路径和 404 配置。
 
 ```bash
-pnpm --dir website run deploy
+pnpm site:deploy
 ```
 
-首次部署前需要登录 Wrangler，并确保 `xingkaixin.me` zone 已由同一 Cloudflare 账号管理。如果
-目标 hostname 已有 CNAME，先在 Cloudflare 中移除该记录，否则无法创建 Custom Domain。
+生产构建后，`scripts/prepare-deploy.mjs` 把 `dist` 和配置写入 cf 的 Build Output
+Specification v0 目录 `website/.cloudflare/output/`。部署通过 `cf deploy --prebuilt`
+直接上传静态资源，不需要 Cloudflare Vite 插件或服务端适配器。
 
-Cloudflare Workers Builds 可使用：
+首次使用另一台机器部署时，确保全局 `cf` 在 PATH 中且已登录，账号管理
+`xingkaixin.me` zone。部署到已有的 `quotecue-landing` Worker 和
+`quotecue.xingkaixin.me` Custom Domain。
 
-- Root directory: `/`
-- Build command: `pnpm --dir website build`
-- Deploy command: `pnpm --dir website exec wrangler deploy`
+只验证部署产物而不发布：
+
+```bash
+pnpm site:build
+(cd website && cf deploy --prebuilt --dry-run)
+```
+
+此流程已使用 `cf 1.0.0-beta.12` 验证。cf 和 Build Output Specification 仍处于 beta，
+升级全局 cf 后先运行 dry-run。CI 只执行构建和检查，不需要安装 cf；部署机器需要全局 cf。
 
 ## 加载性能
 
