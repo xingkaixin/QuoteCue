@@ -23,6 +23,9 @@ sitemap、robots.txt、404、Umami 脚本与 CSP，以及 Cloudflare 部署产�
 正式域名 `quotecue.xingkaixin.me`，避免本地预览和其他部署域名的访问计入统计；开发模式不加载
 脚本。`_headers` 仅在 `script-src` 和 `connect-src` 中放行该 Umami 来源。
 
+`Cache-Control: no-transform` 阻止 Cloudflare 域名级 Web Analytics 自动注入，
+确保本站只运行 Umami。HTML 每次重新验证；带哈希的静态资源保留一年缓存。
+
 统计只用于产品网站的页面访问和商店链接点击。`chrome-store-click` 与 `edge-store-click`
 使用 Umami 原生 `data-umami-event` 属性，唯一的自定义属性 `placement` 为固定按钮位置
 （header、hero、closing、guide）。不采集演示中的批注或输入内容，不进入扩展或 AI 宿主页面。

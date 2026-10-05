@@ -220,6 +220,8 @@ assert.match(headers, /Content-Security-Policy:/);
 
 assert.doesNotMatch(headers, /cloudflareinsights\.com/);
 
+assert.match(headers, /Cache-Control: public, max-age=0, must-revalidate, no-transform/);
+
 assert.match(headers, /script-src[^;]* https:\/\/umami\.xingkaixin\.me(?:\s|;)/);
 
 assert.match(headers, /connect-src[^;]* https:\/\/umami\.xingkaixin\.me(?:\s|;)/);
