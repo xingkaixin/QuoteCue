@@ -24,26 +24,26 @@
     "test:lint": "node --test tools/oxlint/anti-slop/tests/*.test.ts"
   },
   "dependencies": {
-    "@base-ui/react": "^1.8.0",
-    "@phosphor-icons/react": "^2.1.10",
+    "@base-ui/react": "catalog:",
+    "@phosphor-icons/react": "catalog:",
     "@quotecue/shared": "workspace:*",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0",
-    "tailwind-merge": "^3.6.0"
+    "class-variance-authority": "catalog:",
+    "clsx": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "tailwind-merge": "catalog:"
   },
   "devDependencies": {
     "@oxlint/plugins": "1.82.0",
     "@playwright/test": "^1.63.0",
-    "@tailwindcss/vite": "^4.3.3",
-    "@types/react": "^19.3.0",
-    "@types/react-dom": "^19.3.0",
+    "@tailwindcss/vite": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
     "@wxt-dev/module-react": "^1.2.2",
     "jsdom": "^30.0.1",
     "oxfmt": "^0.67.0",
     "oxlint": "~1.82.0",
-    "tailwindcss": "^4.3.3",
+    "tailwindcss": "catalog:",
     "typescript": "^7.0.2",
     "vitest": "^5.0.0",
     "wxt": "^0.21.4"
