@@ -71,12 +71,11 @@ The product website at `https://quotecue.xingkaixin.me` uses self-hosted Umami a
 only the store event name and a fixed button placement label (header, hero, closing, or guide);
 they do not confirm an extension installation. This sends website visit metadata, including
 the page URL and title, referrer, browser language, and screen size, to the developer's Umami
-instance. Umami does not use tracking cookies. The website also supports Cloudflare Web Analytics
-for aggregate performance measurement.
+instance. Umami does not use tracking cookies.
 
 These analytics run only on the product website, not in the extension or on supported AI service
 pages. No selected AI text, annotations, drafts, message composer content, or interactive demo input
-is sent to these analytics services.
+is sent to Umami.
 
 ## Permissions
 

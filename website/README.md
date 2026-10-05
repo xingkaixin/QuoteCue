@@ -31,19 +31,6 @@ sitemap、robots.txt、404、Umami 脚本与 CSP，以及 Cloudflare 部署产�
 在 Umami 的 Goals 中分别按上述事件名创建 Triggered event 目标。按 30 天范围和落地页、
 来源筛选，观察访问到商店点击的比例；小样本不作确定的转化率结论。
 
-## Cloudflare Web Analytics
-
-页面支持 Cloudflare Web Analytics 手动 beacon。先在 Cloudflare Web Analytics 中添加
-`quotecue.xingkaixin.me`，再把站点 token 配置为构建环境变量：
-
-```bash
-PUBLIC_CLOUDFLARE_WEB_ANALYTICS_TOKEN=<site-token>
-```
-
-token 是公开的站点标识，不是密钥。未配置时不输出 beacon，适合在 Cloudflare 控制台启用自动
-注入；两种方式只启用一种，避免重复 snippet。`_headers` 已允许 beacon 脚本与上报地址，且没有
-设置会阻止自动注入的 `Cache-Control: no-transform`。
-
 ## 部署到 Cloudflare Workers
 
 `wrangler.jsonc` 将 `dist` 作为静态资源部署，并把 Worker 绑定到
@@ -71,8 +58,8 @@ reduced motion 设置。
 保持 Workers Static Assets 直接分发资源，`/_astro/` 中带哈希的文件使用一年浏览器缓存。
 HTML 保留默认重新验证策略，确保发布后及时获取新版本。无需添加 R2 或 Worker 中转。
 
-性能验证应分别记录首屏和滚动到演示后的请求，比较同条件下的压缩 JS 体积，并通过已有的
-Cloudflare RUM 按地区和设备观察 TTFB、LCP 和 INP。不要同时启用手动与自动 beacon。
+性能验证应分别记录首屏和滚动到演示后的请求，比较同条件下的压缩 JS 体积，
+并通过浏览器性能工具检查 TTFB、LCP 和 INP。访问和商店点击统计仅使用 Umami。
 
 ## SEO / AEO
 

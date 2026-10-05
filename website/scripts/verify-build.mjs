@@ -91,6 +91,7 @@ for (const page of pages) {
     /<script\b[^>]*\bsrc="https:\/\/umami\.xingkaixin\.me\/script\.js"[^>]*><\/script>/g,
   );
 
+  assert.doesNotMatch(html, /cloudflareinsights\.com|data-cf-beacon/);
   assert.equal(umamiScripts?.length, 1, `${page.path} must load Umami exactly once`);
   assert.match(umamiScripts[0], /\bdefer(?:\s|>)/);
   assert.match(umamiScripts[0], /data-website-id="7d43d6ea-7e27-4c6b-9037-917d977a9af3"/);
@@ -217,13 +218,11 @@ const headers = await read("_headers");
 
 assert.match(headers, /Content-Security-Policy:/);
 
-assert.match(headers, /static\.cloudflareinsights\.com/);
+assert.doesNotMatch(headers, /cloudflareinsights\.com/);
 
 assert.match(headers, /script-src[^;]* https:\/\/umami\.xingkaixin\.me(?:\s|;)/);
 
 assert.match(headers, /connect-src[^;]* https:\/\/umami\.xingkaixin\.me(?:\s|;)/);
-
-assert.doesNotMatch(headers, /no-transform/);
 
 const llms = await read("llms.txt");
 

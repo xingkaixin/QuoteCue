@@ -36,7 +36,7 @@ pnpm site:build
 ```
 
 See [website/README.md](./website/README.md) for Cloudflare Workers deployment, self-hosted Umami,
-Cloudflare Web Analytics, and SEO configuration. Analytics run only on the product website; the
+Umami analytics, and SEO configuration. Analytics run only on the product website; the
 extension does not collect usage analytics.
 
 ## Validation and packaging

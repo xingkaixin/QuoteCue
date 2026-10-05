@@ -34,7 +34,7 @@ pnpm site:check
 pnpm site:build
 ```
 
-Cloudflare Workers 部署、Web Analytics 与 SEO 配置见
+Cloudflare Workers 部署、Umami 统计与 SEO 配置见
 [website/README.md](./website/README.md)。
 
 ## 验证与打包

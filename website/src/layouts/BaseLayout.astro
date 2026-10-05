@@ -46,7 +46,6 @@ const alternateOgLocales = WEBSITE_LOCALES.filter((locale) => locale !== lang).m
 
 const defaultUrl = new URL(websitePagePath(DEFAULT_WEBSITE_LOCALE, page), Astro.site);
 const socialImageUrl = new URL("/og-cover.png", Astro.site);
-const analyticsToken = import.meta.env.PUBLIC_CLOUDFLARE_WEB_ANALYTICS_TOKEN;
 const jsonLd = structuredData ? JSON.stringify(structuredData).replaceAll("<", "\\u003c") : null;
 ---
 
@@ -130,15 +129,5 @@ const jsonLd = structuredData ? JSON.stringify(structuredData).replaceAll("<", "
   </head>
   <body>
     <slot />
-    {
-      analyticsToken && (
-        <script
-          is:inline
-          type="module"
-          src="https://static.cloudflareinsights.com/beacon.min.js"
-          data-cf-beacon={JSON.stringify({ token: analyticsToken })}
-        />
-      )
-    }
   </body>
 </html>
