@@ -1,24 +1,18 @@
 # Dependency overrides
 
-The scoped entries live in `pnpm-workspace.yaml`, apply to local browser and website tooling, and are not bundled into the extension.
+The overrides live in `pnpm-workspace.yaml`. They apply to build, test, and website tooling and
+are not bundled into the extension.
 
-| Override                        | Reason                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | Removal condition                                                                                            |
-| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `fx-runner>shell-quote@1.10.0`  | `fx-runner@1.4.0` pins a version affected by GHSA-w7jw-789q-3m8p and GHSA-395f-4hp3-45gv.                                                                                                                                                                                                                                                                                                                                                                                               | Remove when WXT's `web-ext-run` path resolves `shell-quote` to a non-vulnerable version without an override. |
-| `web-ext-run>tmp@0.2.7`         | `web-ext-run@0.2.4` pins a version affected by GHSA-ph9p-34f9-6g65.                                                                                                                                                                                                                                                                                                                                                                                                                     | Remove when `web-ext-run` depends on `tmp >=0.2.6`.                                                          |
-| `firefox-profile>adm-zip@0.6.0` | `firefox-profile@4.7.0` allows only the vulnerable 0.5 line affected by GHSA-xcpc-8h2w-3j85.                                                                                                                                                                                                                                                                                                                                                                                            | Remove when `firefox-profile` supports `adm-zip >=0.6.0` upstream.                                           |
-| `web-ext-run>multimatch@8.0.0`  | `web-ext-run@0.2.4` pins `multimatch@6`, whose `minimatch@3` reaches `brace-expansion@1.1.16`, affected by GHSA-mh99-v99m-4gvg. Only `brace-expansion >=5.0.8` is patched, and overriding it directly breaks `minimatch@3`, which calls the module as a default function while the 5.x CommonJS build exports a named `expand`. `multimatch@8` keeps the ESM default-function export `web-ext-run` imports and resolves `minimatch@10`, which depends on the patched `brace-expansion`. | Remove when `web-ext-run` depends on a `multimatch` version that resolves `brace-expansion >=5.0.8`.         |
+| Override                            | Consumers                         | Reason                                                                          | Removal condition                                            |
+| ----------------------------------- | --------------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `nanoid` → `3.3.18`                 | `postcss` through Vite            | `nanoid@3.3.16` failed the audit gate.                                          | Remove when `postcss` resolves `nanoid >=3.3.18` without it. |
+| `undici@>=8.0.0 <8.10.2` → `8.10.2` | jsdom, Astro's unifont dependency | Fixes GHSA-rfgv-xxqx-mfg5, GHSA-w293-vg96-wgc3, and GHSA-vp8m-p9jh-q5pm.        | Remove when the dependency chains resolve `undici >=8.10.2`. |
+| `devalue@>=5.1.0 <5.9.3` → `5.9.3`  | Astro, `@astrojs/react`           | Fixes GHSA-j22f-vq7h-c4qm, GHSA-mcm9-63f2-9j32, and GHSA-x5rw-q4pp-hg5g in 5.x. | Remove when the dependency chains resolve `devalue >=5.9.3`. |
 
-## Website tooling
+Every override needs a row here. When `pnpm why -r <package>` no longer finds a package, its
+override is inert; remove it together with its row.
 
-`undici@>=8.0.0 <8.10.2` is constrained to `8.10.2` for jsdom and Astro's unifont
-dependency. This fixes GHSA-rfgv-xxqx-mfg5, GHSA-w293-vg96-wgc3, and
-GHSA-vp8m-p9jh-q5pm.
-`devalue@>=5.1.0 <5.9.3` is constrained to `5.9.3` for Astro and its React integration,
-fixing GHSA-j22f-vq7h-c4qm, GHSA-mcm9-63f2-9j32, and GHSA-x5rw-q4pp-hg5g within 5.x.
-Remove these constraints when the dependency chains resolve patched versions without them.
-
-### Scoped audit exception
+## Scoped audit exception
 
 Reviewed on 2026-10-03: [GHSA-ch52-4w7c-c8xp](https://github.com/advisories/GHSA-ch52-4w7c-c8xp)
 affects `http-cache-semantics <=4.2.0` and has no published fix. It requires a shared
@@ -46,5 +40,3 @@ website compiler when Astro's checker supports TypeScript 7.
 ## Audit gate
 
 `pnpm audit:high` is the high-severity gate. It is deliberately kept out of `pnpm check`: it queries the registry advisory database, so it needs network access and its result changes over time independently of this repository's code. CI runs it as a separate step after `pnpm check`.
-
-When changing the WXT browser-runner entries, run `pnpm audit:high`, `pnpm check`, and Chrome and Firefox zip builds, and exercise the Firefox profile API before committing the new lockfile.
