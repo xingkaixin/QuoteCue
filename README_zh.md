@@ -5,7 +5,7 @@ QuoteCue 是一个 Chrome 扩展，用于在 ChatGPT、Claude、DeepSeek 和 Kim
 
 ## 环境要求
 
-- Node.js 24.20.0（支持的最低版本为 22.12.0）
+- Node.js 24.21.0（支持的最低版本为 22.12.0）
 - pnpm 12.3.4
 
 项目通过 `mise.toml` 锁定这两个工具的版本。通过以下命令安装工具和项目依赖：
@@ -35,7 +35,7 @@ pnpm site:build
 ```
 
 Cloudflare Workers 部署、Umami 统计与 SEO 配置见
-[website/README.md](./website/README.md)。
+[website/README.md](./website/README.md)。统计只在产品网站运行，扩展不收集使用数据。
 
 ## 验证与打包
 
@@ -60,38 +60,14 @@ CI 会同时运行两者。修改依赖或 `pnpm-workspace.yaml` 中的 override
 生产版扩展会输出到 `.output/chrome-mv3`，可分发的压缩包会输出到
 `.output/quotecue-<version>-chrome.zip`。
 
-## 发布检查清单
+## 文档
 
-1. 从干净的检出开始，依次运行 `pnpm install --frozen-lockfile`、`pnpm check` 和 `pnpm zip`。
-2. `pnpm check` 的最后一步是 `pnpm verify:manifest`，它会断言
-   `.output/chrome-mv3/manifest.json` 只请求 `storage` 权限，以及 `https://chatgpt.com/*`、
-   `https://claude.ai/*`、`https://chat.deepseek.com/*` 和 `https://www.kimi.com/*` 的访问
-   权限，并且其 web-accessible resources 仅限于安全输入字段和生成的内容样式。任何范围扩大
-   都会让门禁失败；只有在经过评审的权限变更中才应修改 `scripts/verify-manifest.ts`。
-3. 确认 manifest 的行为仍然符合 [PRIVACY.md](./PRIVACY.md) 的描述，尤其是本地草稿存储、
-   受支持的宿主访问范围、closed Shadow DOM 以及扩展来源的批注输入字段。
-4. 在一个干净的 Chrome 配置文件中将 `.output/chrome-mv3` 作为未打包扩展加载，并完成下方的
-   浏览器冒烟测试。
-5. 上传生成的压缩包，不要在上传前重新构建或修改其内容。
+- [docs/architecture.md](./docs/architecture.md)：目标、非目标、模块边界与设计原则。
+- [CONTEXT.md](./CONTEXT.md)：领域词汇表。
+- [docs/release.md](./docs/release.md)：版本准备、发布检查清单与浏览器冒烟测试。
+- [docs/dependency-overrides.md](./docs/dependency-overrides.md)：依赖 overrides 与审计例外。
+- [docs/lint-policy.md](./docs/lint-policy.md)：lint 规则取舍与例外策略。
+- [PRIVACY.md](./PRIVACY.md)：隐私政策。
+- [website/README.md](./website/README.md)：产品落地页。
 
-### 浏览器冒烟测试
-
-在受支持的 ChatGPT、Claude、DeepSeek 和 Kimi 界面上运行以下检查，且不要使用包含敏感信息
-的对话数据：
-
-- 选中助手回复文本，使用 QuoteCue 操作，创建并编辑一条批注，然后刷新页面确认草稿和高亮
-  能够正确恢复。
-- 在路径包含 `/g/<gizmo>/c/<conversation>` 的 ChatGPT custom GPT 对话中重复上述草稿恢复检查。
-- 在新建或其他无法识别的对话页面上，确认批注在刷新前可用，刷新后被丢弃，而不是以页面会话
-  标识符持久化保存。
-- 离开无法识别的对话后，确认草稿独立保留；刷新页面前，手动恢复到目标对话或二次确认丢弃。
-- 切换到另一个对话再切回来，确认草稿仍然按对话隔离。
-- 在两个标签页打开同一对话，确认保存的编辑和发送确认后的清理会自动同步，无需刷新，且不影响
-  其他对话的草稿。
-- 在一个标签页编辑批注时，从另一个标签页移除它；确认未保存输入仍保留，可取消或明确另存为
-  新批注。
-- 发送一条带批注的消息，确认待处理状态只在匹配的用户消息出现后才会清除。模拟或观察一次
-  发送失败，确认草稿仍可恢复。
-- 删除一条批注并撤销，然后通过确认对话框清空全部批注。
-- 测试纯键盘操作、Escape 与焦点恢复、亮色与暗色主题、浏览器缩放，以及 320px 宽的窄视口。
-- 在页面控制台中确认 `document.querySelector("quotecue-ui")?.shadowRoot` 返回 `null`。
+`docs/` 下的文档使用英文。
